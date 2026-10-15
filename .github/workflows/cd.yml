@@ -190,7 +190,7 @@ jobs:
             | grep -E 'image:|restart:|published' | sort -u
 
   deploy:
-    name: Deploy to ${{ inputs.environment || 'staging' }}
+    name: Deploy
     needs: [images, verify, compose]
     if: |
       (github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.DEPLOY_ENABLED == 'true') ||
@@ -202,6 +202,9 @@ jobs:
       cancel-in-progress: false
     steps:
       - uses: actions/checkout@v4
+      - name: Report the target environment
+        run: |
+          echo "Target environment: ${{ inputs.environment || 'staging' }}" >> "$GITHUB_STEP_SUMMARY"
       - name: Confirm the deployment secrets are configured
         env:
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
@@ -336,6 +339,8 @@ jobs:
         run: |
           {
             echo "## Delivery pipeline"
+            echo
+            echo "Trigger: \`${{ github.event_name }}\` on \`${{ github.ref_name }}\` · target: \`${{ inputs.environment || 'staging' }}\`"
             echo
             echo "| Stage | Result |"
             echo "|---|---|"
