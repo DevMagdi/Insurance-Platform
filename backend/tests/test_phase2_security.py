@@ -26,7 +26,7 @@ from app.domain.schemas import (
     UploadFilePlan,
     UploadPlan,
 )
-from app.models.tickets import Complaint
+from app.models.tickets import Attachment, AuditLog, Complaint
 from app.security.passwords import StaffPasswords, TotpProtector
 from app.security.rate_limit import MobileOTP, RateLimiter
 from app.security.tokens import TokenManager, clear_auth_cookies, csrf_required, set_auth_cookies
@@ -300,3 +300,23 @@ async def test_staff_password_and_totp_protection(settings: Settings) -> None:
     assert "Insurance%20Platform" in protector.uri(secret, "person@example.test")
     with pytest.raises(ValueError):
         protector.decrypt(b"bad")
+
+
+def test_insert_mappings_preserve_restricted_rls_reads_and_columns() -> None:
+    # Customers cannot SELECT pending uploads and ordinary staff cannot SELECT
+    # audit events. ORM inserts must never require those SELECT policies.
+    for model in (Attachment, AuditLog):
+        assert model.__mapper__.eager_defaults is False
+        for column in model.__mapper__.primary_key:
+            assert column.default is not None
+            assert column.server_default is not None  # DB-side writers remain valid.
+    # These complaint fields are not granted INSERT to app_runtime (even as NULL).
+    for name in (
+        "response_due_at",
+        "sla_breached_at",
+        "merged_into_id",
+        "merged_into_created_at",
+        "resolved_at",
+        "csat_score",
+    ):
+        assert Complaint.__table__.c[name].server_default is not None

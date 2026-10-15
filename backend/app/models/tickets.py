@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from sqlalchemy import (
     BigInteger,
@@ -199,6 +199,9 @@ class ComplaintMessage(Base):
 
 class Attachment(Base):
     __tablename__ = "attachments"
+    # Pending files are deliberately invisible to SELECT RLS. INSERT RETURNING
+    # would therefore fail; generate keys locally and skip server-default reads.
+    __mapper_args__ = {"eager_defaults": False}  # noqa: RUF012
     __table_args__ = (
         ForeignKeyConstraint(
             ["complaint_id", "complaint_created_at"], ["complaints.id", "complaints.created_at"]
@@ -213,7 +216,9 @@ class Attachment(Base):
         ),
     )
 
-    id: Mapped[UUID] = mapped_column(primary_key=True, server_default=func.gen_random_uuid())
+    id: Mapped[UUID] = mapped_column(
+        primary_key=True, default=uuid4, server_default=func.gen_random_uuid()
+    )
     complaint_id: Mapped[UUID]
     complaint_created_at: Mapped[datetime]
     message_id: Mapped[UUID | None]
@@ -227,7 +232,9 @@ class Attachment(Base):
     checksum_sha256: Mapped[str] = mapped_column(Text)
     scan_status: Mapped[AttachmentScanStatus] = mapped_column(SCAN_ENUM, server_default="pending")
     upload_id: Mapped[UUID | None] = mapped_column(ForeignKey("attachment_uploads.id"), unique=True)
-    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(
+        default=lambda: datetime.now(UTC), server_default=func.now()
+    )
 
 
 class Notification(Base):
@@ -272,6 +279,9 @@ class CallLog(Base):
 
 class AuditLog(Base):
     __tablename__ = "audit_logs"
+    # Staff may create their own audit trail without audit.view, but must not
+    # SELECT it. Avoid INSERT RETURNING so PostgreSQL enforces only INSERT RLS.
+    __mapper_args__ = {"eager_defaults": False}  # noqa: RUF012
     __table_args__ = (
         ForeignKeyConstraint(
             ["complaint_id", "complaint_created_at"], ["complaints.id", "complaints.created_at"]
@@ -279,8 +289,12 @@ class AuditLog(Base):
         {"postgresql_partition_by": "RANGE (created_at)"},
     )
 
-    id: Mapped[UUID] = mapped_column(primary_key=True, server_default=func.gen_random_uuid())
-    created_at: Mapped[datetime] = mapped_column(primary_key=True, server_default=func.now())
+    id: Mapped[UUID] = mapped_column(
+        primary_key=True, default=uuid4, server_default=func.gen_random_uuid()
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        primary_key=True, default=lambda: datetime.now(UTC), server_default=func.now()
+    )
     actor_staff_id: Mapped[UUID | None] = mapped_column(ForeignKey("staff_users.id"))
     action: Mapped[str] = mapped_column(Text)
     resource_type: Mapped[str] = mapped_column(Text)

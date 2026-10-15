@@ -620,6 +620,8 @@ async def test_phase3_analytics_filters_companies_and_ownership(test_app: Simple
     await sign_in_staff(ctx.admin, "admin@test.invalid")
     await sign_in_staff(ctx.agent, "agent@test.invalid")
     await sign_in_customer(ctx.customer, ctx.mailbox)
+    # Earlier module-scoped cases may have left tickets assigned to this agent.
+    window_start = datetime.now(UTC)
     suffix = uuid4().hex[:6]
     first = await ctx.customer.post(
         "/api/customer/complaints",
@@ -653,7 +655,7 @@ async def test_phase3_analytics_filters_companies_and_ownership(test_app: Simple
     await sign_in_staff(ctx.agent, "agent@test.invalid")
     now = datetime.now(UTC)
     params = {
-        "date_from": (now - timedelta(days=2)).isoformat(),
+        "date_from": window_start.isoformat(),
         "date_to": (now + timedelta(days=1)).isoformat(),
     }
     from urllib.parse import urlencode
