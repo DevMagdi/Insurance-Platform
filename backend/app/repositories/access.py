@@ -77,7 +77,7 @@ class AccessRepository:
     ) -> UUID:
         result = await db.scalar(
             text(
-                "SELECT app_security.save_custom_role(:id, :name, :description, "
+                "SELECT app_security.save_custom_role(CAST(:id AS uuid), :name, :description, "
                 "CAST(:permissions AS text[]))"
             ),
             {

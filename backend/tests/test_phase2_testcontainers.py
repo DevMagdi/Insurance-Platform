@@ -604,6 +604,9 @@ async def test_phase3_role_delegation_revocation_and_reset(test_app: SimpleNames
             "role_changed",
             "password_reset_requested",
         }
+        all_changes = await ctx.admin.get("/api/staff/audit/access-changes")
+        assert all_changes.status_code == 200, all_changes.text
+        assert any(row["target_user_id"] == user_id for row in all_changes.json())
         assert (await ctx.agent.get("/api/staff/audit/access-changes")).status_code == 403
     finally:
         await recipient.aclose()

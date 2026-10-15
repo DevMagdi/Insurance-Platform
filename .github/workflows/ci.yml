@@ -65,17 +65,16 @@ jobs:
           lines = Path('/tmp/insurance-integration.log').read_text(errors='replace').splitlines()
           summary = [line for line in lines if line.startswith(('FAILED ', 'ERROR '))]
           errors = [line for line in lines if line.startswith('E   ')]
-          notes = summary + errors
-          for line in notes[:20]:
-              escaped = line[:1200].replace('%', '%25').replace('\r', '%0D')
-              print(f'::error title=PostgreSQL integration failure::{escaped}')
           import re
           # The log archive is not always reachable from restricted networks.
-          # Annotate a bounded excerpt of each failing traceback as well.
+          # Emit traceback excerpts FIRST (Actions can cap step annotations).
           parts = re.split(r'(?m)^_{3,} (test_.*) _{3,}$', '\n'.join(lines))
-          for name, trace in list(zip(parts[1::2], parts[2::2]))[:12]:
+          for name, trace in list(zip(parts[1::2], parts[2::2]))[:8]:
               tail = trace[-2200:].replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
               print(f'::error title=Trace {name[:70]}::{tail}')
+          for line in (summary + errors)[:4]:
+              escaped = line[:1200].replace('%', '%25').replace('\r', '%0D')
+              print(f'::error title=PostgreSQL integration failure::{escaped}')
           PY
           fi
           exit "$code"

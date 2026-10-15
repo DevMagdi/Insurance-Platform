@@ -132,13 +132,15 @@ class Complaint(Base):
     assigned_agent_id: Mapped[UUID | None] = mapped_column(ForeignKey("staff_users.id"))
     team_id: Mapped[UUID | None] = mapped_column(ForeignKey("teams.id"))
     sla_due_at: Mapped[datetime | None]
-    response_due_at: Mapped[datetime | None]
-    sla_breached_at: Mapped[datetime | None]
-    merged_into_id: Mapped[UUID | None]
-    merged_into_created_at: Mapped[datetime | None]
-    resolved_at: Mapped[datetime | None]
+    # DB-managed fields must be omitted from customer INSERTs: app_runtime is
+    # intentionally not granted INSERT on these columns, even to write NULL.
+    response_due_at: Mapped[datetime | None] = mapped_column(server_default=text("NULL"))
+    sla_breached_at: Mapped[datetime | None] = mapped_column(server_default=text("NULL"))
+    merged_into_id: Mapped[UUID | None] = mapped_column(server_default=text("NULL"))
+    merged_into_created_at: Mapped[datetime | None] = mapped_column(server_default=text("NULL"))
+    resolved_at: Mapped[datetime | None] = mapped_column(server_default=text("NULL"))
     reopened_count: Mapped[int] = mapped_column(Integer, server_default=text("0"))
-    csat_score: Mapped[int | None] = mapped_column(SmallInteger)
+    csat_score: Mapped[int | None] = mapped_column(SmallInteger, server_default=text("NULL"))
     updated_at: Mapped[datetime] = mapped_column(server_default=func.now())
     search_vector: Mapped[str] = mapped_column(
         TSVECTOR,

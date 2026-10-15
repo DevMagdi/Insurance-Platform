@@ -56,7 +56,7 @@ class AuditRepository:
             SELECT id, actor_staff_id, target_user_id, change_type,
                    before_state, after_state, created_at
             FROM access_change_log
-            WHERE (:target IS NULL OR target_user_id = :target)
+            WHERE (CAST(:target AS uuid) IS NULL OR target_user_id = :target)
             ORDER BY created_at DESC, id DESC LIMIT :limit OFFSET :offset
         """)
         return [
