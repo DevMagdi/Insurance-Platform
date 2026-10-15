@@ -204,7 +204,9 @@ def identities(stack: dict) -> dict:
 @pytest.fixture
 async def test_app(stack: dict, identities: dict):
     settings = Settings(
+        _env_file=None,
         DATABASE_URL=stack["runtime"],
+        DEV_SMS_MAILBOX=False,  # CI loads a development .env; test mail is in-memory.
         REDIS_URL=stack["redis"],
         APP_ENCRYPTION_KEY=base64.urlsafe_b64encode(b"e" * 32).decode(),
         APP_BLIND_INDEX_KEY=base64.urlsafe_b64encode(b"b" * 32).decode(),

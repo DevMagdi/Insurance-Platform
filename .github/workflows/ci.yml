@@ -63,7 +63,9 @@ jobs:
             python - <<'PY'
           from pathlib import Path
           lines = Path('/tmp/insurance-integration.log').read_text(errors='replace').splitlines()
-          notes = [line for line in lines if line.startswith(('FAILED ', 'ERROR ', 'E   '))]
+          summary = [line for line in lines if line.startswith(('FAILED ', 'ERROR '))]
+          errors = [line for line in lines if line.startswith('E   ')]
+          notes = summary + errors
           for line in notes[:20]:
               escaped = line[:1200].replace('%', '%25').replace('\r', '%0D')
               print(f'::error title=PostgreSQL integration failure::{escaped}')
