@@ -17,6 +17,7 @@ from sqlalchemy import (
     text,
 )
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
+from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.domain.enums import ComplaintPriority, InsuranceType
@@ -86,6 +87,7 @@ class Webhook(Base):
         ARRAY(Text), server_default=text("ARRAY[]::text[]")
     )
     signing_secret_ref: Mapped[str] = mapped_column(Text)
+    signing_secret_ciphertext: Mapped[bytes | None] = mapped_column(LargeBinary)
     is_active: Mapped[bool] = mapped_column(Boolean, server_default=text("true"))
     last_delivery_at: Mapped[datetime | None]
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
@@ -101,10 +103,60 @@ class ApiKey(Base):
     permission_codes: Mapped[list[str]] = mapped_column(
         ARRAY(Text), server_default=text("ARRAY[]::text[]")
     )
+    all_companies: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
+    company_ids: Mapped[list[UUID]] = mapped_column(
+        ARRAY(PGUUID(as_uuid=True)), server_default=text("ARRAY[]::uuid[]")
+    )
     expires_at: Mapped[datetime | None]
     revoked_at: Mapped[datetime | None]
     last_used_at: Mapped[datetime | None]
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+
+
+class IntegrationJob(Base):
+    __tablename__ = "integration_jobs"
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, server_default=func.gen_random_uuid())
+    job_kind: Mapped[str] = mapped_column(Text)
+    provider: Mapped[str] = mapped_column(Text)
+    company_id: Mapped[UUID | None] = mapped_column(ForeignKey("insurance_companies.id"))
+    complaint_id: Mapped[UUID | None]
+    complaint_created_at: Mapped[datetime | None]
+    sender_staff_id: Mapped[UUID | None] = mapped_column(ForeignKey("staff_users.id"))
+    integration_config_id: Mapped[UUID | None] = mapped_column(ForeignKey("integrations_config.id"))
+    webhook_id: Mapped[UUID | None] = mapped_column(ForeignKey("webhooks.id"))
+    message_id: Mapped[UUID | None] = mapped_column(ForeignKey("complaint_messages.id"))
+    call_log_id: Mapped[UUID | None] = mapped_column(ForeignKey("call_logs.id"))
+    payload_ciphertext: Mapped[bytes] = mapped_column(LargeBinary)
+    idempotency_digest: Mapped[bytes] = mapped_column(LargeBinary, unique=True)
+    payload_digest: Mapped[bytes] = mapped_column(LargeBinary)
+    state: Mapped[str] = mapped_column(Text, server_default="queued")
+    attempts: Mapped[int] = mapped_column(Integer, server_default=text("0"))
+    max_attempts: Mapped[int] = mapped_column(Integer, server_default=text("5"))
+    available_at: Mapped[datetime] = mapped_column(server_default=func.now())
+    locked_until: Mapped[datetime | None]
+    last_error_code: Mapped[str | None] = mapped_column(Text)
+    provider_message_id: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+    finished_at: Mapped[datetime | None]
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["complaint_id", "complaint_created_at"], ["complaints.id", "complaints.created_at"]
+        ),
+    )
+
+
+class IntegrationDeadLetter(Base):
+    __tablename__ = "integration_dead_letters"
+
+    job_id: Mapped[UUID] = mapped_column(ForeignKey("integration_jobs.id"), primary_key=True)
+    job_kind: Mapped[str] = mapped_column(Text)
+    error_code: Mapped[str] = mapped_column(Text)
+    attempts: Mapped[int] = mapped_column(Integer)
+    payload_ciphertext: Mapped[bytes] = mapped_column(LargeBinary)
+    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+    replayed_at: Mapped[datetime | None]
+    replayed_by_staff_id: Mapped[UUID | None] = mapped_column(ForeignKey("staff_users.id"))
 
 
 class AssignmentRule(Base):

@@ -490,6 +490,68 @@ async def test_scan_fail_closed_and_last_admin_guard(test_app: SimpleNamespace) 
         await manager.aclose()
 
 
+def test_phase4_migration_rls_grants_and_permission_codes(stack: dict, identities: dict) -> None:
+    """Validate the Phase 4 schema and role boundaries on real PostgreSQL 16."""
+    with psycopg.connect(stack["admin"]) as db:
+        revision = db.execute("SELECT version_num FROM alembic_version").fetchone()[0]
+        assert revision == "20261015_12"
+        guarded = db.execute(
+            """SELECT relname, relrowsecurity, relforcerowsecurity
+               FROM pg_class
+               WHERE oid = ANY(ARRAY[
+                   'public.integration_jobs'::regclass,
+                   'public.integration_dead_letters'::regclass,
+                   'public.api_keys'::regclass,
+                   'public.webhooks'::regclass,
+                   'public.integrations_config'::regclass
+               ])"""
+        ).fetchall()
+        assert len(guarded) == 5
+        assert all(row[1] and row[2] for row in guarded)
+        direct = db.execute(
+            """SELECT has_table_privilege('app_runtime','public.integration_jobs','SELECT'),
+                      has_table_privilege('app_worker','public.integration_jobs','SELECT'),
+                      has_table_privilege('app_runtime','public.integration_dead_letters','SELECT'),
+                      has_table_privilege('app_worker','public.integration_dead_letters','SELECT')"""
+        ).fetchone()
+        assert direct == (False, False, False, False)
+        policy = db.execute(
+            """SELECT qual FROM pg_policies
+               WHERE schemaname='public' AND tablename='ai_insights'
+                 AND policyname='ai_insights_read'"""
+        ).fetchone()
+        assert policy is not None and "integrations.ai_call" in policy[0]
+        columns = {
+            row[0]
+            for row in db.execute(
+                """SELECT column_name FROM information_schema.columns
+                   WHERE table_schema='public' AND table_name='complaint_messages'"""
+            ).fetchall()
+        }
+        assert {"delivery_status", "delivered_at", "read_at", "sender_external"} <= columns
+        function_privileges = db.execute(
+            """SELECT has_function_privilege('app_worker',
+                       'app_security.claim_integration_jobs(integer)','EXECUTE'),
+                      has_function_privilege('app_runtime',
+                       'app_security.claim_integration_jobs(integer)','EXECUTE')"""
+        ).fetchone()
+        assert function_privileges == (True, False)
+
+    runtime_url = stack["runtime"].replace("+asyncpg", "")
+    with psycopg.connect(runtime_url) as runtime:
+        for user_id, expected in (
+            (identities["admin"], True),
+            (identities["agent"], False),
+        ):
+            with runtime.transaction():
+                runtime.execute("SELECT set_config('app.scope','staff',true)")
+                runtime.execute("SELECT set_config('app.user_id',%s,true)", (str(user_id),))
+                allowed = runtime.execute(
+                    "SELECT app_security.has_permission('integrations.send_email')"
+                ).fetchone()[0]
+                assert allowed is expected
+
+
 async def test_phase3_role_delegation_revocation_and_reset(test_app: SimpleNamespace) -> None:
     """Real app_runtime + RLS integration; skipped only when Docker is absent."""
     from urllib.parse import parse_qs, urlsplit

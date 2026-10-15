@@ -7,7 +7,7 @@ from collections.abc import AsyncIterator
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from ipaddress import ip_address
-from typing import Any
+from typing import Any, cast
 from uuid import UUID
 
 from fastapi import Depends, HTTPException, Request
@@ -21,6 +21,7 @@ from app.repositories.access import AccessRepository
 from app.repositories.auth import AuthRepository
 from app.security.tokens import TokenClaims, TokenManager
 from app.services.complaints import ComplaintService
+from app.services.integrations import IntegrationService
 
 
 @dataclass
@@ -33,6 +34,10 @@ class RequestContext:
     permissions: frozenset[str]
     snapshot: dict[str, Any] | None
     complaints: ComplaintService
+
+
+def integration_service(request: Request) -> IntegrationService:
+    return cast(IntegrationService, request.app.state.integrations)
 
 
 def client_ip(request: Request) -> str:
