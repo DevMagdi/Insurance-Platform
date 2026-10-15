@@ -256,7 +256,7 @@ SET search_path = pg_catalog, public AS $function$
 DECLARE v_run report_runs%ROWTYPE; v_failures integer;
 BEGIN
     IF session_user <> 'app_worker' OR app_security.actor_scope() <> 'worker'
-       OR p_state NOT IN ('sent','empty','failed') 
+       OR p_state NOT IN ('sent','empty','failed')
        OR p_row_count IS NULL OR p_row_count NOT BETWEEN 0 AND 1000
        OR (p_state <> 'failed' AND p_row_count = 0 AND p_state <> 'empty')
        OR (p_error IS NOT NULL AND length(p_error) > 300) THEN

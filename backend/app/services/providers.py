@@ -7,6 +7,8 @@ from typing import Any, Protocol
 
 import aiosmtplib
 
+from app.services.email_templates import render_customer_notice
+
 
 class DeliveryConfig(Protocol):
     smtp_host: str | None
@@ -110,11 +112,13 @@ class SMTPDelivery:
             address = f"sms-{mobile[1:]}@sms.local.test"
         if address is None:
             return False
-        await self._mail(
-            address,
-            f"Complaint {kind.replace('_', ' ')}",
-            f"Ticket {payload['ticket_no']}: {payload['status']}.",
+        subject, body = render_customer_notice(
+            kind,
+            str(payload["ticket_no"]),
+            str(payload["status"]),
+            str(payload.get("locale", "en")),
         )
+        await self._mail(address, subject, body)
         return True
 
     async def send_report(

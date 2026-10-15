@@ -146,11 +146,15 @@ def test_sql_migrations_cover_every_requested_table_and_fail_closed_rls() -> Non
             "004_core_tables.sql",
             "007_staff_workflow.sql",
             "011_async_exports.sql",
+            "012_sla_calendars.sql",
             "013_scheduled_reports.sql",
+            "014_ops_admin.sql",
             "015_analytics_rollup.sql",
+            "016_export_formats.sql",
+            "017_integrations_ai.sql",
         )
     )
-    declared_tables = set(re.findall(r"CREATE TABLE (\w+) \(", schema + additive))
+    declared_tables = set(re.findall(r"CREATE TABLE (?:public\.)?(\w+) \(", schema + additive))
     assert declared_tables == set(Base.metadata.tables)
     mermaid = (ROOT / "docs/ERD.md").read_text()
     diagram_entities = set(re.findall(r"^    ([A-Z_]+) \{$", mermaid, re.MULTILINE))

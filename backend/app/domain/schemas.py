@@ -6,6 +6,7 @@ import re
 import zoneinfo
 from datetime import UTC, datetime, timedelta
 from typing import Any, Literal
+from urllib.parse import urlsplit
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
@@ -552,3 +553,228 @@ class SessionView(StrictModel):
 
 class TotpPolicyRequest(StrictModel):
     required: bool
+
+
+IntegrationProviderName = Literal[
+    "smtp",
+    "sendgrid",
+    "ses",
+    "whatsapp_cloud",
+    "email_webhook",
+    "imap",
+    "mock_llm",
+    "openai",
+    "mock_voice",
+    "twilio",
+    "vonage",
+]
+
+
+class IntegrationConfigSpec(StrictModel):
+    company_id: UUID | None = None
+    provider: IntegrationProviderName
+    enabled: bool = True
+    clear_credentials: bool = False
+    credentials: dict[str, str] | None = Field(default=None, max_length=20)
+
+    @field_validator("credentials")
+    @classmethod
+    def credentials_are_bounded(cls, value: dict[str, str] | None) -> dict[str, str] | None:
+        if value is None:
+            return None
+        allowed = {
+            "host",
+            "port",
+            "username",
+            "password",
+            "start_tls",
+            "from_email",
+            "api_key",
+            "access_key_id",
+            "secret_access_key",
+            "region",
+            "access_token",
+            "phone_number_id",
+            "app_secret",
+            "verify_token",
+            "api_version",
+            "webhook_secret",
+            "mailbox",
+            "use_ssl",
+            "model",
+            "base_url",
+            "account_sid",
+            "auth_token",
+            "from_number",
+            "api_secret",
+            "application_id",
+            "private_key",
+            "status_callback_url",
+        }
+        if not value.keys() <= allowed or any(not k or len(v) > 4096 for k, v in value.items()):
+            raise ValueError("Unsupported or oversized integration credential")
+        return value
+
+    @model_validator(mode="after")
+    def provider_configuration(self) -> IntegrationConfigSpec:
+        required = {
+            "smtp": {"host", "from_email"},
+            "sendgrid": {"api_key", "from_email"},
+            "ses": {"region", "from_email"},
+            "whatsapp_cloud": {"access_token", "phone_number_id", "app_secret"},
+            "email_webhook": {"webhook_secret"},
+            "imap": {"host", "username", "password"},
+            "mock_llm": set(),
+            "openai": {"api_key"},
+            "mock_voice": set(),
+            "twilio": {
+                "account_sid",
+                "auth_token",
+                "from_number",
+                "webhook_secret",
+                "status_callback_url",
+            },
+            "vonage": {
+                "application_id",
+                "private_key",
+                "from_number",
+                "webhook_secret",
+                "status_callback_url",
+            },
+        }[self.provider]
+        credentials = self.credentials or {}
+        if self.clear_credentials and (self.enabled or self.credentials is not None):
+            raise ValueError("Disconnecting must disable the provider and omit credentials")
+        if self.enabled and not required <= credentials.keys() and self.credentials is not None:
+            raise ValueError("Required credentials are missing for this provider")
+        if self.enabled and required and self.credentials is None:
+            raise ValueError("Credentials are required to connect this provider")
+        if self.provider in {"email_webhook", "imap"} and self.company_id is None:
+            raise ValueError("Inbound email integrations must be company-scoped")
+        if "port" in credentials and (
+            not credentials["port"].isdigit() or not 1 <= int(credentials["port"]) <= 65535
+        ):
+            raise ValueError("Provider port must be between 1 and 65535")
+        if credentials.get("from_email") and not re.fullmatch(
+            r"[^@\s]+@[^@\s]+\.[^@\s]+", credentials["from_email"]
+        ):
+            raise ValueError("Provider sender email is invalid")
+        if credentials.get("base_url") and not credentials["base_url"].startswith("https://"):
+            raise ValueError("AI provider endpoint must use HTTPS")
+        if credentials.get("status_callback_url"):
+            callback = urlsplit(credentials["status_callback_url"])
+            if (
+                callback.scheme != "https"
+                or not callback.hostname
+                or callback.username
+                or callback.password
+                or callback.hostname.lower() in {"localhost", "metadata.google.internal"}
+                or callback.hostname.lower().endswith((".local", ".internal"))
+            ):
+                raise ValueError("Voice status callback must be a public HTTPS URL")
+        if credentials.get("mailbox") and not re.fullmatch(
+            r"[A-Za-z0-9_./ -]{1,128}", credentials["mailbox"]
+        ):
+            raise ValueError("IMAP mailbox name is invalid")
+        return self
+
+
+class SendComplaintEmailRequest(StrictModel):
+    locale: Literal["ar", "en"] = "en"
+    agent_note: str | None = Field(default=None, max_length=2000)
+    attachment_ids: list[UUID] = Field(default_factory=list, max_length=5)
+
+    @model_validator(mode="after")
+    def unique_attachments(self) -> SendComplaintEmailRequest:
+        if len(set(self.attachment_ids)) != len(self.attachment_ids):
+            raise ValueError("Duplicate attachment IDs")
+        return self
+
+
+class WhatsAppSendRequest(StrictModel):
+    body: str = Field(min_length=1, max_length=4096)
+    template_name: str | None = Field(default=None, pattern=r"^[a-z0-9_]{1,128}$")
+    language: Literal["ar", "en"] = "en"
+    parameters: list[str] = Field(default_factory=list, max_length=10)
+
+    @field_validator("parameters")
+    @classmethod
+    def parameter_lengths(cls, value: list[str]) -> list[str]:
+        if any(len(item) > 200 for item in value):
+            raise ValueError("Template parameters must not exceed 200 characters")
+        return value
+
+
+class AIAnalysisRequest(StrictModel):
+    locale: Literal["ar", "en"] = "en"
+
+
+class AIReviewRequest(StrictModel):
+    accept: bool
+
+
+class VoiceConsentRequest(StrictModel):
+    enabled: bool
+
+
+class VoiceFollowupRequest(StrictModel):
+    scheduled_at: datetime
+    language: Literal["ar", "en"] = "en"
+
+    @field_validator("scheduled_at")
+    @classmethod
+    def schedule_has_timezone(cls, value: datetime) -> datetime:
+        if value.tzinfo is None or value.utcoffset() is None:
+            raise ValueError("Scheduled calls require a timezone-aware timestamp")
+        return value.astimezone(UTC)
+
+
+class ApiKeyCreate(StrictModel):
+    permissions: set[str] = Field(min_length=1, max_length=40)
+    all_companies: bool = False
+    company_ids: list[UUID] = Field(default_factory=list, max_length=100)
+    expires_at: datetime | None = None
+
+    @model_validator(mode="after")
+    def check_api_key_scope(self) -> ApiKeyCreate:
+        if not self.permissions <= PERMISSIONS:
+            raise ValueError("Unknown API key permission")
+        if self.all_companies == bool(self.company_ids):
+            raise ValueError("Select all_companies or one or more company IDs")
+        if len(set(self.company_ids)) != len(self.company_ids):
+            raise ValueError("Duplicate API key company IDs")
+        if self.expires_at is not None:
+            if self.expires_at.tzinfo is None or self.expires_at.utcoffset() is None:
+                raise ValueError("API key expiry requires a timezone")
+            self.expires_at = self.expires_at.astimezone(UTC)
+        return self
+
+
+class WebhookCreate(StrictModel):
+    url: str = Field(min_length=8, max_length=2048)
+    company_id: UUID | None = None
+    event_types: set[Literal["complaint.status_changed", "complaint.message_received"]] = Field(
+        min_length=1, max_length=3
+    )
+
+    @field_validator("url")
+    @classmethod
+    def public_https_url(cls, value: str) -> str:
+        from ipaddress import ip_address
+        from urllib.parse import urlsplit
+
+        parsed = urlsplit(value)
+        host = parsed.hostname or ""
+        if parsed.scheme != "https" or not host or parsed.username or parsed.password:
+            raise ValueError("Webhook URLs must be public HTTPS endpoints without credentials")
+        if host.lower() in {"localhost", "metadata.google.internal"} or host.lower().endswith(
+            (".localhost", ".local", ".internal")
+        ):
+            raise ValueError("Webhook host is not public")
+        try:
+            address = ip_address(host)
+        except ValueError:
+            address = None
+        if address is not None and (not address.is_global or address.is_multicast):
+            raise ValueError("Webhook IP address must be publicly routable")
+        return value

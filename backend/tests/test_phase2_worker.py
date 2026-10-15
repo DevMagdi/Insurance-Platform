@@ -176,6 +176,7 @@ async def test_worker_startup_uses_isolated_role_and_shutdown(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setenv("WORKER_DATABASE_URL", "postgresql+asyncpg://app_worker@localhost/test")
+    monkeypatch.setenv("APP_ENCRYPTION_KEY", "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=")
     fake_engine = SimpleNamespace(dispose=AsyncMock())
     from unittest.mock import Mock
 
