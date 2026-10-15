@@ -1,0 +1,917 @@
+openapi: 3.1.0
+info:
+  title: Insurance Brokerage Complaint Management API (draft)
+  version: 0.1.0-draft
+  description: >-
+    Target contract from PROJECT_BRIEF.md. In Phase 1 ONLY /api/health/live and
+    /api/health/ready are implemented. All /api/v1 endpoints are planned and must
+    enforce resource.action, live data scope, rate limits and audit on the server.
+servers:
+  - url: /
+security:
+  - staffBearer: []
+tags:
+  - {name: Health}
+  - {name: Public}
+  - {name: Authentication}
+  - {name: Customer}
+  - {name: Complaints}
+  - {name: Analytics}
+  - {name: Inbox}
+  - {name: Notifications}
+  - {name: Administration}
+  - {name: Integrations}
+  - {name: Reports}
+  - {name: AI}
+paths:
+  /api/health/live:
+    get:
+      tags: [Health]
+      summary: Process liveness (implemented)
+      security: []
+      responses:
+        '200': {description: Process is alive}
+  /api/health/ready:
+    get:
+      tags: [Health]
+      summary: PostgreSQL and Redis readiness (implemented)
+      security: []
+      responses:
+        '200': {description: Dependencies are ready}
+        '503': {description: Dependencies are unavailable}
+
+  /api/v1/public/companies:
+    get:
+      tags: [Public]
+      summary: Active insurance companies for the complaint form
+      security: []
+      responses:
+        '200':
+          description: Public company names and IDs (no integration credentials)
+          content:
+            application/json:
+              schema: {type: array, items: {$ref: '#/components/schemas/Company'}}
+
+  /api/v1/auth/customer/otp/request:
+    post:
+      tags: [Authentication]
+      summary: Request an OTP for a verified mobile
+      security: []
+      x-rate-limit: strict per mobile, device and IP; generic response
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {type: object, required: [mobile], properties: {mobile: {type: string}}}
+      responses:
+        '202': {description: Generic acknowledgement; does not disclose account existence}
+        '429': {$ref: '#/components/responses/RateLimited'}
+  /api/v1/auth/customer/otp/verify:
+    post:
+      tags: [Authentication]
+      summary: Verify OTP and issue a customer-bound short-lived session
+      security: []
+      x-rate-limit: strict per challenge, mobile and IP
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [mobile, code]
+              properties: {mobile: {type: string}, code: {type: string}}
+      responses:
+        '200': {description: Customer access/rotating refresh tokens (httpOnly refresh cookie)}
+        '429': {$ref: '#/components/responses/RateLimited'}
+  /api/v1/auth/staff/login:
+    post:
+      tags: [Authentication]
+      summary: Staff password step, followed by mandatory 2FA
+      security: []
+      x-rate-limit: strict per account, device and IP
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {type: object, required: [email, password], properties: {email: {type: string, format: email}, password: {type: string}}}
+      responses:
+        '200': {description: "Restricted 2FA challenge, not a full staff session"}
+        '429': {$ref: '#/components/responses/RateLimited'}
+  /api/v1/auth/staff/2fa/verify:
+    post:
+      tags: [Authentication]
+      summary: Finish staff 2FA and bind token_version
+      security: []
+      x-rate-limit: strict per challenge
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {type: object, required: [challenge_id, code], properties: {challenge_id: {type: string, format: uuid}, code: {type: string}}}
+      responses:
+        '200': {description: Staff access/rotating refresh tokens}
+  /api/v1/auth/staff/2fa/enroll:
+    post:
+      tags: [Authentication]
+      summary: Bind TOTP for an invitation or restricted login challenge
+      security: []
+      x-rate-limit: per challenge and IP
+      responses: {'200': {description: One-time enrollment challenge; not a full session}}
+  /api/v1/auth/staff/2fa/enroll/confirm:
+    post:
+      tags: [Authentication]
+      summary: Confirm TOTP enrollment before issuing a staff session
+      security: []
+      x-rate-limit: per challenge and IP
+      responses: {'200': {description: TOTP enabled and challenge consumed}}
+  /api/v1/auth/staff/password/change:
+    post:
+      tags: [Authentication]
+      summary: Mandatory first-login password change or staff-initiated rotation
+      x-rate-limit: per staff account and IP
+      responses: {'204': {description: Changed; refresh sessions invalidated}}
+  /api/v1/auth/refresh:
+    post:
+      tags: [Authentication]
+      summary: Rotate refresh token and reject revoked/token_version-mismatched sessions
+      security: []
+      x-rate-limit: per device and IP
+      responses:
+        '200': {description: New access and refresh token pair}
+  /api/v1/auth/logout:
+    post:
+      tags: [Authentication]
+      summary: Invalidate refresh session and websocket subscription
+      responses:
+        '204': {description: Logged out}
+
+  /api/v1/customer/dashboard:
+    get:
+      tags: [Customer]
+      security: [{customerBearer: []}]
+      summary: Own open/closed/in-review/transferred/total ticket counts
+      responses:
+        '200': {description: Counts constrained to authenticated customer}
+  /api/v1/customer/complaints:
+    get:
+      tags: [Customer]
+      security: [{customerBearer: []}]
+      summary: Paginated history of every complaint opened by this customer
+      parameters: [{$ref: '#/components/parameters/Cursor'}, {$ref: '#/components/parameters/Limit'}]
+      responses:
+        '200': {$ref: '#/components/responses/TicketPage'}
+    post:
+      tags: [Customer]
+      security: [{customerBearer: []}]
+      summary: Submit a complaint and multiple attachments (creates ticket and event)
+      x-rate-limit: per customer, device and IP; attachment size/type quotas
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema: {$ref: '#/components/schemas/ComplaintSubmission'}
+      responses:
+        '201':
+          description: Ticket number and confirmation
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ComplaintConfirmation'}
+        '422': {$ref: '#/components/responses/ValidationError'}
+        '429': {$ref: '#/components/responses/RateLimited'}
+  /api/v1/customer/complaints/{ticketNo}:
+    parameters: [{$ref: '#/components/parameters/TicketNo'}]
+    get:
+      tags: [Customer]
+      security: [{customerBearer: []}]
+      summary: Own ticket detail (404 for any other customer's ticket)
+      responses:
+        '200': {description: "Ticket, public timeline, replies and clean public attachments"}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /api/v1/customer/complaints/{ticketNo}/messages:
+    parameters: [{$ref: '#/components/parameters/TicketNo'}]
+    get:
+      tags: [Customer]
+      security: [{customerBearer: []}]
+      summary: Own public conversation, keyset paginated
+      parameters: [{$ref: '#/components/parameters/Cursor'}]
+      responses:
+        '200': {description: Public messages only}
+    post:
+      tags: [Customer]
+      security: [{customerBearer: []}]
+      summary: Reply with optional attachments
+      x-rate-limit: per customer and ticket
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema: {$ref: '#/components/schemas/MessageInput'}
+      responses:
+        '201': {description: New public reply}
+  /api/v1/customer/complaints/{ticketNo}/attachments:
+    parameters: [{$ref: '#/components/parameters/TicketNo'}]
+    get:
+      tags: [Customer]
+      security: [{customerBearer: []}]
+      summary: Own clean public attachments only
+      responses: {'200': {description: Attachment metadata; download uses a signed URL}}
+    post:
+      tags: [Customer]
+      security: [{customerBearer: []}]
+      x-rate-limit: per customer; file type/size/count caps and antivirus scan
+      summary: Add attachments to an existing complaint
+      responses: {'202': {description: Private uploads pending malware scan}}
+  /api/v1/customer/complaints/{ticketNo}/events:
+    parameters: [{$ref: '#/components/parameters/TicketNo'}]
+    get:
+      tags: [Customer]
+      security: [{customerBearer: []}]
+      summary: Public status history with actor and timestamp
+      responses:
+        '200': {description: Public events only}
+  /api/v1/customer/complaints/{ticketNo}/reopen:
+    parameters: [{$ref: '#/components/parameters/TicketNo'}]
+    post:
+      tags: [Customer]
+      security: [{customerBearer: []}]
+      summary: Reopen a resolved ticket subject to configured window
+      x-rate-limit: per customer and ticket
+      responses:
+        '200': {description: Status reopened and timeline event added atomically}
+        '409': {description: Reopen not allowed in current state}
+  /api/v1/customer/complaints/{ticketNo}/satisfaction:
+    parameters: [{$ref: '#/components/parameters/TicketNo'}]
+    post:
+      tags: [Customer]
+      security: [{customerBearer: []}]
+      summary: Submit CSAT after resolution
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {type: object, required: [score], properties: {score: {type: integer, minimum: 1, maximum: 5}, comment: {type: string, maxLength: 2000}}}
+      responses:
+        '200': {description: Feedback saved}
+
+  /api/v1/staff/complaints:
+    get:
+      tags: [Complaints]
+      x-permission: complaints.view
+      summary: Scope-filtered ticket list; filters combine with AND and keyset cursor
+      parameters:
+        - {$ref: '#/components/parameters/Cursor'}
+        - {$ref: '#/components/parameters/Limit'}
+        - {$ref: '#/components/parameters/Status'}
+        - {$ref: '#/components/parameters/CompanyId'}
+        - {$ref: '#/components/parameters/InsuranceType'}
+        - {$ref: '#/components/parameters/DateFrom'}
+        - {$ref: '#/components/parameters/DateTo'}
+      responses:
+        '200': {$ref: '#/components/responses/TicketPage'}
+    post:
+      tags: [Complaints]
+      x-permission: complaints.create
+      summary: Staff creates a scoped ticket on behalf of a customer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/StaffComplaintInput'}
+      responses:
+        '201': {description: Ticket created within staff data scope}
+  /api/v1/staff/complaints/search:
+    get:
+      tags: [Complaints]
+      x-permission: complaints.view
+      summary: Full-text search over scoped tickets only
+      parameters:
+        - {in: query, name: q, required: true, schema: {type: string, minLength: 2}}
+        - {$ref: '#/components/parameters/Cursor'}
+      responses:
+        '200': {$ref: '#/components/responses/TicketPage'}
+  /api/v1/staff/complaints/export:
+    post:
+      tags: [Complaints]
+      x-permission: complaints.export
+      x-rate-limit: per staff user; asynchronous bounded exports
+      summary: Request a scope-checked CSV/XLSX ticket export
+      responses:
+        '202': {description: Export job ID; download rechecks live scope}
+  /api/v1/staff/complaints/{ticketNo}:
+    parameters: [{$ref: '#/components/parameters/TicketNo'}]
+    get:
+      tags: [Complaints]
+      x-permission: complaints.view
+      summary: Scoped ticket detail, events, public/internal conversation
+      responses:
+        '200': {description: Ticket detail}
+        '404': {$ref: '#/components/responses/NotFound'}
+    patch:
+      tags: [Complaints]
+      x-permission: complaints.edit
+      summary: Edit permitted non-identity fields with version conflict check
+      responses:
+        '200': {description: Updated ticket and audit event}
+        '409': {description: Version conflict}
+    delete:
+      tags: [Complaints]
+      x-permission: complaints.delete
+      summary: Request governed deletion/retention workflow (not physical DELETE)
+      responses:
+        '202': {description: Retention review queued}
+  /api/v1/staff/complaints/{ticketNo}/events:
+    parameters: [{$ref: '#/components/parameters/TicketNo'}]
+    get:
+      tags: [Complaints]
+      x-permission: complaints.view
+      summary: Complete scoped timeline including authorized internal events
+      responses: {'200': {description: Keyset-paginated events}}
+  /api/v1/staff/complaints/{ticketNo}/assign:
+    parameters: [{$ref: '#/components/parameters/TicketNo'}]
+    post:
+      tags: [Complaints]
+      x-permission: complaints.assign or complaints.reassign
+      summary: Assign/reassign to an in-scope agent/team
+      responses:
+        '200': {description: Assignment and timeline updated atomically}
+  /api/v1/staff/complaints/{ticketNo}/status:
+    parameters: [{$ref: '#/components/parameters/TicketNo'}]
+    post:
+      tags: [Complaints]
+      x-permission: complaints.change_status
+      summary: Validated status transition with SLA recalculation and event
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {type: object, required: [status], properties: {status: {$ref: '#/components/schemas/TicketStatus'}, reason: {type: string}}}
+      responses:
+        '200': {description: Status changed}
+        '409': {description: Invalid transition}
+  /api/v1/staff/complaints/{ticketNo}/escalate:
+    parameters: [{$ref: '#/components/parameters/TicketNo'}]
+    post:
+      tags: [Complaints]
+      x-permission: complaints.escalate
+      summary: Transfer to insurer with reason and provider notification
+      responses:
+        '202': {description: Escalation queued}
+  /api/v1/staff/complaints/{ticketNo}/merge:
+    parameters: [{$ref: '#/components/parameters/TicketNo'}]
+    post:
+      tags: [Complaints]
+      x-permission: complaints.merge
+      summary: Merge duplicate complaints preserving both audit trails
+      responses:
+        '200': {description: Duplicates linked}
+  /api/v1/staff/complaints/{ticketNo}/duplicates:
+    parameters: [{$ref: '#/components/parameters/TicketNo'}]
+    get:
+      tags: [AI, Complaints]
+      x-permission: complaints.view
+      summary: Candidate duplicates visible only if BOTH tickets remain in scope
+      responses: {'200': {description: Reviewed and pending candidate links}}
+    post:
+      tags: [AI, Complaints]
+      x-permission: complaints.merge
+      summary: Confirm or dismiss a candidate after human review
+      responses: {'200': {description: Decision and audit entry recorded}}
+  /api/v1/staff/complaints/{ticketNo}/messages:
+    parameters: [{$ref: '#/components/parameters/TicketNo'}]
+    get:
+      tags: [Complaints]
+      x-permission: complaints.view
+      summary: Unified conversation and notes, live-scope filtered
+      responses:
+        '200': {description: Keyset-paginated messages}
+    post:
+      tags: [Complaints]
+      x-permission: complaints.reply_public or complaints.add_internal_note
+      summary: Public reply or internal note; attachments scanned asynchronously
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema: {$ref: '#/components/schemas/MessageInput'}
+      responses:
+        '201': {description: Message and audit event created}
+  /api/v1/staff/complaints/{ticketNo}/national-id:
+    parameters: [{$ref: '#/components/parameters/TicketNo'}]
+    post:
+      tags: [Complaints]
+      x-permission: complaints.view_full_national_id
+      summary: Audited, purpose-bound national ID reveal (never cached)
+      x-rate-limit: strict per user
+      responses:
+        '200': {description: Sensitive one-time reveal; no logging/caching}
+  /api/v1/staff/complaints/{ticketNo}/ai/suggestions:
+    parameters: [{$ref: '#/components/parameters/TicketNo'}]
+    post:
+      tags: [AI]
+      x-permission: complaints.view
+      summary: Classification, sentiment, summary, duplicate hints and draft replies
+      responses:
+        '202': {description: "Human-reviewable suggestions, never auto-send"}
+  /api/v1/staff/complaints/{ticketNo}/ai/calls:
+    parameters: [{$ref: '#/components/parameters/TicketNo'}]
+    post:
+      tags: [AI]
+      x-permission: integrations.ai_call
+      summary: Schedule consent-checked AI voice call (later phase)
+      responses:
+        '202': {description: Queued call request}
+    get:
+      tags: [AI]
+      x-permission: integrations.ai_call
+      summary: Scoped consent, outcome and recording/transcript metadata
+      responses:
+        '200': {description: Scoped call logs}
+  /api/v1/attachments/{attachmentId}/download:
+    parameters: [{$ref: '#/components/parameters/AttachmentId'}]
+    post:
+      tags: [Complaints]
+      summary: Scope + scan checked short-lived signed private download URL
+      x-permission: complaints.view_attachments (staff) or own clean public attachment (customer)
+      security: [{staffBearer: []}, {customerBearer: []}]
+      responses:
+        '200': {description: Expiring private URL}
+        '404': {$ref: '#/components/responses/NotFound'}
+
+  /api/v1/staff/analytics/overview:
+    get:
+      tags: [Analytics]
+      x-permission: analytics.view
+      summary: Scoped counts, resolution times, SLA, CSAT and trend charts
+      parameters: [{$ref: '#/components/parameters/DateFrom'}, {$ref: '#/components/parameters/DateTo'}, {$ref: '#/components/parameters/CompanyId'}, {$ref: '#/components/parameters/InsuranceType'}]
+      responses:
+        '200': {description: Scoped metrics}
+  /api/v1/staff/analytics/agents:
+    get:
+      tags: [Analytics]
+      x-permission: analytics.view
+      summary: Per-agent/team performance limited to visible complaints
+      responses:
+        '200': {description: Scoped agent metrics}
+  /api/v1/staff/analytics/companies:
+    get:
+      tags: [Analytics]
+      x-permission: analytics.view
+      summary: Company scorecards and recurring issue categories
+      responses:
+        '200': {description: Scoped scorecards}
+  /api/v1/staff/analytics/export:
+    post:
+      tags: [Analytics]
+      x-permission: analytics.export
+      x-rate-limit: per staff user and range
+      summary: Asynchronous scoped analytics export
+      responses:
+        '202': {description: Export job ID}
+  /api/v1/staff/inbox:
+    get:
+      tags: [Inbox]
+      x-permission: complaints.view
+      summary: Scope-filtered portal/email/WhatsApp unified conversations
+      responses:
+        '200': {description: Cursor-paginated inbox}
+  /api/v1/staff/complaints/{ticketNo}/send/email:
+    parameters: [{$ref: '#/components/parameters/TicketNo'}]
+    post:
+      tags: [Inbox]
+      x-permission: integrations.send_email
+      summary: Send scoped complaint to insurer or customer; audit and queue
+      responses:
+        '202': {description: Outbound message queued}
+  /api/v1/staff/complaints/{ticketNo}/send/whatsapp:
+    parameters: [{$ref: '#/components/parameters/TicketNo'}]
+    post:
+      tags: [Inbox]
+      x-permission: integrations.send_whatsapp
+      summary: Send to opted-in contact; audit and queue
+      responses:
+        '202': {description: Outbound message queued}
+  /api/v1/webhooks/inbound/{provider}:
+    parameters: [{name: provider, in: path, required: true, schema: {type: string}}]
+    post:
+      tags: [Integrations]
+      security: []
+      x-rate-limit: provider-specific
+      summary: Verify signature/idempotency/replay and ingest email/WhatsApp/voice
+      responses:
+        '202': {description: Valid callback queued}
+        '401': {description: Invalid signature}
+  /api/v1/notifications:
+    get:
+      tags: [Notifications]
+      security: [{staffBearer: []}, {customerBearer: []}]
+      summary: Only recipient's currently authorized notifications
+      parameters: [{$ref: '#/components/parameters/Cursor'}]
+      responses:
+        '200': {description: Cursor-paginated notifications}
+  /api/v1/notifications/{notificationId}/read:
+    parameters: [{name: notificationId, in: path, required: true, schema: {type: string, format: uuid}}]
+    post:
+      tags: [Notifications]
+      security: [{staffBearer: []}, {customerBearer: []}]
+      summary: Mark own notification read
+      responses:
+        '204': {description: Updated}
+  /api/v1/ws/notifications:
+    get:
+      tags: [Notifications]
+      summary: WebSocket handshake; reauthorize subscriptions on each message/revocation
+      x-websocket: true
+      responses:
+        '101': {description: Upgrade after authentication and current-scope check}
+
+  /api/v1/admin/permissions:
+    get:
+      tags: [Administration]
+      x-permission: roles.manage
+      summary: Versioned permission catalog
+      responses:
+        '200': {description: Resource.action catalog}
+  /api/v1/admin/roles:
+    get:
+      tags: [Administration]
+      x-permission: roles.manage
+      summary: List system/custom roles and grants
+      responses:
+        '200': {description: Roles}
+    post:
+      tags: [Administration]
+      x-permission: roles.manage
+      summary: Create custom role; cannot grant beyond actor effective permissions
+      responses:
+        '201': {description: Role created and access change audited}
+  /api/v1/admin/roles/{roleId}:
+    parameters: [{name: roleId, in: path, required: true, schema: {type: string, format: uuid}}]
+    patch:
+      tags: [Administration]
+      x-permission: roles.manage
+      summary: Update custom role grants without escalating actor
+      responses:
+        '200': {description: Role updated; affected tokens invalidated}
+  /api/v1/admin/users:
+    get:
+      tags: [Administration]
+      x-permission: users.view
+      summary: List staff within administrator's permitted oversight scope
+      responses:
+        '200': {description: Staff metadata only; no password or 2FA secrets}
+    post:
+      tags: [Administration]
+      x-permission: users.create
+      summary: Invite staff and configure initial least-privilege access
+      responses:
+        '201': {description: Invitation created}
+  /api/v1/admin/users/{userId}:
+    parameters: [{$ref: '#/components/parameters/UserId'}]
+    patch:
+      tags: [Administration]
+      x-permission: users.edit
+      summary: Update staff metadata; access changes use dedicated endpoint
+      responses:
+        '200': {description: User updated}
+    delete:
+      tags: [Administration]
+      x-permission: users.deactivate
+      summary: Deactivate user and instantly revoke tokens/subscriptions
+      responses:
+        '204': {description: Deactivated; audited}
+  /api/v1/admin/users/{userId}/access:
+    parameters: [{$ref: '#/components/parameters/UserId'}]
+    get:
+      tags: [Administration]
+      x-permission: users.manage_access
+      summary: Current roles, overrides, company/type/ownership scope
+      responses:
+        '200': {description: Access configuration}
+    put:
+      tags: [Administration]
+      x-permission: users.manage_access
+      summary: Atomically replace scoped access; anti-escalation and audit required
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/AccessConfiguration'}
+      responses:
+        '200': {description: "New access, token_version and audit reference"}
+        '403': {description: Requested access exceeds actor's effective access}
+  /api/v1/admin/users/{userId}/access/preview:
+    parameters: [{$ref: '#/components/parameters/UserId'}]
+    post:
+      tags: [Administration]
+      x-permission: users.manage_access
+      summary: Server-computed before/after effective access and data scope
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/AccessConfiguration'}
+      responses:
+        '200': {description: Effective permission/scope diff and anti-escalation warnings}
+  /api/v1/admin/companies:
+    get:
+      tags: [Administration]
+      x-permission: companies.manage
+      summary: Insurer contact emails, status and metadata
+      responses: {'200': {description: Companies}}
+    post:
+      tags: [Administration]
+      x-permission: companies.manage
+      summary: Add insurer and contact emails
+      responses: {'201': {description: Company created}}
+  /api/v1/admin/companies/{companyId}:
+    parameters: [{$ref: '#/components/parameters/CompanyIdPath'}]
+    patch:
+      tags: [Administration]
+      x-permission: companies.manage
+      summary: Update insurer contacts and active status
+      responses: {'200': {description: Company updated}}
+  /api/v1/admin/categories:
+    get:
+      tags: [Administration]
+      x-permission: categories.manage
+      summary: List bilingual complaint categories
+      responses: {'200': {description: Categories}}
+    post:
+      tags: [Administration]
+      x-permission: categories.manage
+      summary: Create category
+      responses: {'201': {description: Category created}}
+  /api/v1/admin/assignment-rules:
+    get:
+      tags: [Administration]
+      x-permission: complaints.assign
+      summary: Scoped auto-assignment routes by company/type/category/priority
+      responses: {'200': {description: Scoped assignment rules}}
+    post:
+      tags: [Administration]
+      x-permission: complaints.assign
+      summary: Configure a route without granting access outside actor scope
+      responses: {'201': {description: Assignment rule created and audited}}
+  /api/v1/admin/categories/{categoryId}:
+    parameters: [{name: categoryId, in: path, required: true, schema: {type: string, format: uuid}}]
+    patch:
+      tags: [Administration]
+      x-permission: categories.manage
+      summary: Edit or deactivate a company-scoped bilingual category
+      responses: {'200': {description: Updated; audited}}
+  /api/v1/admin/sla-rules:
+    get:
+      tags: [Administration]
+      x-permission: sla.manage
+      summary: Company/type/priority response and resolution targets
+      responses: {'200': {description: SLA rules}}
+    post:
+      tags: [Administration]
+      x-permission: sla.manage
+      summary: Create escalation and business-hours rule
+      responses: {'201': {description: SLA rule created}}
+  /api/v1/admin/sla-rules/{ruleId}:
+    parameters: [{name: ruleId, in: path, required: true, schema: {type: string, format: uuid}}]
+    patch:
+      tags: [Administration]
+      x-permission: sla.manage
+      summary: Edit or deactivate an SLA rule
+      responses: {'200': {description: Updated; audited}}
+  /api/v1/admin/templates:
+    get:
+      tags: [Administration]
+      x-permission: templates.manage
+      summary: Canned bilingual replies
+      responses: {'200': {description: Templates}}
+    post:
+      tags: [Administration]
+      x-permission: templates.manage
+      summary: Add canned reply
+      responses: {'201': {description: Template created}}
+  /api/v1/admin/templates/{templateId}:
+    parameters: [{name: templateId, in: path, required: true, schema: {type: string, format: uuid}}]
+    patch:
+      tags: [Administration]
+      x-permission: templates.manage
+      summary: Edit or deactivate a canned reply
+      responses: {'200': {description: Updated; audited}}
+  /api/v1/admin/integrations:
+    get:
+      tags: [Administration, Integrations]
+      x-permission: integrations.manage
+      summary: Provider status only; secrets never returned
+      responses: {'200': {description: Integration states}}
+    put:
+      tags: [Administration, Integrations]
+      x-permission: integrations.manage
+      summary: Configure email/WhatsApp/AI voice with vault references
+      responses: {'200': {description: Provider updated and audited}}
+  /api/v1/admin/webhooks:
+    get:
+      tags: [Administration, Integrations]
+      x-permission: integrations.manage
+      summary: Outbound subscriptions within company scope
+      responses: {'200': {description: Webhook metadata}}
+    post:
+      tags: [Administration, Integrations]
+      x-permission: integrations.manage
+      summary: Register HTTPS webhook with SSRF protection and secret reference
+      responses: {'201': {description: Subscription created}}
+  /api/v1/admin/webhooks/{webhookId}:
+    parameters: [{name: webhookId, in: path, required: true, schema: {type: string, format: uuid}}]
+    delete:
+      tags: [Administration, Integrations]
+      x-permission: integrations.manage
+      summary: Disable an outbound webhook
+      responses: {'204': {description: Disabled; audited}}
+  /api/v1/admin/api-keys:
+    get:
+      tags: [Administration, Integrations]
+      x-permission: integrations.manage
+      summary: Hashed API key metadata (no secrets)
+      responses: {'200': {description: Key metadata}}
+    post:
+      tags: [Administration, Integrations]
+      x-permission: integrations.manage
+      summary: Issue least-privilege API key; plaintext shown once
+      responses: {'201': {description: One-time secret returned}}
+  /api/v1/admin/api-keys/{keyId}/revoke:
+    parameters: [{name: keyId, in: path, required: true, schema: {type: string, format: uuid}}]
+    post:
+      tags: [Administration, Integrations]
+      x-permission: integrations.manage
+      summary: Revoke API key immediately
+      responses: {'204': {description: Revoked}}
+  /api/v1/staff/saved-filters:
+    get:
+      tags: [Complaints]
+      x-permission: complaints.view
+      summary: Own saved AND-combined filters
+      responses: {'200': {description: Saved filters}}
+    post:
+      tags: [Complaints]
+      x-permission: complaints.view
+      summary: Save a filter (criteria never widens data scope)
+      responses: {'201': {description: Saved}}
+  /api/v1/staff/saved-filters/{filterId}:
+    parameters: [{name: filterId, in: path, required: true, schema: {type: string, format: uuid}}]
+    delete:
+      tags: [Complaints]
+      x-permission: complaints.view
+      summary: Delete own saved filter
+      responses: {'204': {description: Deleted}}
+  /api/v1/staff/reports/schedules:
+    get:
+      tags: [Reports]
+      x-permission: reports.manage
+      summary: Scheduled email reports and recipients
+      responses: {'200': {description: Report schedules}}
+    post:
+      tags: [Reports]
+      x-permission: reports.manage
+      summary: Schedule scope-rechecked email report
+      responses: {'201': {description: Schedule created}}
+  /api/v1/staff/reports/schedules/{scheduleId}:
+    parameters: [{name: scheduleId, in: path, required: true, schema: {type: string, format: uuid}}]
+    patch:
+      tags: [Reports]
+      x-permission: reports.manage
+      summary: Edit or deactivate own schedule with current-scope check
+      responses: {'200': {description: Updated; audited}}
+    delete:
+      tags: [Reports]
+      x-permission: reports.manage
+      summary: Delete own scheduled report
+      responses: {'204': {description: Deleted; audited}}
+  /api/v1/staff/reports/exports/{exportId}:
+    parameters: [{name: exportId, in: path, required: true, schema: {type: string, format: uuid}}]
+    get:
+      tags: [Reports]
+      x-permission: analytics.export or complaints.export
+      summary: Short-lived export URL after *current* scope recheck
+      responses: {'200': {description: Scoped signed export download}}
+  /api/v1/staff/audit:
+    get:
+      tags: [Administration]
+      x-permission: audit.view
+      summary: Paginated scoped immutable audit trail
+      parameters: [{$ref: '#/components/parameters/Cursor'}]
+      responses: {'200': {description: Scope-filtered audit entries}}
+  /api/v1/admin/access-changes:
+    get:
+      tags: [Administration]
+      x-permission: audit.view and users.manage_access
+      summary: Access-change audit records (admin global scope)
+      responses: {'200': {description: Access change log}}
+  /api/v1/admin/settings:
+    get:
+      tags: [Administration]
+      x-permission: settings.manage
+      summary: Brokerage policy and feature settings
+      responses: {'200': {description: Settings without secrets}}
+    patch:
+      tags: [Administration]
+      x-permission: settings.manage
+      summary: Update allowed settings; audited
+      responses: {'200': {description: Settings updated}}
+
+components:
+  securitySchemes:
+    staffBearer: {type: http, scheme: bearer, bearerFormat: JWT, description: 'Staff token requires completed 2FA and matching token_version.'}
+    customerBearer: {type: http, scheme: bearer, bearerFormat: JWT, description: 'OTP-verified, customer-bound short-lived token.'}
+  parameters:
+    TicketNo: {name: ticketNo, in: path, required: true, schema: {type: string, pattern: '^CMP-[0-9]{4}-[0-9]{6,}$'}}
+    AttachmentId: {name: attachmentId, in: path, required: true, schema: {type: string, format: uuid}}
+    UserId: {name: userId, in: path, required: true, schema: {type: string, format: uuid}}
+    CompanyIdPath: {name: companyId, in: path, required: true, schema: {type: string, format: uuid}}
+    CompanyId: {name: company_id, in: query, schema: {type: string, format: uuid}}
+    Cursor: {name: cursor, in: query, description: Opaque signed keyset (timestamp + UUID), schema: {type: string}}
+    Limit: {name: limit, in: query, schema: {type: integer, minimum: 1, maximum: 100, default: 25}}
+    DateFrom: {name: from, in: query, schema: {type: string, format: date-time}}
+    DateTo: {name: to, in: query, schema: {type: string, format: date-time}}
+    Status: {name: status, in: query, schema: {$ref: '#/components/schemas/TicketStatus'}}
+    InsuranceType: {name: insurance_type, in: query, schema: {$ref: '#/components/schemas/InsuranceType'}}
+  responses:
+    NotFound: {description: Not found or out of scope (never disclose existence)}
+    ValidationError: {description: Input failed validation}
+    RateLimited: {description: Rate limit exceeded; includes Retry-After header}
+    TicketPage:
+      description: Keyset-paginated tickets constrained by live data scope
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [items, next_cursor]
+            properties:
+              items: {type: array, items: {$ref: '#/components/schemas/Complaint'}}
+              next_cursor: {type: [string, 'null']}
+  schemas:
+    InsuranceType: {type: string, enum: [health, general, both]}
+    TicketStatus: {type: string, enum: [new, assigned, in_review, resolved, reopened, transferred]}
+    Company:
+      type: object
+      required: [id, name_en, name_ar]
+      properties:
+        id: {type: string, format: uuid}
+        name_en: {type: string}
+        name_ar: {type: string}
+    ComplaintSubmission:
+      type: object
+      required: [full_name, national_id, mobile, whatsapp_available, company_id, insurance_type, policy_number, subject, description]
+      properties:
+        full_name: {type: string, minLength: 2}
+        national_id: {type: string, pattern: '^[0-9]{14}$', description: Validated and encrypted; never echoed back}
+        mobile: {type: string, pattern: '^\+201[0-9]{9}$'}
+        whatsapp_available: {type: boolean}
+        email: {type: string, format: email}
+        company_id: {type: string, format: uuid}
+        insurance_type: {$ref: '#/components/schemas/InsuranceType'}
+        policy_number: {type: string}
+        subject: {type: string, minLength: 3}
+        description: {type: string, minLength: 10}
+        attachments: {type: array, items: {type: string, format: binary}, maxItems: 10}
+    StaffComplaintInput:
+      allOf:
+        - {$ref: '#/components/schemas/ComplaintSubmission'}
+        - {type: object, properties: {assigned_agent_id: {type: string, format: uuid}, team_id: {type: string, format: uuid}}}
+    MessageInput:
+      type: object
+      required: [body]
+      properties:
+        body: {type: string, minLength: 1}
+        visibility: {type: string, enum: [public, internal], default: public}
+        attachments: {type: array, items: {type: string, format: binary}, maxItems: 10}
+    ComplaintConfirmation:
+      type: object
+      required: [ticket_no, status, confirmation]
+      properties:
+        ticket_no: {type: string, example: CMP-2026-000123}
+        status: {$ref: '#/components/schemas/TicketStatus'}
+        confirmation: {type: string}
+    Complaint:
+      type: object
+      required: [id, ticket_no, created_at, company_id, insurance_type, subject, status]
+      properties:
+        id: {type: string, format: uuid}
+        ticket_no: {type: string}
+        created_at: {type: string, format: date-time}
+        company_id: {type: string, format: uuid}
+        insurance_type: {$ref: '#/components/schemas/InsuranceType'}
+        subject: {type: string}
+        status: {$ref: '#/components/schemas/TicketStatus'}
+        sla_due_at: {type: [string, 'null'], format: date-time}
+        csat_score: {type: [integer, 'null'], minimum: 1, maximum: 5}
+    AccessConfiguration:
+      type: object
+      required: [role_ids, overrides, company_scope, ownership_level]
+      properties:
+        role_ids: {type: array, items: {type: string, format: uuid}}
+        overrides: {type: object, additionalProperties: {type: string, enum: [allow, deny]}}
+        company_scope:
+          type: object
+          required: [all_companies, company_ids]
+          properties:
+            all_companies: {type: boolean}
+            company_ids: {type: array, items: {type: string, format: uuid}}
+        insurance_types: {type: array, items: {$ref: '#/components/schemas/InsuranceType'}, description: Empty means all types}
+        ownership_level: {type: string, enum: [own, team, all]}

@@ -1,0 +1,75 @@
+[build-system]
+requires = ["setuptools>=75", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "insurance-platform-backend"
+version = "0.1.0"
+description = "Insurance brokerage complaint management API and schema"
+requires-python = ">=3.11"
+dependencies = [
+  "alembic>=1.14,<2",
+  "arq>=0.26,<1",
+  "argon2-cffi>=23,<27",
+  "boto3>=1.35,<2",
+  "filetype>=1.2,<2",
+  "PyJWT>=2.9,<3",
+  "pyotp>=2.9,<3",
+  "aiosmtplib>=3.0,<6",
+  "asyncpg>=0.30,<1",
+  "cryptography>=44,<47",
+  "fastapi>=0.115,<1",
+  "psycopg[binary]>=3.2,<4",
+  "pydantic-settings>=2.6,<3",
+  "redis>=5,<7",
+  "SQLAlchemy[asyncio]>=2.0.36,<2.1",
+  "sqlparse>=0.5,<1",
+  "uvicorn[standard]>=0.32,<1",
+]
+
+[project.optional-dependencies]
+seed = ["argon2-cffi>=23,<27", "Faker>=33,<40"]
+dev = [
+  "argon2-cffi>=23,<27",
+  "Faker>=33,<40",
+  "httpx>=0.28,<1",
+  "mypy>=1.14,<2",
+  "openapi-spec-validator>=0.7,<1",
+  "pre-commit>=4,<5",
+  "fakeredis>=2.30,<3",
+  "pytest-cov>=6,<8",
+  "testcontainers[postgres,redis]>=4.10,<5",
+  "pytest>=8,<9",
+  "pytest-asyncio>=0.25,<2",
+  "PyYAML>=6,<7",
+  "ruff>=0.11,<1",
+]
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = ["integration: requires a migrated PostgreSQL database and an app_runtime role", "testcontainers: starts disposable PostgreSQL/Redis containers"]
+asyncio_mode = "auto"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "S", "RUF"]
+ignore = ["S101"] # assertions are appropriate in tests
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S", "RUF012"]
+"app/api/*" = ["B008"] # FastAPI Depends/Query are dependency declarations.
+"app/api/deps.py" = ["B008", "S104"] # 0.0.0.0 is an unknown-IP sentinel.
+"alembic/versions/*" = ["S"]
+"app/scripts/*" = ["S"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+packages = ["app"]
+ignore_missing_imports = true

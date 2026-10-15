@@ -1,0 +1,5335 @@
+openapi: 3.1.0
+info:
+  title: Insurance Brokerage Complaint Management
+  version: 0.2.0
+  description: Implemented Phase 2 and Phase 3 HTTP routes. Authenticate with an HttpOnly
+    access_token cookie; /api/auth/refresh uses the HttpOnly refresh_token cookie.
+    All protected writes, including refresh, need X-CSRF-Token matching the readable
+    csrf_token cookie. Authorization, AccessScope and PostgreSQL RLS are enforced
+    at runtime. Future routes are documented separately in openapi-roadmap.yaml.
+paths:
+  /api/auth/customer/otp/start:
+    post:
+      tags:
+      - auth
+      summary: Start Otp
+      operationId: start_otp_api_auth_customer_otp_start_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MobileOTPRequest'
+        required: true
+      responses:
+        '202':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+                title: Response Start Otp Api Auth Customer Otp Start Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security: []
+  /api/auth/customer/otp/verify:
+    post:
+      tags:
+      - auth
+      summary: Verify Otp
+      operationId: verify_otp_api_auth_customer_otp_verify_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomerVerifyRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+                title: Response Verify Otp Api Auth Customer Otp Verify Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security: []
+  /api/auth/staff/login:
+    post:
+      tags:
+      - auth
+      summary: Staff Login
+      operationId: staff_login_api_auth_staff_login_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StaffLoginRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  anyOf:
+                  - type: string
+                  - type: 'null'
+                type: object
+                title: Response Staff Login Api Auth Staff Login Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security: []
+  /api/auth/staff/invitation/accept:
+    post:
+      tags:
+      - auth
+      summary: Accept Invitation
+      operationId: accept_invitation_api_auth_staff_invitation_accept_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InviteAcceptRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+                title: Response Accept Invitation Api Auth Staff Invitation Accept
+                  Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security: []
+  /api/auth/staff/password/change:
+    post:
+      tags:
+      - auth
+      summary: Change Password
+      operationId: change_password_api_auth_staff_password_change_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangePasswordRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+                title: Response Change Password Api Auth Staff Password Change Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security: []
+  /api/auth/staff/2fa/verify:
+    post:
+      tags:
+      - auth
+      summary: Verify Totp
+      operationId: verify_totp_api_auth_staff_2fa_verify_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TotpVerifyRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+                title: Response Verify Totp Api Auth Staff 2Fa Verify Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security: []
+  /api/auth/staff/2fa/enroll/start:
+    post:
+      tags:
+      - auth
+      summary: Setup Required Totp
+      operationId: setup_required_totp_api_auth_staff_2fa_enroll_start_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChallengeRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+                title: Response Setup Required Totp Api Auth Staff 2Fa Enroll Start
+                  Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security: []
+  /api/auth/staff/2fa/enroll/confirm:
+    post:
+      tags:
+      - auth
+      summary: Confirm Required Totp
+      operationId: confirm_required_totp_api_auth_staff_2fa_enroll_confirm_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TotpVerifyRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+                title: Response Confirm Required Totp Api Auth Staff 2Fa Enroll Confirm
+                  Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security: []
+  /api/auth/refresh:
+    post:
+      tags:
+      - auth
+      summary: Refresh
+      operationId: refresh_api_auth_refresh_post
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                title: Response Refresh Api Auth Refresh Post
+      security:
+      - RefreshCookie: []
+      parameters:
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
+  /api/auth/logout:
+    post:
+      tags:
+      - auth
+      summary: Logout
+      operationId: logout_api_auth_logout_post
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: boolean
+                type: object
+                title: Response Logout Api Auth Logout Post
+      security:
+      - AccessCookie: []
+      parameters:
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
+  /api/me:
+    get:
+      tags:
+      - auth
+      summary: Me
+      operationId: me_api_me_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response Me Api Me Get
+      security:
+      - AccessCookie: []
+  /api/me/notifications:
+    get:
+      tags:
+      - auth
+      summary: My Notifications
+      description: Includes access-change notices even when complaint permission was
+        revoked.
+      operationId: my_notifications_api_me_notifications_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                items:
+                  additionalProperties: true
+                  type: object
+                type: array
+                title: Response My Notifications Api Me Notifications Get
+      security:
+      - AccessCookie: []
+  /api/me/notifications/{notification_id}/read:
+    patch:
+      tags:
+      - auth
+      summary: Read My Notification
+      operationId: read_my_notification_api_me_notifications__notification_id__read_patch
+      parameters:
+      - name: notification_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Notification Id
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: boolean
+                title: Response Read My Notification Api Me Notifications  Notification
+                  Id  Read Patch
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+  /api/me/sessions:
+    get:
+      tags:
+      - auth
+      summary: Sessions
+      operationId: sessions_api_me_sessions_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                items:
+                  additionalProperties: true
+                  type: object
+                type: array
+                title: Response Sessions Api Me Sessions Get
+      security:
+      - AccessCookie: []
+  /api/me/sessions/{session_id}:
+    delete:
+      tags:
+      - auth
+      summary: Revoke Session
+      operationId: revoke_session_api_me_sessions__session_id__delete
+      parameters:
+      - name: session_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Session Id
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: boolean
+                title: Response Revoke Session Api Me Sessions  Session Id  Delete
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+  /api/me/sessions/revoke-all:
+    post:
+      tags:
+      - auth
+      summary: Revoke All
+      operationId: revoke_all_api_me_sessions_revoke_all_post
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: boolean
+                type: object
+                title: Response Revoke All Api Me Sessions Revoke All Post
+      security:
+      - AccessCookie: []
+      parameters:
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
+  /api/me/2fa/enroll/start:
+    post:
+      tags:
+      - auth
+      summary: Voluntary Totp Start
+      operationId: voluntary_totp_start_api_me_2fa_enroll_start_post
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+                title: Response Voluntary Totp Start Api Me 2Fa Enroll Start Post
+      security:
+      - AccessCookie: []
+      parameters:
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
+  /api/me/2fa/enroll/confirm:
+    post:
+      tags:
+      - auth
+      summary: Voluntary Totp Confirm
+      operationId: voluntary_totp_confirm_api_me_2fa_enroll_confirm_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TotpConfirmRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+                title: Response Voluntary Totp Confirm Api Me 2Fa Enroll Confirm Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      parameters:
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
+  /api/companies:
+    get:
+      tags:
+      - customer
+      summary: Public Companies
+      operationId: public_companies_api_companies_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                items:
+                  additionalProperties: true
+                  type: object
+                type: array
+                title: Response Public Companies Api Companies Get
+      security: []
+  /api/guest/track:
+    post:
+      tags:
+      - customer
+      summary: Guest Track
+      operationId: guest_track_api_guest_track_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GuestTrackRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response Guest Track Api Guest Track Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security: []
+  /api/customer/complaints:
+    post:
+      tags:
+      - customer
+      summary: Create Complaint
+      operationId: create_complaint_api_customer_complaints_post
+      parameters:
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          minLength: 8
+          maxLength: 128
+          pattern: ^[A-Za-z0-9._:-]+$
+          title: Idempotency-Key
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ComplaintCreate'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Create Complaint Api Customer Complaints Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+    get:
+      tags:
+      - customer
+      summary: Customer Complaints
+      operationId: customer_complaints_api_customer_complaints_get
+      parameters:
+      - name: status
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - $ref: '#/components/schemas/ComplaintStatus'
+          - type: 'null'
+          title: Status
+      - name: company_id
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Company Id
+      - name: insurance_type
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - $ref: '#/components/schemas/InsuranceType'
+          - type: 'null'
+          title: Insurance Type
+      - name: assigned_agent_id
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Assigned Agent Id
+      - name: priority
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - $ref: '#/components/schemas/ComplaintPriority'
+          - type: 'null'
+          title: Priority
+      - name: category_id
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Category Id
+      - name: channel
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - $ref: '#/components/schemas/CommunicationChannel'
+          - type: 'null'
+          title: Channel
+      - name: date_from
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Date From
+      - name: date_to
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Date To
+      - name: ticket_no
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            maxLength: 30
+          - type: 'null'
+          title: Ticket No
+      - name: search
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            minLength: 2
+            maxLength: 120
+          - type: 'null'
+          title: Search
+      - name: sort_by
+        in: query
+        required: false
+        schema:
+          enum:
+          - created_at
+          - updated_at
+          - priority
+          - status
+          type: string
+          default: created_at
+          title: Sort By
+      - name: sort_dir
+        in: query
+        required: false
+        schema:
+          enum:
+          - asc
+          - desc
+          type: string
+          default: desc
+          title: Sort Dir
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 100
+          minimum: 1
+          default: 1
+          title: Page
+      - name: page_size
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 100
+          minimum: 1
+          default: 20
+          title: Page Size
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Customer Complaints Api Customer Complaints Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+  /api/customer/complaints/counters:
+    get:
+      tags:
+      - customer
+      summary: Customer Counters
+      operationId: customer_counters_api_customer_complaints_counters_get
+      parameters:
+      - name: status
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - $ref: '#/components/schemas/ComplaintStatus'
+          - type: 'null'
+          title: Status
+      - name: company_id
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Company Id
+      - name: insurance_type
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - $ref: '#/components/schemas/InsuranceType'
+          - type: 'null'
+          title: Insurance Type
+      - name: assigned_agent_id
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Assigned Agent Id
+      - name: priority
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - $ref: '#/components/schemas/ComplaintPriority'
+          - type: 'null'
+          title: Priority
+      - name: category_id
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Category Id
+      - name: channel
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - $ref: '#/components/schemas/CommunicationChannel'
+          - type: 'null'
+          title: Channel
+      - name: date_from
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Date From
+      - name: date_to
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Date To
+      - name: ticket_no
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            maxLength: 30
+          - type: 'null'
+          title: Ticket No
+      - name: search
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            minLength: 2
+            maxLength: 120
+          - type: 'null'
+          title: Search
+      - name: sort_by
+        in: query
+        required: false
+        schema:
+          enum:
+          - created_at
+          - updated_at
+          - priority
+          - status
+          type: string
+          default: created_at
+          title: Sort By
+      - name: sort_dir
+        in: query
+        required: false
+        schema:
+          enum:
+          - asc
+          - desc
+          type: string
+          default: desc
+          title: Sort Dir
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 100
+          minimum: 1
+          default: 1
+          title: Page
+      - name: page_size
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 100
+          minimum: 1
+          default: 20
+          title: Page Size
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: integer
+                title: Response Customer Counters Api Customer Complaints Counters
+                  Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+  /api/customer/complaints/{complaint_id}:
+    get:
+      tags:
+      - customer
+      summary: Customer Detail
+      operationId: customer_detail_api_customer_complaints__complaint_id__get
+      parameters:
+      - name: complaint_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Complaint Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Customer Detail Api Customer Complaints  Complaint
+                  Id  Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+  /api/customer/complaints/{complaint_id}/timeline:
+    get:
+      tags:
+      - customer
+      summary: Customer Timeline
+      operationId: customer_timeline_api_customer_complaints__complaint_id__timeline_get
+      parameters:
+      - name: complaint_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Complaint Id
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          default: 1
+          title: Page
+      - name: page_size
+        in: query
+        required: false
+        schema:
+          type: integer
+          default: 50
+          title: Page Size
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Customer Timeline Api Customer Complaints  Complaint
+                  Id  Timeline Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+  /api/customer/complaints/{complaint_id}/reply:
+    post:
+      tags:
+      - customer
+      summary: Customer Reply
+      operationId: customer_reply_api_customer_complaints__complaint_id__reply_post
+      parameters:
+      - name: complaint_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Complaint Id
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReplyRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Customer Reply Api Customer Complaints  Complaint
+                  Id  Reply Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+  /api/customer/complaints/{complaint_id}/reopen:
+    post:
+      tags:
+      - customer
+      summary: Customer Reopen
+      operationId: customer_reopen_api_customer_complaints__complaint_id__reopen_post
+      parameters:
+      - name: complaint_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Complaint Id
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Customer Reopen Api Customer Complaints  Complaint
+                  Id  Reopen Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+  /api/customer/complaints/{complaint_id}/csat:
+    post:
+      tags:
+      - customer
+      summary: Customer Csat
+      operationId: customer_csat_api_customer_complaints__complaint_id__csat_post
+      parameters:
+      - name: complaint_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Complaint Id
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CsatRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Customer Csat Api Customer Complaints  Complaint Id  Csat
+                  Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+  /api/customer/complaints/{complaint_id}/attachments:
+    get:
+      tags:
+      - customer
+      summary: Customer Attachments
+      operationId: customer_attachments_api_customer_complaints__complaint_id__attachments_get
+      parameters:
+      - name: complaint_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Complaint Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: true
+                title: Response Customer Attachments Api Customer Complaints  Complaint
+                  Id  Attachments Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+  /api/customer/notifications:
+    get:
+      tags:
+      - customer
+      summary: Customer Notifications
+      operationId: customer_notifications_api_customer_notifications_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                items:
+                  additionalProperties: true
+                  type: object
+                type: array
+                title: Response Customer Notifications Api Customer Notifications
+                  Get
+      security:
+      - AccessCookie: []
+  /api/staff/users:
+    get:
+      tags:
+      - staff
+      summary: Users
+      operationId: users_api_staff_users_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                items:
+                  additionalProperties: true
+                  type: object
+                type: array
+                title: Response Users Api Staff Users Get
+      security:
+      - AccessCookie: []
+      x-required-permission: users.view
+  /api/staff/users/invitations:
+    post:
+      tags:
+      - staff
+      summary: Invite User
+      operationId: invite_user_api_staff_users_invitations_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StaffInviteRequest'
+        required: true
+      responses:
+        '202':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response Invite User Api Staff Users Invitations Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: users.create
+      parameters:
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
+  /api/staff/users/{user_id}/access:
+    get:
+      tags:
+      - staff
+      summary: User Access
+      operationId: user_access_api_staff_users__user_id__access_get
+      parameters:
+      - name: user_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: User Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response User Access Api Staff Users  User Id  Access Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: users.view
+    put:
+      tags:
+      - staff
+      summary: Replace Access
+      operationId: replace_access_api_staff_users__user_id__access_put
+      parameters:
+      - name: user_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: User Id
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AccessSpec'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Replace Access Api Staff Users  User Id  Access Put
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: users.manage_access
+  /api/staff/users/{user_id}/deactivate:
+    post:
+      tags:
+      - staff
+      summary: Deactivate
+      operationId: deactivate_api_staff_users__user_id__deactivate_post
+      parameters:
+      - name: user_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: User Id
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: boolean
+                title: Response Deactivate Api Staff Users  User Id  Deactivate Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: users.deactivate
+  /api/staff/users/{user_id}/2fa-policy:
+    patch:
+      tags:
+      - staff
+      summary: Staff Totp Policy
+      operationId: staff_totp_policy_api_staff_users__user_id__2fa_policy_patch
+      parameters:
+      - name: user_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: User Id
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TotpPolicyRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Staff Totp Policy Api Staff Users  User Id  2Fa Policy
+                  Patch
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: users.manage_access
+  /api/staff/settings/staff-2fa:
+    patch:
+      tags:
+      - staff
+      summary: Global Totp Policy
+      operationId: global_totp_policy_api_staff_settings_staff_2fa_patch
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TotpPolicyRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: boolean
+                type: object
+                title: Response Global Totp Policy Api Staff Settings Staff 2Fa Patch
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: settings.manage
+      parameters:
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
+  /api/staff/users/{user_id}/access/explain:
+    get:
+      tags:
+      - staff
+      summary: Explain User Access
+      operationId: explain_user_access_api_staff_users__user_id__access_explain_get
+      parameters:
+      - name: user_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: User Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Explain User Access Api Staff Users  User Id  Access
+                  Explain Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: users.view
+  /api/staff/users/{user_id}:
+    patch:
+      tags:
+      - staff
+      summary: Edit User
+      operationId: edit_user_api_staff_users__user_id__patch
+      parameters:
+      - name: user_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: User Id
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StaffProfileEdit'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Edit User Api Staff Users  User Id  Patch
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: users.edit
+  /api/staff/users/{user_id}/reactivate:
+    post:
+      tags:
+      - staff
+      summary: Reactivate User
+      operationId: reactivate_user_api_staff_users__user_id__reactivate_post
+      parameters:
+      - name: user_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: User Id
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: boolean
+                title: Response Reactivate User Api Staff Users  User Id  Reactivate
+                  Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: users.edit
+  /api/staff/users/{user_id}/force-logout:
+    post:
+      tags:
+      - staff
+      summary: Force Logout User
+      operationId: force_logout_user_api_staff_users__user_id__force_logout_post
+      parameters:
+      - name: user_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: User Id
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: boolean
+                title: Response Force Logout User Api Staff Users  User Id  Force
+                  Logout Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: users.manage_access
+  /api/staff/users/{user_id}/password-reset:
+    post:
+      tags:
+      - staff
+      summary: Reset Staff Password
+      operationId: reset_staff_password_api_staff_users__user_id__password_reset_post
+      parameters:
+      - name: user_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: User Id
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
+      responses:
+        '202':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: string
+                title: Response Reset Staff Password Api Staff Users  User Id  Password
+                  Reset Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: users.edit
+  /api/staff/roles:
+    get:
+      tags:
+      - staff
+      summary: Roles Catalog
+      operationId: roles_catalog_api_staff_roles_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                items:
+                  additionalProperties: true
+                  type: object
+                type: array
+                title: Response Roles Catalog Api Staff Roles Get
+      security:
+      - AccessCookie: []
+      x-required-permission: roles.manage
+    post:
+      tags:
+      - staff
+      summary: Create Role
+      operationId: create_role_api_staff_roles_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RoleSpec'
+        required: true
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                  format: uuid
+                type: object
+                title: Response Create Role Api Staff Roles Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: roles.manage
+      parameters:
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
+  /api/staff/roles/{role_id}:
+    put:
+      tags:
+      - staff
+      summary: Update Role
+      operationId: update_role_api_staff_roles__role_id__put
+      parameters:
+      - name: role_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Role Id
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RoleSpec'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: string
+                  format: uuid
+                title: Response Update Role Api Staff Roles  Role Id  Put
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: roles.manage
+  /api/staff/roles/{role_id}/clone:
+    post:
+      tags:
+      - staff
+      summary: Clone Role
+      operationId: clone_role_api_staff_roles__role_id__clone_post
+      parameters:
+      - name: role_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Role Id
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RoleClone'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: string
+                  format: uuid
+                title: Response Clone Role Api Staff Roles  Role Id  Clone Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: roles.manage
+  /api/staff/complaints/filter-options:
+    get:
+      tags:
+      - staff
+      summary: Filter Options
+      operationId: filter_options_api_staff_complaints_filter_options_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response Filter Options Api Staff Complaints Filter Options
+                  Get
+      security:
+      - AccessCookie: []
+      x-required-permission: complaints.view
+  /api/staff/complaints:
+    get:
+      tags:
+      - staff
+      summary: Complaints
+      operationId: complaints_api_staff_complaints_get
+      parameters:
+      - name: status
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - $ref: '#/components/schemas/ComplaintStatus'
+          - type: 'null'
+          title: Status
+      - name: company_id
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Company Id
+      - name: insurance_type
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - $ref: '#/components/schemas/InsuranceType'
+          - type: 'null'
+          title: Insurance Type
+      - name: assigned_agent_id
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Assigned Agent Id
+      - name: priority
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - $ref: '#/components/schemas/ComplaintPriority'
+          - type: 'null'
+          title: Priority
+      - name: category_id
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Category Id
+      - name: channel
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - $ref: '#/components/schemas/CommunicationChannel'
+          - type: 'null'
+          title: Channel
+      - name: date_from
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Date From
+      - name: date_to
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Date To
+      - name: ticket_no
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            maxLength: 30
+          - type: 'null'
+          title: Ticket No
+      - name: search
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            minLength: 2
+            maxLength: 120
+          - type: 'null'
+          title: Search
+      - name: sort_by
+        in: query
+        required: false
+        schema:
+          enum:
+          - created_at
+          - updated_at
+          - priority
+          - status
+          type: string
+          default: created_at
+          title: Sort By
+      - name: sort_dir
+        in: query
+        required: false
+        schema:
+          enum:
+          - asc
+          - desc
+          type: string
+          default: desc
+          title: Sort Dir
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 100
+          minimum: 1
+          default: 1
+          title: Page
+      - name: page_size
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 100
+          minimum: 1
+          default: 20
+          title: Page Size
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Complaints Api Staff Complaints Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: complaints.view
+  /api/staff/complaints/counters:
+    get:
+      tags:
+      - staff
+      summary: Complaint Counters
+      operationId: complaint_counters_api_staff_complaints_counters_get
+      parameters:
+      - name: status
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - $ref: '#/components/schemas/ComplaintStatus'
+          - type: 'null'
+          title: Status
+      - name: company_id
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Company Id
+      - name: insurance_type
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - $ref: '#/components/schemas/InsuranceType'
+          - type: 'null'
+          title: Insurance Type
+      - name: assigned_agent_id
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Assigned Agent Id
+      - name: priority
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - $ref: '#/components/schemas/ComplaintPriority'
+          - type: 'null'
+          title: Priority
+      - name: category_id
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Category Id
+      - name: channel
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - $ref: '#/components/schemas/CommunicationChannel'
+          - type: 'null'
+          title: Channel
+      - name: date_from
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Date From
+      - name: date_to
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Date To
+      - name: ticket_no
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            maxLength: 30
+          - type: 'null'
+          title: Ticket No
+      - name: search
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            minLength: 2
+            maxLength: 120
+          - type: 'null'
+          title: Search
+      - name: sort_by
+        in: query
+        required: false
+        schema:
+          enum:
+          - created_at
+          - updated_at
+          - priority
+          - status
+          type: string
+          default: created_at
+          title: Sort By
+      - name: sort_dir
+        in: query
+        required: false
+        schema:
+          enum:
+          - asc
+          - desc
+          type: string
+          default: desc
+          title: Sort Dir
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 100
+          minimum: 1
+          default: 1
+          title: Page
+      - name: page_size
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 100
+          minimum: 1
+          default: 20
+          title: Page Size
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: integer
+                title: Response Complaint Counters Api Staff Complaints Counters Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: complaints.view
+  /api/staff/complaints/export:
+    get:
+      tags:
+      - staff
+      summary: Export Complaints
+      operationId: export_complaints_api_staff_complaints_export_get
+      parameters:
+      - name: status
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - $ref: '#/components/schemas/ComplaintStatus'
+          - type: 'null'
+          title: Status
+      - name: company_id
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Company Id
+      - name: insurance_type
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - $ref: '#/components/schemas/InsuranceType'
+          - type: 'null'
+          title: Insurance Type
+      - name: assigned_agent_id
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Assigned Agent Id
+      - name: priority
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - $ref: '#/components/schemas/ComplaintPriority'
+          - type: 'null'
+          title: Priority
+      - name: category_id
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Category Id
+      - name: channel
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - $ref: '#/components/schemas/CommunicationChannel'
+          - type: 'null'
+          title: Channel
+      - name: date_from
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Date From
+      - name: date_to
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Date To
+      - name: ticket_no
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            maxLength: 30
+          - type: 'null'
+          title: Ticket No
+      - name: search
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            minLength: 2
+            maxLength: 120
+          - type: 'null'
+          title: Search
+      - name: sort_by
+        in: query
+        required: false
+        schema:
+          enum:
+          - created_at
+          - updated_at
+          - priority
+          - status
+          type: string
+          default: created_at
+          title: Sort By
+      - name: sort_dir
+        in: query
+        required: false
+        schema:
+          enum:
+          - asc
+          - desc
+          type: string
+          default: desc
+          title: Sort Dir
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 100
+          minimum: 1
+          default: 1
+          title: Page
+      - name: page_size
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 100
+          minimum: 1
+          default: 20
+          title: Page Size
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: complaints.export
+  /api/staff/complaints/{complaint_id}:
+    get:
+      tags:
+      - staff
+      summary: Complaint Detail
+      operationId: complaint_detail_api_staff_complaints__complaint_id__get
+      parameters:
+      - name: complaint_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Complaint Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Complaint Detail Api Staff Complaints  Complaint Id  Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: complaints.view
+  /api/staff/complaints/{complaint_id}/timeline:
+    get:
+      tags:
+      - staff
+      summary: Complaint Timeline
+      operationId: complaint_timeline_api_staff_complaints__complaint_id__timeline_get
+      parameters:
+      - name: complaint_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Complaint Id
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          default: 1
+          title: Page
+      - name: page_size
+        in: query
+        required: false
+        schema:
+          type: integer
+          default: 50
+          title: Page Size
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Complaint Timeline Api Staff Complaints  Complaint
+                  Id  Timeline Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: complaints.view
+  /api/staff/complaints/{complaint_id}/reply:
+    post:
+      tags:
+      - staff
+      summary: Staff Reply
+      operationId: staff_reply_api_staff_complaints__complaint_id__reply_post
+      parameters:
+      - name: complaint_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Complaint Id
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReplyRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Staff Reply Api Staff Complaints  Complaint Id  Reply
+                  Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: complaints.reply_public
+  /api/staff/complaints/{complaint_id}/notes:
+    post:
+      tags:
+      - staff
+      summary: Internal Note
+      operationId: internal_note_api_staff_complaints__complaint_id__notes_post
+      parameters:
+      - name: complaint_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Complaint Id
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReplyRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Internal Note Api Staff Complaints  Complaint Id  Notes
+                  Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: complaints.add_internal_note
+  /api/staff/complaints/{complaint_id}/status:
+    patch:
+      tags:
+      - staff
+      summary: Staff Status
+      operationId: staff_status_api_staff_complaints__complaint_id__status_patch
+      parameters:
+      - name: complaint_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Complaint Id
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StatusChangeRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Staff Status Api Staff Complaints  Complaint Id  Status
+                  Patch
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: complaints.change_status
+  /api/staff/complaints/{complaint_id}/national-id:reveal:
+    post:
+      tags:
+      - staff
+      summary: Reveal National Id
+      operationId: reveal_national_id_api_staff_complaints__complaint_id__national_id_reveal_post
+      parameters:
+      - name: complaint_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Complaint Id
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RevealReason'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: string
+                title: Response Reveal National Id Api Staff Complaints  Complaint
+                  Id  National Id Reveal Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: complaints.view_full_national_id
+  /api/staff/complaints/{complaint_id}/attachments:
+    get:
+      tags:
+      - staff
+      summary: Complaint Attachments
+      operationId: complaint_attachments_api_staff_complaints__complaint_id__attachments_get
+      parameters:
+      - name: complaint_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Complaint Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: true
+                title: Response Complaint Attachments Api Staff Complaints  Complaint
+                  Id  Attachments Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: complaints.view_attachments
+  /api/staff/notifications:
+    get:
+      tags:
+      - staff
+      summary: Staff Notifications
+      operationId: staff_notifications_api_staff_notifications_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                items:
+                  additionalProperties: true
+                  type: object
+                type: array
+                title: Response Staff Notifications Api Staff Notifications Get
+      security:
+      - AccessCookie: []
+      x-required-permission: complaints.view
+  /api/staff/complaints/bulk:
+    post:
+      tags:
+      - staff-workflow
+      summary: Bulk Action
+      operationId: bulk_action_api_staff_complaints_bulk_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BulkAction'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response Bulk Action Api Staff Complaints Bulk Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: complaints.view
+      parameters:
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
+  /api/staff/complaints/{complaint_id}/assign:
+    post:
+      tags:
+      - staff-workflow
+      summary: Assign
+      operationId: assign_api_staff_complaints__complaint_id__assign_post
+      parameters:
+      - name: complaint_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Complaint Id
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssignmentRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Assign Api Staff Complaints  Complaint Id  Assign
+                  Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: complaints.assign
+  /api/staff/complaints/{complaint_id}/reassign:
+    post:
+      tags:
+      - staff-workflow
+      summary: Reassign
+      operationId: reassign_api_staff_complaints__complaint_id__reassign_post
+      parameters:
+      - name: complaint_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Complaint Id
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssignmentRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Reassign Api Staff Complaints  Complaint Id  Reassign
+                  Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: complaints.reassign
+  /api/staff/complaints/{complaint_id}/escalate:
+    post:
+      tags:
+      - staff-workflow
+      summary: Escalate
+      operationId: escalate_api_staff_complaints__complaint_id__escalate_post
+      parameters:
+      - name: complaint_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Complaint Id
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EscalationRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Escalate Api Staff Complaints  Complaint Id  Escalate
+                  Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: complaints.escalate
+  /api/staff/complaints/{complaint_id}/merge:
+    post:
+      tags:
+      - staff-workflow
+      summary: Merge
+      operationId: merge_api_staff_complaints__complaint_id__merge_post
+      parameters:
+      - name: complaint_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Complaint Id
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MergeRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Merge Api Staff Complaints  Complaint Id  Merge Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: complaints.merge
+  /api/staff/complaints/{complaint_id}/duplicates:
+    get:
+      tags:
+      - staff-workflow
+      summary: Duplicates
+      operationId: duplicates_api_staff_complaints__complaint_id__duplicates_get
+      parameters:
+      - name: complaint_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Complaint Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: true
+                title: Response Duplicates Api Staff Complaints  Complaint Id  Duplicates
+                  Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: complaints.view
+  /api/staff/complaints/{complaint_id}/canned-replies:
+    get:
+      tags:
+      - staff-workflow
+      summary: Canned Replies
+      operationId: canned_replies_api_staff_complaints__complaint_id__canned_replies_get
+      parameters:
+      - name: complaint_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Complaint Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: true
+                title: Response Canned Replies Api Staff Complaints  Complaint Id  Canned
+                  Replies Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: complaints.reply_public
+  /api/staff/views:
+    get:
+      tags:
+      - staff-workflow
+      summary: Saved Views
+      operationId: saved_views_api_staff_views_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                items:
+                  additionalProperties: true
+                  type: object
+                type: array
+                title: Response Saved Views Api Staff Views Get
+      security:
+      - AccessCookie: []
+      x-required-permission: complaints.view
+    post:
+      tags:
+      - staff-workflow
+      summary: Create Saved View
+      operationId: create_saved_view_api_staff_views_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SavedViewCreate'
+        required: true
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response Create Saved View Api Staff Views Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: complaints.view
+      parameters:
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
+  /api/staff/views/{view_id}:
+    put:
+      tags:
+      - staff-workflow
+      summary: Update Saved View
+      operationId: update_saved_view_api_staff_views__view_id__put
+      parameters:
+      - name: view_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: View Id
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SavedViewCreate'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Update Saved View Api Staff Views  View Id  Put
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: complaints.view
+    delete:
+      tags:
+      - staff-workflow
+      summary: Delete Saved View
+      operationId: delete_saved_view_api_staff_views__view_id__delete
+      parameters:
+      - name: view_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: View Id
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
+      responses:
+        '204':
+          description: Successful Response
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: complaints.view
+  /api/staff/views/{view_id}/complaints:
+    get:
+      tags:
+      - staff-workflow
+      summary: Saved View Complaints
+      operationId: saved_view_complaints_api_staff_views__view_id__complaints_get
+      parameters:
+      - name: view_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: View Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Saved View Complaints Api Staff Views  View Id  Complaints
+                  Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: complaints.view
+  /api/staff/notifications/{notification_id}/read:
+    patch:
+      tags:
+      - staff-workflow
+      summary: Mark Notification Read
+      operationId: mark_notification_read_api_staff_notifications__notification_id__read_patch
+      parameters:
+      - name: notification_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Notification Id
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: boolean
+                title: Response Mark Notification Read Api Staff Notifications  Notification
+                  Id  Read Patch
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: complaints.view
+  /api/staff/analytics/overview:
+    get:
+      tags:
+      - analytics
+      summary: Overview
+      operationId: overview_api_staff_analytics_overview_get
+      parameters:
+      - name: status
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - $ref: '#/components/schemas/ComplaintStatus'
+          - type: 'null'
+          title: Status
+      - name: company_id
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Company Id
+      - name: insurance_type
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - $ref: '#/components/schemas/InsuranceType'
+          - type: 'null'
+          title: Insurance Type
+      - name: assigned_agent_id
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Assigned Agent Id
+      - name: priority
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - $ref: '#/components/schemas/ComplaintPriority'
+          - type: 'null'
+          title: Priority
+      - name: category_id
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Category Id
+      - name: channel
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - $ref: '#/components/schemas/CommunicationChannel'
+          - type: 'null'
+          title: Channel
+      - name: date_from
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Date From
+      - name: date_to
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Date To
+      - name: ticket_no
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            maxLength: 30
+          - type: 'null'
+          title: Ticket No
+      - name: search
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            minLength: 2
+            maxLength: 120
+          - type: 'null'
+          title: Search
+      - name: sort_by
+        in: query
+        required: false
+        schema:
+          enum:
+          - created_at
+          - updated_at
+          - priority
+          - status
+          type: string
+          default: created_at
+          title: Sort By
+      - name: sort_dir
+        in: query
+        required: false
+        schema:
+          enum:
+          - asc
+          - desc
+          type: string
+          default: desc
+          title: Sort Dir
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 100
+          minimum: 1
+          default: 1
+          title: Page
+      - name: page_size
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 100
+          minimum: 1
+          default: 20
+          title: Page Size
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Overview Api Staff Analytics Overview Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: analytics.view
+  /api/staff/analytics/scorecards:
+    get:
+      tags:
+      - analytics
+      summary: Scorecards
+      operationId: scorecards_api_staff_analytics_scorecards_get
+      parameters:
+      - name: status
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - $ref: '#/components/schemas/ComplaintStatus'
+          - type: 'null'
+          title: Status
+      - name: company_id
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Company Id
+      - name: insurance_type
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - $ref: '#/components/schemas/InsuranceType'
+          - type: 'null'
+          title: Insurance Type
+      - name: assigned_agent_id
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Assigned Agent Id
+      - name: priority
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - $ref: '#/components/schemas/ComplaintPriority'
+          - type: 'null'
+          title: Priority
+      - name: category_id
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Category Id
+      - name: channel
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - $ref: '#/components/schemas/CommunicationChannel'
+          - type: 'null'
+          title: Channel
+      - name: date_from
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Date From
+      - name: date_to
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Date To
+      - name: ticket_no
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            maxLength: 30
+          - type: 'null'
+          title: Ticket No
+      - name: search
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            minLength: 2
+            maxLength: 120
+          - type: 'null'
+          title: Search
+      - name: sort_by
+        in: query
+        required: false
+        schema:
+          enum:
+          - created_at
+          - updated_at
+          - priority
+          - status
+          type: string
+          default: created_at
+          title: Sort By
+      - name: sort_dir
+        in: query
+        required: false
+        schema:
+          enum:
+          - asc
+          - desc
+          type: string
+          default: desc
+          title: Sort Dir
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 100
+          minimum: 1
+          default: 1
+          title: Page
+      - name: page_size
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 100
+          minimum: 1
+          default: 20
+          title: Page Size
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: true
+                title: Response Scorecards Api Staff Analytics Scorecards Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: analytics.view
+  /api/staff/audit/events:
+    get:
+      tags:
+      - audit
+      summary: Audit Events
+      operationId: audit_events_api_staff_audit_events_get
+      parameters:
+      - name: start
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Start
+      - name: end
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: End
+      - name: actor_id
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Actor Id
+      - name: complaint_id
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Complaint Id
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 500
+          minimum: 1
+          default: 100
+          title: Limit
+      - name: offset
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 10000
+          minimum: 0
+          default: 0
+          title: Offset
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: true
+                title: Response Audit Events Api Staff Audit Events Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: audit.view
+  /api/staff/audit/access-changes:
+    get:
+      tags:
+      - audit
+      summary: Access Changes
+      operationId: access_changes_api_staff_audit_access_changes_get
+      parameters:
+      - name: target_id
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Target Id
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 500
+          minimum: 1
+          default: 100
+          title: Limit
+      - name: offset
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 10000
+          minimum: 0
+          default: 0
+          title: Offset
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: true
+                title: Response Access Changes Api Staff Audit Access Changes Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: audit.view
+  /api/staff/audit/events.csv:
+    get:
+      tags:
+      - audit
+      summary: Export Audit
+      operationId: export_audit_api_staff_audit_events_csv_get
+      parameters:
+      - name: start
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Start
+      - name: end
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: End
+      - name: actor_id
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Actor Id
+      - name: complaint_id
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Complaint Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: audit.view
+  /api/staff/admin/companies:
+    get:
+      tags:
+      - administration
+      summary: Companies
+      operationId: companies_api_staff_admin_companies_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                items:
+                  additionalProperties: true
+                  type: object
+                type: array
+                title: Response Companies Api Staff Admin Companies Get
+      security:
+      - AccessCookie: []
+      x-required-permission: companies.manage
+    post:
+      tags:
+      - administration
+      summary: Create Company
+      operationId: create_company_api_staff_admin_companies_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CompanySpec'
+        required: true
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                  format: uuid
+                type: object
+                title: Response Create Company Api Staff Admin Companies Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: companies.manage
+      parameters:
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
+  /api/staff/admin/companies/{item_id}:
+    put:
+      tags:
+      - administration
+      summary: Update Company
+      operationId: update_company_api_staff_admin_companies__item_id__put
+      parameters:
+      - name: item_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Item Id
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CompanySpec'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: string
+                  format: uuid
+                title: Response Update Company Api Staff Admin Companies  Item Id  Put
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: companies.manage
+  /api/staff/admin/categories:
+    get:
+      tags:
+      - administration
+      summary: Categories
+      operationId: categories_api_staff_admin_categories_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                items:
+                  additionalProperties: true
+                  type: object
+                type: array
+                title: Response Categories Api Staff Admin Categories Get
+      security:
+      - AccessCookie: []
+      x-required-permission: categories.manage
+    post:
+      tags:
+      - administration
+      summary: Create Category
+      operationId: create_category_api_staff_admin_categories_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CategorySpec'
+        required: true
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                  format: uuid
+                type: object
+                title: Response Create Category Api Staff Admin Categories Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: categories.manage
+      parameters:
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
+  /api/staff/admin/categories/{item_id}:
+    put:
+      tags:
+      - administration
+      summary: Update Category
+      operationId: update_category_api_staff_admin_categories__item_id__put
+      parameters:
+      - name: item_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Item Id
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CategorySpec'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: string
+                  format: uuid
+                title: Response Update Category Api Staff Admin Categories  Item Id  Put
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: categories.manage
+  /api/staff/admin/sla-rules:
+    get:
+      tags:
+      - administration
+      summary: Sla Rules
+      operationId: sla_rules_api_staff_admin_sla_rules_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                items:
+                  additionalProperties: true
+                  type: object
+                type: array
+                title: Response Sla Rules Api Staff Admin Sla Rules Get
+      security:
+      - AccessCookie: []
+      x-required-permission: sla.manage
+    post:
+      tags:
+      - administration
+      summary: Create Sla Rule
+      operationId: create_sla_rule_api_staff_admin_sla_rules_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SlaRuleSpec'
+        required: true
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                  format: uuid
+                type: object
+                title: Response Create Sla Rule Api Staff Admin Sla Rules Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: sla.manage
+      parameters:
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
+  /api/staff/admin/sla-rules/{item_id}:
+    put:
+      tags:
+      - administration
+      summary: Update Sla Rule
+      operationId: update_sla_rule_api_staff_admin_sla_rules__item_id__put
+      parameters:
+      - name: item_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Item Id
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SlaRuleSpec'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: string
+                  format: uuid
+                title: Response Update Sla Rule Api Staff Admin Sla Rules  Item Id  Put
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: sla.manage
+  /api/staff/admin/templates:
+    get:
+      tags:
+      - administration
+      summary: Templates
+      operationId: templates_api_staff_admin_templates_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                items:
+                  additionalProperties: true
+                  type: object
+                type: array
+                title: Response Templates Api Staff Admin Templates Get
+      security:
+      - AccessCookie: []
+      x-required-permission: templates.manage
+    post:
+      tags:
+      - administration
+      summary: Create Template
+      operationId: create_template_api_staff_admin_templates_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TemplateSpec'
+        required: true
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                  format: uuid
+                type: object
+                title: Response Create Template Api Staff Admin Templates Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: templates.manage
+      parameters:
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
+  /api/staff/admin/templates/{item_id}:
+    put:
+      tags:
+      - administration
+      summary: Update Template
+      operationId: update_template_api_staff_admin_templates__item_id__put
+      parameters:
+      - name: item_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Item Id
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TemplateSpec'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: string
+                  format: uuid
+                title: Response Update Template Api Staff Admin Templates  Item Id  Put
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: templates.manage
+  /api/staff/exports:
+    get:
+      tags:
+      - exports
+      summary: Export Jobs
+      operationId: export_jobs_api_staff_exports_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                items:
+                  additionalProperties: true
+                  type: object
+                type: array
+                title: Response Export Jobs Api Staff Exports Get
+      security:
+      - AccessCookie: []
+    post:
+      tags:
+      - exports
+      summary: Request Export
+      operationId: request_export_api_staff_exports_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExportRequest'
+        required: true
+      responses:
+        '202':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response Request Export Api Staff Exports Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      parameters:
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
+  /api/staff/exports/{job_id}/download:
+    get:
+      tags:
+      - exports
+      summary: Download Export
+      operationId: download_export_api_staff_exports__job_id__download_get
+      parameters:
+      - name: job_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Job Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+  /api/customer/complaints/{complaint_id}/attachments/plan:
+    post:
+      tags:
+      - attachments
+      summary: Customer Plan
+      operationId: customer_plan_api_customer_complaints__complaint_id__attachments_plan_post
+      parameters:
+      - name: complaint_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Complaint Id
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UploadPlan'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Customer Plan Api Customer Complaints  Complaint Id  Attachments
+                  Plan Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+  /api/staff/complaints/{complaint_id}/attachments/plan:
+    post:
+      tags:
+      - attachments
+      summary: Staff Plan
+      operationId: staff_plan_api_staff_complaints__complaint_id__attachments_plan_post
+      parameters:
+      - name: complaint_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Complaint Id
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UploadPlan'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Staff Plan Api Staff Complaints  Complaint Id  Attachments
+                  Plan Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: complaints.view_attachments
+  /api/customer/attachments/uploads/{upload_id}/content:
+    put:
+      tags:
+      - attachments
+      summary: Customer Upload
+      operationId: customer_upload_api_customer_attachments_uploads__upload_id__content_put
+      parameters:
+      - name: upload_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Upload Id
+      - name: X-Upload-Token
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: X-Upload-Token
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Customer Upload Api Customer Attachments Uploads  Upload
+                  Id  Content Put
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+  /api/staff/attachments/uploads/{upload_id}/content:
+    put:
+      tags:
+      - attachments
+      summary: Staff Upload
+      operationId: staff_upload_api_staff_attachments_uploads__upload_id__content_put
+      parameters:
+      - name: upload_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Upload Id
+      - name: X-Upload-Token
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: X-Upload-Token
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Staff Upload Api Staff Attachments Uploads  Upload
+                  Id  Content Put
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: complaints.view_attachments
+  /api/customer/attachments/{attachment_id}/authorize:
+    get:
+      tags:
+      - attachments
+      summary: Customer Authorize Download
+      operationId: customer_authorize_download_api_customer_attachments__attachment_id__authorize_get
+      parameters:
+      - name: attachment_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Attachment Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Customer Authorize Download Api Customer Attachments  Attachment
+                  Id  Authorize Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+  /api/staff/attachments/{attachment_id}/authorize:
+    get:
+      tags:
+      - attachments
+      summary: Staff Authorize Download
+      operationId: staff_authorize_download_api_staff_attachments__attachment_id__authorize_get
+      parameters:
+      - name: attachment_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Attachment Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Staff Authorize Download Api Staff Attachments  Attachment
+                  Id  Authorize Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: complaints.view_attachments
+  /api/customer/attachments/{attachment_id}/content:
+    get:
+      tags:
+      - attachments
+      summary: Customer Download
+      operationId: customer_download_api_customer_attachments__attachment_id__content_get
+      parameters:
+      - name: attachment_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Attachment Id
+      - name: X-Download-Token
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: X-Download-Token
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+  /api/staff/attachments/{attachment_id}/content:
+    get:
+      tags:
+      - attachments
+      summary: Staff Download
+      operationId: staff_download_api_staff_attachments__attachment_id__content_get
+      parameters:
+      - name: attachment_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Attachment Id
+      - name: X-Download-Token
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: X-Download-Token
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: complaints.view_attachments
+  /api/health/live:
+    get:
+      tags:
+      - health
+      summary: Live
+      operationId: live_api_health_live_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+                title: Response Live Api Health Live Get
+      security: []
+  /api/health/ready:
+    get:
+      tags:
+      - health
+      summary: Ready
+      operationId: ready_api_health_ready_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+                title: Response Ready Api Health Ready Get
+      security: []
+components:
+  schemas:
+    AccessSpec:
+      properties:
+        role_ids:
+          items:
+            type: string
+            format: uuid
+          type: array
+          maxItems: 30
+          title: Role Ids
+        allow:
+          items:
+            type: string
+          type: array
+          maxItems: 50
+          title: Allow
+        deny:
+          items:
+            type: string
+          type: array
+          maxItems: 50
+          title: Deny
+        all_companies:
+          type: boolean
+          title: All Companies
+          default: false
+        company_ids:
+          items:
+            type: string
+            format: uuid
+          type: array
+          maxItems: 100
+          title: Company Ids
+        insurance_types:
+          items:
+            $ref: '#/components/schemas/InsuranceType'
+          type: array
+          maxItems: 3
+          title: Insurance Types
+        ownership:
+          $ref: '#/components/schemas/OwnershipLevel'
+        team_ids:
+          items:
+            type: string
+            format: uuid
+          type: array
+          maxItems: 100
+          title: Team Ids
+      additionalProperties: false
+      type: object
+      required:
+      - ownership
+      title: AccessSpec
+    AssignmentRequest:
+      properties:
+        agent_id:
+          type: string
+          format: uuid
+          title: Agent Id
+        team_id:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Team Id
+      additionalProperties: false
+      type: object
+      required:
+      - agent_id
+      title: AssignmentRequest
+    BulkAction:
+      properties:
+        action:
+          type: string
+          enum:
+          - assign
+          - status
+          title: Action
+        complaint_ids:
+          items:
+            type: string
+            format: uuid
+          type: array
+          maxItems: 50
+          minItems: 1
+          title: Complaint Ids
+        assignment:
+          anyOf:
+          - $ref: '#/components/schemas/AssignmentRequest'
+          - type: 'null'
+        status:
+          anyOf:
+          - $ref: '#/components/schemas/ComplaintStatus'
+          - type: 'null'
+      additionalProperties: false
+      type: object
+      required:
+      - action
+      - complaint_ids
+      title: BulkAction
+    CategorySpec:
+      properties:
+        company_id:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Company Id
+        parent_id:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Parent Id
+        name_en:
+          type: string
+          maxLength: 120
+          minLength: 2
+          title: Name En
+        name_ar:
+          type: string
+          maxLength: 120
+          minLength: 2
+          title: Name Ar
+        is_active:
+          type: boolean
+          title: Is Active
+          default: true
+      additionalProperties: false
+      type: object
+      required:
+      - name_en
+      - name_ar
+      title: CategorySpec
+    ChallengeRequest:
+      properties:
+        challenge:
+          type: string
+          maxLength: 1500
+          minLength: 64
+          title: Challenge
+      additionalProperties: false
+      type: object
+      required:
+      - challenge
+      title: ChallengeRequest
+    ChangePasswordRequest:
+      properties:
+        challenge:
+          type: string
+          maxLength: 1500
+          minLength: 64
+          title: Challenge
+        password:
+          type: string
+          maxLength: 128
+          minLength: 12
+          title: Password
+      additionalProperties: false
+      type: object
+      required:
+      - challenge
+      - password
+      title: ChangePasswordRequest
+    CommunicationChannel:
+      type: string
+      enum:
+      - portal
+      - email
+      - whatsapp
+      - phone
+      - ai_voice
+      title: CommunicationChannel
+    CompanySpec:
+      properties:
+        slug:
+          type: string
+          pattern: ^[a-z][a-z0-9-]{1,59}$
+          title: Slug
+        name_en:
+          type: string
+          maxLength: 120
+          minLength: 2
+          title: Name En
+        name_ar:
+          type: string
+          maxLength: 120
+          minLength: 2
+          title: Name Ar
+        contact_emails:
+          items:
+            type: string
+          type: array
+          maxItems: 10
+          title: Contact Emails
+        supported_types:
+          items:
+            $ref: '#/components/schemas/InsuranceType'
+          type: array
+          maxItems: 3
+          minItems: 1
+          uniqueItems: true
+          title: Supported Types
+        is_active:
+          type: boolean
+          title: Is Active
+          default: true
+      additionalProperties: false
+      type: object
+      required:
+      - slug
+      - name_en
+      - name_ar
+      - supported_types
+      title: CompanySpec
+    ComplaintCreate:
+      properties:
+        national_id:
+          type: string
+          title: National Id
+        mobile:
+          type: string
+          pattern: ^\+201[0-9]{9}$
+          title: Mobile
+        company_id:
+          type: string
+          format: uuid
+          title: Company Id
+        insurance_type:
+          $ref: '#/components/schemas/InsuranceType'
+        policy_number:
+          type: string
+          maxLength: 60
+          minLength: 5
+          pattern: ^[A-Za-z0-9][A-Za-z0-9/_-]*$
+          title: Policy Number
+        subject:
+          type: string
+          maxLength: 160
+          minLength: 8
+          title: Subject
+        description:
+          type: string
+          maxLength: 10000
+          minLength: 20
+          title: Description
+      additionalProperties: false
+      type: object
+      required:
+      - national_id
+      - mobile
+      - company_id
+      - insurance_type
+      - policy_number
+      - subject
+      - description
+      title: ComplaintCreate
+    ComplaintFilter:
+      properties:
+        status:
+          anyOf:
+          - $ref: '#/components/schemas/ComplaintStatus'
+          - type: 'null'
+        company_id:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Company Id
+        insurance_type:
+          anyOf:
+          - $ref: '#/components/schemas/InsuranceType'
+          - type: 'null'
+        assigned_agent_id:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Assigned Agent Id
+        priority:
+          anyOf:
+          - $ref: '#/components/schemas/ComplaintPriority'
+          - type: 'null'
+        category_id:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Category Id
+        channel:
+          anyOf:
+          - $ref: '#/components/schemas/CommunicationChannel'
+          - type: 'null'
+        date_from:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Date From
+        date_to:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Date To
+        ticket_no:
+          anyOf:
+          - type: string
+            maxLength: 30
+          - type: 'null'
+          title: Ticket No
+        search:
+          anyOf:
+          - type: string
+            maxLength: 120
+            minLength: 2
+          - type: 'null'
+          title: Search
+        sort_by:
+          type: string
+          enum:
+          - created_at
+          - updated_at
+          - priority
+          - status
+          title: Sort By
+          default: created_at
+        sort_dir:
+          type: string
+          enum:
+          - asc
+          - desc
+          title: Sort Dir
+          default: desc
+        page:
+          type: integer
+          maximum: 100.0
+          minimum: 1.0
+          title: Page
+          default: 1
+        page_size:
+          type: integer
+          maximum: 100.0
+          minimum: 1.0
+          title: Page Size
+          default: 20
+      additionalProperties: false
+      type: object
+      title: ComplaintFilter
+    ComplaintPriority:
+      type: string
+      enum:
+      - low
+      - normal
+      - high
+      - urgent
+      title: ComplaintPriority
+    ComplaintStatus:
+      type: string
+      enum:
+      - new
+      - assigned
+      - in_review
+      - resolved
+      - reopened
+      - transferred
+      title: ComplaintStatus
+    CsatRequest:
+      properties:
+        score:
+          type: integer
+          maximum: 5.0
+          minimum: 1.0
+          title: Score
+        comment:
+          anyOf:
+          - type: string
+            maxLength: 1000
+          - type: 'null'
+          title: Comment
+      additionalProperties: false
+      type: object
+      required:
+      - score
+      title: CsatRequest
+    CustomerVerifyRequest:
+      properties:
+        mobile:
+          type: string
+          pattern: ^\+201[0-9]{9}$
+          title: Mobile
+        code:
+          type: string
+          pattern: ^[0-9]{6}$
+          title: Code
+        national_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: National Id
+        full_name:
+          anyOf:
+          - type: string
+            maxLength: 120
+            minLength: 2
+          - type: 'null'
+          title: Full Name
+        email:
+          anyOf:
+          - type: string
+            maxLength: 254
+          - type: 'null'
+          title: Email
+        whatsapp_available:
+          type: boolean
+          title: Whatsapp Available
+          default: false
+      additionalProperties: false
+      type: object
+      required:
+      - mobile
+      - code
+      title: CustomerVerifyRequest
+    EscalationRequest:
+      properties:
+        reason:
+          type: string
+          maxLength: 500
+          minLength: 10
+          title: Reason
+      additionalProperties: false
+      type: object
+      required:
+      - reason
+      title: EscalationRequest
+    ExportRequest:
+      properties:
+        kind:
+          type: string
+          enum:
+          - complaints
+          - analytics
+          title: Kind
+        filters:
+          $ref: '#/components/schemas/ComplaintFilter'
+      additionalProperties: false
+      type: object
+      required:
+      - kind
+      - filters
+      title: ExportRequest
+    GuestTrackRequest:
+      properties:
+        national_id:
+          type: string
+          title: National Id
+        ticket_no:
+          type: string
+          pattern: ^CMP-[0-9]{4}-[0-9]{6,}$
+          title: Ticket No
+      additionalProperties: false
+      type: object
+      required:
+      - national_id
+      - ticket_no
+      title: GuestTrackRequest
+    HTTPValidationError:
+      properties:
+        detail:
+          items:
+            $ref: '#/components/schemas/ValidationError'
+          type: array
+          title: Detail
+      type: object
+      title: HTTPValidationError
+    InsuranceType:
+      type: string
+      enum:
+      - health
+      - general
+      - both
+      title: InsuranceType
+    InviteAcceptRequest:
+      properties:
+        token:
+          type: string
+          maxLength: 128
+          minLength: 40
+          title: Token
+        password:
+          type: string
+          maxLength: 128
+          minLength: 12
+          title: Password
+      additionalProperties: false
+      type: object
+      required:
+      - token
+      - password
+      title: InviteAcceptRequest
+    MergeRequest:
+      properties:
+        target_id:
+          type: string
+          format: uuid
+          title: Target Id
+      additionalProperties: false
+      type: object
+      required:
+      - target_id
+      title: MergeRequest
+    MobileOTPRequest:
+      properties:
+        mobile:
+          type: string
+          pattern: ^\+201[0-9]{9}$
+          title: Mobile
+      additionalProperties: false
+      type: object
+      required:
+      - mobile
+      title: MobileOTPRequest
+    OwnershipLevel:
+      type: string
+      enum:
+      - own
+      - team
+      - all
+      title: OwnershipLevel
+    ReplyRequest:
+      properties:
+        body:
+          type: string
+          maxLength: 5000
+          minLength: 1
+          title: Body
+      additionalProperties: false
+      type: object
+      required:
+      - body
+      title: ReplyRequest
+    RevealReason:
+      properties:
+        reason:
+          type: string
+          maxLength: 200
+          minLength: 10
+          title: Reason
+      additionalProperties: false
+      type: object
+      required:
+      - reason
+      title: RevealReason
+    RoleClone:
+      properties:
+        name:
+          type: string
+          maxLength: 80
+          minLength: 2
+          title: Name
+      additionalProperties: false
+      type: object
+      required:
+      - name
+      title: RoleClone
+    RoleSpec:
+      properties:
+        name:
+          type: string
+          maxLength: 80
+          minLength: 2
+          title: Name
+        description:
+          type: string
+          maxLength: 300
+          title: Description
+          default: ''
+        permissions:
+          items:
+            type: string
+          type: array
+          maxItems: 40
+          uniqueItems: true
+          title: Permissions
+      additionalProperties: false
+      type: object
+      required:
+      - name
+      title: RoleSpec
+    SavedViewCreate:
+      properties:
+        name:
+          type: string
+          maxLength: 80
+          minLength: 2
+          title: Name
+        criteria:
+          $ref: '#/components/schemas/ComplaintFilter'
+      additionalProperties: false
+      type: object
+      required:
+      - name
+      - criteria
+      title: SavedViewCreate
+    SlaRuleSpec:
+      properties:
+        company_id:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Company Id
+        insurance_type:
+          anyOf:
+          - $ref: '#/components/schemas/InsuranceType'
+          - type: 'null'
+        priority:
+          anyOf:
+          - $ref: '#/components/schemas/ComplaintPriority'
+          - type: 'null'
+        response_minutes:
+          type: integer
+          maximum: 525600.0
+          minimum: 1.0
+          title: Response Minutes
+        resolution_minutes:
+          type: integer
+          maximum: 525600.0
+          minimum: 1.0
+          title: Resolution Minutes
+        business_hours:
+          additionalProperties: true
+          type: object
+          title: Business Hours
+        is_active:
+          type: boolean
+          title: Is Active
+          default: true
+      additionalProperties: false
+      type: object
+      required:
+      - response_minutes
+      - resolution_minutes
+      title: SlaRuleSpec
+    StaffInviteRequest:
+      properties:
+        email:
+          type: string
+          maxLength: 254
+          minLength: 5
+          pattern: ^[^@\s]+@[^@\s]+\.[^@\s]+$
+          title: Email
+        full_name:
+          type: string
+          maxLength: 120
+          minLength: 2
+          title: Full Name
+      additionalProperties: false
+      type: object
+      required:
+      - email
+      - full_name
+      title: StaffInviteRequest
+    StaffLoginRequest:
+      properties:
+        email:
+          type: string
+          maxLength: 254
+          minLength: 5
+          pattern: ^[^@\s]+@[^@\s]+\.[^@\s]+$
+          title: Email
+        password:
+          type: string
+          maxLength: 256
+          minLength: 1
+          title: Password
+      additionalProperties: false
+      type: object
+      required:
+      - email
+      - password
+      title: StaffLoginRequest
+    StaffProfileEdit:
+      properties:
+        email:
+          type: string
+          maxLength: 254
+          minLength: 5
+          pattern: ^[^@\s]+@[^@\s]+\.[^@\s]+$
+          title: Email
+        full_name:
+          type: string
+          maxLength: 120
+          minLength: 2
+          title: Full Name
+      additionalProperties: false
+      type: object
+      required:
+      - email
+      - full_name
+      title: StaffProfileEdit
+      description: Profile only; roles, scopes and credentials have separate guarded
+        flows.
+    StatusChangeRequest:
+      properties:
+        status:
+          $ref: '#/components/schemas/ComplaintStatus'
+      additionalProperties: false
+      type: object
+      required:
+      - status
+      title: StatusChangeRequest
+    TemplateSpec:
+      properties:
+        company_id:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Company Id
+        title:
+          type: string
+          maxLength: 100
+          minLength: 2
+          title: Title
+        body_en:
+          type: string
+          maxLength: 2000
+          minLength: 2
+          title: Body En
+        body_ar:
+          type: string
+          maxLength: 2000
+          minLength: 2
+          title: Body Ar
+        is_active:
+          type: boolean
+          title: Is Active
+          default: true
+      additionalProperties: false
+      type: object
+      required:
+      - title
+      - body_en
+      - body_ar
+      title: TemplateSpec
+    TotpConfirmRequest:
+      properties:
+        code:
+          type: string
+          pattern: ^[0-9]{6}$
+          title: Code
+        challenge:
+          anyOf:
+          - type: string
+            maxLength: 1500
+            minLength: 64
+          - type: 'null'
+          title: Challenge
+      additionalProperties: false
+      type: object
+      required:
+      - code
+      title: TotpConfirmRequest
+    TotpPolicyRequest:
+      properties:
+        required:
+          type: boolean
+          title: Required
+      additionalProperties: false
+      type: object
+      required:
+      - required
+      title: TotpPolicyRequest
+    TotpVerifyRequest:
+      properties:
+        challenge:
+          type: string
+          maxLength: 1500
+          minLength: 64
+          title: Challenge
+        code:
+          type: string
+          pattern: ^[0-9]{6}$
+          title: Code
+      additionalProperties: false
+      type: object
+      required:
+      - challenge
+      - code
+      title: TotpVerifyRequest
+    UploadFilePlan:
+      properties:
+        filename:
+          type: string
+          maxLength: 255
+          minLength: 1
+          title: Filename
+        mime_type:
+          type: string
+          pattern: ^(application/pdf|image/png|image/jpeg)$
+          title: Mime Type
+        size_bytes:
+          type: integer
+          maximum: 10485760.0
+          minimum: 1.0
+          title: Size Bytes
+        checksum_sha256:
+          type: string
+          pattern: ^[0-9a-f]{64}$
+          title: Checksum Sha256
+      additionalProperties: false
+      type: object
+      required:
+      - filename
+      - mime_type
+      - size_bytes
+      - checksum_sha256
+      title: UploadFilePlan
+    UploadPlan:
+      properties:
+        files:
+          items:
+            $ref: '#/components/schemas/UploadFilePlan'
+          type: array
+          maxItems: 5
+          minItems: 1
+          title: Files
+      additionalProperties: false
+      type: object
+      required:
+      - files
+      title: UploadPlan
+    ValidationError:
+      properties:
+        loc:
+          items:
+            anyOf:
+            - type: string
+            - type: integer
+          type: array
+          title: Location
+        msg:
+          type: string
+          title: Message
+        type:
+          type: string
+          title: Error Type
+        input:
+          title: Input
+        ctx:
+          type: object
+          title: Context
+      type: object
+      required:
+      - loc
+      - msg
+      - type
+      title: ValidationError
+  securitySchemes:
+    AccessCookie:
+      type: apiKey
+      in: cookie
+      name: access_token
+      description: Short-lived JWT; Secure, HttpOnly, SameSite=Lax, Path=/api.
+    RefreshCookie:
+      type: apiKey
+      in: cookie
+      name: refresh_token
+      description: Rotating JWT; Secure, HttpOnly, SameSite=Lax, Path=/api/auth.
+x-websockets:
+- path: /api/staff/complaints/stream
+  description: Same-origin, AccessCookie, complaints.view; filtered scoped snapshots
+    on connect, refresh or heartbeat.
