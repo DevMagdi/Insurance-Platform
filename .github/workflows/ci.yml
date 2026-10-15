@@ -69,6 +69,13 @@ jobs:
           for line in notes[:20]:
               escaped = line[:1200].replace('%', '%25').replace('\r', '%0D')
               print(f'::error title=PostgreSQL integration failure::{escaped}')
+          import re
+          # The log archive is not always reachable from restricted networks.
+          # Annotate a bounded excerpt of each failing traceback as well.
+          parts = re.split(r'(?m)^_{3,} (test_.*) _{3,}$', '\n'.join(lines))
+          for name, trace in list(zip(parts[1::2], parts[2::2]))[:12]:
+              tail = trace[-2200:].replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
+              print(f'::error title=Trace {name[:70]}::{tail}')
           PY
           fi
           exit "$code"

@@ -449,7 +449,10 @@ async def visible_ids(session: AsyncSession, table: str) -> set[UUID]:
         "report_schedules",
         "export_jobs",
     }
-    return {row[0] for row in (await session.execute(text(f"SELECT id FROM {table}"))).all()}
+    # The access-change trigger also emits staff-only *non-complaint* notices.
+    # These must remain visible after complaint permission/scope is revoked.
+    where = " WHERE complaint_id IS NOT NULL" if table == "notifications" else ""
+    return {row[0] for row in (await session.execute(text(f"SELECT id FROM {table}{where}"))).all()}
 
 
 async def test_company_type_ownership_and_child_rls(data: Data, runtime_url: str) -> None:

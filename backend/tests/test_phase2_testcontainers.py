@@ -215,6 +215,7 @@ async def test_app(stack: dict, identities: dict):
     )
     engine = make_engine(stack["runtime"])
     redis = Redis.from_url(stack["redis"])
+    await redis.flushdb()  # Isolate per-IP/mobile limits across otherwise independent cases.
     mailbox = Mailbox()
     objects = Objects()
     factory = async_sessionmaker(engine, expire_on_commit=False)
