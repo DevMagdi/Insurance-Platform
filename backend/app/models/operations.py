@@ -12,6 +12,7 @@ from sqlalchemy import (
     ForeignKeyConstraint,
     Integer,
     LargeBinary,
+    SmallInteger,
     Text,
     func,
     text,
@@ -34,6 +35,7 @@ class SlaRule(Base):
     priority: Mapped[ComplaintPriority | None] = mapped_column(PRIORITY_ENUM)
     response_minutes: Mapped[int] = mapped_column(Integer)
     resolution_minutes: Mapped[int] = mapped_column(Integer)
+    alert_before_minutes: Mapped[int] = mapped_column(Integer, server_default=text("60"))
     business_hours: Mapped[dict[str, Any]] = mapped_column(
         JSONB, server_default=text("'{}'::jsonb")
     )
@@ -122,6 +124,7 @@ class AssignmentRule(Base):
     sort_order: Mapped[int] = mapped_column(Integer, server_default=text("100"))
     is_active: Mapped[bool] = mapped_column(Boolean, server_default=text("true"))
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(server_default=func.now())
 
 
 class ReportSchedule(Base):
@@ -136,9 +139,39 @@ class ReportSchedule(Base):
     recipient_emails: Mapped[list[str]] = mapped_column(
         ARRAY(Text), server_default=text("ARRAY[]::text[]")
     )
+    format: Mapped[str] = mapped_column(Text, server_default="csv")
     next_run_at: Mapped[datetime | None]
     is_active: Mapped[bool] = mapped_column(Boolean, server_default=text("true"))
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+    last_run_at: Mapped[datetime | None]
+    last_state: Mapped[str | None] = mapped_column(Text)
+    claim_expires_at: Mapped[datetime | None]
+
+
+class ReportRun(Base):
+    __tablename__ = "report_runs"
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, server_default=func.gen_random_uuid())
+    schedule_id: Mapped[UUID] = mapped_column(ForeignKey("report_schedules.id", ondelete="CASCADE"))
+    owner_staff_id: Mapped[UUID] = mapped_column(ForeignKey("staff_users.id"))
+    attempt: Mapped[int] = mapped_column(SmallInteger, server_default=text("1"))
+    state: Mapped[str] = mapped_column(Text, server_default="running")
+    row_count: Mapped[int] = mapped_column(Integer, server_default=text("0"))
+    error_detail: Mapped[str | None] = mapped_column(Text)
+    started_at: Mapped[datetime] = mapped_column(server_default=func.now())
+    completed_at: Mapped[datetime | None]
+
+
+class AnalyticsRollupState(Base):
+    """Single row describing the materialized analytics rollup freshness."""
+
+    __tablename__ = "analytics_rollup_state"
+
+    id: Mapped[bool] = mapped_column(Boolean, primary_key=True, server_default=text("true"))
+    last_attempt_at: Mapped[datetime | None]
+    last_success_at: Mapped[datetime | None]
+    last_error: Mapped[str | None] = mapped_column(Text)
+    refreshed_rows: Mapped[int | None] = mapped_column(Integer)
 
 
 class ExportJob(Base):
@@ -147,6 +180,7 @@ class ExportJob(Base):
     id: Mapped[UUID] = mapped_column(primary_key=True, server_default=func.gen_random_uuid())
     owner_staff_id: Mapped[UUID] = mapped_column(ForeignKey("staff_users.id"))
     kind: Mapped[str] = mapped_column(Text)
+    format: Mapped[str] = mapped_column(Text, server_default="csv")
     filters: Mapped[dict[str, Any]] = mapped_column(JSONB, server_default=text("'{}'::jsonb"))
     status: Mapped[str] = mapped_column(Text, server_default="queued")
     private_storage_key: Mapped[str | None] = mapped_column(Text)

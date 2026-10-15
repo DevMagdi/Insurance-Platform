@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime
 from typing import Any, Literal, cast
 from uuid import UUID
 
@@ -93,6 +94,8 @@ class CatalogRepository:
                 SlaRule.priority,
                 SlaRule.response_minutes,
                 SlaRule.resolution_minutes,
+                SlaRule.alert_before_minutes,
+                SlaRule.business_hours,
                 SlaRule.is_active,
             )
             .where(company_filter, kind_filter)
@@ -100,6 +103,59 @@ class CatalogRepository:
             .limit(500)
         )
         return [dict(row._mapping) for row in rows]
+
+    async def simulate_sla(
+        self,
+        db: AsyncSession,
+        company_id: UUID | None,
+        insurance_type: str,
+        priority: str,
+        created_at: datetime,
+    ) -> dict[str, Any] | None:
+        """Deadline preview for the rule that would match; None means not permitted."""
+        value = await db.scalar(
+            text(
+                "SELECT app_security.simulate_sla("
+                "CAST(:company AS uuid), CAST(:kind AS insurance_type), "
+                "CAST(:priority AS complaint_priority), :created)"
+            ),
+            {
+                "company": company_id,
+                "kind": insurance_type,
+                "priority": priority,
+                "created": created_at,
+            },
+        )
+        if value is None:
+            return None
+        return cast("dict[str, Any]", value)
+
+    async def test_business_hours(
+        self,
+        db: AsyncSession,
+        calendar: dict[str, Any] | None,
+        minutes: int,
+        from_at: datetime,
+        company_id: UUID | None,
+        insurance_type: str | None,
+    ) -> dict[str, Any] | None:
+        value = await db.scalar(
+            text(
+                "SELECT app_security.test_business_hours("
+                "CAST(:calendar AS jsonb), :minutes, :from_at, "
+                "CAST(:company AS uuid), CAST(:kind AS insurance_type))"
+            ),
+            {
+                "calendar": json.dumps(calendar if calendar else {}),
+                "minutes": minutes,
+                "from_at": from_at,
+                "company": company_id,
+                "kind": insurance_type,
+            },
+        )
+        if value is None:
+            return None
+        return cast("dict[str, Any]", value)
 
     async def templates(self, db: AsyncSession, scope: AccessScope) -> list[dict[str, Any]]:
         rows = await db.execute(

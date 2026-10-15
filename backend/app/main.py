@@ -19,6 +19,8 @@ from app.api import (
     catalog,
     customer,
     exports,
+    operations,
+    reports,
     staff,
     websocket,
     workflow,
@@ -88,6 +90,8 @@ app.include_router(audit.router)
 app.include_router(catalog.router)
 app.include_router(exports.router)
 app.include_router(attachments.router)
+app.include_router(reports.router)
+app.include_router(operations.router)
 app.include_router(websocket.router)
 
 

@@ -141,11 +141,12 @@ async def test_export_worker_uses_only_guarded_functions_and_private_storage(
         csat_score=None,
     )
     calls: list[str] = []
+    fmt = "csv"
 
     async def query(engine: object, sql: str, params: dict):
         calls.append(sql)
         if "claim_exports" in sql:
-            return [SimpleNamespace(job_id=job, attempt=1, kind="complaints")]
+            return [SimpleNamespace(job_id=job, attempt=1, kind="complaints", format=fmt)]
         if "export_rows" in sql:
             return [row]
         if "finish_export" in sql:
@@ -161,6 +162,17 @@ async def test_export_worker_uses_only_guarded_functions_and_private_storage(
     assert key == f"exports/{job}/1.csv" and isinstance(data, BytesIO)
     assert mime.startswith("text/csv") and b"CMP-2026-000002" in data.getvalue()
     storage.delete.assert_not_awaited()
+    # Excel and PDF jobs keep their own extension and media type.
+    fmt = "xlsx"
+    await worker.export_pending({"engine": object(), "storage": storage})
+    key, data, mime = storage.put.call_args.args
+    assert key == f"exports/{job}/1.xlsx"
+    assert mime.startswith("application/vnd.openxmlformats") and data.getvalue()[:2] == b"PK"
+    fmt = "pdf"
+    await worker.export_pending({"engine": object(), "storage": storage})
+    key, data, mime = storage.put.call_args.args
+    assert key == f"exports/{job}/1.pdf" and mime == "application/pdf"
+    assert data.getvalue().startswith(b"%PDF-1.4")
     assert await worker.export_pending({"engine": object(), "storage": None}) == (
         "export storage unavailable; jobs remain queued"
     )
