@@ -59,6 +59,8 @@ from app.services.integrations import (
     webhook_secret_aad,
 )
 from app.services.providers import Delivery, SMTPDelivery, UnconfiguredVirusScanner, VirusScanner
+from app.services.render import EXTENSIONS, MEDIA_TYPES
+from app.services.reports import ReportService, render_report, report_message
 from app.services.storage import ObjectStorage, S3ObjectStorage
 
 logger = logging.getLogger(__name__)
@@ -570,6 +572,16 @@ async def assign_tickets(ctx: dict[str, Any]) -> str:
     return f"assigned {rows[0].processed} ticket(s)"
 
 
+async def warn_sla(ctx: dict[str, Any]) -> str:
+    """At-risk alerts run before the breach sweep so agents see them first."""
+    rows = await _worker_query(
+        ctx["engine"],
+        "SELECT app_security.process_sla_warnings(:limit) AS processed",
+        {"limit": 20},
+    )
+    return f"warned {rows[0].processed} ticket(s) before their SLA deadline"
+
+
 async def check_sla(ctx: dict[str, Any]) -> str:
     rows = await _worker_query(
         ctx["engine"],
@@ -625,7 +637,8 @@ async def export_pending(ctx: dict[str, Any]) -> str:
         engine, "SELECT * FROM app_security.claim_exports(:limit)", {"limit": 10}
     )
     for job in jobs:
-        key = f"exports/{job.job_id}/{job.attempt}.csv"
+        media_type = MEDIA_TYPES.get(job.format, MEDIA_TYPES["csv"])
+        key = f"exports/{job.job_id}/{job.attempt}.{EXTENSIONS.get(job.format, 'csv')}"
         uploaded = False
         try:
             rows = await _worker_query(
@@ -633,12 +646,12 @@ async def export_pending(ctx: dict[str, Any]) -> str:
                 "SELECT * FROM app_security.export_rows(:id, :attempt)",
                 {"id": job.job_id, "attempt": job.attempt},
             )
-            data = render_export(job.kind, rows)
+            data = render_export(job.kind, rows, job.format)
             manifest = [
                 {"id": str(row.complaint_id), "created_at": row.complaint_created_at.isoformat()}
                 for row in rows
             ]
-            await storage.put(key, BytesIO(data), "text/csv; charset=utf-8")
+            await storage.put(key, BytesIO(data), media_type)
             uploaded = True
             finished = await _worker_query(
                 engine,
@@ -665,6 +678,75 @@ async def export_pending(ctx: dict[str, Any]) -> str:
                 {"id": job.job_id, "attempt": job.attempt},
             )
     return f"processed {len(jobs)} export job(s)"
+
+
+async def scan_duplicates(ctx: dict[str, Any]) -> str:
+    rows = await _worker_query(
+        ctx["engine"],
+        "SELECT app_security.scan_duplicate_candidates(:limit) AS inserted",
+        {"limit": 50},
+    )
+    return f"recorded {rows[0].inserted} duplicate candidate(s)"
+
+
+async def refresh_analytics_rollup(ctx: dict[str, Any]) -> str:
+    rows = await _worker_query(
+        ctx["engine"], "SELECT app_security.analytics_rollup_refresh() AS rows", {}
+    )
+    return f"refreshed analytics rollup with {rows[0].rows} row(s)"
+
+
+async def deliver_report_runs(ctx: dict[str, Any]) -> str:
+    """Claim due schedules, re-scope rows for the owner, then mail the artifact."""
+    engine: AsyncEngine = ctx["engine"]
+    delivery: Delivery = ctx["delivery"]
+    claimed = await _worker_query(
+        engine, "SELECT * FROM app_security.claim_due_reports(:limit)", {"limit": 10}
+    )
+    for run in claimed:
+        state, detail, row_count = "failed", None, 0
+        try:
+            rows = await _worker_query(
+                engine, "SELECT * FROM app_security.report_rows(:id)", {"id": run.schedule_id}
+            )
+            row_count = len(rows)
+            if row_count == 0:
+                state = "empty"
+            else:
+                data = render_report(rows, run.format)
+                subject, body = report_message(run.name, run.format, row_count)
+                name = f"report-{run.schedule_id}.{EXTENSIONS[run.format]}"
+                delivered = await delivery.send_report(
+                    list(run.recipients),
+                    subject,
+                    body,
+                    name,
+                    MEDIA_TYPES[run.format],
+                    data,
+                )
+                state = "sent" if delivered else "failed"
+                if not delivered:
+                    detail = "delivery provider unavailable"
+        except Exception as exc:
+            detail = str(exc)[:300]
+        try:
+            next_run = ReportService.next_run_at(
+                run.cron_expression, run.time_zone, datetime.now(UTC)
+            )
+        except ValueError as exc:
+            state, detail, next_run = "failed", str(exc)[:300], None
+        await _worker_query(
+            engine,
+            "SELECT app_security.finish_report_run(:id,:state,:rows,:next,:error) AS finished",
+            {
+                "id": run.run_id,
+                "state": state,
+                "rows": row_count,
+                "next": next_run,
+                "error": detail,
+            },
+        )
+    return f"processed {len(claimed)} scheduled report(s)"
 
 
 async def clean_expired_exports(ctx: dict[str, Any]) -> str:
@@ -695,12 +777,16 @@ class WorkerSettings:
         cron(deliver_notices, second=0, run_at_startup=True),
         cron(assign_tickets, second=5, run_at_startup=True),
         cron(scan_pending, second=15, run_at_startup=True),
+        cron(warn_sla, second=18, run_at_startup=True),
         cron(check_sla, second=20, run_at_startup=True),
         cron(deliver_insurer, second=30, run_at_startup=True),
         cron(process_integration_jobs, second=35, run_at_startup=True),
         cron(export_pending, second=45, run_at_startup=True),
         cron(poll_imap_inboxes, minute=set(range(60)), second=50, run_at_startup=True),
         cron(clean_expired_exports, minute={0, 15, 30, 45}, second=55, run_at_startup=True),
+        cron(deliver_report_runs, minute={0, 10, 20, 30, 40, 50}, second=10, run_at_startup=True),
+        cron(scan_duplicates, minute={5, 35}, second=15, run_at_startup=True),
+        cron(refresh_analytics_rollup, minute={2, 32}, second=20, run_at_startup=True),
     ]
     on_startup = startup
     on_shutdown = shutdown

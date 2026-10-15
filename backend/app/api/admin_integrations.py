@@ -14,7 +14,7 @@ from app.security.tokens import csrf_required
 router = APIRouter(prefix="/api/staff/admin", tags=["integration-admin"])
 
 
-@router.get("/integrations")
+@router.get("/integration-connections")
 async def integrations(
     request: Request,
     ctx: RequestContext = Depends(require_permission("integrations.manage")),
@@ -22,7 +22,7 @@ async def integrations(
     return await integration_service(request).list_configs(ctx.db)
 
 
-@router.put("/integrations")
+@router.put("/integration-connections")
 async def configure_integration(
     item: IntegrationConfigSpec,
     request: Request,

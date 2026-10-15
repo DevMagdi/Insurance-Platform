@@ -36,6 +36,15 @@ class Delivery(Protocol):
         payload: dict[str, Any],
     ) -> bool: ...
     async def send_insurer(self, email: str, ticket: str, reason: str) -> bool: ...
+    async def send_report(
+        self,
+        recipients: list[str],
+        subject: str,
+        body: str,
+        attachment_name: str,
+        content_type: str,
+        data: bytes,
+    ) -> bool: ...
 
 
 class SMTPDelivery:
@@ -110,6 +119,39 @@ class SMTPDelivery:
             str(payload.get("locale", "en")),
         )
         await self._mail(address, subject, body)
+        return True
+
+    async def send_report(
+        self,
+        recipients: list[str],
+        subject: str,
+        body: str,
+        attachment_name: str,
+        content_type: str,
+        data: bytes,
+    ) -> bool:
+        if not self.settings.smtp_host:
+            return False
+        message = EmailMessage()
+        message["From"] = self.settings.smtp_from
+        message["To"] = ", ".join(recipients)
+        message["Subject"] = subject
+        message.set_content(body)
+        maintype, _, subtype = content_type.partition("/")
+        message.add_attachment(
+            data,
+            maintype=maintype,
+            subtype=subtype or "octet-stream",
+            filename=attachment_name,
+        )
+        await aiosmtplib.send(
+            message,
+            hostname=self.settings.smtp_host,
+            port=self.settings.smtp_port,
+            username=self.settings.smtp_username,
+            password=self.settings.smtp_password,
+            start_tls=self.settings.smtp_start_tls,
+        )
         return True
 
     async def send_insurer(self, email: str, ticket: str, reason: str) -> bool:

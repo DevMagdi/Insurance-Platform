@@ -136,6 +136,11 @@ class Complaint(Base):
     # intentionally not granted INSERT on these columns, even to write NULL.
     response_due_at: Mapped[datetime | None] = mapped_column(server_default=text("NULL"))
     sla_breached_at: Mapped[datetime | None] = mapped_column(server_default=text("NULL"))
+    # Revision 012: at-risk alerting and response-clock bookkeeping.
+    sla_alert_at: Mapped[datetime | None] = mapped_column(server_default=text("NULL"))
+    sla_alerted_at: Mapped[datetime | None] = mapped_column(server_default=text("NULL"))
+    first_response_at: Mapped[datetime | None] = mapped_column(server_default=text("NULL"))
+    response_breached_at: Mapped[datetime | None] = mapped_column(server_default=text("NULL"))
     merged_into_id: Mapped[UUID | None] = mapped_column(server_default=text("NULL"))
     merged_into_created_at: Mapped[datetime | None] = mapped_column(server_default=text("NULL"))
     resolved_at: Mapped[datetime | None] = mapped_column(server_default=text("NULL"))

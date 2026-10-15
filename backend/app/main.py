@@ -22,7 +22,9 @@ from app.api import (
     exports,
     integration_webhooks,
     integrations,
+    operations,
     public_api,
+    reports,
     staff,
     websocket,
     workflow,
@@ -104,6 +106,8 @@ app.include_router(integrations.router)
 app.include_router(admin_integrations.router)
 app.include_router(integration_webhooks.router)
 app.include_router(public_api.router)
+app.include_router(reports.router)
+app.include_router(operations.router)
 app.include_router(websocket.router)
 
 

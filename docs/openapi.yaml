@@ -2360,6 +2360,40 @@ paths:
       security:
       - AccessCookie: []
       x-required-permission: complaints.view
+  /api/staff/complaints/{complaint_id}/sla:
+    get:
+      tags:
+      - staff
+      summary: Complaint Sla
+      description: Deadlines, first response and at-risk/breached state for one ticket.
+      operationId: complaint_sla_api_staff_complaints__complaint_id__sla_get
+      parameters:
+      - name: complaint_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Complaint Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Complaint Sla Api Staff Complaints  Complaint Id  Sla
+                  Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: complaints.view
   /api/staff/complaints/{complaint_id}/timeline:
     get:
       tags:
@@ -3294,6 +3328,169 @@ paths:
       security:
       - AccessCookie: []
       x-required-permission: analytics.view
+  /api/staff/analytics/rollup:
+    get:
+      tags:
+      - analytics
+      summary: Rollup
+      description: Pre-aggregated series for whole UTC days; falls back to a live
+        query.
+      operationId: rollup_api_staff_analytics_rollup_get
+      parameters:
+      - name: status
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - $ref: '#/components/schemas/ComplaintStatus'
+          - type: 'null'
+          title: Status
+      - name: company_id
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Company Id
+      - name: insurance_type
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - $ref: '#/components/schemas/InsuranceType'
+          - type: 'null'
+          title: Insurance Type
+      - name: assigned_agent_id
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Assigned Agent Id
+      - name: priority
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - $ref: '#/components/schemas/ComplaintPriority'
+          - type: 'null'
+          title: Priority
+      - name: category_id
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Category Id
+      - name: channel
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - $ref: '#/components/schemas/CommunicationChannel'
+          - type: 'null'
+          title: Channel
+      - name: date_from
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Date From
+      - name: date_to
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Date To
+      - name: ticket_no
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            maxLength: 30
+          - type: 'null'
+          title: Ticket No
+      - name: search
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            minLength: 2
+            maxLength: 120
+          - type: 'null'
+          title: Search
+      - name: sort_by
+        in: query
+        required: false
+        schema:
+          enum:
+          - created_at
+          - updated_at
+          - priority
+          - status
+          type: string
+          default: created_at
+          title: Sort By
+      - name: sort_dir
+        in: query
+        required: false
+        schema:
+          enum:
+          - asc
+          - desc
+          type: string
+          default: desc
+          title: Sort Dir
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 100
+          minimum: 1
+          default: 1
+          title: Page
+      - name: page_size
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 100
+          minimum: 1
+          default: 20
+          title: Page Size
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Rollup Api Staff Analytics Rollup Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: analytics.view
   /api/staff/analytics/scorecards:
     get:
       tags:
@@ -3583,6 +3780,64 @@ paths:
                   type: object
                   additionalProperties: true
                 title: Response Access Changes Api Staff Audit Access Changes Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: audit.view
+  /api/staff/audit/events.xlsx:
+    get:
+      tags:
+      - audit
+      summary: Export Audit Xlsx
+      operationId: export_audit_xlsx_api_staff_audit_events_xlsx_get
+      parameters:
+      - name: start
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Start
+      - name: end
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: End
+      - name: actor_id
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Actor Id
+      - name: complaint_id
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Complaint Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
         '422':
           description: Validation Error
           content:
@@ -3953,6 +4208,70 @@ paths:
                   type: string
                   format: uuid
                 title: Response Update Sla Rule Api Staff Admin Sla Rules  Item Id  Put
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: sla.manage
+  /api/staff/admin/sla-rules/simulate:
+    post:
+      tags:
+      - administration
+      summary: Simulate Sla Rule
+      description: Preview the deadline the stored rules would set for a ticket shape.
+      operationId: simulate_sla_rule_api_staff_admin_sla_rules_simulate_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SlaSimulationRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response Simulate Sla Rule Api Staff Admin Sla Rules Simulate
+                  Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: sla.manage
+  /api/staff/admin/sla-rules/business-hours/preview:
+    post:
+      tags:
+      - administration
+      summary: Preview Business Hours
+      description: Validate a draft calendar and preview a deadline before it is saved.
+      operationId: preview_business_hours_api_staff_admin_sla_rules_business_hours_preview_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BusinessHoursTestRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response Preview Business Hours Api Staff Admin Sla Rules Business
+                  Hours Preview Post
         '422':
           description: Validation Error
           content:
@@ -4965,12 +5284,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
-  /api/staff/admin/integrations:
+  /api/staff/admin/integration-connections:
     get:
       tags:
       - integration-admin
       summary: Integrations
-      operationId: integrations_api_staff_admin_integrations_get
+      operationId: integrations_api_staff_admin_integration_connections_get
       responses:
         '200':
           description: Successful Response
@@ -4981,12 +5300,13 @@ paths:
                   additionalProperties: true
                   type: object
                 type: array
-                title: Response Integrations Api Staff Admin Integrations Get
+                title: Response Integrations Api Staff Admin Integration Connections
+                  Get
     put:
       tags:
       - integration-admin
       summary: Configure Integration
-      operationId: configure_integration_api_staff_admin_integrations_put
+      operationId: configure_integration_api_staff_admin_integration_connections_put
       requestBody:
         content:
           application/json:
@@ -5001,8 +5321,8 @@ paths:
               schema:
                 additionalProperties: true
                 type: object
-                title: Response Configure Integration Api Staff Admin Integrations
-                  Put
+                title: Response Configure Integration Api Staff Admin Integration
+                  Connections Put
         '422':
           description: Validation Error
           content:
@@ -5337,6 +5657,612 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+  /api/staff/reports/schedules:
+    get:
+      tags:
+      - reports
+      summary: Schedules
+      operationId: schedules_api_staff_reports_schedules_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/ReportScheduleView'
+                type: array
+                title: Response Schedules Api Staff Reports Schedules Get
+      security:
+      - AccessCookie: []
+      x-required-permission: reports.manage
+    post:
+      tags:
+      - reports
+      summary: Create Schedule
+      operationId: create_schedule_api_staff_reports_schedules_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReportScheduleSpec'
+        required: true
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                  format: uuid
+                type: object
+                title: Response Create Schedule Api Staff Reports Schedules Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: reports.manage
+      parameters:
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
+  /api/staff/reports/schedules/{schedule_id}:
+    put:
+      tags:
+      - reports
+      summary: Update Schedule
+      operationId: update_schedule_api_staff_reports_schedules__schedule_id__put
+      parameters:
+      - name: schedule_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Schedule Id
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReportScheduleSpec'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: string
+                  format: uuid
+                title: Response Update Schedule Api Staff Reports Schedules  Schedule
+                  Id  Put
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: reports.manage
+    delete:
+      tags:
+      - reports
+      summary: Delete Schedule
+      operationId: delete_schedule_api_staff_reports_schedules__schedule_id__delete
+      parameters:
+      - name: schedule_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Schedule Id
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
+      responses:
+        '204':
+          description: Successful Response
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: reports.manage
+  /api/staff/reports/schedules/{schedule_id}/run:
+    post:
+      tags:
+      - reports
+      summary: Run Schedule Now
+      operationId: run_schedule_now_api_staff_reports_schedules__schedule_id__run_post
+      parameters:
+      - name: schedule_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Schedule Id
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
+      responses:
+        '202':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: string
+                title: Response Run Schedule Now Api Staff Reports Schedules  Schedule
+                  Id  Run Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: reports.manage
+  /api/staff/reports/schedules/{schedule_id}/runs:
+    get:
+      tags:
+      - reports
+      summary: Schedule Runs
+      operationId: schedule_runs_api_staff_reports_schedules__schedule_id__runs_get
+      parameters:
+      - name: schedule_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Schedule Id
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          default: 1
+          title: Page
+      - name: page_size
+        in: query
+        required: false
+        schema:
+          type: integer
+          default: 20
+          title: Page Size
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: true
+                title: Response Schedule Runs Api Staff Reports Schedules  Schedule
+                  Id  Runs Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: reports.manage
+  /api/staff/admin/integrations:
+    get:
+      tags:
+      - administration
+      summary: Integrations
+      operationId: integrations_api_staff_admin_integrations_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                items:
+                  additionalProperties: true
+                  type: object
+                type: array
+                title: Response Integrations Api Staff Admin Integrations Get
+      security:
+      - AccessCookie: []
+      x-required-permission: integrations.manage
+    post:
+      tags:
+      - administration
+      summary: Save Integration
+      operationId: save_integration_api_staff_admin_integrations_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IntegrationSpec'
+        required: true
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                  format: uuid
+                type: object
+                title: Response Save Integration Api Staff Admin Integrations Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: integrations.manage
+      parameters:
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
+  /api/staff/admin/integrations/{item_id}:
+    put:
+      tags:
+      - administration
+      summary: Update Integration
+      operationId: update_integration_api_staff_admin_integrations__item_id__put
+      parameters:
+      - name: item_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Item Id
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IntegrationSpec'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: string
+                  format: uuid
+                title: Response Update Integration Api Staff Admin Integrations  Item
+                  Id  Put
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: integrations.manage
+    delete:
+      tags:
+      - administration
+      summary: Delete Integration
+      operationId: delete_integration_api_staff_admin_integrations__item_id__delete
+      parameters:
+      - name: item_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Item Id
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
+      responses:
+        '204':
+          description: Successful Response
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: integrations.manage
+  /api/staff/admin/assignment-rules:
+    get:
+      tags:
+      - administration
+      summary: Assignment Rules
+      operationId: assignment_rules_api_staff_admin_assignment_rules_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                items:
+                  additionalProperties: true
+                  type: object
+                type: array
+                title: Response Assignment Rules Api Staff Admin Assignment Rules
+                  Get
+      security:
+      - AccessCookie: []
+      x-required-permission: complaints.assign
+    post:
+      tags:
+      - administration
+      summary: Create Assignment Rule
+      operationId: create_assignment_rule_api_staff_admin_assignment_rules_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssignmentRuleSpec'
+        required: true
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                  format: uuid
+                type: object
+                title: Response Create Assignment Rule Api Staff Admin Assignment
+                  Rules Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: complaints.assign
+      parameters:
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
+  /api/staff/admin/assignment-rules/{item_id}:
+    put:
+      tags:
+      - administration
+      summary: Update Assignment Rule
+      operationId: update_assignment_rule_api_staff_admin_assignment_rules__item_id__put
+      parameters:
+      - name: item_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Item Id
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssignmentRuleSpec'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: string
+                  format: uuid
+                title: Response Update Assignment Rule Api Staff Admin Assignment
+                  Rules  Item Id  Put
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: complaints.assign
+    delete:
+      tags:
+      - administration
+      summary: Delete Assignment Rule
+      operationId: delete_assignment_rule_api_staff_admin_assignment_rules__item_id__delete
+      parameters:
+      - name: item_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Item Id
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
+      responses:
+        '204':
+          description: Successful Response
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: complaints.assign
+  /api/staff/admin/assignment-rules/preview:
+    post:
+      tags:
+      - administration
+      summary: Preview Assignment
+      description: 'Dry run: which in-scope agents the current rules would offer,
+        in order.'
+      operationId: preview_assignment_api_staff_admin_assignment_rules_preview_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssignmentPreview'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response Preview Assignment Api Staff Admin Assignment Rules
+                  Preview Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: complaints.assign
+  /api/staff/admin/duplicates:
+    get:
+      tags:
+      - administration
+      summary: Duplicate Candidates
+      operationId: duplicate_candidates_api_staff_admin_duplicates_get
+      parameters:
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          default: 50
+          title: Limit
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: true
+                title: Response Duplicate Candidates Api Staff Admin Duplicates Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: complaints.merge
+  /api/staff/admin/duplicates/scan/{complaint_id}:
+    post:
+      tags:
+      - administration
+      summary: Scan Duplicates
+      description: Re-scan a visible ticket on demand; the DB confirms the ticket
+        is readable.
+      operationId: scan_duplicates_api_staff_admin_duplicates_scan__complaint_id__post
+      parameters:
+      - name: complaint_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Complaint Id
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
+      responses:
+        '202':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: integer
+                title: Response Scan Duplicates Api Staff Admin Duplicates Scan  Complaint
+                  Id  Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
   /api/health/live:
     get:
       tags:
@@ -5479,6 +6405,29 @@ components:
       required:
       - permissions
       title: ApiKeyCreate
+    AssignmentPreview:
+      properties:
+        company_id:
+          type: string
+          format: uuid
+          title: Company Id
+        insurance_type:
+          $ref: '#/components/schemas/InsuranceType'
+        priority:
+          $ref: '#/components/schemas/ComplaintPriority'
+          default: normal
+        category_id:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Category Id
+      additionalProperties: false
+      type: object
+      required:
+      - company_id
+      - insurance_type
+      title: AssignmentPreview
     AssignmentRequest:
       properties:
         agent_id:
@@ -5496,6 +6445,61 @@ components:
       required:
       - agent_id
       title: AssignmentRequest
+    AssignmentRuleSpec:
+      properties:
+        company_id:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Company Id
+        insurance_type:
+          anyOf:
+          - $ref: '#/components/schemas/InsuranceType'
+          - type: 'null'
+        category_id:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Category Id
+        priority:
+          anyOf:
+          - $ref: '#/components/schemas/ComplaintPriority'
+          - type: 'null'
+        target_team_id:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Target Team Id
+        target_agent_id:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Target Agent Id
+        strategy:
+          type: string
+          enum:
+          - round_robin
+          - least_workload
+          - by_company
+          title: Strategy
+          default: least_workload
+        sort_order:
+          type: integer
+          maximum: 10000.0
+          minimum: 0.0
+          title: Sort Order
+          default: 100
+        is_active:
+          type: boolean
+          title: Is Active
+          default: true
+      additionalProperties: false
+      type: object
+      title: AssignmentRuleSpec
     BulkAction:
       properties:
         action:
@@ -5526,6 +6530,88 @@ components:
       - action
       - complaint_ids
       title: BulkAction
+    BusinessHoursCalendar:
+      properties:
+        time_zone:
+          type: string
+          maxLength: 64
+          minLength: 3
+          title: Time Zone
+        weekly:
+          items:
+            $ref: '#/components/schemas/BusinessHoursWindow'
+          type: array
+          maxItems: 21
+          minItems: 1
+          title: Weekly
+        holidays:
+          items:
+            type: string
+          type: array
+          maxItems: 60
+          title: Holidays
+      additionalProperties: false
+      type: object
+      required:
+      - time_zone
+      - weekly
+      title: BusinessHoursCalendar
+      description: 'Optional calendar: an empty object means continuous 24/7 coverage.'
+    BusinessHoursTestRequest:
+      properties:
+        business_hours:
+          anyOf:
+          - $ref: '#/components/schemas/BusinessHoursCalendar'
+          - type: 'null'
+        minutes:
+          type: integer
+          maximum: 525600.0
+          minimum: 1.0
+          title: Minutes
+        from_at:
+          type: string
+          format: date-time
+          title: From At
+        company_id:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Company Id
+        insurance_type:
+          anyOf:
+          - $ref: '#/components/schemas/InsuranceType'
+          - type: 'null'
+      additionalProperties: false
+      type: object
+      required:
+      - minutes
+      - from_at
+      title: BusinessHoursTestRequest
+    BusinessHoursWindow:
+      properties:
+        weekday:
+          type: integer
+          maximum: 6.0
+          minimum: 0.0
+          title: Weekday
+        start:
+          type: string
+          pattern: ^([01][0-9]|2[0-3]):[0-5][0-9]$
+          title: Start
+        end:
+          type: string
+          pattern: ^([01][0-9]|2[0-3]):[0-5][0-9]$
+          title: End
+      additionalProperties: false
+      type: object
+      required:
+      - weekday
+      - start
+      - end
+      title: BusinessHoursWindow
+      description: One working window; weekday 0=Sunday to 6=Saturday, Cairo-local
+        clock time.
     CategorySpec:
       properties:
         company_id:
@@ -5869,6 +6955,14 @@ components:
           - complaints
           - analytics
           title: Kind
+        format:
+          type: string
+          enum:
+          - csv
+          - xlsx
+          - pdf
+          title: Format
+          default: csv
         filters:
           $ref: '#/components/schemas/ComplaintFilter'
       additionalProperties: false
@@ -5952,6 +7046,50 @@ components:
       required:
       - provider
       title: IntegrationConfigSpec
+    IntegrationSpec:
+      properties:
+        company_id:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Company Id
+        provider:
+          type: string
+          enum:
+          - email
+          - whatsapp
+          - sms
+          - ai_voice
+          - virus_scan
+          title: Provider
+        config:
+          additionalProperties:
+            anyOf:
+            - type: string
+            - type: integer
+            - type: number
+            - type: boolean
+          type: object
+          maxProperties: 20
+          title: Config
+        secret_ref:
+          anyOf:
+          - type: string
+            pattern: ^[A-Za-z0-9_.:/-]{3,200}$
+          - type: 'null'
+          title: Secret Ref
+        is_enabled:
+          type: boolean
+          title: Is Enabled
+          default: false
+      additionalProperties: false
+      type: object
+      required:
+      - provider
+      title: IntegrationSpec
+      description: Provider settings; secrets are referenced by vault name, never
+        inlined.
     InviteAcceptRequest:
       properties:
         token:
@@ -6011,6 +7149,228 @@ components:
       required:
       - body
       title: ReplyRequest
+    ReportFilter:
+      properties:
+        status:
+          anyOf:
+          - $ref: '#/components/schemas/ComplaintStatus'
+          - type: 'null'
+        company_id:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Company Id
+        insurance_type:
+          anyOf:
+          - $ref: '#/components/schemas/InsuranceType'
+          - type: 'null'
+        assigned_agent_id:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Assigned Agent Id
+        priority:
+          anyOf:
+          - $ref: '#/components/schemas/ComplaintPriority'
+          - type: 'null'
+        category_id:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Category Id
+        channel:
+          anyOf:
+          - $ref: '#/components/schemas/CommunicationChannel'
+          - type: 'null'
+        date_from:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Date From
+        date_to:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Date To
+        ticket_no:
+          anyOf:
+          - type: string
+            maxLength: 30
+          - type: 'null'
+          title: Ticket No
+        search:
+          anyOf:
+          - type: string
+            maxLength: 120
+            minLength: 2
+          - type: 'null'
+          title: Search
+        sort_by:
+          type: string
+          enum:
+          - created_at
+          - updated_at
+          - priority
+          - status
+          title: Sort By
+          default: created_at
+        sort_dir:
+          type: string
+          enum:
+          - asc
+          - desc
+          title: Sort Dir
+          default: desc
+        page:
+          type: integer
+          maximum: 100.0
+          minimum: 1.0
+          title: Page
+          default: 1
+        page_size:
+          type: integer
+          maximum: 100.0
+          minimum: 1.0
+          title: Page Size
+          default: 20
+        window_days:
+          type: integer
+          maximum: 366.0
+          minimum: 1.0
+          title: Window Days
+          default: 7
+      additionalProperties: false
+      type: object
+      title: ReportFilter
+      description: 'Scheduled reports are relative: the window moves with each run.'
+    ReportScheduleSpec:
+      properties:
+        name:
+          type: string
+          maxLength: 80
+          minLength: 2
+          title: Name
+        filters:
+          $ref: '#/components/schemas/ReportFilter'
+        cron_expression:
+          type: string
+          maxLength: 60
+          minLength: 9
+          pattern: ^[0-9*,/ -]+$
+          title: Cron Expression
+        time_zone:
+          type: string
+          maxLength: 64
+          minLength: 3
+          title: Time Zone
+        recipient_emails:
+          items:
+            type: string
+          type: array
+          maxItems: 10
+          minItems: 1
+          title: Recipient Emails
+        format:
+          type: string
+          enum:
+          - csv
+          - xlsx
+          title: Format
+          default: csv
+        next_run_at:
+          type: string
+          format: date-time
+          title: Next Run At
+        is_active:
+          type: boolean
+          title: Is Active
+          default: true
+      additionalProperties: false
+      type: object
+      required:
+      - name
+      - filters
+      - cron_expression
+      - time_zone
+      - recipient_emails
+      - next_run_at
+      title: ReportScheduleSpec
+    ReportScheduleView:
+      properties:
+        id:
+          type: string
+          format: uuid
+          title: Id
+        name:
+          type: string
+          title: Name
+        filters:
+          additionalProperties: true
+          type: object
+          title: Filters
+        cron_expression:
+          type: string
+          title: Cron Expression
+        time_zone:
+          type: string
+          title: Time Zone
+        recipient_emails:
+          items:
+            type: string
+          type: array
+          title: Recipient Emails
+        format:
+          type: string
+          enum:
+          - csv
+          - xlsx
+          title: Format
+        next_run_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Next Run At
+        last_run_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Last Run At
+        last_state:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Last State
+        is_active:
+          type: boolean
+          title: Is Active
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+      additionalProperties: false
+      type: object
+      required:
+      - id
+      - name
+      - filters
+      - cron_expression
+      - time_zone
+      - recipient_emails
+      - format
+      - next_run_at
+      - last_run_at
+      - last_state
+      - is_active
+      - created_at
+      title: ReportScheduleView
+      description: Read model for one owned schedule; filters stay structured.
     RevealReason:
       properties:
         reason:
@@ -6125,10 +7485,16 @@ components:
           maximum: 525600.0
           minimum: 1.0
           title: Resolution Minutes
+        alert_before_minutes:
+          type: integer
+          maximum: 43200.0
+          minimum: 0.0
+          title: Alert Before Minutes
+          default: 60
         business_hours:
-          additionalProperties: true
-          type: object
-          title: Business Hours
+          anyOf:
+          - $ref: '#/components/schemas/BusinessHoursCalendar'
+          - type: 'null'
         is_active:
           type: boolean
           title: Is Active
@@ -6139,6 +7505,29 @@ components:
       - response_minutes
       - resolution_minutes
       title: SlaRuleSpec
+    SlaSimulationRequest:
+      properties:
+        company_id:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Company Id
+        insurance_type:
+          $ref: '#/components/schemas/InsuranceType'
+        priority:
+          $ref: '#/components/schemas/ComplaintPriority'
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+      additionalProperties: false
+      type: object
+      required:
+      - insurance_type
+      - priority
+      - created_at
+      title: SlaSimulationRequest
     StaffInviteRequest:
       properties:
         email:

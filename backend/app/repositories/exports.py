@@ -15,8 +15,12 @@ from app.models.operations import ExportJob
 class ExportRepository:
     async def request(self, db: AsyncSession, item: ExportRequest) -> UUID:
         result = await db.scalar(
-            text("SELECT app_security.request_export(:kind,CAST(:filters AS jsonb))"),
-            {"kind": item.kind, "filters": item.filters.model_dump_json(exclude_none=True)},
+            text("SELECT app_security.request_export(:kind, CAST(:filters AS jsonb), :format)"),
+            {
+                "kind": item.kind,
+                "filters": item.filters.model_dump_json(exclude_none=True),
+                "format": item.format,
+            },
         )
         assert isinstance(result, UUID)
         return result
@@ -26,6 +30,7 @@ class ExportRepository:
             select(
                 ExportJob.id,
                 ExportJob.kind,
+                ExportJob.format,
                 ExportJob.status,
                 ExportJob.filters,
                 ExportJob.created_at,

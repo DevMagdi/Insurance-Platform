@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+import zoneinfo
 from datetime import UTC, datetime, timedelta
 from typing import Any, Literal
 from urllib.parse import urlsplit
@@ -23,6 +24,12 @@ from app.security.national_id import validate_national_id
 
 class StrictModel(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+
+def _require_tz(value: datetime) -> datetime:
+    if value.tzinfo is None or value.utcoffset() is None:
+        raise ValueError("A timezone-aware timestamp is required")
+    return value
 
 
 Mobile = Field(pattern=r"^\+201[0-9]{9}$")
@@ -113,21 +120,200 @@ class CategorySpec(StrictModel):
     is_active: bool = True
 
 
+class BusinessHoursWindow(StrictModel):
+    """One working window; weekday 0=Sunday to 6=Saturday, Cairo-local clock time."""
+
+    weekday: int = Field(ge=0, le=6)
+    start: str = Field(pattern=r"^([01][0-9]|2[0-3]):[0-5][0-9]$")
+    end: str = Field(pattern=r"^([01][0-9]|2[0-3]):[0-5][0-9]$")
+
+    @model_validator(mode="after")
+    def ordered(self) -> BusinessHoursWindow:
+        if self.end <= self.start:
+            raise ValueError("A working window must end after it starts")
+        return self
+
+
+class BusinessHoursCalendar(StrictModel):
+    """Optional calendar: an empty object means continuous 24/7 coverage."""
+
+    time_zone: str = Field(min_length=3, max_length=64)
+    weekly: list[BusinessHoursWindow] = Field(min_length=1, max_length=21)
+    holidays: list[str] = Field(default_factory=list, max_length=60)
+
+    @field_validator("holidays")
+    @classmethod
+    def valid_holidays(cls, value: list[str]) -> list[str]:
+        for item in value:
+            if not re.fullmatch(r"[0-9]{4}-[0-9]{2}-[0-9]{2}", item):
+                raise ValueError("Holidays must be YYYY-MM-DD")
+        return value
+
+    @model_validator(mode="after")
+    def known_time_zone(self) -> BusinessHoursCalendar:
+        if self.time_zone not in zoneinfo.available_timezones():
+            raise ValueError("Unknown IANA time zone")
+        return self
+
+
 class SlaRuleSpec(StrictModel):
     company_id: UUID | None = None
     insurance_type: InsuranceType | None = None
     priority: ComplaintPriority | None = None
     response_minutes: int = Field(ge=1, le=525600)
     resolution_minutes: int = Field(ge=1, le=525600)
-    business_hours: dict[str, Any] = Field(default_factory=dict)
+    alert_before_minutes: int = Field(default=60, ge=0, le=43200)
+    business_hours: BusinessHoursCalendar | None = None
     is_active: bool = True
 
-    @field_validator("business_hours")
+    @model_validator(mode="after")
+    def ordered_targets(self) -> SlaRuleSpec:
+        if self.resolution_minutes < self.response_minutes:
+            raise ValueError("Resolution target cannot be shorter than the response target")
+        return self
+
+
+class SlaSimulationRequest(StrictModel):
+    company_id: UUID | None = None
+    insurance_type: InsuranceType
+    priority: ComplaintPriority
+    created_at: datetime
+
+    @field_validator("created_at")
     @classmethod
-    def continuous_only(cls, value: dict[str, Any]) -> dict[str, Any]:
-        if value:
-            raise ValueError("Business-hours calendars are not implemented; use continuous SLA")
+    def aware(cls, value: datetime) -> datetime:
+        return _require_tz(value)
+
+
+class BusinessHoursTestRequest(StrictModel):
+    business_hours: BusinessHoursCalendar | None = None
+    minutes: int = Field(ge=1, le=525600)
+    from_at: datetime
+    company_id: UUID | None = None
+    insurance_type: InsuranceType | None = None
+
+    @field_validator("from_at")
+    @classmethod
+    def aware(cls, value: datetime) -> datetime:
+        return _require_tz(value)
+
+
+class ReportScheduleSpec(StrictModel):
+    name: str = Field(min_length=2, max_length=80)
+    filters: ReportFilter
+    cron_expression: str = Field(min_length=9, max_length=60, pattern=r"^[0-9*,/ -]+$")
+    time_zone: str = Field(min_length=3, max_length=64)
+    recipient_emails: list[str] = Field(min_length=1, max_length=10)
+    format: Literal["csv", "xlsx"] = "csv"
+    next_run_at: datetime
+    is_active: bool = True
+
+    @field_validator("recipient_emails")
+    @classmethod
+    def deliverable(cls, value: list[str]) -> list[str]:
+        unique = sorted({item.strip().lower() for item in value})
+        if len(unique) != len(value):
+            raise ValueError("Recipient addresses must be unique")
+        for item in unique:
+            if not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", item) or len(item) > 254:
+                raise ValueError("Invalid recipient address")
+        return unique
+
+    @field_validator("time_zone")
+    @classmethod
+    def zone(cls, value: str) -> str:
+        if value not in zoneinfo.available_timezones():
+            raise ValueError("Unknown IANA time zone")
         return value
+
+    @field_validator("next_run_at")
+    @classmethod
+    def aware(cls, value: datetime) -> datetime:
+        return _require_tz(value)
+
+    @model_validator(mode="after")
+    def bounded_window(self) -> ReportScheduleSpec:
+        if not self.recipient_emails:
+            raise ValueError("At least one recipient is required")
+        return self
+
+
+class ReportScheduleView(StrictModel):
+    """Read model for one owned schedule; filters stay structured."""
+
+    id: UUID
+    name: str
+    filters: dict[str, Any]
+    cron_expression: str
+    time_zone: str
+    recipient_emails: list[str]
+    format: Literal["csv", "xlsx"]
+    next_run_at: datetime | None
+    last_run_at: datetime | None
+    last_state: str | None
+    is_active: bool
+    created_at: datetime
+
+    @model_validator(mode="after")
+    def deliverable_state(self) -> ReportScheduleView:
+        if self.next_run_at is not None and self.next_run_at.tzinfo is None:
+            raise ValueError("next_run_at must be timezone-aware")
+        return self
+
+
+class IntegrationSpec(StrictModel):
+    """Provider settings; secrets are referenced by vault name, never inlined."""
+
+    company_id: UUID | None = None
+    provider: Literal["email", "whatsapp", "sms", "ai_voice", "virus_scan"]
+    config: dict[str, str | int | float | bool] = Field(default_factory=dict, max_length=20)
+    secret_ref: str | None = Field(default=None, pattern=r"^[A-Za-z0-9_.:/-]{3,200}$")
+    is_enabled: bool = False
+
+    @field_validator("config")
+    @classmethod
+    def reference_not_secret(
+        cls, value: dict[str, str | int | float | bool]
+    ) -> dict[str, str | int | float | bool]:
+        for key, setting in value.items():
+            if not re.fullmatch(r"[a-z][a-z0-9_]{1,40}", key):
+                raise ValueError("Config keys are lower_snake_case")
+            if re.search(r"(secret|token|password|api_key|private|credential|key)", key):
+                raise ValueError("Credentials belong in the secret manager, not in config")
+            if isinstance(setting, str) and len(setting) > 500:
+                raise ValueError("Config values are limited to 500 characters")
+        return value
+
+    @model_validator(mode="after")
+    def enabled_needs_secret(self) -> IntegrationSpec:
+        if self.is_enabled and not self.secret_ref:
+            raise ValueError("An enabled integration must reference a stored secret")
+        return self
+
+
+class AssignmentRuleSpec(StrictModel):
+    company_id: UUID | None = None
+    insurance_type: InsuranceType | None = None
+    category_id: UUID | None = None
+    priority: ComplaintPriority | None = None
+    target_team_id: UUID | None = None
+    target_agent_id: UUID | None = None
+    strategy: Literal["round_robin", "least_workload", "by_company"] = "least_workload"
+    sort_order: int = Field(default=100, ge=0, le=10000)
+    is_active: bool = True
+
+    @model_validator(mode="after")
+    def reachable_target(self) -> AssignmentRuleSpec:
+        if self.target_team_id is None and self.target_agent_id is None:
+            raise ValueError("A rule needs a target team, a target agent, or both")
+        return self
+
+
+class AssignmentPreview(StrictModel):
+    company_id: UUID
+    insurance_type: InsuranceType
+    priority: ComplaintPriority = ComplaintPriority.NORMAL
+    category_id: UUID | None = None
 
 
 class TemplateSpec(StrictModel):
@@ -220,8 +406,21 @@ class ComplaintFilter(StrictModel):
         return self
 
 
+class ReportFilter(ComplaintFilter):
+    """Scheduled reports are relative: the window moves with each run."""
+
+    window_days: int = Field(default=7, ge=1, le=366)
+
+    @model_validator(mode="after")
+    def relative_window(self) -> ReportFilter:
+        if self.date_from is not None or self.date_to is not None:
+            raise ValueError("Scheduled reports cannot pin absolute dates")
+        return self
+
+
 class ExportRequest(StrictModel):
     kind: Literal["complaints", "analytics"]
+    format: Literal["csv", "xlsx", "pdf"] = "csv"
     filters: ComplaintFilter
 
     @model_validator(mode="after")

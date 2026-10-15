@@ -54,6 +54,7 @@ erDiagram
     STAFF_USERS ||--o{ REPORT_SCHEDULES : schedules
     STAFF_USERS ||--o{ EXPORT_JOBS : requests
     EXPORT_JOBS ||--o{ EXPORT_JOB_ROWS : authorizes
+    REPORT_SCHEDULES ||--o{ REPORT_RUNS : executes
     COMPLAINTS ||--o{ EXPORT_JOB_ROWS : manifests
     INSURANCE_COMPANIES |o--o{ ASSIGNMENT_RULES : routes
     TEAMS |o--o{ ASSIGNMENT_RULES : targets
@@ -271,5 +272,15 @@ erDiagram
       uuid job_id PK
       uuid complaint_id PK
       timestamptz complaint_created_at FK
+    }
+    REPORT_RUNS {
+      uuid id PK
+      uuid schedule_id FK
+      uuid owner_staff_id FK
+      text state
+    }
+    ANALYTICS_ROLLUP_STATE {
+      boolean id PK
+      timestamptz last_success_at
     }
 ```
