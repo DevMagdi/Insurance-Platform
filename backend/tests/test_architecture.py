@@ -240,6 +240,102 @@ def test_runtime_engine_rejects_admin_connection() -> None:
         make_engine("postgresql+asyncpg://postgres@localhost/insurance")
 
 
+def test_production_compose_pulls_published_images_without_admin_secrets() -> None:
+    compose = yaml.safe_load((ROOT / "docker-compose.prod.yml").read_text())["services"]
+    expected = {
+        "postgres",
+        "pgbouncer",
+        "redis",
+        "minio",
+        "minio-init",
+        "migrate",
+        "api",
+        "worker",
+        "web",
+    }
+    assert expected <= set(compose)
+    # Production runs the images the CD pipeline verified; it never builds on the host.
+    for name in ("migrate", "api", "worker", "web"):
+        image = compose[name]["image"]
+        assert image.startswith("ghcr.io/${IMAGE_OWNER")
+        assert "${IMAGE_TAG" in image
+    assert not any("build" in service for service in compose.values())
+    # The API and worker still never receive administrative credentials.
+    for process in ("api", "worker"):
+        service = compose[process]
+        assert "env_file" not in service
+        for banned in (
+            "DATABASE_ADMIN_URL",
+            "POSTGRES_PASSWORD",
+            "POSTGRES_USER",
+            "MINIO_ROOT_PASSWORD",
+        ):
+            assert banned not in service["environment"], (process, banned)
+        assert service["restart"] == "unless-stopped"
+    assert "app_runtime" in compose["api"]["environment"]["DATABASE_URL"]
+    assert "pgbouncer:5432" in compose["api"]["environment"]["DATABASE_URL"]
+    assert "app_worker" in compose["worker"]["environment"]["WORKER_DATABASE_URL"]
+    assert compose["api"]["environment"]["ENVIRONMENT"] == "production"
+    assert compose["api"]["environment"]["COOKIE_SECURE"] == "true"
+    # Migrations run first, as a one-shot container with the migrator URL only.
+    migrate = compose["migrate"]
+    assert "DATABASE_ADMIN_URL" in migrate["environment"]
+    assert migrate["command"] == ["alembic", "upgrade", "head"]
+    assert migrate["restart"] == "no"
+    for process in ("api", "worker"):
+        depends = compose[process]["depends_on"]
+        assert depends["migrate"] == {"condition": "service_completed_successfully"}
+    assert compose["pgbouncer"]["environment"]["POOL_MODE"] == "transaction"
+    assert compose["pgbouncer"]["environment"]["MAX_PREPARED_STATEMENTS"] == "100"
+    # Exactly one publicly published port (the web edge); everything else is loopback.
+    published = {
+        name: service.get("ports", []) for name, service in compose.items() if service.get("ports")
+    }
+    assert set(published) == {"web", "postgres", "minio"}
+    assert published["web"] == ["${HTTP_PORT:-8080}:80"]
+    for name in ("postgres", "minio"):
+        assert all(entry.startswith("127.0.0.1:") for entry in published[name]), name
+    # Every variable the stack demands must be documented outside the compose file.
+    documented = (ROOT / ".env.example").read_text() + (ROOT / "docs/DEPLOYMENT.md").read_text()
+    raw = (ROOT / "docker-compose.prod.yml").read_text()
+    for name in set(re.findall(r"\$\{([A-Z_]+)(?::\?|:-)", raw)):
+        assert name in documented, name
+
+
+def test_cd_pipeline_gates_deployment_and_verifies_artifacts() -> None:
+    cd = yaml.safe_load((ROOT / ".github/workflows/cd.yml").read_text())
+    triggers = cd[True]
+    assert triggers["push"]["branches"] == ["main"]
+    assert triggers["push"]["tags"] == ["v*"]
+    assert "workflow_dispatch" in triggers
+    jobs = cd["jobs"]
+    assert {"images", "verify", "compose", "deploy", "release", "summary"} <= set(jobs)
+    assert jobs["images"]["permissions"]["packages"] == "write"
+    assert jobs["images"]["permissions"]["contents"] == "read"
+    assert "if" not in jobs["images"]  # publishing is unconditional on main/tags
+    # The deploy job is explicitly gated, runs in a protected environment and
+    # never auto-merges or deploys without the repository variable being set.
+    deploy = jobs["deploy"]
+    assert "DEPLOY_ENABLED" in deploy["if"] and "inputs.deploy" in deploy["if"]
+    assert deploy["environment"].startswith("${{")
+    assert deploy["needs"] == ["images", "verify", "compose"]
+    steps = yaml.dump(deploy)
+    assert "--auto" not in steps
+    assert steps.index("run --rm migrate") < steps.index("up -d --remove-orphans")
+    assert "/api/health/ready" in steps
+    assert "DEPLOY_SSH_KNOWN_HOSTS" in steps
+    # Releasing is tag-only and must not invent versions.
+    assert jobs["release"]["if"] == "github.ref_type == 'tag'"
+    assert jobs["release"]["permissions"]["contents"] == "write"
+    assert cd["concurrency"]["cancel-in-progress"] is False
+    ci = yaml.safe_load((ROOT / ".github/workflows/ci.yml").read_text())
+    containers = yaml.dump(ci["jobs"]["containers"])
+    assert "Dockerfile.backend" in containers and "Dockerfile.web" in containers
+    assert "docker-compose.prod.yml" in containers
+    assert "api/health/live" in containers
+    assert "openapi.yaml" in containers
+
+
 def test_dev_compose_is_transaction_pooled_without_admin_secrets_in_api() -> None:
     compose = yaml.safe_load((ROOT / "docker-compose.yml").read_text())["services"]
     assert {"postgres", "pgbouncer", "redis", "minio", "api", "worker", "nginx"} <= set(compose)

@@ -1,0 +1,353 @@
+name: CD
+
+# Continuous delivery: every push to main produces signed-off container images and
+# verifies them; the deploy job only runs when the repository variable
+# DEPLOY_ENABLED is set to 'true' AND the required environment secrets exist.
+# Nothing here can deploy by accident, and no job silently claims a deploy it skipped.
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Target environment for the manual deploy
+        type: choice
+        options: [staging, production]
+        default: staging
+      deploy:
+        description: Also deploy (otherwise images are built and verified only)
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cd-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  IMAGE_NAME_API: insurance-platform-api
+  IMAGE_NAME_WEB: insurance-platform-web
+
+jobs:
+  images:
+    name: Build and publish images
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      owner: ${{ steps.names.outputs.owner }}
+      tag: ${{ steps.names.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Derive lowercase GHCR names and the immutable image tag
+        id: names
+        run: |
+          owner=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')
+          if [ '${{ github.ref_type }}' = 'tag' ]; then
+            tag='${{ github.ref_name }}'
+          else
+            tag='${{ github.sha }}'
+          fi
+          echo "owner=$owner" >> "$GITHUB_OUTPUT"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and push the API/worker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: infra/Dockerfile.backend
+          push: true
+          tags: |
+            ghcr.io/${{ steps.names.outputs.owner }}/${{ env.IMAGE_NAME_API }}:${{ steps.names.outputs.tag }}
+            ghcr.io/${{ steps.names.outputs.owner }}/${{ env.IMAGE_NAME_API }}:main
+          cache-from: type=gha,scope=api
+          cache-to: type=gha,mode=max,scope=api
+      - name: Build and push the web image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: infra/Dockerfile.web
+          push: true
+          tags: |
+            ghcr.io/${{ steps.names.outputs.owner }}/${{ env.IMAGE_NAME_WEB }}:${{ steps.names.outputs.tag }}
+            ghcr.io/${{ steps.names.outputs.owner }}/${{ env.IMAGE_NAME_WEB }}:main
+          cache-from: type=gha,scope=web
+          cache-to: type=gha,mode=max,scope=web
+
+  verify:
+    name: Smoke-test the published artifacts
+    needs: images
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Start the published images on a throwaway network
+        env:
+          OWNER: ${{ needs.images.outputs.owner }}
+          TAG: ${{ needs.images.outputs.tag }}
+        run: |
+          set -euo pipefail
+          docker network create cd-smoke
+          # Throwaway keys: the smoke test only exercises startup and the contract.
+          python - <<'PY' > /tmp/smoke.env
+          import base64, secrets
+          print("APP_ENCRYPTION_KEY=" + base64.urlsafe_b64encode(secrets.token_bytes(32)).decode())
+          print("APP_BLIND_INDEX_KEY=" + base64.urlsafe_b64encode(secrets.token_bytes(32)).decode())
+          print("JWT_SIGNING_KEY=" + secrets.token_urlsafe(48))
+          PY
+          # shellcheck disable=SC2046
+          docker run -d --name cd-api --network cd-smoke --network-alias api \
+            --env-file /tmp/smoke.env \
+            -e ENVIRONMENT=production -e COOKIE_SECURE=true \
+            -e DATABASE_URL=postgresql+asyncpg://app_runtime:unused@postgres:5432/insurance \
+            -e REDIS_URL=redis://redis:6379/0 \
+            "ghcr.io/${OWNER}/${IMAGE_NAME_API}:${TAG}"
+          docker run -d --name cd-web --network cd-smoke -p 18080:80 \
+            "ghcr.io/${OWNER}/${IMAGE_NAME_WEB}:${TAG}"
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:18080/api/health/live >/dev/null; then break; fi
+            sleep 2
+          done
+          echo "API through the web proxy: $(curl -fsS http://127.0.0.1:18080/api/health/live)"
+          curl -fsS http://127.0.0.1:18080/ | grep -qi '<div id="root"' && echo 'SPA index served'
+      - name: Fail if the image contract drifted from docs/openapi.yaml
+        env:
+          OWNER: ${{ needs.images.outputs.owner }}
+          TAG: ${{ needs.images.outputs.tag }}
+        run: |
+          set -euo pipefail
+          python -m pip install --quiet PyYAML
+          python - <<'PY'
+          import json, yaml
+          with open('docs/openapi.yaml') as handle:
+              json.dump(yaml.safe_load(handle), open('/tmp/contract.json', 'w'))
+          PY
+          docker run --rm --network cd-smoke --env-file /tmp/smoke.env \
+            -e ENVIRONMENT=production -e COOKIE_SECURE=true \
+            -e DATABASE_URL=postgresql+asyncpg://app_runtime:unused@postgres:5432/insurance \
+            -e REDIS_URL=redis://redis:6379/0 \
+            -v /tmp/contract.json:/tmp/contract.json:ro \
+            "ghcr.io/${OWNER}/${IMAGE_NAME_API}:${TAG}" \
+            python -c "import json; from app.main import app; actual = app.openapi(); expected = json.load(open('/tmp/contract.json')); assert actual == expected, 'published image does not match docs/openapi.yaml'; print('image matches the committed contract', len(actual['paths']), 'paths')"
+      - name: Stop the smoke environment
+        if: always()
+        run: |
+          docker logs cd-api || true
+          docker logs cd-web || true
+          docker rm -f cd-api cd-web || true
+          docker network rm cd-smoke || true
+
+  compose:
+    name: Validate the production compose file
+    needs: images
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Render the production stack with throwaway values
+        env:
+          OWNER: ${{ needs.images.outputs.owner }}
+          TAG: ${{ needs.images.outputs.tag }}
+        run: |
+          set -euo pipefail
+          python - <<'PY' > /tmp/prod.env
+          import base64, secrets
+          values = {
+              "POSTGRES_DB": "insurance",
+              "POSTGRES_USER": "postgres",
+              "POSTGRES_PASSWORD": secrets.token_urlsafe(24),
+              "APP_DB_PASSWORD": secrets.token_urlsafe(24),
+              "APP_WORKER_DB_PASSWORD": secrets.token_urlsafe(24),
+              "MINIO_ROOT_USER": "minio-" + secrets.token_hex(6),
+              "MINIO_ROOT_PASSWORD": secrets.token_urlsafe(24),
+              "S3_BUCKET": "complaint-attachments",
+              "APP_ENCRYPTION_KEY": base64.urlsafe_b64encode(secrets.token_bytes(32)).decode(),
+              "APP_BLIND_INDEX_KEY": base64.urlsafe_b64encode(secrets.token_bytes(32)).decode(),
+              "JWT_SIGNING_KEY": secrets.token_urlsafe(48),
+              "SMTP_HOST": "smtp.example.invalid",
+              "SMTP_FROM": "no-reply@example.invalid",
+              "PUBLIC_APP_URL": "https://app.example.invalid",
+              "IMAGE_OWNER": "${{ needs.images.outputs.owner }}",
+              "IMAGE_TAG": "${{ needs.images.outputs.tag }}",
+          }
+          for name, value in values.items():
+              print(f"{name}={value}")
+          PY
+          docker compose --env-file /tmp/prod.env -f docker-compose.prod.yml config --quiet
+          docker compose --env-file /tmp/prod.env -f docker-compose.prod.yml config \
+            | grep -E 'image:|restart:|published' | sort -u
+
+  deploy:
+    name: Deploy to ${{ inputs.environment || 'staging' }}
+    needs: [images, verify, compose]
+    if: |
+      (github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.DEPLOY_ENABLED == 'true') ||
+      (github.event_name == 'workflow_dispatch' && inputs.deploy)
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment || 'staging' }}
+    concurrency:
+      group: deploy-${{ inputs.environment || 'staging' }}
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - name: Confirm the deployment secrets are configured
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_SSH_KNOWN_HOSTS: ${{ secrets.DEPLOY_SSH_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          missing=''
+          for name in DEPLOY_HOST DEPLOY_USER DEPLOY_SSH_KEY; do
+            if [ -z "${!name}" ]; then missing="$missing $name"; fi
+          done
+          if [ -n "$missing" ]; then
+            echo "::error::Set these environment secrets before deploying:$missing"
+            exit 1
+          fi
+          # Pin the host key when it is supplied; otherwise accept it once on first use.
+          if [ -n "$DEPLOY_SSH_KNOWN_HOSTS" ]; then
+            mkdir -p ~/.ssh && echo "$DEPLOY_SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+            chmod 600 ~/.ssh/known_hosts
+            echo "STRICT_HOST_KEY=yes" >> "$GITHUB_ENV"
+          else
+            echo "::warning::DEPLOY_SSH_KNOWN_HOSTS is not set; accepting a new host key."
+            echo "STRICT_HOST_KEY=accept-new" >> "$GITHUB_ENV"
+          fi
+      - name: Upload the revision that owns the migration set
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_PATH: ${{ vars.DEPLOY_PATH || '/srv/insurance-platform' }}
+        run: |
+          set -euo pipefail
+          # Only compose/Dockerfile/migration assets travel; secrets never do.
+          tar --exclude='.git' --exclude='.venv' --exclude='node_modules' \
+              --exclude='**/__pycache__' -czf /tmp/release.tar.gz \
+              docker-compose.prod.yml .env.example Makefile infra docs/DEPLOYMENT.md
+          eval "$(ssh-agent -s)"
+          trap 'ssh-agent -k >/dev/null 2>&1 || true' EXIT
+          echo "$DEPLOY_SSH_KEY" | ssh-add -
+          ssh -o "StrictHostKeyChecking=$STRICT_HOST_KEY" "$DEPLOY_USER@$DEPLOY_HOST" \
+            "mkdir -p '$DEPLOY_PATH'"
+          scp -o "StrictHostKeyChecking=$STRICT_HOST_KEY" /tmp/release.tar.gz \
+            "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_PATH/release.tar.gz"
+          ssh -o "StrictHostKeyChecking=$STRICT_HOST_KEY" "$DEPLOY_USER@$DEPLOY_HOST" \
+            "tar -xzf '$DEPLOY_PATH/release.tar.gz' -C '$DEPLOY_PATH' && rm '$DEPLOY_PATH/release.tar.gz'"
+      - name: Migrate, roll out and gate on readiness
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_PATH: ${{ vars.DEPLOY_PATH || '/srv/insurance-platform' }}
+          HTTP_PORT: ${{ vars.HTTP_PORT || '8080' }}
+          OWNER: ${{ needs.images.outputs.owner }}
+          TAG: ${{ needs.images.outputs.tag }}
+        run: |
+          set -euo pipefail
+          # Values reach the remote shell as argv (never interpolated into a command
+          # string), so a hostile tag cannot inject commands on the deploy host.
+          printf '%s' "$OWNER" | grep -Eq '^[a-z0-9][a-z0-9-]{1,38}$' \
+            || { echo "::error::Unexpected image owner"; exit 1; }
+          printf '%s' "$TAG" | grep -Eq '^[A-Za-z0-9._-]{1,64}$' \
+            || { echo "::error::Unexpected image tag"; exit 1; }
+          printf '%s' "$HTTP_PORT" | grep -Eq '^[0-9]{2,5}$' \
+            || { echo "::error::Unexpected HTTP_PORT"; exit 1; }
+          eval "$(ssh-agent -s)"
+          trap 'ssh-agent -k >/dev/null 2>&1 || true' EXIT
+          echo "$DEPLOY_SSH_KEY" | ssh-add -
+          ssh -o "StrictHostKeyChecking=$STRICT_HOST_KEY" \
+            "$DEPLOY_USER@$DEPLOY_HOST" bash -s -- \
+            "$DEPLOY_PATH" "$OWNER" "$TAG" "$HTTP_PORT" <<'REMOTE'
+          set -euo pipefail
+          path="$1"; owner="$2"; tag="$3"; port="$4"
+          cd "$path"
+          if [ ! -f .env.production ]; then
+            echo "missing $path/.env.production (mode 0600)"; exit 1
+          fi
+          export IMAGE_OWNER="$owner" IMAGE_TAG="$tag" HTTP_PORT="$port"
+          COMPOSE_PROD="docker compose --env-file .env.production -f docker-compose.prod.yml"
+          echo "rolling out $owner/insurance-platform-*:$tag"
+          $COMPOSE_PROD pull
+          $COMPOSE_PROD run --rm migrate
+          $COMPOSE_PROD up -d --remove-orphans
+          for attempt in $(seq 1 30); do
+            if curl -fsS "http://127.0.0.1:$port/api/health/ready" >/dev/null; then
+              echo "release ready: $tag"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "release failed its readiness gate"
+          $COMPOSE_PROD ps
+          exit 1
+          REMOTE
+          ssh -o "StrictHostKeyChecking=$STRICT_HOST_KEY" \
+            "$DEPLOY_USER@$DEPLOY_HOST" \
+            "cd '$DEPLOY_PATH' && docker image prune -f --filter 'until=168h'"
+
+  release:
+    name: Publish the GitHub release
+    if: github.ref_type == 'tag'
+    needs: [images, verify, compose]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Create the release with generated notes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OWNER: ${{ needs.images.outputs.owner }}
+          TAG: ${{ needs.images.outputs.tag }}
+        run: |
+          set -euo pipefail
+          gh release create "$TAG" --verify-tag --generate-notes \
+            --title "$TAG" \
+            --notes "Container images: \`ghcr.io/$OWNER/insurance-platform-api:$TAG\` and \`ghcr.io/$OWNER/insurance-platform-web:$TAG\`. Deployment instructions: docs/DEPLOYMENT.md."
+
+  summary:
+    name: Report what actually ran
+    if: always()
+    needs: [images, verify, compose, deploy, release]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Write the run summary
+        env:
+          INPUTS_DEPLOY: ${{ inputs.deploy }}
+          DEPLOY_ENABLED: ${{ vars.DEPLOY_ENABLED }}
+        run: |
+          {
+            echo "## Delivery pipeline"
+            echo
+            echo "| Stage | Result |"
+            echo "|---|---|"
+            echo "| Build and publish images | ${{ needs.images.result }} |"
+            echo "| Smoke-test published artifacts | ${{ needs.verify.result }} |"
+            echo "| Validate production compose | ${{ needs.compose.result }} |"
+            echo "| Deploy | ${{ needs.deploy.result }} |"
+            echo "| GitHub release | ${{ needs.release.result }} |"
+            echo
+            if [ '${{ needs.deploy.result }}' = 'skipped' ]; then
+              echo "> Deployment was **skipped**: set the repository variable \`DEPLOY_ENABLED=true\`"
+              echo "> and the environment secrets \`DEPLOY_HOST\`, \`DEPLOY_USER\`, \`DEPLOY_SSH_KEY\`"
+              echo "> (plus \`DEPLOY_SSH_KNOWN_HOSTS\`) to enable it. See docs/DEPLOYMENT.md."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
