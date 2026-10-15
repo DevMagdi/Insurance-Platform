@@ -52,7 +52,24 @@ jobs:
           export TEST_DIRECT_DATABASE_URL="postgresql+asyncpg://app_runtime:${APP_DB_PASSWORD}@127.0.0.1:5432/${POSTGRES_DB}"
           export TEST_PGBOUNCER_DATABASE_URL="postgresql+asyncpg://app_runtime:${APP_DB_PASSWORD}@127.0.0.1:6432/${POSTGRES_DB}"
           cd backend
-          python -m pytest -m integration -v
+          set +e
+          python -m pytest -m integration -v > /tmp/insurance-integration.log 2>&1
+          code=$?
+          set -e
+          cat /tmp/insurance-integration.log
+          if [ "$code" -ne 0 ]; then
+            # Surface concise failure lines in check-run annotations even when
+            # GitHub's separate log-archive host is unreachable to reviewers.
+            python - <<'PY'
+          from pathlib import Path
+          lines = Path('/tmp/insurance-integration.log').read_text(errors='replace').splitlines()
+          notes = [line for line in lines if line.startswith(('FAILED ', 'ERROR ', 'E   '))]
+          for line in notes[:20]:
+              escaped = line[:1200].replace('%', '%25').replace('\r', '%0D')
+              print(f'::error title=PostgreSQL integration failure::{escaped}')
+          PY
+          fi
+          exit "$code"
       - name: Seed 5,000 synthetic tickets (twice to check idempotence)
         run: |
           docker compose run --rm seed
