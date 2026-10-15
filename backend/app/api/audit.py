@@ -13,6 +13,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from app.api.deps import RequestContext, require_permission
 from app.domain.enums import OwnershipLevel
 from app.repositories.audit import AuditRepository
+from app.services.render import MEDIA_TYPES, tabular_bytes
 
 router = APIRouter(prefix="/api/staff/audit", tags=["audit"])
 
@@ -73,6 +74,57 @@ async def access_changes(
     return await AuditRepository().access_changes(ctx.db, target_id, limit, offset)
 
 
+AUDIT_FIELDS = (
+    "id",
+    "created_at",
+    "actor_staff_id",
+    "action",
+    "resource_type",
+    "resource_id",
+    "complaint_id",
+)
+
+
+async def audit_rows(
+    request: Request,
+    ctx: RequestContext,
+    start: datetime | None,
+    end: datetime | None,
+    actor_id: UUID | None,
+    complaint_id: UUID | None,
+) -> list[dict[str, Any]]:
+    """Both audit exports share one bounded, scope-filtered row set."""
+    since, to = window(start, end)
+    await request.app.state.auth.limits.check("audit:export", str(ctx.actor.id), 5, 300)
+    return await AuditRepository().events(
+        ctx.db, since, to, 2000, actor_id=actor_id, complaint_id=complaint_id
+    )
+
+
+@router.get("/events.xlsx")
+async def export_audit_xlsx(
+    request: Request,
+    start: datetime | None = None,
+    end: datetime | None = None,
+    actor_id: UUID | None = None,
+    complaint_id: UUID | None = None,
+    ctx: RequestContext = Depends(require_permission("audit.view")),
+) -> Response:
+    rows = await audit_rows(request, ctx, start, end, actor_id, complaint_id)
+    data = tabular_bytes(
+        "xlsx", "audit", AUDIT_FIELDS, [[row[key] for key in AUDIT_FIELDS] for row in rows]
+    )
+    return Response(
+        content=data,
+        media_type=MEDIA_TYPES["xlsx"],
+        headers={
+            "Content-Disposition": 'attachment; filename="audit-events.xlsx"',
+            "Cache-Control": "no-store",
+            "X-Export-Limit": "2000",
+        },
+    )
+
+
 @router.get("/events.csv")
 async def export_audit(
     request: Request,
@@ -82,21 +134,9 @@ async def export_audit(
     complaint_id: UUID | None = None,
     ctx: RequestContext = Depends(require_permission("audit.view")),
 ) -> Response:
-    since, to = window(start, end)
-    await request.app.state.auth.limits.check("audit:export", str(ctx.actor.id), 5, 300)
-    rows = await AuditRepository().events(
-        ctx.db, since, to, 2000, actor_id=actor_id, complaint_id=complaint_id
-    )
+    rows = await audit_rows(request, ctx, start, end, actor_id, complaint_id)
     buffer = io.StringIO(newline="")
-    fields = (
-        "id",
-        "created_at",
-        "actor_staff_id",
-        "action",
-        "resource_type",
-        "resource_id",
-        "complaint_id",
-    )
+    fields = AUDIT_FIELDS
     writer = csv.writer(buffer)
     writer.writerow(fields)
     for row in rows:

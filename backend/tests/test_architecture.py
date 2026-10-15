@@ -89,9 +89,21 @@ def test_catalog_has_every_required_resource_action_and_frozen_migration() -> No
 def test_sql_migrations_cover_every_requested_table_and_fail_closed_rls() -> None:
     schema = (ROOT / "backend/alembic/sql/001_schema.sql").read_text()
     rls = (ROOT / "backend/alembic/sql/002_access_rls.sql").read_text()
-    rls += (ROOT / "backend/alembic/sql/011_async_exports.sql").read_text()
+    for late in ("011_async_exports.sql", "013_scheduled_reports.sql", "015_analytics_rollup.sql"):
+        rls += (ROOT / "backend/alembic/sql" / late).read_text()
     assert len(sqlparse.split(schema)) >= 70  # PL/pgSQL bodies must not be split
     assert len(sqlparse.split(rls)) >= 60
+    # Phase 3 revisions are SQL-first too and must stay forward-only in Alembic.
+    for revision, marker in (
+        ("012_sla_calendars.sql", "app_security.simulate_sla"),
+        ("013_scheduled_reports.sql", "app_security.claim_due_reports"),
+        ("014_ops_admin.sql", "app_security.scan_duplicate_candidates"),
+        ("015_analytics_rollup.sql", "app_security.analytics_daily_scoped"),
+        ("016_export_formats.sql", "app_security.request_export"),
+    ):
+        body = (ROOT / "backend/alembic/sql" / revision).read_text()
+        assert marker in body, revision
+        assert "SECURITY DEFINER" in body
     assert "GREATEST(6, length(seq.n::text))" in rls  # sequence must not truncate at 1M
     assert "ck_ticket_year" in schema
     required = (
@@ -130,7 +142,13 @@ def test_sql_migrations_cover_every_requested_table_and_fail_closed_rls() -> Non
     # SQL-first migrations and typed SQLAlchemy mappings must evolve together.
     additive = "\n".join(
         (ROOT / "backend/alembic/sql" / revision).read_text()
-        for revision in ("004_core_tables.sql", "007_staff_workflow.sql", "011_async_exports.sql")
+        for revision in (
+            "004_core_tables.sql",
+            "007_staff_workflow.sql",
+            "011_async_exports.sql",
+            "013_scheduled_reports.sql",
+            "015_analytics_rollup.sql",
+        )
     )
     declared_tables = set(re.findall(r"CREATE TABLE (\w+) \(", schema + additive))
     assert declared_tables == set(Base.metadata.tables)
@@ -161,6 +179,8 @@ def test_sql_migrations_cover_every_requested_table_and_fail_closed_rls() -> Non
         "export_jobs",
         "assignment_rules",
         "export_job_rows",
+        "report_runs",
+        "analytics_rollup_state",
     ):
         assert f"ALTER TABLE {table} FORCE ROW LEVEL SECURITY" in rls
 

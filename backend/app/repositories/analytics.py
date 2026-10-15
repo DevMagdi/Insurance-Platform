@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+from datetime import time
 from typing import Any
 
-from sqlalchemy import case, func, select
+from sqlalchemy import case, func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domain.access import AccessScope
@@ -13,6 +14,20 @@ from app.domain.schemas import ComplaintFilter
 from app.models.identity import InsuranceCompany
 from app.models.tickets import Category, Complaint
 from app.repositories.complaints import ComplaintRepository
+
+
+def whole_utc_days(filters: ComplaintFilter) -> bool:
+    """The day-granular rollup answers whole UTC days only (midnight to midnight)."""
+    if filters.date_from is None or filters.date_to is None:
+        return False
+    if filters.search is not None or filters.ticket_no is not None:
+        return False
+    midnight = time(0, 0)
+    if filters.date_from.timetz().replace(tzinfo=None) != midnight:
+        return False
+    if filters.date_to.timetz().replace(tzinfo=None) != midnight:
+        return False
+    return filters.date_from < filters.date_to
 
 
 class AnalyticsRepository:
@@ -153,3 +168,41 @@ class AnalyticsRepository:
                 for cid, name, n, avg, breach, csat in scorecards
             ],
         }
+
+    async def rollup_rows(
+        self, db: AsyncSession, scope: AccessScope, filters: ComplaintFilter
+    ) -> list[dict[str, Any]] | None:
+        """Pre-aggregated rows for the SAME scope, or None for a live fallback.
+
+        The day granularity cannot answer partial days, free-text search or a
+        single ticket, so those requests keep using the live scoped query.
+        """
+        if scope.actor.scope != "staff" or not whole_utc_days(filters):
+            return None
+        rows = await db.execute(
+            text(
+                "SELECT * FROM app_security.analytics_daily_scoped("
+                "CAST(:date_from AS timestamptz), CAST(:date_to AS timestamptz), "
+                "CAST(:status AS text), CAST(:company AS uuid), CAST(:kind AS text), "
+                "CAST(:priority AS text), CAST(:category AS uuid), "
+                "CAST(:channel AS text), CAST(:agent AS uuid))"
+            ),
+            {
+                "date_from": filters.date_from,
+                "date_to": filters.date_to,
+                "status": filters.status.value if filters.status else None,
+                "company": filters.company_id,
+                "kind": filters.insurance_type.value if filters.insurance_type else None,
+                "priority": filters.priority.value if filters.priority else None,
+                "category": filters.category_id,
+                "channel": filters.channel.value if filters.channel else None,
+                "agent": filters.assigned_agent_id,
+            },
+        )
+        return [dict(row._mapping) for row in rows]
+
+    async def rollup_fresh(self, db: AsyncSession) -> bool:
+        value: bool | None = await db.scalar(
+            text("SELECT app_security.analytics_rollup_fresh(interval '48 hours')")
+        )
+        return bool(value)
