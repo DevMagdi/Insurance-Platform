@@ -1,0 +1,7 @@
+# ADR 0003: Monthly partitions and globally unique tickets
+
+**Status:** accepted (Phase 1)
+
+**Decision.** PostgreSQL cannot enforce `UNIQUE(ticket_no)` or `PRIMARY KEY(id)` across a range-partitioned complaint table unless the partition key is included. Keep a small unpartitioned `complaint_keys(id, created_at, ticket_no)` identity registry with globally unique ticket number and UUID; complaints have composite `(id, created_at)` PK and FK `(id, created_at, ticket_no)` to the registry. An application transaction obtains a UTC-year `CMP-YYYY-NNNNNN` from a global sequence and inserts the registry then the complaint. The number is zero-padded to *at least* six digits and grows past 999999 without truncation. Gaps are normal; numbers do not reset each year. The child tables carry `(complaint_id, complaint_created_at)` so native FKs and pruning work. Partition events by `occurred_at`, audit logs by `created_at`.
+
+Initial migrations create monthly partitions for ±24 months around deployment plus DEFAULT safety partitions. A maintenance job precreates future months. If rows already land in DEFAULT for a month, schedule a checked redistribution before adding that month: do not drop default data. Cursor ordering `(created_at DESC, id DESC)` works across partitions; timestamp and ticket identity are immutable. Retention, replica routing, archived partitions, zero-downtime partition attachment and per-year counters are future operational tasks.

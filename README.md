@@ -1,1 +1,54 @@
-# Insurance-Platform
+# Insurance Brokerage Complaint Management
+
+Arabic-first insurance complaint platform. **[PROJECT_BRIEF.md](docs/PROJECT_BRIEF.md) is the product source of truth.** This checkout contains the Phase 0 project brief, Phase 1 foundation, Phase 2 backend APIs and a **partial Phase 3 backend**; it is not a production-ready customer/staff UI. See the [architecture](docs/ARCHITECTURE.md), [ERD](docs/ERD.md), [implemented HTTP OpenAPI](docs/openapi.yaml) and [future-route roadmap](docs/openapi-roadmap.yaml). The old `/api/v1/*` roadmap paths are **not** live routes.
+
+## What's implemented
+
+- **Authentication:** 5-minute single-use, five-attempt mobile OTP (Redis rate limits by mobile/IP); customer registration/identification; staff Argon2 sign-in, 48-hour emailed invitations and mandatory password change; optional TOTP enrollment and admin-required individual/global 2FA; signed, short-lived JWT access and rotating refresh cookies with replay-family revocation; double-submit CSRF for authenticated writes, logout and session list/revoke.
+- **Access:** `resource.action` permission guards on staff HTTP routes, role union plus deny-wins per-user overrides, company/type/ownership `AccessScope` on complaint repository reads **and** PostgreSQL RLS on the same `SET LOCAL` transaction. Versioned Redis snapshots with DB token-version/session rechecks, access-change audit, delegation limits, last-administrator protection and `/api/me` effective access. The WebSocket checks origin and repeats authentication, permission and scope on each snapshot. IDs are masked; staff reveal requires a dedicated permission, reason and audit entry.
+- **Complaints:** Egyptian national-ID and mobile validation; strict input, supported insurer/type and policy-number validation; atomic 24-hour idempotency and unique tickets; scoped lists, full-text search, combinable filters, counters, detail, timeline, CSV export (staff), replies/internal notes, status changes, limited reopening and CSAT. Guest tracking requires **both** ticket and national ID and returns only public status metadata. Customer actions, staff changes, exports and ID reveals are audited.
+- **Files & notices:** 5-file/25 MB upload plans, 10 MB per file, short-lived signed one-use uploads, MIME sniffing/size/checksum checks, private S3-compatible storage, pending virus-scan state and *clean-only* scoped signed downloads. Transactional creation/status/reply notifications go to an outbox; a separate, table-blind `app_worker` DB login processes delivery and scan hooks. Unconfigured scanners never mark a file clean; unconfigured outbound providers do not pretend delivery succeeded.
+- **Foundation:** PostgreSQL 16 partitions and indexes, eleven Alembic revisions, a 33-key permission catalog, typed SQLAlchemy mappings, PgBouncer transaction pooling, Redis, Docker Compose/MinIO/Mailpit, 5,000-ticket opt-in synthetic seed, CI, a minimal React/Vite/Tailwind RTL shell. Implemented routes are under `/api/*`, not `/api/v1/*`.
+
+**Partial Phase 3 (backend):** Permission- and scope-filtered staff filters/search/workspace, assignment/reassignment, bulk status/assignment, escalation, merge/duplicate suggestions, saved views and private notifications. Opt-in round-robin/least-workload assignment and continuous-time SLA deadlines/breach escalation run via restricted worker functions. Scoped date-bound KPIs, trends, heatmap, issue breakdowns and company scorecards use short-lived actor/version/scope-hashed Redis caching. Admin APIs cover invitations, profile updates, one-use password resets, reactivation, forced logout, effective-access explanation, custom role create/clone/edit, company/category/SLA/template management, and access-change audit/notification. Audited async complaint/aggregate exports use a worker-only database path, private object storage, a 1,000-ticket/2 MB limit, 15-minute expiry and *per-row scope reauthorization at download*. The existing small synchronous CSV export remains available.
+
+**Still unfinished:** scheduled email reports, integration-setting APIs/real WhatsApp or AI voice providers, a calendar-aware business-hours SLA engine (nonempty calendars are rejected), dedicated push notifications beyond the scoped complaint WebSocket/polling endpoints, materialized analytics views, a full staff/customer frontend, antivirus/SMS production adapters, deployment/observability/load and security reviews. SMS is **Mailpit-only in development** (`DEV_SMS_MAILBOX=true`); configure a real provider before production. Never expose an unscanned attachment as clean. Capacity of 1,000,000 concurrent users is a **target**, not a measured capability of this Compose stack.
+
+## Local development (Docker Compose v2)
+
+1. `make init` creates a git-ignored mode-0600 `.env` with random development secrets (refuses to overwrite). For demo accounts set a **local-only**, 12+ character `DEMO_STAFF_PASSWORD` in `.env`; never commit the file.
+2. `make up` starts PostgreSQL, PgBouncer, Redis, MinIO/private bucket, Mailpit, migrations, API, worker, Vite and Nginx. Open `http://localhost:8080/`; API liveness `/api/health/live`, readiness `/api/health/ready`, browser API docs `/docs` via the API server. Mailpit UI: `http://localhost:8025/`, MinIO console: `http://localhost:9001/` (local ports). Direct PostgreSQL: `localhost:5432`; PgBouncer: `localhost:6432` (bound only to localhost).
+3. `make seed` optionally inserts four insurers, roles and scoped demo staff, and ~5,000 tickets. It is idempotent. Demo staff must change their password at first login; the password-change challenge does **not** give access to protected staff endpoints. Never seed a production database.
+4. `make partitions` prepares current/upcoming UTC monthly partitions. `make down` retains data; `docker compose down -v` **destroys local data**. Changing `POSTGRES_DB` after the first boot requires a new *development* data volume (init scripts only run on an empty volume).
+
+Use same-origin `/api/...` requests from the browser. A successful OTP verification or staff sign-in sets HttpOnly `access_token` (15 min by default), HttpOnly `refresh_token` (rotated via `POST /api/auth/refresh`), and readable `csrf_token` cookies; send `X-CSRF-Token` equal to that cookie on protected POST/PUT/PATCH/DELETE requests, including refresh. Cookies are Secure by default; use HTTPS outside the browser's localhost development exception. **Never log or put tokens/OTPs/national IDs in URLs** (except single-use invitation/reset links in private email). Example customer flow: `POST /api/auth/customer/otp/start`, read the local development OTP in Mailpit, `POST /api/auth/customer/otp/verify`, then `POST /api/customer/complaints` with `Idempotency-Key`, CSRF header and a valid complaint body; `GET /api/customer/complaints` returns owned tickets. A nonlogged-in visitor can `POST /api/guest/track` with `ticket_no` and `national_id` only.
+
+Some useful implemented routes (see [OpenAPI](docs/openapi.yaml) for request schemas):
+
+| Area | Paths |
+|---|---|
+| Auth/self | `/api/auth/{customer/otp/*,staff/*,refresh,logout}`, `/api/me`, `/api/me/sessions`, `/api/me/2fa/enroll/*` |
+| Customer | `/api/companies`, `/api/guest/track`, `/api/customer/complaints[/{complaint_id}]`, `.../timeline`, `.../reply`, `.../reopen`, `.../csat`, `/api/customer/notifications` |
+| Staff | `/api/staff/users`, `.../{id}/access`, `/api/staff/roles`, `/api/staff/settings/staff-2fa`, `/api/staff/complaints` (filters/search/counters/export/detail/timeline/reply/notes/status), `.../national-id:reveal`, `/api/staff/complaints/stream` (WebSocket) |
+| Phase 3 | `/api/staff/analytics/{overview,scorecards}`, `/api/staff/views`, `/api/staff/complaints/{id}/{assign,reassign,escalate,merge,duplicates}`, `/api/staff/complaints/bulk`, `/api/staff/exports[/{id}/download]`, `/api/staff/audit/{events,events.csv,access-changes}`, `/api/staff/admin/{companies,categories,sla-rules,templates}`, `/api/me/notifications` |
+| Files | `/api/{customer,staff}/complaints/{id}/attachments/plan`, `/api/{customer,staff}/attachments/uploads/{id}/content`, `/api/{customer,staff}/attachments/{id}/authorize` and `.../content` |
+
+Uploaded files remain **unavailable to download** until an integrated scanner returns `clean` via the restricted worker hook. The Compose worker intentionally has no scanner implementation, so local uploads stay pending unless an authorized scan verdict is recorded in a disposable test environment. Email invitations use Mailpit locally. A production rollout needs a real SMS/AV provider, HTTPS, a service-specific secrets store and independent security review.
+
+## Tests and code quality
+
+`make install` needs Python 3.11+ and Node 22+ and installs backend dev/test and frontend lockfile dependencies. `make ci` runs Ruff, strict mypy, backend pytest **with `--cov=app --cov-fail-under=80`**, ESLint, TypeScript, Vitest and the frontend build. `.venv/bin/pre-commit install` enables hooks. `PYTHONPATH=backend .venv/bin/python scripts/export_openapi.py` regenerates the implemented contract; the roadmap is intentionally separate.
+
+`make test-integration` runs both legacy RLS/PgBouncer tests (requiring a **disposable, already-migrated PostgreSQL** and the three URLs below) and Phase 2–3 PostgreSQL 16 + Redis **testcontainers** tests (requiring a Docker daemon). Testcontainers provisions its own disposable stack and migrates it; it skips, explicitly, when Docker is unavailable. Do not point integration test URLs at production databases.
+
+```text
+TEST_DATABASE_ADMIN_URL=postgresql+psycopg://postgres:...@localhost:5432/insurance
+TEST_DIRECT_DATABASE_URL=postgresql+asyncpg://app_runtime:...@localhost:5432/insurance
+TEST_PGBOUNCER_DATABASE_URL=postgresql+asyncpg://app_runtime:...@localhost:6432/insurance
+```
+
+Run `make ci` for lint, mypy, >80% backend coverage, frontend tests and build. Docker was unavailable in this sandbox: local PGlite migration/worker probes and skipped testcontainers cases do **not** establish real PostgreSQL results. CI provisions PostgreSQL and PgBouncer, runs migrations and the integration suite, and checks seed idempotence. Check the PR status before deployment.
+
+## Security and scale boundaries
+
+`app_runtime` is neither table owner nor BYPASSRLS, while `app_worker` has **no direct table privileges**. Authenticated transactions install `SET LOCAL app.user_id` / `app.scope`; queries also apply `AccessScope` so ID guessing, search filters, exports, child records, notifications and WebSockets inherit the caller's scope. National IDs are AES-GCM encrypted with separate HMAC blind indexes; default detail responses only contain a masked suffix. See the [access-control ADR](docs/adr/0002-access-control.md) and [PII ADR](docs/adr/0004-pii-and-channels.md). Production needs TLS termination, key rotation, real provider integrations, backup/recovery testing, PDPL compliance review, load tests, PgBouncer/read-replica sizing and monitoring before any scale claim.

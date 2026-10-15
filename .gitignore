@@ -1,0 +1,22 @@
+# Local credentials and Python environments
+.env
+.env.*
+!.env.example
+*.py[cod]
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+*.egg-info/
+.coverage
+htmlcov/
+# Frontend dependencies and builds
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+# Editors and OS files
+.DS_Store
+.idea/
+.vscode/
