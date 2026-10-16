@@ -31,6 +31,9 @@ function json(value: unknown, status = 200) { return { status, contentType: 'app
 
 async function installScopedApi(page: Page) {
   revoked = false; exportAttempts = 0; meRequests = 0;
+  await page.addInitScript(() => {
+    document.cookie = 'csrf_token=e2e-session; Path=/; SameSite=Lax';
+  });
   await page.route('**/api/**', async (route: Route) => {
     const url = new URL(route.request().url());
     const path = url.pathname;

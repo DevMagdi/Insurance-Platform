@@ -84,7 +84,9 @@ class AuthService:
         await self.limits.check("otp:verify:ip", ip, 30, 3600)
         await self.lockout.ensure_allowed("otp_verify", item.mobile)
         try:
-            await self.otp.verify(item.mobile, item.code)
+            # A successful code check may still need an identity step (new or
+            # shared-mobile customer). Preserve it until login/registration completes.
+            await self.otp.verify(item.mobile, item.code, consume=False)
         except HTTPException as exc:
             if exc.status_code in (401, 429):
                 await self.lockout.failure("otp_verify", item.mobile)
@@ -95,12 +97,14 @@ class AuthService:
             async with purpose_transaction(self.factory, "customer_auth") as db:
                 matches = await self.repo.customers_by_mobile(db, item.mobile, blind)
                 if len(matches) == 1:
+                    await self.otp.verify(item.mobile, item.code)
                     customer_id, version = matches[0]
                 elif len(matches) > 1:
                     raise HTTPException(
                         status_code=409, detail="Provide national ID to identify the customer"
                     )
                 elif item.national_id is not None and item.full_name is not None:
+                    await self.otp.verify(item.mobile, item.code)
                     customer_id = await self.repo.register_customer(
                         db,
                         full_name=item.full_name,

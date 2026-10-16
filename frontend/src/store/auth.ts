@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { api } from '../lib/api/client';
+import { ensureCsrfCookie } from '../lib/session';
 
 export interface AccessSnapshot {
   id: string;
@@ -36,6 +37,10 @@ export const useAuth = create<AuthState>((set, get) => ({
   staff: null,
   permissions: [],
   loadMe: async () => {
+    if (!(await ensureCsrfCookie())) {
+      set({ kind: 'guest', customer: null, staff: null, permissions: [], loading: false });
+      return;
+    }
     if (get().kind === 'guest') set({ loading: true });
     try {
       const res = await api.GET('/api/me');

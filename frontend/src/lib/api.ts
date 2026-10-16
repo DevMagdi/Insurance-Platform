@@ -30,6 +30,12 @@ import {
   type StaffUser,
 } from './staffTypes';
 import { captchaHeaders } from './captcha';
+import {
+  getCsrfToken,
+  notifyAuthExpired,
+  refreshSession,
+  shouldAttemptRefresh,
+} from './session';
 
 export type ConsentPurpose =
   | 'complaint_processing'
@@ -47,11 +53,6 @@ export class ApiError extends Error {
     this.status = status;
     this.detail = detail;
   }
-}
-
-function csrfToken(): string {
-  const match = document.cookie.match(/(?:^|;\s*)csrf_token=([^;]*)/);
-  return match ? decodeURIComponent(match[1]) : '';
 }
 
 async function parseError(response: Response): Promise<ApiError> {
@@ -76,47 +77,39 @@ interface RequestOptions {
   retried?: boolean;
 }
 
-async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
+async function send(path: string, options: RequestOptions = {}): Promise<Response> {
   const method = options.method ?? 'GET';
   const headers: Record<string, string> = { ...options.headers };
   if (options.body !== undefined) headers['Content-Type'] = 'application/json';
   if (method !== 'GET' && method !== 'HEAD') {
-    const csrf = csrfToken();
+    const csrf = getCsrfToken();
     if (csrf) headers['X-CSRF-Token'] = csrf;
   }
+
   const response = await fetch(path, {
     method,
     headers,
     credentials: 'same-origin',
     body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
   });
-  if (response.status === 401 && !options.retried && path !== '/api/auth/refresh') {
-    const refreshed = await tryRefresh();
-    if (refreshed) return request<T>(path, { ...options, retried: true });
+  if (response.status === 401 && shouldAttemptRefresh(path)) {
+    if (!options.retried && await refreshSession()) {
+      return send(path, { ...options, retried: true });
+    }
+    notifyAuthExpired();
   }
+  return response;
+}
+
+async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
+  const response = await send(path, options);
   if (!response.ok) throw await parseError(response);
   if (response.status === 204) return undefined as T;
   return (await response.json()) as T;
 }
 
 async function requestText(path: string, options: RequestOptions = {}): Promise<string> {
-  const method = options.method ?? 'GET';
-  const headers: Record<string, string> = { ...options.headers };
-  if (options.body !== undefined) headers['Content-Type'] = 'application/json';
-  if (method !== 'GET' && method !== 'HEAD') {
-    const csrf = csrfToken();
-    if (csrf) headers['X-CSRF-Token'] = csrf;
-  }
-  const response = await fetch(path, {
-    method,
-    headers,
-    credentials: 'same-origin',
-    body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
-  });
-  if (response.status === 401 && !options.retried && path !== '/api/auth/refresh') {
-    const refreshed = await tryRefresh();
-    if (refreshed) return requestText(path, { ...options, retried: true });
-  }
+  const response = await send(path, options);
   if (!response.ok) throw await parseError(response);
   return response.text();
 }
@@ -128,20 +121,6 @@ function saveBlob(blob: Blob, filename: string): void {
   anchor.download = filename;
   anchor.click();
   setTimeout(() => URL.revokeObjectURL(url), 5000);
-}
-
-async function tryRefresh(): Promise<boolean> {
-  try {
-    const csrf = csrfToken();
-    const response = await fetch('/api/auth/refresh', {
-      method: 'POST',
-      credentials: 'same-origin',
-      headers: csrf ? { 'X-CSRF-Token': csrf } : {},
-    });
-    return response.ok;
-  } catch {
-    return false;
-  }
 }
 
 function queryString(filters: ComplaintFilters): string {
@@ -256,8 +235,7 @@ export const api = {
   /** Download through the scoped API so the one-use token never lands in a URL. */
   downloadAttachment: async (attachmentId: string, filename: string): Promise<void> => {
     const grant = await api.authorizeDownload(attachmentId);
-    const response = await fetch(grant.download_url, {
-      credentials: 'same-origin',
+    const response = await send(grant.download_url, {
       headers: { 'X-Download-Token': grant.download_token },
     });
     if (!response.ok) throw await parseError(response);
@@ -494,7 +472,7 @@ export const staffApi = {
     }),
 
   downloadExport: async (id: string): Promise<void> => {
-    const response = await fetch(`/api/staff/exports/${id}/download`, { credentials: 'same-origin' });
+    const response = await send(`/api/staff/exports/${id}/download`);
     if (!response.ok) throw await parseError(response);
     saveBlob(await response.blob(), `insurance-export-${id}.csv`);
   },
@@ -515,8 +493,7 @@ export const staffApi = {
     const grant = await request<{ download_url: string; download_token: string }>(
       `/api/staff/attachments/${attachmentId}/authorize`,
     );
-    const response = await fetch(grant.download_url, {
-      credentials: 'same-origin',
+    const response = await send(grant.download_url, {
       headers: { 'X-Download-Token': grant.download_token },
     });
     if (!response.ok) throw await parseError(response);
@@ -542,7 +519,7 @@ export function uploadWithProgress(
     xhr.withCredentials = true;
     xhr.setRequestHeader('X-Upload-Token', reservation.upload_token);
     xhr.setRequestHeader('Content-Type', file.type);
-    const csrf = csrfToken();
+    const csrf = getCsrfToken();
     if (csrf) xhr.setRequestHeader('X-CSRF-Token', csrf);
     xhr.upload.onprogress = (event) => {
       if (event.lengthComputable) onProgress(Math.round((event.loaded / event.total) * 100));

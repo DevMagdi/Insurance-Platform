@@ -47,6 +47,9 @@ const access = {
 
 async function mockStaffApi(page: Page) {
   let aiGenerated = false;
+  await page.addInitScript(() => {
+    document.cookie = 'csrf_token=e2e-session; Path=/; SameSite=Lax';
+  });
   await page.route('**/api/**', async (route: Route) => {
     const url = new URL(route.request().url());
     const path = url.pathname;

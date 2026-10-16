@@ -17,6 +17,7 @@ export function LoginPage() {
   const [nationalId, setNationalId] = useState('');
   const [whatsapp, setWhatsapp] = useState(false);
   const [needsRegister, setNeedsRegister] = useState(false);
+  const [registrationPrompt, setRegistrationPrompt] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const captcha = useCaptcha('otp_start');
@@ -26,6 +27,9 @@ export function LoginPage() {
   });
 
   const verify = useMutation({
+    onMutate: () => {
+      if (needsRegister) setRegistrationPrompt(false);
+    },
     mutationFn: () =>
       api.otpVerify({
         mobile: normalizeMobile(mobile),
@@ -43,8 +47,11 @@ export function LoginPage() {
       navigate('/tickets');
     },
     onError: (error) => {
-      // A 409 from verify means this mobile is new: collect registration identity.
-      if (error instanceof ApiError && error.status === 409) setNeedsRegister(true);
+      // The first 409 asks for identity; later conflicts must remain visible.
+      if (error instanceof ApiError && error.status === 409 && !needsRegister) {
+        setNeedsRegister(true);
+        setRegistrationPrompt(true);
+      }
     },
   });
 
@@ -83,7 +90,17 @@ export function LoginPage() {
           <div className="flex gap-2">
             <TextInput
               value={mobile}
-              onChange={(e) => setMobile(e.target.value)}
+              onChange={(e) => {
+                setMobile(e.target.value);
+                setCode('');
+                start.reset();
+                verify.reset();
+                setErrors({});
+                setNeedsRegister(false);
+                setRegistrationPrompt(false);
+                setFullName('');
+                setNationalId('');
+              }}
               inputMode="tel"
               dir="ltr"
               placeholder="01xxxxxxxxx"
@@ -133,7 +150,7 @@ export function LoginPage() {
             <Toggle checked={whatsapp} onChange={setWhatsapp} label={t('wizard.whatsapp')} />
           </>
         )}
-        {verify.isError && !needsRegister && (
+        {verify.isError && !registrationPrompt && (
           <p role="alert" className="text-sm text-rose-500">{t('errors.generic')}</p>
         )}
         <button type="submit" className={`${primaryButton} w-full`} disabled={verify.isPending}>

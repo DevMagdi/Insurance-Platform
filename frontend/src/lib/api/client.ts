@@ -1,58 +1,46 @@
 import createClient from 'openapi-fetch';
 import type { paths } from './schema';
-import { getCookie } from '../utils';
+import {
+  getCsrfToken,
+  notifyAuthExpired,
+  refreshSession,
+  shouldAttemptRefresh,
+} from '../session';
 
 export const API_BASE = '';
 
-let refreshPromise: Promise<boolean> | null = null;
-
-async function doRefresh(): Promise<boolean> {
-  try {
-    const csrf = getCookie('csrf_token');
-    const res = await fetch('/api/auth/refresh', {
-      method: 'POST',
-      credentials: 'include',
-      headers: csrf ? { 'X-CSRF-Token': csrf } : {},
-    });
-    return res.ok;
-  } catch {
-    return false;
-  }
-}
-
-function ensureRefresh() {
-  if (!refreshPromise) {
-    refreshPromise = doRefresh().finally(() => {
-      refreshPromise = null;
-    });
-  }
-  return refreshPromise;
-}
-
 const baseFetch: typeof fetch = async (input, init) => {
-  const method = (init?.method ?? 'GET').toUpperCase();
-  const headers = new Headers(init?.headers);
-  if (method !== 'GET' && method !== 'HEAD' && method !== 'OPTIONS') {
-    const csrf = getCookie('csrf_token');
+  const request = input instanceof Request ? input : null;
+  const method = (init?.method ?? request?.method ?? 'GET').toUpperCase();
+  const headers = new Headers(request?.headers);
+  new Headers(init?.headers).forEach((value, name) => headers.set(name, value));
+  if (!['GET', 'HEAD', 'OPTIONS'].includes(method)) {
+    const csrf = getCsrfToken();
     if (csrf && !headers.has('X-CSRF-Token')) headers.set('X-CSRF-Token', csrf);
   }
-  const res = await fetch(input, { ...init, headers, credentials: 'include' });
-  if (res.status === 401 && !String(input).includes('/api/auth/refresh')) {
-    const ok = await ensureRefresh();
-    if (ok) {
-      const retryHeaders = new Headers(init?.headers);
-      if (method !== 'GET' && method !== 'HEAD' && method !== 'OPTIONS') {
-        const csrf = getCookie('csrf_token');
-        if (csrf) retryHeaders.set('X-CSRF-Token', csrf);
-      }
-      return fetch(input, { ...init, headers: retryHeaders, credentials: 'include' });
-    }
+
+  const retryInput = request?.clone() ?? input;
+  const requestInit: RequestInit = { ...init, headers, credentials: 'include' };
+  const response = await fetch(input, requestInit);
+  if (response.status !== 401 || !shouldAttemptRefresh(input)) return response;
+
+  if (!(await refreshSession())) {
+    notifyAuthExpired();
+    return response;
   }
-  return res;
+
+  const retryHeaders = new Headers(headers);
+  if (!['GET', 'HEAD', 'OPTIONS'].includes(method)) {
+    const csrf = getCsrfToken();
+    if (csrf) retryHeaders.set('X-CSRF-Token', csrf);
+  }
+  const retryResponse = await fetch(retryInput, { ...init, headers: retryHeaders, credentials: 'include' });
+  if (retryResponse.status === 401) notifyAuthExpired();
+  return retryResponse;
 };
 
 export const api = createClient<paths>({ baseUrl: API_BASE, fetch: baseFetch });
 
-export async function apiFetch(path: string, init?: RequestInit) {
-  return baseFetch(path, init);
+export async function apiFetch(input: RequestInfo | URL, init?: RequestInit) {
+  return baseFetch(input, init);
 }

@@ -96,6 +96,31 @@ async def fixture(monkeypatch: pytest.MonkeyPatch):
     app.dependency_overrides.clear()
 
 
+async def test_csrf_bootstrap_migrates_legacy_cookie_for_the_spa(fixture: tuple) -> None:
+    client, _ctx, _service, _repo, _tokens = fixture
+
+    empty = await client.get("/api/auth/csrf")
+    assert empty.status_code == 200
+    assert empty.json() == {"available": False}
+    assert empty.headers["cache-control"] == "no-store"
+    assert not empty.headers.get_list("set-cookie")
+
+    client.cookies.set("csrf_token", "legacy-csrf", path="/api")
+    migrated = await client.get("/api/auth/csrf")
+    assert migrated.status_code == 200
+    assert migrated.json() == {"available": True}
+    cookie_headers = migrated.headers.get_list("set-cookie")
+    assert any(
+        "csrf_token=legacy-csrf" in cookie and "Path=/" in cookie and "Secure" in cookie
+        for cookie in cookie_headers
+    )
+    assert any(
+        "csrf_token=" in cookie and "Path=/api" in cookie and "Max-Age=0" in cookie
+        for cookie in cookie_headers
+    )
+    assert client.cookies.get("csrf_token", path="/") == "legacy-csrf"
+
+
 async def test_staff_login_uses_secure_http_only_cookies_and_no_password_echo(
     fixture: tuple,
 ) -> None:

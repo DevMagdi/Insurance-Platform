@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { api, ApiError } from '../lib/api';
+import { ensureCsrfCookie } from '../lib/session';
 import type { StaffAccess } from '../lib/staffTypes';
 
 /** Current staff principal and its effective DB-derived access snapshot. */
@@ -7,8 +8,14 @@ export function useStaffMe() {
   const query = useQuery({
     queryKey: ['staff-me'],
     queryFn: async () => {
-      const me = await api.me();
-      return me.kind === 'staff' ? me.access : null;
+      if (!(await ensureCsrfCookie())) return null;
+      try {
+        const me = await api.me();
+        return me.kind === 'staff' ? me.access : null;
+      } catch (error) {
+        if (error instanceof ApiError && error.status === 401) return null;
+        throw error;
+      }
     },
     retry: false,
     staleTime: 30_000,

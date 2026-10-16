@@ -158,7 +158,13 @@ class MobileOTP:
     async def cancel(self, mobile: str) -> None:
         await self.redis.delete(self._key(mobile))
 
-    async def verify(self, mobile: str, code: str) -> None:
+    async def verify(self, mobile: str, code: str, *, consume: bool = True) -> None:
+        """Validate a code, optionally preserving it for a required identity step.
+
+        Customer registration first validates the OTP to prove control of the
+        mobile, then asks for name/national ID. A valid preflight must not consume
+        the single-use code: only a completed sign-in or registration does that.
+        """
         key = self._key(mobile)
         attempt_key = key + ":attempts"
         attempts = await self.redis.incr(attempt_key)
@@ -172,6 +178,11 @@ class MobileOTP:
         saved = json.loads(value)
         if not hmac.compare_digest(self._digest(mobile, code, saved["salt"]), saved["digest"]):
             raise HTTPException(status_code=401, detail="Invalid or expired code")
+        if not consume:
+            # A caller that knows the code has passed verification; don't penalize
+            # the second (consuming) request in the registration flow.
+            await self.redis.delete(attempt_key)
+            return
         # Only ONE concurrent successful verification can consume the code.
         consumed = await self.redis.getdel(key)
         if consumed != value:
