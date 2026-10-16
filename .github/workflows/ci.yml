@@ -246,7 +246,7 @@ jobs:
               print(f'::error title=Trace {name[:70]}::{tail}')
           text = '\n'.join(lines)
           running = [line for line in lines if '::test_' in line][-3:]
-          print('::error title=Last tests::' + '%0A'.join(running).replace('%', '%25'))
+          print('::error title=Last tests::' + '%0A'.join(line.replace('%', '%25') for line in running))
           marker = text.find('+++ Timeout +++')
           chunk = text[marker:marker + 3500] if marker >= 0 else text[-3000:]
           chunk = chunk.replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')

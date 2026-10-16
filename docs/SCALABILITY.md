@@ -89,7 +89,7 @@ indexes and partition pruning can use. Semantics are unchanged:
   2,435, revoked/disabled users 0);
 * `test_initplan_rls_policy_matches_reference_predicate` asserts this
   equivalence for every fixture staff and customer, through the same suites that
-  cover deny overrides, revocation, PgBouncer and 100 concurrent RLS requests;
+  cover deny overrides, revocation, PgBouncer and 100 interleaved RLS requests (20 in flight);
 * the test also checks that the plan contains `InitPlan` and never calls
   `can_read_complaint`.
 

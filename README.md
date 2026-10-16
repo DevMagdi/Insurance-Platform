@@ -40,7 +40,7 @@ The old `/api/v1/*` roadmap paths are **not** live routes.
 * **Access-control pen-test suite** (`tests/test_phase8_pentest.py`): IDOR,
   horizontal and vertical escalation, scope bypass via search, export, cache
   and attachments, self-escalation, stale permissions, enumeration, and RLS
-  under 100 concurrent requests through PgBouncer.
+  under 100 interleaved requests (20 in flight) through PgBouncer.
 * **Scale:**
   * stateless API on Gunicorn with Uvicorn workers;
   * PgBouncer;

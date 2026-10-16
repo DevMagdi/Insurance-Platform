@@ -122,7 +122,7 @@ covers unit-level checks in `test_phase8_security.py`.
 | CSRF missing or mismatched; cross-site Origin on writes; disallowed CORS preflight | 403 | ✅ |
 | Oversized bodies (declared and streamed) | 413 | ✅ |
 | Privacy endpoints bound to the authenticated customer | other customers' requests invisible | ✅ |
-| RLS under load: 100 concurrent requests with mixed actors through PgBouncer | zero cross-actor leakage | ✅ |
+| RLS under load: 100 interleaved requests (20 in flight) with mixed actors, direct and through PgBouncer | zero cross-actor leakage | ✅ |
 | InitPlan RLS policy equivalent to the reference predicate for every actor | identical row counts | ✅ |
 | Key rotation: old ciphertext readable, re-encrypted under the new key | ✅ | ✅ |
 

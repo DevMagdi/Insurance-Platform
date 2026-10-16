@@ -73,7 +73,7 @@ per-row function filter.
   escalation, scope bypass (search, filters, export, analytics cache,
   attachments, children), self-escalation, stale permissions after
   revocation, enumeration and abuse blocking, lockout, CSRF/CORS/headers/413,
-  privacy binding, 100 concurrent RLS requests, key rotation, and InitPlan
+  privacy binding, 100 interleaved RLS requests (20 in flight), key rotation, and InitPlan
   policy equivalence.
 * `backend/tests/test_rls_integration.py`: direct PostgreSQL **and** PgBouncer
   transaction-pooling isolation and GUC leakage.
