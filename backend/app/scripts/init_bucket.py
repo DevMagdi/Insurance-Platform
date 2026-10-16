@@ -1,8 +1,7 @@
 """Create the private attachments bucket on a self-hosted S3 endpoint (idempotent).
 
-Used by the ``minio-init`` one-shot service in the compose stacks, replacing the
-``mc`` client image (MinIO's community images and client were withdrawn upstream).
-It only talks the S3 API, so it works against SeaweedFS, MinIO or any compatible
+Used by the ``object-store-init`` one-shot service in the compose stacks.
+It only talks the S3 API, so it works against SeaweedFS or any compatible
 store. Managed S3 deployments create the bucket with infrastructure-as-code instead.
 
 Environment: ``S3_ENDPOINT_URL``, ``S3_ACCESS_KEY_ID``, ``S3_SECRET_ACCESS_KEY``,

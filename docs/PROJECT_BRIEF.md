@@ -74,7 +74,7 @@ Modern, updated, premium/VIP: deep navy + gold/emerald accents, glassmorphism, s
 
 - Frontend: React JS + Vite + Tailwind CSS (+ TanStack Query, React Hook Form + Zod, Recharts, Framer Motion, i18n).
 
-- Backend: FastAPI (async) + PostgreSQL (SQLAlchemy 2 + Alembic) + Redis + Celery/ARQ + S3-compatible storage (MinIO).
+- Backend: FastAPI (async) + PostgreSQL (SQLAlchemy 2 + Alembic) + Redis + Celery/ARQ + S3-compatible storage (SeaweedFS locally; managed S3 recommended for production).
 
 - Infra: Docker Compose (dev), Nginx, Kubernetes-ready.
 

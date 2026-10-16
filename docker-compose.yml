@@ -58,30 +58,28 @@ services:
       timeout: 3s
       retries: 10
 
-  minio:
-    # S3-compatible object store for local development. The service keeps its
-    # historical name (and the MINIO_ROOT_* variables) so existing .env files keep
-    # working; MinIO's community images were withdrawn upstream, so it runs SeaweedFS.
+  object-store:
+    # S3-compatible SeaweedFS gateway for local development.
     image: chrislusf/seaweedfs:4.48
     command: ['mini', '-s3.port=9000', '-s3.port.iceberg=0', '-s3.port.lance=0']
     environment:
-      AWS_ACCESS_KEY_ID: ${MINIO_ROOT_USER:?run make init}
-      AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:?run make init}
+      AWS_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:?run make init}
+      AWS_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:?run make init}
     volumes:
-      - minio_data:/data
+      - object_store_data:/data
     ports:
       - '127.0.0.1:9000:9000'
-  minio-init:
+  object-store-init:
     build:
       context: .
       dockerfile: infra/Dockerfile.backend
     environment:
-      S3_ENDPOINT_URL: http://minio:9000
-      S3_ACCESS_KEY_ID: ${MINIO_ROOT_USER:?run make init}
-      S3_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:?run make init}
+      S3_ENDPOINT_URL: http://object-store:9000
+      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:?run make init}
+      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:?run make init}
       S3_BUCKET: ${S3_BUCKET:?run make init}
     depends_on:
-      - minio
+      - object-store
     command: ['python', '-m', 'app.scripts.init_bucket']
 
   migrate:
@@ -105,9 +103,9 @@ services:
       APP_BLIND_INDEX_KEY: ${APP_BLIND_INDEX_KEY:?run make init}
       JWT_SIGNING_KEY: ${JWT_SIGNING_KEY:?run make init}
       S3_BUCKET: ${S3_BUCKET:?run make init}
-      S3_ENDPOINT_URL: http://minio:9000
-      S3_ACCESS_KEY_ID: ${MINIO_ROOT_USER:?run make init}
-      S3_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:?run make init}
+      S3_ENDPOINT_URL: http://object-store:9000
+      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:?run make init}
+      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:?run make init}
       SMTP_HOST: mailpit
       SMTP_PORT: '1025'
       ENVIRONMENT: development
@@ -125,7 +123,7 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-      minio-init:
+      object-store-init:
         condition: service_completed_successfully
       mailpit:
         condition: service_started
@@ -144,9 +142,9 @@ services:
       APP_ENCRYPTION_KEY: ${APP_ENCRYPTION_KEY:?run make init}
       REDIS_URL: redis://redis:6379/0
       S3_BUCKET: ${S3_BUCKET:?run make init}
-      S3_ENDPOINT_URL: http://minio:9000
-      S3_ACCESS_KEY_ID: ${MINIO_ROOT_USER:?run make init}
-      S3_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:?run make init}
+      S3_ENDPOINT_URL: http://object-store:9000
+      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:?run make init}
+      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:?run make init}
       SMTP_HOST: mailpit
       SMTP_PORT: '1025'
       DEV_SMS_MAILBOX: 'true'
@@ -159,7 +157,7 @@ services:
         condition: service_healthy
       postgres:
         condition: service_healthy
-      minio-init:
+      object-store-init:
         condition: service_completed_successfully
       mailpit:
         condition: service_started
@@ -215,4 +213,6 @@ services:
 volumes:
   postgres_data:
   redis_data:
-  minio_data:
+  object_store_data:
+    # Set this to an existing local volume name when upgrading without moving data.
+    name: ${OBJECT_STORE_VOLUME:-insurance-platform-object-store-data}

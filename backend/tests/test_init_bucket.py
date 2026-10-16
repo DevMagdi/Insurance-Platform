@@ -38,7 +38,7 @@ class FakeS3:
 
 
 def test_creates_bucket_after_endpoint_comes_up() -> None:
-    fake = FakeS3([EndpointConnectionError(endpoint_url="http://minio:9000")])
+    fake = FakeS3([EndpointConnectionError(endpoint_url="http://object-store:9000")])
     init_bucket.ensure_bucket(fake, "attachments", attempts=3, delay=0)
     assert fake.calls == ["create:attachments", "create:attachments", "delete_policy", "head"]
 
@@ -58,8 +58,10 @@ def test_gives_up_with_a_clear_error() -> None:
 @pytest.mark.parametrize("name", ["docker-compose.yml", "docker-compose.prod.yml"])
 def test_compose_stacks_use_maintained_object_store_images(name: str) -> None:
     services = yaml.safe_load((ROOT / name).read_text())["services"]
-    images = [service.get("image", "") for service in services.values()]
-    # MinIO's community server and mc images were withdrawn from Docker Hub.
-    assert not any(image.startswith("minio/") for image in images)
-    assert services["minio"]["image"].startswith("chrislusf/seaweedfs:")
-    assert services["minio-init"]["command"] == ["python", "-m", "app.scripts.init_bucket"]
+    store = services["object-store"]
+    assert store["image"].startswith("chrislusf/seaweedfs:")
+    assert store["environment"]["AWS_ACCESS_KEY_ID"].startswith("${S3_ACCESS_KEY_ID:")
+    assert store["environment"]["AWS_SECRET_ACCESS_KEY"].startswith("${S3_SECRET_ACCESS_KEY:")
+    assert services["object-store-init"]["command"] == ["python", "-m", "app.scripts.init_bucket"]
+    for process in ("api", "worker"):
+        assert services[process]["environment"]["S3_ENDPOINT_URL"] == "http://object-store:9000"

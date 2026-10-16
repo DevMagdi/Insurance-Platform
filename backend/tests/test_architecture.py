@@ -274,8 +274,8 @@ def test_production_compose_pulls_published_images_without_admin_secrets() -> No
         "postgres",
         "pgbouncer",
         "redis",
-        "minio",
-        "minio-init",
+        "object-store",
+        "object-store-init",
         "migrate",
         "api",
         "worker",
@@ -288,7 +288,7 @@ def test_production_compose_pulls_published_images_without_admin_secrets() -> No
         assert image.startswith("ghcr.io/${IMAGE_OWNER")
         assert "${IMAGE_TAG" in image
     assert not any("build" in service for service in compose.values())
-    # The API and worker still never receive administrative credentials.
+    # The API and worker never receive the database administrator credentials.
     for process in ("api", "worker"):
         service = compose[process]
         assert "env_file" not in service
@@ -296,7 +296,6 @@ def test_production_compose_pulls_published_images_without_admin_secrets() -> No
             "DATABASE_ADMIN_URL",
             "POSTGRES_PASSWORD",
             "POSTGRES_USER",
-            "MINIO_ROOT_PASSWORD",
         ):
             assert banned not in service["environment"], (process, banned)
         assert service["restart"] == "unless-stopped"
@@ -304,6 +303,8 @@ def test_production_compose_pulls_published_images_without_admin_secrets() -> No
     assert "pgbouncer:5432" in compose["api"]["environment"]["DATABASE_URL"]
     assert "app_worker" in compose["worker"]["environment"]["WORKER_DATABASE_URL"]
     assert compose["api"]["environment"]["ENVIRONMENT"] == "production"
+    volumes = yaml.safe_load((ROOT / "docker-compose.prod.yml").read_text())["volumes"]
+    assert volumes["object_store_data"]["name"].startswith("${OBJECT_STORE_VOLUME:?")
     assert compose["api"]["environment"]["COOKIE_SECURE"] == "true"
     # Migrations run first, as a one-shot container with the migrator URL only.
     migrate = compose["migrate"]
@@ -319,9 +320,9 @@ def test_production_compose_pulls_published_images_without_admin_secrets() -> No
     published = {
         name: service.get("ports", []) for name, service in compose.items() if service.get("ports")
     }
-    assert set(published) == {"web", "postgres", "minio"}
+    assert set(published) == {"web", "postgres", "object-store"}
     assert published["web"] == ["${HTTP_PORT:-8080}:80"]
-    for name in ("postgres", "minio"):
+    for name in ("postgres", "object-store"):
         assert all(entry.startswith("127.0.0.1:") for entry in published[name]), name
     # Every variable the stack demands must be documented outside the compose file.
     documented = (ROOT / ".env.example").read_text() + (ROOT / "docs/DEPLOYMENT.md").read_text()
@@ -366,11 +367,12 @@ def test_cd_pipeline_gates_deployment_and_verifies_artifacts() -> None:
 
 def test_dev_compose_is_transaction_pooled_without_admin_secrets_in_api() -> None:
     compose = yaml.safe_load((ROOT / "docker-compose.yml").read_text())["services"]
-    assert {"postgres", "pgbouncer", "redis", "minio", "api", "worker", "nginx"} <= set(compose)
+    assert {"postgres", "pgbouncer", "redis", "object-store", "api", "worker", "nginx"} <= set(
+        compose
+    )
     assert compose["pgbouncer"]["environment"]["POOL_MODE"] == "transaction"
     assert compose["pgbouncer"]["environment"]["MAX_PREPARED_STATEMENTS"] == "100"
     for process in ("api", "worker"):
         assert "env_file" not in compose[process]
         assert "DATABASE_ADMIN_URL" not in compose[process]["environment"]
         assert "POSTGRES_PASSWORD" not in compose[process]["environment"]
-        assert "MINIO_ROOT_PASSWORD" not in compose[process]["environment"]

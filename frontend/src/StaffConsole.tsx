@@ -5,6 +5,7 @@ import { DateRangePicker } from './components/DateRangePicker';
 import { Icon, type IconName } from './components/Icon';
 import { Modal } from './components/Modal';
 import { hasPermission } from './utils/access';
+import { canViewAdminDashboard } from './features/admin/adminAccess';
 import { formatDateTime, presetRange } from './utils/date';
 import type { AppRoute, ComplaintFilterOptions, CompanyOption, DateRange, InsuranceType, MeResponse, NotificationItem, Permission, StaffAccess } from './types';
 import './staff-console.css';
@@ -17,6 +18,7 @@ const AuditPage = lazy(async () => ({ default: (await import('./features/admin/A
 const OperationsPage = lazy(async () => ({ default: (await import('./features/admin/OperationsPage')).OperationsPage }));
 const RolesPage = lazy(async () => ({ default: (await import('./features/admin/RolesPage')).RolesPage }));
 const UsersPage = lazy(async () => ({ default: (await import('./features/admin/UsersPage')).UsersPage }));
+const AdminDashboard = lazy(async () => ({ default: (await import('./features/admin/AdminDashboard')).AdminDashboard }));
 const StoragePage = lazy(async () => ({ default: (await import('./features/admin/StoragePage')).StoragePage }));
 
 type SessionState = 'loading' | 'authenticated' | 'unauthenticated';
@@ -33,6 +35,7 @@ interface NavigationItem {
 const NAVIGATION: NavigationItem[] = [
   { page: 'overview', label: 'لوحة المؤشرات', icon: 'overview', section: 'workspace', permission: 'analytics.view', extraPermission: 'complaints.view' },
   { page: 'complaints', label: 'قائمة الشكاوى', icon: 'inbox', section: 'workspace', permission: 'complaints.view' },
+  { page: 'admin', label: 'لوحة الإدارة', icon: 'overview', section: 'admin', permission: 'analytics.view', extraPermission: 'complaints.view' },
   { page: 'users', label: 'المستخدمون', icon: 'users', section: 'admin', permission: 'users.view' },
   { page: 'roles', label: 'الأدوار والصلاحيات', icon: 'roles', section: 'admin', permission: 'roles.manage' },
   { page: 'operations', label: 'العمليات والكتالوج', icon: 'settings', section: 'admin' },
@@ -55,6 +58,7 @@ function routeFromPath(pathname: string): AppRoute {
   const ticket = pathname.match(/^\/staff\/complaints\/([^/]+)$/);
   if (ticket?.[1]) return { page: 'ticket', id: decodeURIComponent(ticket[1]) };
   if (pathname === '/staff/complaints') return { page: 'complaints' };
+  if (pathname === '/staff/admin') return { page: 'admin' };
   if (pathname === '/staff/users') return { page: 'users' };
   if (pathname === '/staff/roles') return { page: 'roles' };
   if (pathname === '/staff/operations') return { page: 'operations' };
@@ -83,6 +87,7 @@ function storageAllowed(access: StaffAccess): boolean {
   return hasGlobalAdminScope(access) && hasPermission(access, 'storage.manage');
 }
 function defaultPage(access: StaffAccess): AppRoute {
+  if (canViewAdminDashboard(access)) return { page: 'admin' };
   if (hasPermission(access, 'analytics.view') && hasPermission(access, 'complaints.view')) return { page: 'overview' };
   if (hasPermission(access, 'complaints.view')) return { page: 'complaints' };
   if (hasPermission(access, 'users.view')) return { page: 'users' };
@@ -99,6 +104,7 @@ function CommandPalette({ access, onNavigate, onClose }: { access: StaffAccess; 
   const [search, setSearch] = useState('');
   const [activeIndex, setActiveIndex] = useState(0);
   const entries = NAVIGATION
+    .filter((item) => item.page !== 'admin' || canViewAdminDashboard(access))
     .filter((item) => item.page !== 'operations' || operationsAllowed(access))
     .filter((item) => item.page !== 'storage' || storageAllowed(access))
     .filter((item) => !item.permission || (hasPermission(access, item.permission) && (!item.extraPermission || hasPermission(access, item.extraPermission))));
@@ -242,6 +248,7 @@ function App() {
   const companyNames = useMemo(() => new Map(filterOptions.companies.map((company) => [company.id, company.name_ar || company.name_en])), [filterOptions.companies]);
   const visibleNavigation = useMemo(() => !access ? [] : NAVIGATION.filter((item) => {
     if (item.page === 'operations') return operationsAllowed(access);
+    if (item.page === 'admin') return canViewAdminDashboard(access);
     if (item.page === 'storage') return storageAllowed(access);
     return Boolean(item.permission && hasPermission(access, item.permission) && (!item.extraPermission || hasPermission(access, item.extraPermission)));
   }), [access]);
@@ -254,8 +261,10 @@ function App() {
   const effectiveCompanyId = filterOptions.companies.some((company) => company.id === companyId) ? companyId : '';
   const effectiveInsuranceType = access.insurance_types.length > 0 && insuranceType && !access.insurance_types.includes(insuranceType) ? '' : insuranceType;
   const currentNav = activePage(route);
-  const showDatePicker = route.page === 'overview' || route.page === 'complaints' || route.page === 'audit';
-  const pageContent = route.page === 'overview'
+  const showDatePicker = route.page === 'admin' || route.page === 'overview' || route.page === 'complaints' || route.page === 'audit';
+  const pageContent = route.page === 'admin'
+    ? <AdminDashboard access={access} range={range} onNavigate={navigate} />
+    : route.page === 'overview'
     ? <OverviewPage access={access} range={range} companies={filterOptions.companies} companyId={effectiveCompanyId} insuranceType={effectiveInsuranceType} onCompany={setCompanyId} onInsuranceType={setInsuranceType} onOpenComplaints={() => navigate({ page: 'complaints' })} />
     : route.page === 'complaints'
       ? <ComplaintQueue access={access} range={range} options={filterOptions} companyNames={companyNames} onOpenTicket={(id) => navigate({ page: 'ticket', id })} />
@@ -292,7 +301,7 @@ function App() {
       <main className="main-content"><div className="main-content-inner">
         {notice && <div className="inline-alert info global-notice" role="status">{notice}<button className="notice-close" type="button" aria-label="إخفاء" onClick={() => setNotice('')}><Icon name="close" size={14} /></button></div>}
         <Suspense fallback={<div className="loading-surface"><span className="loading-spinner" /> جارٍ تحميل مساحة العمل…</div>}>
-          {route.page === 'overview' && !(hasPermission(access, 'analytics.view') && hasPermission(access, 'complaints.view')) ? <AccessDenied title="لوحة المؤشرات غير متاحة" /> : route.page === 'complaints' || route.page === 'ticket' ? pageContent : route.page === 'users' && !hasPermission(access, 'users.view') ? <AccessDenied title="إدارة المستخدمين غير متاحة" /> : route.page === 'roles' && !hasPermission(access, 'roles.manage') ? <AccessDenied title="إدارة الأدوار غير متاحة" /> : route.page === 'operations' && !operationsAllowed(access) ? <AccessDenied title="إعدادات الإدارة غير متاحة" /> : route.page === 'storage' && !storageAllowed(access) ? <AccessDenied title="مركز التخزين غير متاح" /> : route.page === 'audit' && !hasPermission(access, 'audit.view') ? <AccessDenied title="سجل التدقيق غير متاح" /> : pageContent}
+          {route.page === 'admin' && !canViewAdminDashboard(access) ? <AccessDenied title="لوحة الإدارة غير متاحة" /> : route.page === 'overview' && !(hasPermission(access, 'analytics.view') && hasPermission(access, 'complaints.view')) ? <AccessDenied title="لوحة المؤشرات غير متاحة" /> : route.page === 'complaints' || route.page === 'ticket' ? pageContent : route.page === 'users' && !hasPermission(access, 'users.view') ? <AccessDenied title="إدارة المستخدمين غير متاحة" /> : route.page === 'roles' && !hasPermission(access, 'roles.manage') ? <AccessDenied title="إدارة الأدوار غير متاحة" /> : route.page === 'operations' && !operationsAllowed(access) ? <AccessDenied title="إعدادات الإدارة غير متاحة" /> : route.page === 'storage' && !storageAllowed(access) ? <AccessDenied title="مركز التخزين غير متاح" /> : route.page === 'audit' && !hasPermission(access, 'audit.view') ? <AccessDenied title="سجل التدقيق غير متاح" /> : pageContent}
         </Suspense>
       </div></main>
       <footer className="app-footer"><span>وَثيق · منصة تشغيل وساطة التأمين</span><span><Icon name="shield" size={13} /> كل إجراء محمي بنطاق الوصول الفعّال</span><button type="button" onClick={() => setShortcutsOpen(true)}><Icon name="keyboard" size={13} /> اختصارات لوحة المفاتيح</button></footer>

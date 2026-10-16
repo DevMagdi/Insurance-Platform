@@ -5,7 +5,6 @@ import { HomePage } from './pages/HomePage';
 import { LoginPage } from './pages/LoginPage';
 import { NewComplaintPage } from './pages/NewComplaintPage';
 import { ProfilePage } from './pages/ProfilePage';
-import { StaffAdminPage } from './pages/StaffAdminPage';
 import { StaffAnalyticsPage } from './pages/StaffAnalyticsPage';
 import { StaffAuditPage, StaffExportsPage } from './pages/StaffAuditExportsPage';
 import { StaffDashboardPage } from './pages/StaffDashboardPage';
@@ -25,7 +24,7 @@ function App() {
   const staffTicketMatch = path.match(/^\/staff\/tickets\/([0-9a-fA-F-]{36})$/);
   const consoleTicketMatch = path.match(/^\/staff\/complaints\/([0-9a-fA-F-]{36})$/);
   const dashboardTicketMatch = path.match(/^\/dashboard\/complaints\/([0-9a-fA-F-]{36})$/);
-  const staffConsoleRoute = /^\/staff\/(?:overview|complaints|users|roles|operations|audit|storage)$/.test(path);
+  const staffConsoleRoute = /^\/staff\/(?:overview|admin|complaints|users|roles|operations|audit|storage)$/.test(path);
 
   if (consoleTicketMatch) {
     return <Layout><StaffTicketPage complaintId={consoleTicketMatch[1]} /></Layout>;
@@ -38,7 +37,6 @@ function App() {
   else if (staffTicketMatch) page = <StaffTicketPage complaintId={staffTicketMatch[1]} />;
   else if (dashboardTicketMatch) page = <StaffTicketPage complaintId={dashboardTicketMatch[1]} />;
   else if (path === '/staff/analytics') page = <StaffAnalyticsPage />;
-  else if (path === '/staff/admin') page = <StaffAdminPage />;
   else if (path === '/staff/audit') page = <StaffAuditPage />;
   else if (path === '/staff/exports') page = <StaffExportsPage />;
   else if (path === '/') page = <HomePage />;
