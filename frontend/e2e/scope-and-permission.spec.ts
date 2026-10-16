@@ -2,8 +2,8 @@ import { expect, test, type Page, type Route } from '@playwright/test';
 import type { Permission, StaffAccess } from '../src/types';
 
 const companyId = 'company-one';
-const insideId = 'complaint-in-scope';
-const outsideId = 'complaint-out-of-scope';
+const insideId = '11111111-1111-4111-8111-111111111111';
+const outsideId = '22222222-2222-4222-8222-222222222222';
 let revoked: boolean;
 let exportAttempts: number;
 let meRequests: number;
@@ -114,7 +114,7 @@ test('one-company scope is reflected in charts, list search, export, and direct 
   const directTicketResponse = page.waitForResponse((response) => new URL(response.url()).pathname === `/api/staff/complaints/${outsideId}`);
   await page.goto(`/staff/complaints/${outsideId}`);
   expect((await directTicketResponse).status()).toBe(404);
-  await expect(page.getByRole('heading', { name: 'الشكوى غير متاحة' })).toBeVisible();
+  await expect(page.getByRole('alert')).toContainText('تعذر تحميل مساحة العمل.');
   await expect(page.getByText('Scoped Customer')).toHaveCount(0);
   await expect(page.getByText('Other Insurer')).toHaveCount(0);
 });
