@@ -1,3 +1,21 @@
 @import 'tailwindcss';
-:root { font-family: system-ui, -apple-system, "Segoe UI", Tahoma, sans-serif; }
-:focus-visible { outline: 3px solid #fbbf24; outline-offset: 3px; }
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  font-family: system-ui, -apple-system, "Segoe UI", Tahoma, sans-serif;
+}
+
+body {
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+:focus-visible {
+  outline: 3px solid #fbbf24;
+  outline-offset: 3px;
+}
+
+::selection {
+  background: rgba(245, 197, 66, 0.35);
+}

@@ -12,6 +12,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine, async_sessionmaker
 
 from app.api import (
+    ai,
     analytics,
     attachments,
     audit,
@@ -25,10 +26,12 @@ from app.api import (
 )
 from app.db import make_engine
 from app.openapi_contract import decorate_spec
+from app.repositories.ai import AiInsightRepository
 from app.repositories.attachments import AttachmentRepository
 from app.repositories.complaints import ComplaintRepository
-from app.security.crypto import NationalIdProtector, decode_key
+from app.security.crypto import NationalIdProtector, PayloadProtector, decode_key
 from app.security.tokens import TokenManager
+from app.services.ai import AiInsightService, LocalAiAnalyzer
 from app.services.attachments import AttachmentService
 from app.services.auth import AuthService
 from app.services.complaints import ComplaintService
@@ -52,6 +55,10 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     )
     app.state.complaints = ComplaintService(
         ComplaintRepository(), protector, settings.jwt_signing_key
+    )
+    app.state.ai = AiInsightService(
+        AiInsightRepository(PayloadProtector(decode_key(settings.app_encryption_key))),
+        LocalAiAnalyzer(),
     )
     storage = (
         S3ObjectStorage(settings) if settings.s3_endpoint_url or settings.s3_access_key_id else None
@@ -82,6 +89,7 @@ app = ContractApp(
 app.include_router(auth.router)
 app.include_router(customer.router)
 app.include_router(staff.router)
+app.include_router(ai.router)
 app.include_router(workflow.router)
 app.include_router(analytics.router)
 app.include_router(audit.router)

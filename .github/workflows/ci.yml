@@ -21,6 +21,11 @@ jobs:
       - uses: actions/setup-node@v4
         with: {node-version: '22', cache: npm, cache-dependency-path: frontend/package-lock.json}
       - run: cd frontend && npm ci && npm run lint && npm run typecheck && npm run test && npm run build
+      - name: Playwright e2e (API mocked at the network layer)
+        run: |
+          cd frontend
+          npx playwright install --with-deps chromium
+          npm run test:e2e
   postgres-rls:
     runs-on: ubuntu-latest
     steps:

@@ -32,6 +32,7 @@ class Delivery(Protocol):
         email: str | None,
         kind: str,
         payload: dict[str, Any],
+        preferences: dict[str, Any] | None = None,
     ) -> bool: ...
     async def send_insurer(self, email: str, ticket: str, reason: str) -> bool: ...
 
@@ -93,11 +94,17 @@ class SMTPDelivery:
         email: str | None,
         kind: str,
         payload: dict[str, Any],
+        preferences: dict[str, Any] | None = None,
     ) -> bool:
         if not self.settings.smtp_host:
             return False
-        address = email
-        if address is None and self.settings.dev_sms_mailbox:
+        preferences = preferences or {}
+        email_enabled = preferences.get("email", True) is not False
+        text_enabled = any(
+            preferences.get(channel, True) is not False for channel in ("sms", "whatsapp")
+        )
+        address = email if email_enabled else None
+        if address is None and text_enabled and self.settings.dev_sms_mailbox:
             address = f"sms-{mobile[1:]}@sms.local.test"
         if address is None:
             return False

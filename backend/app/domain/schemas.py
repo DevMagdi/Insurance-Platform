@@ -295,6 +295,56 @@ class CsatRequest(StrictModel):
     comment: str | None = Field(default=None, max_length=1000)
 
 
+AiInsightKind = Literal["classification", "sentiment", "summary", "reply"]
+
+
+def _default_ai_kinds() -> list[AiInsightKind]:
+    return ["classification", "sentiment", "summary", "reply"]
+
+
+class AiInsightGenerateRequest(StrictModel):
+    kinds: list[AiInsightKind] = Field(
+        default_factory=_default_ai_kinds,
+        min_length=1,
+        max_length=4,
+    )
+
+    @field_validator("kinds")
+    @classmethod
+    def unique_kinds(cls, value: list[AiInsightKind]) -> list[AiInsightKind]:
+        if len(set(value)) != len(value):
+            raise ValueError("AI insight kinds must be unique")
+        return value
+
+
+class AiInsightReviewRequest(StrictModel):
+    review_status: Literal["accepted", "rejected"]
+
+
+class NotificationPreferences(StrictModel):
+    """Customer delivery choices; channels stay opt-out, never opt-in by surprise."""
+
+    email: bool = True
+    whatsapp: bool = True
+    sms: bool = True
+
+
+class CustomerProfileUpdate(StrictModel):
+    """Self-service profile edit; identity fields (mobile, national ID) are immutable here."""
+
+    full_name: str = Field(min_length=2, max_length=120)
+    email: str | None = Field(default=None, max_length=254, pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+    whatsapp_available: bool = False
+    notification_preferences: NotificationPreferences = Field(
+        default_factory=NotificationPreferences
+    )
+
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, value: str | None) -> str | None:
+        return value.lower() if value is not None else None
+
+
 class AccessSpec(StrictModel):
     role_ids: list[UUID] = Field(default_factory=list, max_length=30)
     allow: list[str] = Field(default_factory=list, max_length=50)

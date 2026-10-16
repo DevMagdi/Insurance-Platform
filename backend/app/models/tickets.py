@@ -309,6 +309,8 @@ class AuditLog(Base):
 
 class AiInsight(Base):
     __tablename__ = "ai_insights"
+    # INSERT is write-only under RLS; server defaults are supplied locally.
+    __mapper_args__ = {"eager_defaults": False}  # noqa: RUF012
     __table_args__ = (
         ForeignKeyConstraint(
             ["complaint_id", "complaint_created_at"],
@@ -316,7 +318,9 @@ class AiInsight(Base):
         ),
     )
 
-    id: Mapped[UUID] = mapped_column(primary_key=True, server_default=func.gen_random_uuid())
+    id: Mapped[UUID] = mapped_column(
+        primary_key=True, default=uuid4, server_default=func.gen_random_uuid()
+    )
     complaint_id: Mapped[UUID]
     complaint_created_at: Mapped[datetime]
     kind: Mapped[str] = mapped_column(Text)
@@ -325,7 +329,9 @@ class AiInsight(Base):
     provider_model: Mapped[str | None] = mapped_column(Text)
     review_status: Mapped[str] = mapped_column(Text, server_default="suggested")
     reviewed_by_staff_id: Mapped[UUID | None] = mapped_column(ForeignKey("staff_users.id"))
-    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(
+        default=lambda: datetime.now(UTC), server_default=func.now()
+    )
 
 
 class DuplicateCandidate(Base):

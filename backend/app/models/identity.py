@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 from datetime import date, datetime
+from typing import Any
 from uuid import UUID
 
 from sqlalchemy import Boolean, Date, ForeignKey, LargeBinary, Text, func, text
-from sqlalchemy.dialects.postgresql import ARRAY, ENUM
+from sqlalchemy.dialects.postgresql import ARRAY, ENUM, JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.domain.enums import InsuranceType
@@ -51,6 +52,9 @@ class Customer(Base):
     mobile: Mapped[str] = mapped_column(Text)
     whatsapp_available: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
     email: Mapped[str | None] = mapped_column(Text)
+    notification_preferences: Mapped[dict[str, Any]] = mapped_column(
+        JSONB, server_default=text('\'{"email": true, "whatsapp": true, "sms": true}\'::jsonb')
+    )
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(server_default=func.now())
 

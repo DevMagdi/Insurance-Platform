@@ -1,6 +1,6 @@
-# Architecture through partial Phase 3
+# Architecture through partial Phase 3 + Phase 6 customer portal
 
-**Product authority:** [PROJECT_BRIEF.md](PROJECT_BRIEF.md). This describes the **implemented backend** plus its production boundaries. [openapi.yaml](openapi.yaml) is the generated, implemented HTTP contract; [openapi-roadmap.yaml](openapi-roadmap.yaml) retains the original `/api/v1` **future-route draft**. FastAPI currently implements `/api/*`, not that roadmap. The frontend is still a minimal RTL shell.
+**Product authority:** [PROJECT_BRIEF.md](PROJECT_BRIEF.md). This describes the **implemented backend** plus its production boundaries. [openapi.yaml](openapi.yaml) is the generated, implemented HTTP contract; [openapi-roadmap.yaml](openapi-roadmap.yaml) retains the original `/api/v1` **future-route draft**. FastAPI currently implements `/api/*`, not that roadmap. The frontend includes the Phase 6 customer portal (see [CUSTOMER_PORTAL.md](CUSTOMER_PORTAL.md)) and the staff workspace with human-reviewed AI assistance (see [STAFF_PORTAL.md](STAFF_PORTAL.md)).
 
 ## Components and request flow
 
@@ -50,4 +50,14 @@ The HTTP router → service → repository flow is in `backend/app/api/`, `app/s
 
 ### Subsequent work
 
-A full bilingual customer/staff portal, real SMS/WhatsApp provider, production antivirus, TLS and secret/key rotation, independent RLS/security review, scheduled email reports, integration administration/providers, calendar-aware SLA, dedicated notification push, inbound integrations, AI/voice, backups, PDPL compliance and load testing remain **unfinished**. No production deployment or 1M concurrent-user claim follows from the current Compose setup. See the [ADRs](adr/) for access-control and PII rationale.
+Phase 6 adds the bilingual customer portal, a customer SSE stream
+(`app/services/realtime.py`, revalidating session/ownership per poll), and
+migration `20261015_12` with SECURITY DEFINER customer-profile helpers and
+notification preferences — details in [CUSTOMER_PORTAL.md](CUSTOMER_PORTAL.md).
+Real SMS/WhatsApp providers, production antivirus, TLS and secret/key rotation,
+independent RLS/security review, scheduled email reports, integration
+administration/providers, calendar-aware SLA, dedicated notification push,
+inbound integrations, AI/voice, backups, PDPL compliance and load testing
+remain **unfinished**. No production deployment or 1M concurrent-user claim
+follows from the current Compose setup. See the [ADRs](adr/) for
+access-control and PII rationale.

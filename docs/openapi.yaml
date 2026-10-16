@@ -1163,6 +1163,88 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
       security:
       - AccessCookie: []
+  /api/customer/profile:
+    get:
+      tags:
+      - customer
+      summary: Customer Profile
+      operationId: customer_profile_api_customer_profile_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response Customer Profile Api Customer Profile Get
+      security:
+      - AccessCookie: []
+    patch:
+      tags:
+      - customer
+      summary: Update Customer Profile
+      operationId: update_customer_profile_api_customer_profile_patch
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomerProfileUpdate'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response Update Customer Profile Api Customer Profile Patch
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      parameters:
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
+  /api/customer/complaints/{complaint_id}/stream:
+    get:
+      tags:
+      - customer
+      summary: Customer Complaint Stream
+      description: SSE ticket updates; cookie auth is revalidated on every poll (see
+        realtime).
+      operationId: customer_complaint_stream_api_customer_complaints__complaint_id__stream_get
+      parameters:
+      - name: complaint_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Complaint Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
   /api/customer/notifications:
     get:
       tags:
@@ -1181,6 +1263,45 @@ paths:
                 type: array
                 title: Response Customer Notifications Api Customer Notifications
                   Get
+      security:
+      - AccessCookie: []
+  /api/customer/notifications/{notification_id}/read:
+    patch:
+      tags:
+      - customer
+      summary: Read Customer Notification
+      operationId: read_customer_notification_api_customer_notifications__notification_id__read_patch
+      parameters:
+      - name: notification_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Notification Id
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: boolean
+                title: Response Read Customer Notification Api Customer Notifications  Notification
+                  Id  Read Patch
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
       security:
       - AccessCookie: []
   /api/staff/users:
@@ -2599,6 +2720,119 @@ paths:
       security:
       - AccessCookie: []
       x-required-permission: complaints.view
+  /api/staff/complaints/{complaint_id}/ai-insights:
+    get:
+      tags:
+      - ai-insights
+      summary: List Ai Insights
+      operationId: list_ai_insights_api_staff_complaints__complaint_id__ai_insights_get
+      parameters:
+      - name: complaint_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Complaint Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: true
+                title: Response List Ai Insights Api Staff Complaints  Complaint Id  Ai
+                  Insights Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/staff/complaints/{complaint_id}/ai-insights/generate:
+    post:
+      tags:
+      - ai-insights
+      summary: Generate Ai Insights
+      operationId: generate_ai_insights_api_staff_complaints__complaint_id__ai_insights_generate_post
+      parameters:
+      - name: complaint_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Complaint Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AiInsightGenerateRequest'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: true
+                title: Response Generate Ai Insights Api Staff Complaints  Complaint
+                  Id  Ai Insights Generate Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/staff/complaints/{complaint_id}/ai-insights/{insight_id}:
+    patch:
+      tags:
+      - ai-insights
+      summary: Review Ai Insight
+      operationId: review_ai_insight_api_staff_complaints__complaint_id__ai_insights__insight_id__patch
+      parameters:
+      - name: complaint_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Complaint Id
+      - name: insight_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Insight Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AiInsightReviewRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Review Ai Insight Api Staff Complaints  Complaint
+                  Id  Ai Insights  Insight Id  Patch
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
   /api/staff/complaints/bulk:
     post:
       tags:
@@ -4512,6 +4746,36 @@ components:
       required:
       - ownership
       title: AccessSpec
+    AiInsightGenerateRequest:
+      properties:
+        kinds:
+          items:
+            type: string
+            enum:
+            - classification
+            - sentiment
+            - summary
+            - reply
+          type: array
+          maxItems: 4
+          minItems: 1
+          title: Kinds
+      additionalProperties: false
+      type: object
+      title: AiInsightGenerateRequest
+    AiInsightReviewRequest:
+      properties:
+        review_status:
+          type: string
+          enum:
+          - accepted
+          - rejected
+          title: Review Status
+      additionalProperties: false
+      type: object
+      required:
+      - review_status
+      title: AiInsightReviewRequest
     AssignmentRequest:
       properties:
         agent_id:
@@ -4844,6 +5108,33 @@ components:
       required:
       - score
       title: CsatRequest
+    CustomerProfileUpdate:
+      properties:
+        full_name:
+          type: string
+          maxLength: 120
+          minLength: 2
+          title: Full Name
+        email:
+          anyOf:
+          - type: string
+            maxLength: 254
+            pattern: ^[^@\s]+@[^@\s]+\.[^@\s]+$
+          - type: 'null'
+          title: Email
+        whatsapp_available:
+          type: boolean
+          title: Whatsapp Available
+          default: false
+        notification_preferences:
+          $ref: '#/components/schemas/NotificationPreferences'
+      additionalProperties: false
+      type: object
+      required:
+      - full_name
+      title: CustomerProfileUpdate
+      description: Self-service profile edit; identity fields (mobile, national ID)
+        are immutable here.
     CustomerVerifyRequest:
       properties:
         mobile:
@@ -4981,6 +5272,25 @@ components:
       required:
       - mobile
       title: MobileOTPRequest
+    NotificationPreferences:
+      properties:
+        email:
+          type: boolean
+          title: Email
+          default: true
+        whatsapp:
+          type: boolean
+          title: Whatsapp
+          default: true
+        sms:
+          type: boolean
+          title: Sms
+          default: true
+      additionalProperties: false
+      type: object
+      title: NotificationPreferences
+      description: Customer delivery choices; channels stay opt-out, never opt-in
+        by surprise.
     OwnershipLevel:
       type: string
       enum:
@@ -5333,3 +5643,8 @@ x-websockets:
 - path: /api/staff/complaints/stream
   description: Same-origin, AccessCookie, complaints.view; filtered scoped snapshots
     on connect, refresh or heartbeat.
+x-event-streams:
+- path: /api/customer/complaints/{complaint_id}/stream
+  description: Server-Sent Events; same-origin AccessCookie for the owning customer.
+    Emits snapshot/update events (status + signature only, never message bodies) and
+    revalidates session, token version and ownership per poll.
