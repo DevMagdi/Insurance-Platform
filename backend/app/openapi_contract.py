@@ -9,7 +9,23 @@ from fastapi import FastAPI
 from fastapi.dependencies.models import Dependant
 from fastapi.routing import APIRoute
 
-from app.api import analytics, attachments, audit, auth, catalog, customer, exports, staff, workflow
+from app.api import (
+    admin_integrations,
+    analytics,
+    attachments,
+    audit,
+    auth,
+    catalog,
+    customer,
+    exports,
+    integration_webhooks,
+    integrations,
+    operations,
+    public_api,
+    reports,
+    staff,
+    workflow,
+)
 from app.api.deps import PermissionGate
 from app.security.tokens import csrf_required
 
@@ -38,12 +54,11 @@ def dependencies(root: Dependant) -> Iterator[object]:
 def decorate_spec(app: FastAPI, spec: dict[str, Any]) -> dict[str, Any]:
     """Add accurate cookies, CSRF, permissions and WebSocket notes to live OpenAPI."""
     spec["info"]["description"] = (
-        "Implemented Phase 2 and Phase 3 HTTP routes. Authenticate with an HttpOnly access_token "
-        "cookie; /api/auth/refresh uses the HttpOnly refresh_token cookie. "
-        "All protected writes, including refresh, need X-CSRF-Token matching "
-        "the readable csrf_token cookie. Authorization, AccessScope and "
-        "PostgreSQL RLS are enforced at runtime. Future routes are documented "
-        "separately in openapi-roadmap.yaml."
+        "Implemented HTTP routes across product Phases 1-7. Authenticate with an HttpOnly "
+        "access_token cookie; /api/auth/refresh uses the HttpOnly refresh_token cookie. "
+        "All protected writes, including refresh, need X-CSRF-Token matching the readable "
+        "csrf_token cookie. Authorization, AccessScope and PostgreSQL RLS are enforced at "
+        "runtime. Future routes are documented separately in openapi-roadmap.yaml."
     )
     spec["components"].setdefault("securitySchemes", {}).update(
         {
@@ -74,6 +89,12 @@ def decorate_spec(app: FastAPI, spec: dict[str, Any]) -> dict[str, Any]:
         *catalog.router.routes,
         *exports.router.routes,
         *attachments.router.routes,
+        *integrations.router.routes,
+        *admin_integrations.router.routes,
+        *integration_webhooks.router.routes,
+        *public_api.router.routes,
+        *reports.router.routes,
+        *operations.router.routes,
     ]
     for route in routes:
         if not isinstance(route, APIRoute):
@@ -107,6 +128,16 @@ def decorate_spec(app: FastAPI, spec: dict[str, Any]) -> dict[str, Any]:
             "description": (
                 "Same-origin, AccessCookie, complaints.view; filtered scoped snapshots "
                 "on connect, refresh or heartbeat."
+            ),
+        }
+    ]
+    spec["x-event-streams"] = [
+        {
+            "path": "/api/customer/complaints/{complaint_id}/stream",
+            "description": (
+                "Server-Sent Events; same-origin AccessCookie for the owning customer. "
+                "Emits snapshot/update events (status + signature only, never message "
+                "bodies) and revalidates session, token version and ownership per poll."
             ),
         }
     ]

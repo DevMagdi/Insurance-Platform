@@ -84,17 +84,38 @@ def test_catalog_has_every_required_resource_action_and_frozen_migration() -> No
         permission_parts("not.a.permission")
     sql = (ROOT / "backend/alembic/sql/003_permissions.sql").read_text()
     seeded_permissions = set(re.findall(r"\('([^']+)',", sql))
-    phase7 = (ROOT / "backend/alembic/sql/012_staff_console.sql").read_text()
+    phase7 = (ROOT / "backend/alembic/sql/020_staff_console.sql").read_text()
     assert seeded_permissions | {"teams.manage"} == PERMISSIONS
     assert "VALUES ('teams.manage', 'teams', 'manage'" in phase7
+
+
+def test_phase7_keeps_the_phase3_escalation_permission_contract() -> None:
+    phase7 = (ROOT / "backend/alembic/sql/020_staff_console.sql").read_text()
+    phase3 = (ROOT / "backend/alembic/sql/007_staff_workflow.sql").read_text()
+    assert "CREATE FUNCTION app_security.staff_escalate(" not in phase7
+    assert "CREATE OR REPLACE FUNCTION app_security.staff_escalate(" not in phase7
+    assert "NOT app_security.has_permission('complaints.escalate')" in phase3
+    assert "has_permission('integrations.send_email')" not in phase3
 
 
 def test_sql_migrations_cover_every_requested_table_and_fail_closed_rls() -> None:
     schema = (ROOT / "backend/alembic/sql/001_schema.sql").read_text()
     rls = (ROOT / "backend/alembic/sql/002_access_rls.sql").read_text()
-    rls += (ROOT / "backend/alembic/sql/011_async_exports.sql").read_text()
+    for late in ("011_async_exports.sql", "013_scheduled_reports.sql", "015_analytics_rollup.sql"):
+        rls += (ROOT / "backend/alembic/sql" / late).read_text()
     assert len(sqlparse.split(schema)) >= 70  # PL/pgSQL bodies must not be split
     assert len(sqlparse.split(rls)) >= 60
+    # Phase 3 revisions are SQL-first too and must stay forward-only in Alembic.
+    for revision, marker in (
+        ("012_sla_calendars.sql", "app_security.simulate_sla"),
+        ("013_scheduled_reports.sql", "app_security.claim_due_reports"),
+        ("014_ops_admin.sql", "app_security.scan_duplicate_candidates"),
+        ("015_analytics_rollup.sql", "app_security.analytics_daily_scoped"),
+        ("016_export_formats.sql", "app_security.request_export"),
+    ):
+        body = (ROOT / "backend/alembic/sql" / revision).read_text()
+        assert marker in body, revision
+        assert "SECURITY DEFINER" in body
     assert "GREATEST(6, length(seq.n::text))" in rls  # sequence must not truncate at 1M
     assert "ck_ticket_year" in schema
     required = (
@@ -133,9 +154,19 @@ def test_sql_migrations_cover_every_requested_table_and_fail_closed_rls() -> Non
     # SQL-first migrations and typed SQLAlchemy mappings must evolve together.
     additive = "\n".join(
         (ROOT / "backend/alembic/sql" / revision).read_text()
-        for revision in ("004_core_tables.sql", "007_staff_workflow.sql", "011_async_exports.sql")
+        for revision in (
+            "004_core_tables.sql",
+            "007_staff_workflow.sql",
+            "011_async_exports.sql",
+            "012_sla_calendars.sql",
+            "013_scheduled_reports.sql",
+            "014_ops_admin.sql",
+            "015_analytics_rollup.sql",
+            "016_export_formats.sql",
+            "017_integrations_ai.sql",
+        )
     )
-    declared_tables = set(re.findall(r"CREATE TABLE (\w+) \(", schema + additive))
+    declared_tables = set(re.findall(r"CREATE TABLE (?:public\.)?(\w+) \(", schema + additive))
     assert declared_tables == set(Base.metadata.tables)
     mermaid = (ROOT / "docs/ERD.md").read_text()
     diagram_entities = set(re.findall(r"^    ([A-Z_]+) \{$", mermaid, re.MULTILINE))
@@ -164,6 +195,8 @@ def test_sql_migrations_cover_every_requested_table_and_fail_closed_rls() -> Non
         "export_jobs",
         "assignment_rules",
         "export_job_rows",
+        "report_runs",
+        "analytics_rollup_state",
     ):
         assert f"ALTER TABLE {table} FORCE ROW LEVEL SECURITY" in rls
 
@@ -221,6 +254,102 @@ def test_runtime_engine_rejects_admin_connection() -> None:
         make_engine("postgresql+psycopg://postgres@localhost/insurance")
     with pytest.raises(ValueError, match="app_runtime"):
         make_engine("postgresql+asyncpg://postgres@localhost/insurance")
+
+
+def test_production_compose_pulls_published_images_without_admin_secrets() -> None:
+    compose = yaml.safe_load((ROOT / "docker-compose.prod.yml").read_text())["services"]
+    expected = {
+        "postgres",
+        "pgbouncer",
+        "redis",
+        "minio",
+        "minio-init",
+        "migrate",
+        "api",
+        "worker",
+        "web",
+    }
+    assert expected <= set(compose)
+    # Production runs the images the CD pipeline verified; it never builds on the host.
+    for name in ("migrate", "api", "worker", "web"):
+        image = compose[name]["image"]
+        assert image.startswith("ghcr.io/${IMAGE_OWNER")
+        assert "${IMAGE_TAG" in image
+    assert not any("build" in service for service in compose.values())
+    # The API and worker still never receive administrative credentials.
+    for process in ("api", "worker"):
+        service = compose[process]
+        assert "env_file" not in service
+        for banned in (
+            "DATABASE_ADMIN_URL",
+            "POSTGRES_PASSWORD",
+            "POSTGRES_USER",
+            "MINIO_ROOT_PASSWORD",
+        ):
+            assert banned not in service["environment"], (process, banned)
+        assert service["restart"] == "unless-stopped"
+    assert "app_runtime" in compose["api"]["environment"]["DATABASE_URL"]
+    assert "pgbouncer:5432" in compose["api"]["environment"]["DATABASE_URL"]
+    assert "app_worker" in compose["worker"]["environment"]["WORKER_DATABASE_URL"]
+    assert compose["api"]["environment"]["ENVIRONMENT"] == "production"
+    assert compose["api"]["environment"]["COOKIE_SECURE"] == "true"
+    # Migrations run first, as a one-shot container with the migrator URL only.
+    migrate = compose["migrate"]
+    assert "DATABASE_ADMIN_URL" in migrate["environment"]
+    assert migrate["command"] == ["alembic", "upgrade", "head"]
+    assert migrate["restart"] == "no"
+    for process in ("api", "worker"):
+        depends = compose[process]["depends_on"]
+        assert depends["migrate"] == {"condition": "service_completed_successfully"}
+    assert compose["pgbouncer"]["environment"]["POOL_MODE"] == "transaction"
+    assert compose["pgbouncer"]["environment"]["MAX_PREPARED_STATEMENTS"] == "100"
+    # Exactly one publicly published port (the web edge); everything else is loopback.
+    published = {
+        name: service.get("ports", []) for name, service in compose.items() if service.get("ports")
+    }
+    assert set(published) == {"web", "postgres", "minio"}
+    assert published["web"] == ["${HTTP_PORT:-8080}:80"]
+    for name in ("postgres", "minio"):
+        assert all(entry.startswith("127.0.0.1:") for entry in published[name]), name
+    # Every variable the stack demands must be documented outside the compose file.
+    documented = (ROOT / ".env.example").read_text() + (ROOT / "docs/DEPLOYMENT.md").read_text()
+    raw = (ROOT / "docker-compose.prod.yml").read_text()
+    for name in set(re.findall(r"\$\{([A-Z_]+)(?::\?|:-)", raw)):
+        assert name in documented, name
+
+
+def test_cd_pipeline_gates_deployment_and_verifies_artifacts() -> None:
+    cd = yaml.safe_load((ROOT / ".github/workflows/cd.yml").read_text())
+    triggers = cd[True]
+    assert triggers["push"]["branches"] == ["main"]
+    assert triggers["push"]["tags"] == ["v*"]
+    assert "workflow_dispatch" in triggers
+    jobs = cd["jobs"]
+    assert {"images", "verify", "compose", "deploy", "release", "summary"} <= set(jobs)
+    assert jobs["images"]["permissions"]["packages"] == "write"
+    assert jobs["images"]["permissions"]["contents"] == "read"
+    assert "if" not in jobs["images"]  # publishing is unconditional on main/tags
+    # The deploy job is explicitly gated, runs in a protected environment and
+    # never auto-merges or deploys without the repository variable being set.
+    deploy = jobs["deploy"]
+    assert "DEPLOY_ENABLED" in deploy["if"] and "inputs.deploy" in deploy["if"]
+    assert deploy["environment"].startswith("${{")
+    assert deploy["needs"] == ["images", "verify", "compose"]
+    steps = yaml.dump(deploy)
+    assert "--auto" not in steps
+    assert steps.index("run --rm migrate") < steps.index("up -d --remove-orphans")
+    assert "/api/health/ready" in steps
+    assert "DEPLOY_SSH_KNOWN_HOSTS" in steps
+    # Releasing is tag-only and must not invent versions.
+    assert jobs["release"]["if"] == "github.ref_type == 'tag'"
+    assert jobs["release"]["permissions"]["contents"] == "write"
+    assert cd["concurrency"]["cancel-in-progress"] is False
+    ci = yaml.safe_load((ROOT / ".github/workflows/ci.yml").read_text())
+    containers = yaml.dump(ci["jobs"]["containers"])
+    assert "Dockerfile.backend" in containers and "Dockerfile.web" in containers
+    assert "docker-compose.prod.yml" in containers
+    assert "api/health/live" in containers
+    assert "openapi.yaml" in containers
 
 
 def test_dev_compose_is_transaction_pooled_without_admin_secrets_in_api() -> None:

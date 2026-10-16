@@ -102,16 +102,17 @@ export function AuditPage({ access, range }: AuditPageProps) {
     setFilters(draft);
   };
 
-  const exportCurrent = async () => {
+  const exportCurrent = async (format: 'csv' | 'xlsx' = 'csv') => {
     try {
+      const extension = tab === 'events' ? format : 'csv';
       const url = tab === 'events'
-        ? `/api/staff/audit/events.csv${queryString({
+        ? `/api/staff/audit/events.${extension}${queryString({
           start: bounds.date_from, end: bounds.date_to, actor_id: filters.actor_id,
           complaint_id: filters.complaint_id, action: filters.action,
         })}`
         : `/api/staff/audit/access-changes.csv${queryString({ start: bounds.date_from, end: bounds.date_to, target_id: filters.target_id })}`;
       const response = await apiResponse(url);
-      download(await response.blob(), tab === 'events' ? `audit-events-${range.from}-${range.to}.csv` : `access-changes-${range.from}-${range.to}.csv`);
+      download(await response.blob(), tab === 'events' ? `audit-events-${range.from}-${range.to}.${extension}` : `access-changes-${range.from}-${range.to}.csv`);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'تعذر تصدير سجل التدقيق.');
     }
@@ -121,7 +122,7 @@ export function AuditPage({ access, range }: AuditPageProps) {
   const exportAllowed = tab === 'events' ? hasPermission(access, 'audit.view') : canSeeAccess;
 
   return <div className="page-stack">
-    <SectionTitle eyebrow="الامتثال والحوكمة" title="سجل التدقيق" description="أحداث الوصول والإجراءات التشغيلية ضمن النطاق المصرّح، مع سجل منفصل لتغييرات الصلاحيات." action={exportAllowed ? <button className="button button-light" type="button" onClick={() => { void exportCurrent(); }}><Icon name="download" size={15} /> تصدير CSV</button> : undefined} />
+    <SectionTitle eyebrow="الامتثال والحوكمة" title="سجل التدقيق" description="أحداث الوصول والإجراءات التشغيلية ضمن النطاق المصرّح، مع سجل منفصل لتغييرات الصلاحيات." action={exportAllowed ? <div className="audit-export-actions"><button className="button button-light" type="button" onClick={() => { void exportCurrent('csv'); }}><Icon name="download" size={15} /> تصدير CSV</button>{tab === 'events' && <button className="button button-light" type="button" onClick={() => { void exportCurrent('xlsx'); }}><Icon name="download" size={15} /> تصدير XLSX</button>}</div> : undefined} />
     <div className="operation-tabs audit-tabs" role="tablist" aria-label="أنواع سجل التدقيق">
       <button role="tab" aria-selected={tab === 'events'} className={tab === 'events' ? 'active' : ''} type="button" onClick={() => setTab('events')}><Icon name="audit" size={15} /> الأحداث</button>
       {canSeeAccess && <button role="tab" aria-selected={tab === 'access'} className={tab === 'access' ? 'active' : ''} type="button" onClick={() => setTab('access')}><Icon name="shield" size={15} /> تغييرات الوصول</button>}

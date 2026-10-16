@@ -6,7 +6,7 @@ import csv
 import hashlib
 import hmac
 import io
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import UUID
 
@@ -25,16 +25,36 @@ def safe_csv_cell(value: str) -> str:
     return "'" + value if value[:1] in ("=", "+", "-", "@", "\t", "\r") else value
 
 
+def reopen_eligible(record: Complaint, *, now: datetime | None = None) -> bool:
+    """Mirror ``app_security.reopen_complaint`` so the portal can explain the action."""
+    if record.status != ComplaintStatus.RESOLVED or record.resolved_at is None:
+        return False
+    if record.reopened_count >= 3:
+        return False
+    moment = now or datetime.now(UTC)
+    return record.resolved_at >= moment - timedelta(days=14)
+
+
+def csat_eligible(record: Complaint, *, now: datetime | None = None) -> bool:
+    """Mirror ``app_security.submit_csat`` (a duplicate submission still returns 409)."""
+    if record.resolved_at is None:
+        return False
+    moment = now or datetime.now(UTC)
+    return record.resolved_at >= moment - timedelta(days=30)
+
+
 class ComplaintService:
     def __init__(
         self,
         repository: ComplaintRepository,
         protector: NationalIdProtector,
         digest_key: str,
+        integration_events: Any | None = None,
     ) -> None:
         self.repository = repository
         self.protector = protector
         self.digest_key = digest_key.encode("utf-8")
+        self.integration_events = integration_events
 
     @staticmethod
     def summary(record: Complaint) -> dict[str, Any]:
@@ -113,6 +133,11 @@ class ComplaintService:
         if row is None:
             raise HTTPException(status_code=404, detail="Complaint not found")
         record, customer_name, last4, company_name = row
+        agent_name = (
+            await self.repository.assigned_agent_name(db, record)
+            if record.assigned_agent_id is not None
+            else None
+        )
         return {
             **self.summary(record),
             "description": record.description,
@@ -120,6 +145,10 @@ class ComplaintService:
             "customer_name": customer_name,
             "national_id_masked": f"**********{last4}" if last4 else "**************",
             "company_name": company_name,
+            "assigned_agent_name": agent_name,
+            "csat_score": record.csat_score,
+            "can_reopen": reopen_eligible(record),
+            "can_csat": csat_eligible(record),
             "resolved_at": record.resolved_at,
             "reopened_count": record.reopened_count,
         }
@@ -142,6 +171,14 @@ class ComplaintService:
         if scope.actor.scope == "customer" and parent.status == ComplaintStatus.RESOLVED:
             raise HTTPException(status_code=409, detail="Reopen the resolved complaint first")
         message = await self.repository.reply(db, scope, parent, body, visibility)
+        if (
+            self.integration_events is not None
+            and scope.actor.scope == "staff"
+            and visibility == MessageVisibility.PUBLIC
+        ):
+            await self.integration_events.publish_event(
+                db, scope, parent, "complaint.message_received"
+            )
         return {
             "id": message.id,
             "created_at": message.created_at,
@@ -184,6 +221,11 @@ class ComplaintService:
             db, parent, status
         ):
             raise HTTPException(status_code=409, detail="Invalid status transition")
+        parent.status = status
+        if self.integration_events is not None:
+            await self.integration_events.publish_event(
+                db, scope, parent, "complaint.status_changed"
+            )
         return {"status": status}
 
     async def reveal_national_id(

@@ -339,6 +339,17 @@ async def complaint_detail(
     return await ctx.complaints.detail(ctx.db, ctx.scope, complaint_id)
 
 
+@router.get("/complaints/{complaint_id}/sla")
+async def complaint_sla(
+    complaint_id: UUID, ctx: RequestContext = Depends(require_permission("complaints.view"))
+) -> dict[str, Any]:
+    """Deadlines, first response and at-risk/breached state for one ticket."""
+    state = await ComplaintRepository().sla_state(ctx.db, ctx.scope, complaint_id)
+    if state is None:
+        raise HTTPException(status_code=404, detail="Complaint unavailable")
+    return state
+
+
 @router.get("/complaints/{complaint_id}/timeline")
 async def complaint_timeline(
     complaint_id: UUID,

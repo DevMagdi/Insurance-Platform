@@ -1,22 +1,23 @@
-"""Scope-safe administration for teams, auto-assignment and integration settings."""
+"""Administration of provider integrations, assignment rules and duplicates."""
 
 from __future__ import annotations
 
-from typing import Any, Literal
+from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.exc import DBAPIError
 
-from app.api.deps import RequestContext, require_permission
+from app.api.deps import RequestContext, require_permission, require_staff
+from app.api.staff import access_error
 from app.domain.enums import OwnershipLevel
-from app.domain.schemas import (
-    AssignmentRuleSpec,
-    IntegrationConfigSpec,
-    ReportScheduleSpec,
-    TeamSpec,
-)
+from app.domain.schemas import AssignmentPreview, AssignmentRuleSpec, IntegrationSpec, TeamSpec
 from app.repositories.admin import AdminRepository
+from app.repositories.integrations import (
+    AssignmentRuleRepository,
+    DuplicateCandidateRepository,
+    IntegrationRepository,
+)
 from app.security.tokens import csrf_required
 
 router = APIRouter(prefix="/api/staff/admin", tags=["administration"])
@@ -32,13 +33,13 @@ def require_global_admin_scope(ctx: RequestContext) -> None:
         raise HTTPException(status_code=403, detail="Global administration scope required")
 
 
-def db_error(exc: DBAPIError) -> HTTPException:
+def admin_error(exc: DBAPIError) -> HTTPException:
     state = getattr(exc.orig, "sqlstate", "")
     if state == "23505":
         return HTTPException(status_code=409, detail="A record with that name already exists")
     if state == "22023":
         return HTTPException(status_code=422, detail="The administration data is invalid")
-    return HTTPException(status_code=403, detail="Administration change forbidden")
+    return access_error(exc)
 
 
 @router.get("/access-options")
@@ -73,7 +74,7 @@ async def create_team(
     try:
         result = await AdminRepository().save_team(ctx.db, None, item)
     except DBAPIError as exc:
-        raise db_error(exc) from exc
+        raise admin_error(exc) from exc
     if result is None:
         raise HTTPException(status_code=422, detail="Team could not be created")
     return {"id": result}
@@ -90,7 +91,7 @@ async def update_team(
     try:
         result = await AdminRepository().save_team(ctx.db, team_id, item)
     except DBAPIError as exc:
-        raise db_error(exc) from exc
+        raise admin_error(exc) from exc
     if result is None:
         raise HTTPException(status_code=404, detail="Team not found")
     return {"id": result}
@@ -107,116 +108,145 @@ async def automation_options(
     return result
 
 
+@router.get("/integrations")
+async def integrations(
+    ctx: RequestContext = Depends(require_permission("integrations.manage")),
+) -> list[dict[str, Any]]:
+    settings = await IntegrationRepository().settings(ctx.db)
+    if settings is None:
+        raise HTTPException(status_code=403, detail="Integration management required")
+    return settings
+
+
+@router.post("/integrations", status_code=201)
+async def save_integration(
+    item: IntegrationSpec,
+    ctx: RequestContext = Depends(require_permission("integrations.manage")),
+    _: None = Depends(csrf_required),
+) -> dict[str, UUID]:
+    try:
+        item_id = await IntegrationRepository().save(ctx.db, None, item)
+    except DBAPIError as exc:
+        raise access_error(exc) from exc
+    if item_id is None:
+        raise HTTPException(status_code=404, detail="Integration unavailable")
+    return {"id": item_id}
+
+
+@router.put("/integrations/{item_id}")
+async def update_integration(
+    item_id: UUID,
+    item: IntegrationSpec,
+    ctx: RequestContext = Depends(require_permission("integrations.manage")),
+    _: None = Depends(csrf_required),
+) -> dict[str, UUID]:
+    try:
+        saved = await IntegrationRepository().save(ctx.db, item_id, item)
+    except DBAPIError as exc:
+        raise access_error(exc) from exc
+    if saved is None:
+        raise HTTPException(status_code=404, detail="Integration unavailable")
+    return {"id": saved}
+
+
+@router.delete("/integrations/{item_id}", status_code=204)
+async def delete_integration(
+    item_id: UUID,
+    ctx: RequestContext = Depends(require_permission("integrations.manage")),
+    _: None = Depends(csrf_required),
+) -> None:
+    try:
+        removed = await IntegrationRepository().delete(ctx.db, item_id)
+    except DBAPIError as exc:
+        raise access_error(exc) from exc
+    if not removed:
+        raise HTTPException(status_code=404, detail="Integration unavailable")
+
+
 @router.get("/assignment-rules")
 async def assignment_rules(
-    ctx: RequestContext = Depends(require_permission("settings.manage")),
+    ctx: RequestContext = Depends(require_permission("complaints.assign")),
 ) -> list[dict[str, Any]]:
-    require_global_admin_scope(ctx)
-    result = await AdminRepository().assignment_rules(ctx.db)
-    if result is None:
-        raise HTTPException(status_code=403, detail="Global automation management required")
-    return result
+    return await AssignmentRuleRepository().rules(ctx.db, ctx.scope)
 
 
 @router.post("/assignment-rules", status_code=201)
 async def create_assignment_rule(
     item: AssignmentRuleSpec,
-    ctx: RequestContext = Depends(require_permission("settings.manage")),
+    ctx: RequestContext = Depends(require_permission("complaints.assign")),
     _: None = Depends(csrf_required),
 ) -> dict[str, UUID]:
-    require_global_admin_scope(ctx)
     try:
-        result = await AdminRepository().save_assignment_rule(ctx.db, None, item)
+        rule_id = await AssignmentRuleRepository().save(ctx.db, None, item)
     except DBAPIError as exc:
-        raise db_error(exc) from exc
-    if result is None:
-        raise HTTPException(status_code=422, detail="Assignment rule could not be created")
-    return {"id": result}
+        raise access_error(exc) from exc
+    if rule_id is None:
+        raise HTTPException(status_code=404, detail="Assignment rule unavailable")
+    return {"id": rule_id}
 
 
-@router.put("/assignment-rules/{rule_id}")
+@router.put("/assignment-rules/{item_id}")
 async def update_assignment_rule(
-    rule_id: UUID,
+    item_id: UUID,
     item: AssignmentRuleSpec,
-    ctx: RequestContext = Depends(require_permission("settings.manage")),
+    ctx: RequestContext = Depends(require_permission("complaints.assign")),
     _: None = Depends(csrf_required),
 ) -> dict[str, UUID]:
-    require_global_admin_scope(ctx)
     try:
-        result = await AdminRepository().save_assignment_rule(ctx.db, rule_id, item)
+        saved = await AssignmentRuleRepository().save(ctx.db, item_id, item)
     except DBAPIError as exc:
-        raise db_error(exc) from exc
-    if result is None:
-        raise HTTPException(status_code=404, detail="Assignment rule not found")
-    return {"id": result}
+        raise access_error(exc) from exc
+    if saved is None:
+        raise HTTPException(status_code=404, detail="Assignment rule unavailable")
+    return {"id": saved}
 
 
-@router.get("/report-schedules")
-async def report_schedules(
-    ctx: RequestContext = Depends(require_permission("reports.manage")),
-) -> dict[str, Any]:
-    return {
-        "items": await AdminRepository().report_schedules(ctx.db, ctx.actor.id),
-        "delivery_ready": False,
-    }
-
-
-@router.post("/report-schedules", status_code=201)
-async def create_report_schedule(
-    item: ReportScheduleSpec,
-    ctx: RequestContext = Depends(require_permission("reports.manage")),
+@router.delete("/assignment-rules/{item_id}", status_code=204)
+async def delete_assignment_rule(
+    item_id: UUID,
+    ctx: RequestContext = Depends(require_permission("complaints.assign")),
     _: None = Depends(csrf_required),
-) -> dict[str, Any]:
+) -> None:
     try:
-        result = await AdminRepository().save_report_schedule(ctx.db, ctx.actor.id, None, item)
+        removed = await AssignmentRuleRepository().delete(ctx.db, item_id)
     except DBAPIError as exc:
-        raise db_error(exc) from exc
-    if result is None:
-        raise HTTPException(status_code=422, detail="Report schedule could not be saved")
-    return {"id": result, "delivery_ready": False}
+        raise access_error(exc) from exc
+    if not removed:
+        raise HTTPException(status_code=404, detail="Assignment rule unavailable")
 
 
-@router.put("/report-schedules/{schedule_id}")
-async def update_report_schedule(
-    schedule_id: UUID,
-    item: ReportScheduleSpec,
-    ctx: RequestContext = Depends(require_permission("reports.manage")),
-    _: None = Depends(csrf_required),
+@router.post("/assignment-rules/preview")
+async def preview_assignment(
+    item: AssignmentPreview,
+    ctx: RequestContext = Depends(require_permission("complaints.assign")),
 ) -> dict[str, Any]:
-    try:
-        result = await AdminRepository().save_report_schedule(
-            ctx.db, ctx.actor.id, schedule_id, item
-        )
-    except DBAPIError as exc:
-        raise db_error(exc) from exc
+    """Dry run: which in-scope agents the current rules would offer, in order."""
+    result = await AssignmentRuleRepository().preview(ctx.db, item)
     if result is None:
-        raise HTTPException(status_code=404, detail="Report schedule not found")
-    return {"id": result, "delivery_ready": False}
-
-
-@router.get("/integrations")
-async def integrations(
-    ctx: RequestContext = Depends(require_permission("integrations.manage")),
-) -> list[dict[str, Any]]:
-    require_global_admin_scope(ctx)
-    result = await AdminRepository().integrations(ctx.db)
-    if result is None:
-        raise HTTPException(status_code=403, detail="Global integration management required")
+        raise HTTPException(status_code=403, detail="Assignment preview not permitted")
     return result
 
 
-@router.put("/integrations/{provider}")
-async def update_integration(
-    provider: Literal["email", "whatsapp"],
-    item: IntegrationConfigSpec,
-    ctx: RequestContext = Depends(require_permission("integrations.manage")),
+@router.get("/duplicates")
+async def duplicate_candidates(
+    limit: int = 50,
+    ctx: RequestContext = Depends(require_permission("complaints.merge")),
+) -> list[dict[str, Any]]:
+    if not 1 <= limit <= 200:
+        raise HTTPException(status_code=422, detail="Invalid limit")
+    return await DuplicateCandidateRepository().open_candidates(ctx.db, ctx.scope, limit)
+
+
+@router.post("/duplicates/scan/{complaint_id}", status_code=202)
+async def scan_duplicates(
+    complaint_id: UUID,
+    ctx: RequestContext = Depends(require_staff),
     _: None = Depends(csrf_required),
-) -> dict[str, bool]:
-    require_global_admin_scope(ctx)
-    try:
-        saved = await AdminRepository().save_integration(ctx.db, provider, item)
-    except DBAPIError as exc:
-        raise db_error(exc) from exc
-    if not saved:
-        raise HTTPException(status_code=422, detail="Integration configuration was not saved")
-    return {"saved": True, "runtime_ready": False}
+) -> dict[str, int]:
+    """Re-scan a visible ticket on demand; the DB confirms the ticket is readable."""
+    require_permission("complaints.merge").verify(ctx)
+    parent = await ctx.complaints.parent(ctx.db, ctx.scope, complaint_id)
+    inserted = await DuplicateCandidateRepository().scan_ticket(
+        ctx.db, complaint_id, parent.created_at
+    )
+    return {"candidates": inserted}

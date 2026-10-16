@@ -7,6 +7,8 @@ from typing import Any, Protocol
 
 import aiosmtplib
 
+from app.services.email_templates import render_customer_notice
+
 
 class DeliveryConfig(Protocol):
     smtp_host: str | None
@@ -32,8 +34,18 @@ class Delivery(Protocol):
         email: str | None,
         kind: str,
         payload: dict[str, Any],
+        preferences: dict[str, Any] | None = None,
     ) -> bool: ...
     async def send_insurer(self, email: str, ticket: str, reason: str) -> bool: ...
+    async def send_report(
+        self,
+        recipients: list[str],
+        subject: str,
+        body: str,
+        attachment_name: str,
+        content_type: str,
+        data: bytes,
+    ) -> bool: ...
 
 
 class SMTPDelivery:
@@ -93,18 +105,59 @@ class SMTPDelivery:
         email: str | None,
         kind: str,
         payload: dict[str, Any],
+        preferences: dict[str, Any] | None = None,
     ) -> bool:
         if not self.settings.smtp_host:
             return False
-        address = email
-        if address is None and self.settings.dev_sms_mailbox:
+        preferences = preferences or {}
+        email_enabled = preferences.get("email", True) is not False
+        text_enabled = any(
+            preferences.get(channel, True) is not False for channel in ("sms", "whatsapp")
+        )
+        address = email if email_enabled else None
+        if address is None and text_enabled and self.settings.dev_sms_mailbox:
             address = f"sms-{mobile[1:]}@sms.local.test"
         if address is None:
             return False
-        await self._mail(
-            address,
-            f"Complaint {kind.replace('_', ' ')}",
-            f"Ticket {payload['ticket_no']}: {payload['status']}.",
+        subject, body = render_customer_notice(
+            kind,
+            str(payload["ticket_no"]),
+            str(payload["status"]),
+            str(payload.get("locale", "en")),
+        )
+        await self._mail(address, subject, body)
+        return True
+
+    async def send_report(
+        self,
+        recipients: list[str],
+        subject: str,
+        body: str,
+        attachment_name: str,
+        content_type: str,
+        data: bytes,
+    ) -> bool:
+        if not self.settings.smtp_host:
+            return False
+        message = EmailMessage()
+        message["From"] = self.settings.smtp_from
+        message["To"] = ", ".join(recipients)
+        message["Subject"] = subject
+        message.set_content(body)
+        maintype, _, subtype = content_type.partition("/")
+        message.add_attachment(
+            data,
+            maintype=maintype,
+            subtype=subtype or "octet-stream",
+            filename=attachment_name,
+        )
+        await aiosmtplib.send(
+            message,
+            hostname=self.settings.smtp_host,
+            port=self.settings.smtp_port,
+            username=self.settings.smtp_username,
+            password=self.settings.smtp_password,
+            start_tls=self.settings.smtp_start_tls,
         )
         return True
 

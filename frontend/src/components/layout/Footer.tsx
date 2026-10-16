@@ -1,0 +1,3 @@
+import { ShieldCheck } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+export function Footer() { const { t } = useTranslation(); return <footer className="bg-navy px-5 py-10 text-slate-400"><div className="mx-auto flex max-w-7xl flex-col justify-between gap-8 md:flex-row"><div><div className="flex items-center gap-2 font-bold text-white"><ShieldCheck className="text-gold"/> درع</div><p className="mt-3 max-w-sm text-sm leading-7">{t('app.tagline')}</p></div><div className="flex items-center gap-6 text-sm"><a href="#features" className="hover:text-white">{t('nav.features')}</a><a href="#demo" className="hover:text-white">{t('nav.contact')}</a><span>© {new Date().getFullYear()} Der’a</span></div></div></footer>; }
