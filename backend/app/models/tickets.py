@@ -136,6 +136,11 @@ class Complaint(Base):
     # intentionally not granted INSERT on these columns, even to write NULL.
     response_due_at: Mapped[datetime | None] = mapped_column(server_default=text("NULL"))
     sla_breached_at: Mapped[datetime | None] = mapped_column(server_default=text("NULL"))
+    # Revision 012: at-risk alerting and response-clock bookkeeping.
+    sla_alert_at: Mapped[datetime | None] = mapped_column(server_default=text("NULL"))
+    sla_alerted_at: Mapped[datetime | None] = mapped_column(server_default=text("NULL"))
+    first_response_at: Mapped[datetime | None] = mapped_column(server_default=text("NULL"))
+    response_breached_at: Mapped[datetime | None] = mapped_column(server_default=text("NULL"))
     merged_into_id: Mapped[UUID | None] = mapped_column(server_default=text("NULL"))
     merged_into_created_at: Mapped[datetime | None] = mapped_column(server_default=text("NULL"))
     resolved_at: Mapped[datetime | None] = mapped_column(server_default=text("NULL"))
@@ -194,6 +199,10 @@ class ComplaintMessage(Base):
     sender_staff_id: Mapped[UUID | None] = mapped_column(ForeignKey("staff_users.id"))
     sender_customer_id: Mapped[UUID | None] = mapped_column(ForeignKey("customers.id"))
     external_message_id: Mapped[str | None] = mapped_column(Text)
+    sender_external: Mapped[str | None] = mapped_column(Text)
+    delivery_status: Mapped[str] = mapped_column(Text, server_default="sent")
+    delivered_at: Mapped[datetime | None]
+    read_at: Mapped[datetime | None]
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
 
 
@@ -273,7 +282,11 @@ class CallLog(Base):
     recording_storage_key: Mapped[str | None] = mapped_column(Text)
     outcome: Mapped[str | None] = mapped_column(Text)
     consent_at: Mapped[datetime | None]
-    started_at: Mapped[datetime] = mapped_column(server_default=func.now())
+    sender_staff_id: Mapped[UUID | None] = mapped_column(ForeignKey("staff_users.id"))
+    scheduled_at: Mapped[datetime | None]
+    status: Mapped[str] = mapped_column(Text, server_default="completed")
+    provider: Mapped[str | None] = mapped_column(Text)
+    started_at: Mapped[datetime | None] = mapped_column(server_default=func.now())
     ended_at: Mapped[datetime | None]
 
 
@@ -309,8 +322,6 @@ class AuditLog(Base):
 
 class AiInsight(Base):
     __tablename__ = "ai_insights"
-    # INSERT is write-only under RLS; server defaults are supplied locally.
-    __mapper_args__ = {"eager_defaults": False}  # noqa: RUF012
     __table_args__ = (
         ForeignKeyConstraint(
             ["complaint_id", "complaint_created_at"],
@@ -318,20 +329,17 @@ class AiInsight(Base):
         ),
     )
 
-    id: Mapped[UUID] = mapped_column(
-        primary_key=True, default=uuid4, server_default=func.gen_random_uuid()
-    )
+    id: Mapped[UUID] = mapped_column(primary_key=True, server_default=func.gen_random_uuid())
     complaint_id: Mapped[UUID]
     complaint_created_at: Mapped[datetime]
     kind: Mapped[str] = mapped_column(Text)
     payload_ciphertext: Mapped[bytes] = mapped_column(LargeBinary)
     confidence: Mapped[Decimal | None] = mapped_column(Numeric(5, 4))
     provider_model: Mapped[str | None] = mapped_column(Text)
+    integration_job_id: Mapped[UUID | None] = mapped_column(ForeignKey("integration_jobs.id"))
     review_status: Mapped[str] = mapped_column(Text, server_default="suggested")
     reviewed_by_staff_id: Mapped[UUID | None] = mapped_column(ForeignKey("staff_users.id"))
-    created_at: Mapped[datetime] = mapped_column(
-        default=lambda: datetime.now(UTC), server_default=func.now()
-    )
+    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
 
 
 class DuplicateCandidate(Base):

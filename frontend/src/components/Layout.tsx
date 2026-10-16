@@ -49,7 +49,7 @@ export function Layout({ children }: { children: ReactNode }) {
     window.location.reload();
   };
 
-  if (path.startsWith('/staff')) {
+  if (path.startsWith('/staff') || path.startsWith('/dashboard') || path === '/auth/staff' || path === '/auth') {
     return (
       <div className="min-h-screen bg-[#f3f5f9] text-slate-900 dark:bg-[#081a2f] dark:text-slate-100">
         <div className="pointer-events-none fixed inset-x-0 top-0 h-72 bg-[radial-gradient(60%_100%_at_50%_0%,rgba(245,197,66,0.16),transparent),radial-gradient(40%_80%_at_85%_0%,rgba(16,185,129,0.14),transparent)]" />

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from typing import Any
 from uuid import UUID
 
@@ -10,11 +11,28 @@ from sqlalchemy.exc import DBAPIError
 
 from app.api.deps import RequestContext, require_permission
 from app.api.staff import access_error
-from app.domain.schemas import CategorySpec, CompanySpec, SlaRuleSpec, TemplateSpec
+from app.domain.schemas import (
+    BusinessHoursTestRequest,
+    CategorySpec,
+    CompanySpec,
+    SlaRuleSpec,
+    SlaSimulationRequest,
+    TemplateSpec,
+)
 from app.repositories.catalog import CatalogKind, CatalogRepository
 from app.security.tokens import csrf_required
 
 router = APIRouter(prefix="/api/staff/admin", tags=["administration"])
+
+
+def catalog_payload(
+    kind: CatalogKind, item: CompanySpec | CategorySpec | SlaRuleSpec | TemplateSpec
+) -> str:
+    """An omitted calendar means continuous coverage, matching the DB default."""
+    data = item.model_dump(mode="json")
+    if kind == "sla_rule" and not data.get("business_hours"):
+        data["business_hours"] = {}
+    return json.dumps(data, separators=(",", ":"))
 
 
 async def save(
@@ -24,7 +42,7 @@ async def save(
     item: CompanySpec | CategorySpec | SlaRuleSpec | TemplateSpec,
 ) -> dict[str, UUID]:
     try:
-        result = await CatalogRepository().save(ctx.db, kind, item_id, item.model_dump_json())
+        result = await CatalogRepository().save(ctx.db, kind, item_id, catalog_payload(kind, item))
     except DBAPIError as exc:
         raise access_error(exc) from exc
     if result is None:
@@ -111,6 +129,40 @@ async def update_sla_rule(
     _: None = Depends(csrf_required),
 ) -> dict[str, UUID]:
     return await save(ctx, "sla_rule", item_id, item)
+
+
+@router.post("/sla-rules/simulate")
+async def simulate_sla_rule(
+    item: SlaSimulationRequest,
+    ctx: RequestContext = Depends(require_permission("sla.manage")),
+) -> dict[str, Any]:
+    """Preview the deadline the stored rules would set for a ticket shape."""
+    result = await CatalogRepository().simulate_sla(
+        ctx.db, item.company_id, item.insurance_type.value, item.priority.value, item.created_at
+    )
+    if result is None:
+        raise HTTPException(status_code=403, detail="SLA simulation is not permitted")
+    return result
+
+
+@router.post("/sla-rules/business-hours/preview")
+async def preview_business_hours(
+    item: BusinessHoursTestRequest,
+    ctx: RequestContext = Depends(require_permission("sla.manage")),
+) -> dict[str, Any]:
+    """Validate a draft calendar and preview a deadline before it is saved."""
+    calendar = item.business_hours.model_dump(mode="json") if item.business_hours else {}
+    result = await CatalogRepository().test_business_hours(
+        ctx.db,
+        calendar,
+        item.minutes,
+        item.from_at,
+        item.company_id,
+        item.insurance_type.value if item.insurance_type else None,
+    )
+    if result is None:
+        raise HTTPException(status_code=403, detail="Calendar preview is not permitted")
+    return result
 
 
 @router.get("/templates")

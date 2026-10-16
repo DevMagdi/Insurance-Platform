@@ -23,39 +23,44 @@ the scoped REST queries when updates arrive.
 
 ## AI insights
 
-Migration `20261016_13` opens the previously read-only `ai_insights` table to
-scoped staff writes:
+AI uses the canonical Phase 4 asynchronous integrations boundary. Migration
+`20261015_17` keeps `ai_insights` writes inside the encrypted integration-job
+flow; the staff ticket page uses:
 
-- `GET /api/staff/complaints/{id}/ai-insights` — `complaints.view`
-- `POST /api/staff/complaints/{id}/ai-insights/generate` — `complaints.edit`
-- `PATCH /api/staff/complaints/{id}/ai-insights/{insight_id}` — `complaints.edit`
+- `POST /api/staff/complaints/{id}/ai/analyze` — queues classification,
+  sentiment, summary and a suggested reply (`integrations.ai_call`);
+- `GET /api/staff/integration-jobs/{job_id}` — polls the queued job;
+- `GET /api/staff/complaints/{id}/ai/insights` — lists decrypted insights for
+  staff who can read the complaint;
+- `POST /api/staff/complaints/{id}/ai/insights/{insight_id}/review` — records
+  human acceptance/rejection;
+- `POST /api/staff/complaints/{id}/ai/insights/{insight_id}/send` — sends only
+  an accepted reply through the durable channel queue.
 
-The default analyzer (`local-rules-v1`) is deterministic and local: no complaint
-text is sent to an external model. It produces bilingual classification,
-sentiment, extractive summary and reply suggestions. Payloads are AES-256-GCM
-encrypted JSON, marked `requires_human_review`, and reply suggestions are never
-auto-sent. Accepting/rejecting an insight records the reviewing staff member;
-a suggested reply can be copied into the public-reply editor for manual review.
-Generating sentiment also updates the complaint's scoped `sentiment` field.
+Complaint text is PII-minimized before provider analysis. Insight payloads are
+AES-256-GCM encrypted with a job-bound associated-data value and remain
+`suggested` until a staff member reviews them; replies are never auto-sent.
+The deterministic mock provider is available for local/test environments, and
+an OpenAI-compatible provider can be configured through the Phase 4 integration
+administration APIs.
 
 ## Notification preferences
 
 Customer email/WhatsApp/SMS preferences now reach delivery. Migration
-`20261016_13` returns preferences from `claim_notices`, the worker suppresses
+`20261016_19` returns preferences from `claim_notices`, the worker suppresses
 notices when every channel is disabled, and `SMTPDelivery` honors the enabled
-channels. A real production SMS/WhatsApp provider still has to implement the
-existing `Delivery` protocol; development keeps the explicit Mailpit mailbox
-behavior and never pretends an unconfigured provider delivered a message.
+channels. A real production SMS/WhatsApp provider still has to be configured
+and verified; development keeps the explicit Mailpit mailbox behavior and never
+pretends an unconfigured provider delivered a message.
 
 ## Remaining production blockers
 
 These are provider/deployment items, not missing application workflows:
 
-- real SMS/WhatsApp and antivirus providers (current adapters fail closed);
-- business-hours calendar SLA calculation (continuous SLA is implemented and
-  nonempty calendars are rejected rather than silently miscomputed);
-- scheduled report delivery and materialized analytics views;
-- AI voice calls (the permission/catalog foundation exists; no telephony
-  provider is configured);
+- live SMS/WhatsApp/AI-provider and antivirus rollout (current unconfigured
+  adapters fail closed);
+- vendor-specific inbound IVR/STT/TTS verification;
+- a dedicated integration-administration screen for connections, webhooks,
+  API keys and dead-letter jobs (the permission-guarded APIs are implemented);
 - production deployment target, TLS/secrets management, observability,
   backups, load testing and independent security review.

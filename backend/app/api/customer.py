@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, R
 from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 
-from app.api.deps import RequestContext, client_ip, require_customer
+from app.api.deps import RequestContext, client_ip, integration_service, require_customer
 from app.db import purpose_transaction
 from app.domain.schemas import (
     ComplaintCreate,
@@ -18,6 +18,7 @@ from app.domain.schemas import (
     CustomerProfileUpdate,
     GuestTrackRequest,
     ReplyRequest,
+    VoiceConsentRequest,
 )
 from app.models.identity import InsuranceCompany
 from app.repositories.complaints import ComplaintRepository
@@ -127,6 +128,19 @@ async def customer_reply(
     _: None = Depends(csrf_required),
 ) -> dict[str, Any]:
     return await ctx.complaints.reply(ctx.db, ctx.scope, complaint_id, item.body)
+
+
+@router.post("/customer/complaints/{complaint_id}/voice-consent")
+async def customer_voice_consent(
+    complaint_id: UUID,
+    item: VoiceConsentRequest,
+    request: Request,
+    ctx: RequestContext = Depends(require_customer),
+    _: None = Depends(csrf_required),
+) -> dict[str, Any]:
+    return await integration_service(request).record_voice_consent(
+        ctx.db, ctx.scope, complaint_id, item.enabled
+    )
 
 
 @router.post("/customer/complaints/{complaint_id}/reopen")

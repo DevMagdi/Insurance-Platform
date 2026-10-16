@@ -137,6 +137,57 @@ class ComplaintRepository:
             )
         ).one_or_none()
 
+    async def sla_state(
+        self, db: AsyncSession, scope: AccessScope, complaint_id: UUID
+    ) -> dict[str, Any] | None:
+        """Deadlines and clock state for one visible ticket (never computed in SQL)."""
+        row = (
+            await db.execute(
+                select(
+                    Complaint.id,
+                    Complaint.ticket_no,
+                    Complaint.status,
+                    Complaint.created_at,
+                    Complaint.response_due_at,
+                    Complaint.sla_due_at,
+                    Complaint.sla_alert_at,
+                    Complaint.sla_alerted_at,
+                    Complaint.first_response_at,
+                    Complaint.response_breached_at,
+                    Complaint.sla_breached_at,
+                    Complaint.resolved_at,
+                ).where(scope.predicate(), Complaint.id == complaint_id)
+            )
+        ).one_or_none()
+        if row is None:
+            return None
+        record = dict(row._mapping)
+        now = datetime.now(UTC)
+        earliest = record["sla_due_at"] or record["response_due_at"]
+        if record["response_breached_at"] or record["sla_breached_at"]:
+            state = "breached"
+        elif earliest is None or record["resolved_at"] is not None or now <= earliest:
+            state = "on_track"
+        else:
+            state = "due"
+        if (
+            state == "on_track"
+            and earliest is not None
+            and (
+                (record["sla_alert_at"] is not None and now >= record["sla_alert_at"])
+                or (earliest - now) <= timedelta(minutes=60)
+            )
+        ):
+            state = "at_risk"
+        return {
+            **record,
+            "state": state,
+            "remaining_minutes": (
+                max(int((earliest - now).total_seconds() // 60), 0) if earliest else None
+            ),
+            "responded": record["first_response_at"] is not None,
+        }
+
     async def detail(
         self, db: AsyncSession, scope: AccessScope, complaint_id: UUID
     ) -> tuple[Complaint, str, str | None, str] | None:

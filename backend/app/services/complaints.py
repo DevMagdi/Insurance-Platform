@@ -49,10 +49,12 @@ class ComplaintService:
         repository: ComplaintRepository,
         protector: NationalIdProtector,
         digest_key: str,
+        integration_events: Any | None = None,
     ) -> None:
         self.repository = repository
         self.protector = protector
         self.digest_key = digest_key.encode("utf-8")
+        self.integration_events = integration_events
 
     @staticmethod
     def summary(record: Complaint) -> dict[str, Any]:
@@ -169,6 +171,14 @@ class ComplaintService:
         if scope.actor.scope == "customer" and parent.status == ComplaintStatus.RESOLVED:
             raise HTTPException(status_code=409, detail="Reopen the resolved complaint first")
         message = await self.repository.reply(db, scope, parent, body, visibility)
+        if (
+            self.integration_events is not None
+            and scope.actor.scope == "staff"
+            and visibility == MessageVisibility.PUBLIC
+        ):
+            await self.integration_events.publish_event(
+                db, scope, parent, "complaint.message_received"
+            )
         return {
             "id": message.id,
             "created_at": message.created_at,
@@ -211,6 +221,11 @@ class ComplaintService:
             db, parent, status
         ):
             raise HTTPException(status_code=409, detail="Invalid status transition")
+        parent.status = status
+        if self.integration_events is not None:
+            await self.integration_events.publish_event(
+                db, scope, parent, "complaint.status_changed"
+            )
         return {"status": status}
 
     async def reveal_national_id(

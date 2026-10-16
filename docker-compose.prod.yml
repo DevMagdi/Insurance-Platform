@@ -1,0 +1,203 @@
+# Production topology. Images are built and published by .github/workflows/cd.yml;
+# this file never builds, never contains credentials and never publishes a service
+# other than the web edge (the rest bind to loopback or stay on the compose network).
+#
+# Run it with an on-host secrets file, never from Git:
+#   docker compose --env-file .env.production -f docker-compose.prod.yml up -d
+name: insurance-platform-prod
+
+x-postgres-credentials: &postgres-credentials
+  POSTGRES_DB: ${POSTGRES_DB:?set POSTGRES_DB in .env.production}
+  POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER in .env.production}
+  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env.production}
+  APP_DB_PASSWORD: ${APP_DB_PASSWORD:?set APP_DB_PASSWORD in .env.production}
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: 10m
+    max-file: '5'
+
+services:
+  postgres:
+    image: postgres:16.8-alpine
+    restart: unless-stopped
+    environment: *postgres-credentials
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./infra/postgres/init/01_app_runtime.sh:/docker-entrypoint-initdb.d/01_app_runtime.sh:ro
+    ports:
+      - '127.0.0.1:5432:5432' # SSH-tunnel maintenance only; never a public port.
+    logging: *logging
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"']
+      interval: 10s
+      timeout: 5s
+      retries: 15
+
+  pgbouncer:
+    image: edoburu/pgbouncer:v1.24.1-p1
+    restart: unless-stopped
+    environment:
+      DB_HOST: postgres
+      DB_PORT: '5432'
+      DB_NAME: ${POSTGRES_DB:?set POSTGRES_DB in .env.production}
+      DB_USER: app_runtime
+      DB_PASSWORD: ${APP_DB_PASSWORD:?set APP_DB_PASSWORD in .env.production}
+      AUTH_TYPE: scram-sha-256
+      POOL_MODE: transaction
+      MAX_CLIENT_CONN: '200'
+      DEFAULT_POOL_SIZE: '20'
+      MAX_PREPARED_STATEMENTS: '100'
+    depends_on:
+      postgres:
+        condition: service_healthy
+    logging: *logging
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -h 127.0.0.1 -p 5432 -U app_runtime -d "$${DB_NAME}"']
+      interval: 10s
+      timeout: 5s
+      retries: 15
+
+  redis:
+    image: redis:7.4-alpine
+    restart: unless-stopped
+    command: ['redis-server', '--appendonly', 'yes']
+    volumes:
+      - redis_data:/data
+    logging: *logging
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  minio:
+    image: minio/minio:latest # Pin to a verified digest before going live.
+    restart: unless-stopped
+    command: ['server', '/data', '--console-address', ':9001']
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?set MINIO_ROOT_USER in .env.production}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?set MINIO_ROOT_PASSWORD in .env.production}
+    volumes:
+      - minio_data:/data
+    ports:
+      - '127.0.0.1:9001:9001' # Console via SSH tunnel only.
+    logging: *logging
+  minio-init:
+    image: minio/mc:latest
+    restart: 'no'
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?set MINIO_ROOT_USER in .env.production}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?set MINIO_ROOT_PASSWORD in .env.production}
+      S3_BUCKET: ${S3_BUCKET:?set S3_BUCKET in .env.production}
+    depends_on:
+      - minio
+    volumes:
+      - ./infra/minio/init_bucket.sh:/usr/local/bin/init_bucket.sh:ro
+    entrypoint: ['/bin/sh', '/usr/local/bin/init_bucket.sh']
+
+  migrate:
+    image: ghcr.io/${IMAGE_OWNER:?set IMAGE_OWNER}/insurance-platform-api:${IMAGE_TAG:?set IMAGE_TAG}
+    restart: 'no'
+    environment:
+      DATABASE_ADMIN_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      APP_WORKER_DB_PASSWORD: ${APP_WORKER_DB_PASSWORD:?set APP_WORKER_DB_PASSWORD in .env.production}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: ['alembic', 'upgrade', 'head']
+    logging: *logging
+
+  api:
+    image: ghcr.io/${IMAGE_OWNER:?set IMAGE_OWNER}/insurance-platform-api:${IMAGE_TAG:?set IMAGE_TAG}
+    restart: unless-stopped
+    # Explicit environment only: the container never receives the admin URL,
+    # the Postgres superuser password or the object-store root credentials.
+    environment:
+      DATABASE_URL: postgresql+asyncpg://app_runtime:${APP_DB_PASSWORD}@pgbouncer:5432/${POSTGRES_DB}
+      REDIS_URL: redis://redis:6379/0
+      APP_ENCRYPTION_KEY: ${APP_ENCRYPTION_KEY:?set APP_ENCRYPTION_KEY in .env.production}
+      APP_BLIND_INDEX_KEY: ${APP_BLIND_INDEX_KEY:?set APP_BLIND_INDEX_KEY in .env.production}
+      JWT_SIGNING_KEY: ${JWT_SIGNING_KEY:?set JWT_SIGNING_KEY in .env.production}
+      S3_BUCKET: ${S3_BUCKET:?set S3_BUCKET in .env.production}
+      S3_ENDPOINT_URL: http://minio:9000
+      S3_ACCESS_KEY_ID: ${MINIO_ROOT_USER:?set MINIO_ROOT_USER in .env.production}
+      S3_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:?set MINIO_ROOT_PASSWORD in .env.production}
+      SMTP_HOST: ${SMTP_HOST:?set SMTP_HOST in .env.production}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_FROM: ${SMTP_FROM:?set SMTP_FROM in .env.production}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_START_TLS: ${SMTP_START_TLS:-true}
+      ENVIRONMENT: production
+      COOKIE_SECURE: 'true'
+      PUBLIC_APP_URL: ${PUBLIC_APP_URL:?set PUBLIC_APP_URL in .env.production}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      pgbouncer:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+    logging: *logging
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - import urllib.request; urllib.request.urlopen("http://127.0.0.1:8000/api/health/live", timeout=2)
+      interval: 15s
+      timeout: 5s
+      retries: 10
+
+  worker:
+    image: ghcr.io/${IMAGE_OWNER:?set IMAGE_OWNER}/insurance-platform-api:${IMAGE_TAG:?set IMAGE_TAG}
+    restart: unless-stopped
+    environment:
+      WORKER_DATABASE_URL: postgresql+asyncpg://app_worker:${APP_WORKER_DB_PASSWORD:?set APP_WORKER_DB_PASSWORD in .env.production}@postgres:5432/${POSTGRES_DB}
+      REDIS_URL: redis://redis:6379/0
+      S3_BUCKET: ${S3_BUCKET:?set S3_BUCKET in .env.production}
+      S3_ENDPOINT_URL: http://minio:9000
+      S3_ACCESS_KEY_ID: ${MINIO_ROOT_USER:?set MINIO_ROOT_USER in .env.production}
+      S3_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:?set MINIO_ROOT_PASSWORD in .env.production}
+      SMTP_HOST: ${SMTP_HOST:?set SMTP_HOST in .env.production}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_FROM: ${SMTP_FROM:?set SMTP_FROM in .env.production}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_START_TLS: ${SMTP_START_TLS:-true}
+      ENVIRONMENT: production
+    command: ['arq', 'app.worker.WorkerSettings']
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+    logging: *logging
+
+  web:
+    image: ghcr.io/${IMAGE_OWNER:?set IMAGE_OWNER}/insurance-platform-web:${IMAGE_TAG:?set IMAGE_TAG}
+    restart: unless-stopped
+    ports:
+      - '${HTTP_PORT:-8080}:80'
+    depends_on:
+      api:
+        condition: service_healthy
+    logging: *logging
+    healthcheck:
+      test: ['CMD', 'wget', '-q', '-O', '/dev/null', 'http://127.0.0.1/']
+      interval: 15s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:

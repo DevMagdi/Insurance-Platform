@@ -48,4 +48,13 @@ describe('Phase 6 customer portal shell', () => {
     await waitFor(() => expect(screen.getByText(/رقم التذكرة بصيغة/)).toBeTruthy());
     expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/api/guest/track'))).toBe(false);
   });
+
+  it('keeps the Phase 5 guest-tracking URL as an alias', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response('{"detail":"unauthorized"}', { status: 401 })),
+    );
+    renderApp('/complaints/track');
+    expect(await screen.findByText('تتبع شكوى بدون حساب')).toBeTruthy();
+  });
 });

@@ -54,7 +54,7 @@ fallback when SSE is disconnected.
 
 ## Phase 6 backend additions
 
-- Migration `20261015_12`: `customers.notification_preferences` plus
+- Migration `20261016_18`: `customers.notification_preferences` plus
   SECURITY DEFINER helpers `customer_profile()`,
   `update_customer_profile(...)`, `assigned_agent_display(...)` and
   `mark_customer_notification_read(...)` — `app_runtime` gains no blanket

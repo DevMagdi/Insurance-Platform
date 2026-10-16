@@ -28,6 +28,18 @@ async def overview(
     return await analytics(request).overview(ctx.db, ctx.scope, filters, ctx.token_version)
 
 
+@router.get("/rollup")
+async def rollup(
+    request: Request,
+    filters: ComplaintFilter = Query(),
+    ctx: RequestContext = Depends(require_permission("analytics.view")),
+    _: RequestContext = Depends(require_permission("complaints.view")),
+) -> dict[str, Any]:
+    """Pre-aggregated series for whole UTC days; falls back to a live query."""
+    result = await analytics(request).rollup(ctx.db, ctx.scope, filters, ctx.token_version)
+    return result
+
+
 @router.get("/scorecards")
 async def scorecards(
     request: Request,

@@ -20,6 +20,8 @@ import {
   type AnalyticsOverview,
   type CannedReply,
   type ExportJob,
+  type IntegrationJob,
+  type IntegrationJobQueued,
   type SavedView,
   type StaffComplaintFilters,
   type StaffFilterOptions,
@@ -360,18 +362,28 @@ export const staffApi = {
 
   deleteView: (id: string) => request<void>(`/api/staff/views/${id}`, { method: 'DELETE' }),
 
-  aiInsights: (id: string) => request<AiInsight[]>(`/api/staff/complaints/${id}/ai-insights`),
+  aiInsights: (id: string) => request<AiInsight[]>(`/api/staff/complaints/${id}/ai/insights`),
 
-  generateAi: (id: string) =>
-    request<AiInsight[]>(`/api/staff/complaints/${id}/ai-insights/generate`, {
+  generateAi: (id: string, locale: 'ar' | 'en') =>
+    request<IntegrationJobQueued>(`/api/staff/complaints/${id}/ai/analyze`, {
       method: 'POST',
-      body: { kinds: ['classification', 'sentiment', 'summary', 'reply'] },
+      headers: { 'Idempotency-Key': crypto.randomUUID() },
+      body: { locale },
     }),
 
-  reviewAi: (complaintId: string, insightId: string, review_status: 'accepted' | 'rejected') =>
-    request<AiInsight>(`/api/staff/complaints/${complaintId}/ai-insights/${insightId}`, {
-      method: 'PATCH',
-      body: { review_status },
+  integrationJob: (id: string) => request<IntegrationJob>(`/api/staff/integration-jobs/${id}`),
+
+  reviewAi: (complaintId: string, insightId: string, accept: boolean) =>
+    request<AiInsight>(`/api/staff/complaints/${complaintId}/ai/insights/${insightId}/review`, {
+      method: 'POST',
+      body: { accept },
+    }),
+
+  sendAi: (complaintId: string, insightId: string) =>
+    request<IntegrationJobQueued>(`/api/staff/complaints/${complaintId}/ai/insights/${insightId}/send`, {
+      method: 'POST',
+      headers: { 'Idempotency-Key': crypto.randomUUID() },
+      body: {},
     }),
 
   analytics: (filters: StaffComplaintFilters) =>

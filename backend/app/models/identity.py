@@ -51,6 +51,8 @@ class Customer(Base):
     token_version: Mapped[int] = mapped_column(server_default=text("0"))
     mobile: Mapped[str] = mapped_column(Text)
     whatsapp_available: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
+    voice_followup_opt_in: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
+    voice_consent_at: Mapped[datetime | None]
     email: Mapped[str | None] = mapped_column(Text)
     notification_preferences: Mapped[dict[str, Any]] = mapped_column(
         JSONB, server_default=text('\'{"email": true, "whatsapp": true, "sms": true}\'::jsonb')

@@ -228,6 +228,8 @@ export const en = {
     "send": "Send",
     "ai": "AI assistance",
     "generateAi": "Generate classification, sentiment, summary and reply suggestion",
+    "aiQueued": "AI analysis queued…",
+    "sendAi": "Send approved reply",
     "accept": "Accept",
     "reject": "Reject",
     "duplicates": "Possible duplicates",

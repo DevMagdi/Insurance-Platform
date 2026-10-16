@@ -1,4 +1,4 @@
-"""Customer portal profile, notification preferences and realtime helpers.
+"""Business-hours SLA calendars, alerts and response tracking.
 
 Revision ID: 20261015_12
 Revises: 20261015_11
@@ -16,7 +16,7 @@ revision = "20261015_12"
 down_revision = "20261015_11"
 branch_labels = None
 depends_on = None
-SQL = Path(__file__).resolve().parents[1] / "sql" / "012_customer_portal.sql"
+SQL = Path(__file__).resolve().parents[1] / "sql" / "012_sla_calendars.sql"
 
 
 def upgrade() -> None:
@@ -25,4 +25,4 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    raise RuntimeError("Phase 6 customer portal migration is forward-only; restore from backup")
+    raise RuntimeError("Phase 3 SLA calendar migration is forward-only; restore from backup")

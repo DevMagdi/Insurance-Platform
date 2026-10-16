@@ -12,7 +12,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine, async_sessionmaker
 
 from app.api import (
-    ai,
+    admin_integrations,
     analytics,
     attachments,
     audit,
@@ -20,21 +20,26 @@ from app.api import (
     catalog,
     customer,
     exports,
+    integration_webhooks,
+    integrations,
+    operations,
+    public_api,
+    reports,
     staff,
     websocket,
     workflow,
 )
 from app.db import make_engine
 from app.openapi_contract import decorate_spec
-from app.repositories.ai import AiInsightRepository
 from app.repositories.attachments import AttachmentRepository
 from app.repositories.complaints import ComplaintRepository
-from app.security.crypto import NationalIdProtector, PayloadProtector, decode_key
+from app.security.crypto import NationalIdProtector, decode_key
+from app.security.integration_crypto import SecretCipher, derive_idempotency_key
 from app.security.tokens import TokenManager
-from app.services.ai import AiInsightService, LocalAiAnalyzer
 from app.services.attachments import AttachmentService
 from app.services.auth import AuthService
 from app.services.complaints import ComplaintService
+from app.services.integrations import IntegrationService
 from app.services.providers import SMTPDelivery
 from app.services.storage import S3ObjectStorage
 from app.settings import get_settings
@@ -50,15 +55,17 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.factory = async_sessionmaker(engine, expire_on_commit=False)
     delivery = SMTPDelivery(settings)
     app.state.auth = AuthService(app.state.factory, redis, settings, delivery)
-    protector = NationalIdProtector(
-        decode_key(settings.app_encryption_key), decode_key(settings.app_blind_index_key)
+    encryption_key = decode_key(settings.app_encryption_key)
+    integrations_service = IntegrationService(
+        SecretCipher(encryption_key), derive_idempotency_key(encryption_key)
     )
+    app.state.integrations = integrations_service
+    protector = NationalIdProtector(encryption_key, decode_key(settings.app_blind_index_key))
     app.state.complaints = ComplaintService(
-        ComplaintRepository(), protector, settings.jwt_signing_key
-    )
-    app.state.ai = AiInsightService(
-        AiInsightRepository(PayloadProtector(decode_key(settings.app_encryption_key))),
-        LocalAiAnalyzer(),
+        ComplaintRepository(),
+        protector,
+        settings.jwt_signing_key,
+        integration_events=integrations_service,
     )
     storage = (
         S3ObjectStorage(settings) if settings.s3_endpoint_url or settings.s3_access_key_id else None
@@ -89,13 +96,18 @@ app = ContractApp(
 app.include_router(auth.router)
 app.include_router(customer.router)
 app.include_router(staff.router)
-app.include_router(ai.router)
 app.include_router(workflow.router)
 app.include_router(analytics.router)
 app.include_router(audit.router)
 app.include_router(catalog.router)
 app.include_router(exports.router)
 app.include_router(attachments.router)
+app.include_router(integrations.router)
+app.include_router(admin_integrations.router)
+app.include_router(integration_webhooks.router)
+app.include_router(public_api.router)
+app.include_router(reports.router)
+app.include_router(operations.router)
 app.include_router(websocket.router)
 
 

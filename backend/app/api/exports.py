@@ -13,6 +13,7 @@ from app.api.staff import access_error
 from app.domain.schemas import ExportRequest
 from app.repositories.exports import ExportRepository
 from app.security.tokens import csrf_required
+from app.services.render import EXTENSIONS, MEDIA_TYPES
 from app.services.storage import ObjectStorage
 
 router = APIRouter(prefix="/api/staff/exports", tags=["exports"])
@@ -61,11 +62,14 @@ async def download_export(
         data = await storage.get(key, max_bytes=2_000_000)
     except Exception:
         raise HTTPException(status_code=503, detail="Private export storage unavailable") from None
+    # Media type and filename come from the server-generated key, never the client.
+    suffix = key.rsplit(".", 1)[-1]
+    fmt = suffix if suffix in EXTENSIONS.values() else "csv"
     return Response(
         content=data,
-        media_type="text/csv; charset=utf-8",
+        media_type=MEDIA_TYPES[fmt],
         headers={
-            "Content-Disposition": f'attachment; filename="insurance-export-{job_id}.csv"',
+            "Content-Disposition": f'attachment; filename="insurance-export-{job_id}.{fmt}"',
             "Cache-Control": "no-store",
             "X-Content-Type-Options": "nosniff",
         },

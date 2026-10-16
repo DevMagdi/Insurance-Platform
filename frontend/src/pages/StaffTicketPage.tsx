@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { ApiError, staffApi } from '../lib/api';
@@ -21,6 +21,7 @@ export function StaffTicketPage({ complaintId }: { complaintId: string }) {
   const [targetId, setTargetId] = useState('');
   const [revealReason, setRevealReason] = useState('');
   const [nationalId, setNationalId] = useState('');
+  const [aiJobId, setAiJobId] = useState('');
   const [error, setError] = useState('');
 
   const detail = useQuery({ queryKey: ['staff-ticket', complaintId], queryFn: () => staffApi.complaint(complaintId) });
@@ -37,6 +38,19 @@ export function StaffTicketPage({ complaintId }: { complaintId: string }) {
     enabled: hasPermission(access, 'complaints.reply_public'),
   });
   const ai = useQuery({ queryKey: ['staff-ticket-ai', complaintId], queryFn: () => staffApi.aiInsights(complaintId) });
+  const aiJob = useQuery({
+    queryKey: ['staff-ai-job', aiJobId],
+    queryFn: () => staffApi.integrationJob(aiJobId),
+    enabled: Boolean(aiJobId),
+    refetchInterval: (query) => (['sent', 'failed', 'dead_letter'].includes(query.state.data?.state ?? '') ? false : 2000),
+  });
+
+  const handledAiJob = useRef('');
+  useEffect(() => {
+    if (aiJob.data?.state !== 'sent' || handledAiJob.current === aiJob.data.id) return;
+    handledAiJob.current = aiJob.data.id;
+    void ai.refetch().then(() => setAiJobId(''));
+  }, [ai, aiJob.data]);
 
   const invalidate = async () => {
     await queryClient.invalidateQueries({ queryKey: ['staff-ticket', complaintId] });
@@ -51,16 +65,8 @@ export function StaffTicketPage({ complaintId }: { complaintId: string }) {
   });
 
   const aiMutation = useMutation({
-    mutationFn: () => staffApi.generateAi(complaintId),
-    onSuccess: async (created) => {
-      queryClient.setQueryData(
-        ['staff-ticket-ai', complaintId],
-        (current: typeof created | undefined) => [
-          ...created,
-          ...(current ?? []).filter((item) => !created.some((next) => next.id === item.id)),
-        ],
-      );
-    },
+    mutationFn: () => staffApi.generateAi(complaintId, i18n.language === 'ar' ? 'ar' : 'en'),
+    onSuccess: (queued) => setAiJobId(queued.job_id),
     onError: (caught) => setError(caught instanceof ApiError ? caught.detail : t('errors.generic')),
   });
 
@@ -207,9 +213,10 @@ export function StaffTicketPage({ complaintId }: { complaintId: string }) {
 
           <section className="rounded-3xl border border-amber-300/30 bg-gradient-to-br from-amber-300/15 to-emerald-300/10 p-5 shadow-xl backdrop-blur dark:border-white/10">
             <h3 className="font-black">✦ {t('staff.ai')}</h3>
-            <button type="button" className={`${primaryButton} mt-3 w-full`} disabled={aiMutation.isPending} onClick={() => aiMutation.mutate()}>
-              {t('staff.generateAi')}
+            <button type="button" className={`${primaryButton} mt-3 w-full`} disabled={aiMutation.isPending || Boolean(aiJobId)} onClick={() => aiMutation.mutate()}>
+              {aiJobId ? t('staff.aiQueued') : t('staff.generateAi')}
             </button>
+            {aiJob.data?.last_error_code && <p className="mt-2 text-sm text-rose-500">{aiJob.data.last_error_code}</p>}
             <div className="mt-4 space-y-3">
               {(ai.data ?? []).slice(0, 8).map((insight) => (
                 <article key={insight.id} className="rounded-2xl bg-white/70 p-3 text-sm dark:bg-slate-950/30">
@@ -218,18 +225,23 @@ export function StaffTicketPage({ complaintId }: { complaintId: string }) {
                     <span className="text-xs">{insight.review_status} · {insight.provider_model}</span>
                   </div>
                   <p className="mt-2 whitespace-pre-wrap">
-                    {payloadText(insight.payload, ['summary_ar', 'summary_en', 'reply_ar', 'reply_en', 'label_ar', 'label_en', 'sentiment', 'category_code']) ?? JSON.stringify(insight.payload)}
+                    {payloadText(insight.payload, ['summary', 'summary_ar', 'summary_en', 'reply', 'reply_ar', 'reply_en', 'label_ar', 'label_en', 'sentiment', 'category', 'category_code']) ?? JSON.stringify(insight.payload)}
                   </p>
-                  {insight.kind === 'reply' && payloadText(insight.payload, ['reply_en']) && (
-                    <button type="button" className="mt-2 font-bold text-amber-600 dark:text-amber-300" onClick={() => setReply(payloadText(insight.payload, [i18n.language === 'ar' ? 'reply_ar' : 'reply_en']) ?? '')}>
+                  {insight.kind === 'reply' && payloadText(insight.payload, ['reply', 'reply_en', 'reply_ar']) && (
+                    <button type="button" className="mt-2 font-bold text-amber-600 dark:text-amber-300" onClick={() => setReply(payloadText(insight.payload, ['reply', i18n.language === 'ar' ? 'reply_ar' : 'reply_en']) ?? '')}>
                       {t('staff.publicReply')}
                     </button>
                   )}
                   {insight.review_status === 'suggested' && (
                     <div className="mt-2 flex gap-2">
-                      <button type="button" className="font-bold text-emerald-600" onClick={() => void staffApi.reviewAi(complaintId, insight.id, 'accepted').then(() => ai.refetch())}>{t('staff.accept')}</button>
-                      <button type="button" className="font-bold text-rose-500" onClick={() => void staffApi.reviewAi(complaintId, insight.id, 'rejected').then(() => ai.refetch())}>{t('staff.reject')}</button>
+                      <button type="button" className="font-bold text-emerald-600" onClick={() => void staffApi.reviewAi(complaintId, insight.id, true).then(() => ai.refetch())}>{t('staff.accept')}</button>
+                      <button type="button" className="font-bold text-rose-500" onClick={() => void staffApi.reviewAi(complaintId, insight.id, false).then(() => ai.refetch())}>{t('staff.reject')}</button>
                     </div>
+                  )}
+                  {insight.kind === 'reply' && insight.review_status === 'accepted' && (
+                    <button type="button" className="mt-2 font-bold text-emerald-600" onClick={() => void staffApi.sendAi(complaintId, insight.id).then(() => ai.refetch()).catch((caught: unknown) => setError(caught instanceof ApiError ? caught.detail : t('errors.generic')))}>
+                      {t('staff.sendAi')}
+                    </button>
                   )}
                 </article>
               ))}

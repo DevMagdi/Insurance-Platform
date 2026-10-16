@@ -9,7 +9,19 @@ from fastapi import FastAPI
 from fastapi.dependencies.models import Dependant
 from fastapi.routing import APIRoute
 
-from app.api import analytics, attachments, audit, auth, catalog, customer, exports, staff, workflow
+from app.api import (
+    analytics,
+    attachments,
+    audit,
+    auth,
+    catalog,
+    customer,
+    exports,
+    operations,
+    reports,
+    staff,
+    workflow,
+)
 from app.api.deps import PermissionGate
 from app.security.tokens import csrf_required
 
@@ -74,6 +86,8 @@ def decorate_spec(app: FastAPI, spec: dict[str, Any]) -> dict[str, Any]:
         *catalog.router.routes,
         *exports.router.routes,
         *attachments.router.routes,
+        *reports.router.routes,
+        *operations.router.routes,
     ]
     for route in routes:
         if not isinstance(route, APIRoute):

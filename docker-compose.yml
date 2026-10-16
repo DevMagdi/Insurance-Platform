@@ -136,6 +136,7 @@ services:
       dockerfile: infra/Dockerfile.backend
     environment:
       WORKER_DATABASE_URL: postgresql+asyncpg://app_worker:${APP_WORKER_DB_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      APP_ENCRYPTION_KEY: ${APP_ENCRYPTION_KEY:?run make init}
       REDIS_URL: redis://redis:6379/0
       S3_BUCKET: ${S3_BUCKET:?run make init}
       S3_ENDPOINT_URL: http://minio:9000

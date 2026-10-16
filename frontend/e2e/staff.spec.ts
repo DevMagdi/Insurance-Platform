@@ -46,6 +46,7 @@ const access = {
 };
 
 async function mockStaffApi(page: Page) {
+  let aiGenerated = false;
   await page.route('**/api/**', async (route: Route) => {
     const url = new URL(route.request().url());
     const path = url.pathname;
@@ -65,10 +66,16 @@ async function mockStaffApi(page: Page) {
     }
     if (path.endsWith('/timeline')) return json({ events: [], messages: [], page: 1 });
     if (path.endsWith('/attachments') || path.endsWith('/duplicates') || path.endsWith('/canned-replies')) return json([]);
-    if (path.endsWith('/ai-insights/generate')) {
-      return json([{ id: 'ai-1', complaint_id: TICKET_ID, kind: 'classification', payload: { label_en: 'Claim delay' }, confidence: 0.83, provider_model: 'local-rules-v1', review_status: 'suggested', reviewed_by_staff_id: null, created_at: '2026-10-03T10:00:00Z' }], 201);
+    if (path.endsWith('/ai/analyze')) {
+      aiGenerated = true;
+      return json({ job_id: 'ai-job-1', state: 'queued', created: true }, 202);
     }
-    if (path.endsWith('/ai-insights')) return json([]);
+    if (path === '/api/staff/integration-jobs/ai-job-1') {
+      return json({ id: 'ai-job-1', kind: 'ai_analyze', state: 'sent', attempt_count: 1, provider_message_id: null, last_error_code: null, created_at: '2026-10-03T10:00:00Z', updated_at: '2026-10-03T10:00:01Z' });
+    }
+    if (path.endsWith('/ai/insights')) {
+      return json(aiGenerated ? [{ id: 'ai-1', kind: 'classification', payload: { category: 'claims' }, confidence: 0.83, provider_model: 'mock-llm-v1', review_status: 'suggested', created_at: '2026-10-03T10:00:00Z' }] : []);
+    }
     return json({ detail: 'not mocked' }, 404);
   });
 }
@@ -94,6 +101,6 @@ test('staff queue opens a ticket and generates human-reviewed AI', async ({ page
   await expect(page).toHaveURL(new RegExp(`/staff/tickets/${TICKET_ID}`));
   await expect(page.getByText('Delayed claim payment')).toBeVisible();
   await page.getByRole('button', { name: /Generate classification/ }).click();
-  await expect(page.getByText('Claim delay')).toBeVisible();
-  await expect(page.getByText('local-rules-v1')).toBeVisible();
+  await expect(page.getByText('claims')).toBeVisible();
+  await expect(page.getByText('mock-llm-v1')).toBeVisible();
 });

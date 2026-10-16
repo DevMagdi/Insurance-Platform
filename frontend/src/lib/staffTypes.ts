@@ -65,14 +65,31 @@ export interface CannedReply {
 
 export interface AiInsight {
   id: string;
-  complaint_id: string;
   kind: 'classification' | 'sentiment' | 'summary' | 'reply';
   payload: Record<string, unknown>;
   confidence: number | null;
   provider_model: string | null;
   review_status: 'suggested' | 'accepted' | 'rejected';
-  reviewed_by_staff_id: string | null;
   created_at: string;
+  job_id?: string;
+  sent_message_id?: string | null;
+}
+
+export interface IntegrationJobQueued {
+  job_id: string;
+  state: string;
+  created: boolean;
+}
+
+export interface IntegrationJob {
+  id: string;
+  kind: string;
+  state: string;
+  attempt_count: number;
+  provider_message_id: string | null;
+  last_error_code: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface StaffNotification {

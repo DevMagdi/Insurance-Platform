@@ -18,22 +18,26 @@ import { TrackPage } from './pages/TrackPage';
 function App() {
   const path = usePathname();
   const ticketMatch = path.match(/^\/tickets\/([0-9a-fA-F-]{36})$/);
+  const portalTicketMatch = path.match(/^\/portal\/complaints\/([0-9a-fA-F-]{36})$/);
   const staffTicketMatch = path.match(/^\/staff\/tickets\/([0-9a-fA-F-]{36})$/);
+  const dashboardTicketMatch = path.match(/^\/dashboard\/complaints\/([0-9a-fA-F-]{36})$/);
 
   let page: React.ReactNode;
-  if (path === '/staff/login') page = <StaffLoginPage />;
-  else if (path === '/staff') page = <StaffDashboardPage />;
+  if (path === '/staff/login' || path === '/auth/staff' || path === '/auth') page = <StaffLoginPage />;
+  else if (path === '/staff' || path === '/dashboard') page = <StaffDashboardPage />;
   else if (staffTicketMatch) page = <StaffTicketPage complaintId={staffTicketMatch[1]} />;
+  else if (dashboardTicketMatch) page = <StaffTicketPage complaintId={dashboardTicketMatch[1]} />;
   else if (path === '/staff/analytics') page = <StaffAnalyticsPage />;
   else if (path === '/staff/admin') page = <StaffAdminPage />;
   else if (path === '/staff/audit') page = <StaffAuditPage />;
   else if (path === '/staff/exports') page = <StaffExportsPage />;
   else if (path === '/') page = <HomePage />;
-  else if (path === '/login') page = <LoginPage />;
-  else if (path === '/track') page = <TrackPage />;
+  else if (path === '/login' || path === '/auth/customer') page = <LoginPage />;
+  else if (path === '/track' || path === '/complaints/track') page = <TrackPage />;
   else if (path === '/complaints/new') page = <NewComplaintPage />;
-  else if (path === '/tickets') page = <TicketsPage />;
+  else if (path === '/tickets' || path === '/portal') page = <TicketsPage />;
   else if (ticketMatch) page = <TicketDetailPage complaintId={ticketMatch[1]} />;
+  else if (portalTicketMatch) page = <TicketDetailPage complaintId={portalTicketMatch[1]} />;
   else if (path === '/profile') page = <ProfilePage />;
   else page = <HomePage />;
 

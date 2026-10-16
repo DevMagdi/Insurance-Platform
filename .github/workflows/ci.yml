@@ -26,6 +26,77 @@ jobs:
           cd frontend
           npx playwright install --with-deps chromium
           npm run test:e2e -- --reporter=github
+  containers:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the deployable images
+        run: |
+          docker build -f infra/Dockerfile.backend -t ci-api .
+          docker build -f infra/Dockerfile.web -t ci-web .
+      - name: Boot the images together and check the same-origin contract
+        run: |
+          set -euo pipefail
+          docker network create ci-smoke
+          python - <<'PY' > /tmp/smoke.env
+          import base64, secrets
+          print("APP_ENCRYPTION_KEY=" + base64.urlsafe_b64encode(secrets.token_bytes(32)).decode())
+          print("APP_BLIND_INDEX_KEY=" + base64.urlsafe_b64encode(secrets.token_bytes(32)).decode())
+          print("JWT_SIGNING_KEY=" + secrets.token_urlsafe(48))
+          PY
+          docker run -d --name ci-api --network ci-smoke --network-alias api \
+            --env-file /tmp/smoke.env -e ENVIRONMENT=production -e COOKIE_SECURE=true \
+            -e DATABASE_URL=postgresql+asyncpg://app_runtime:unused@postgres:5432/insurance \
+            -e REDIS_URL=redis://redis:6379/0 ci-api
+          docker run -d --name ci-web --network ci-smoke -p 18080:80 ci-web
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:18080/api/health/live >/dev/null; then break; fi
+            sleep 2
+          done
+          curl -fsS http://127.0.0.1:18080/api/health/live
+          curl -fsS http://127.0.0.1:18080/ | grep -qi '<div id="root"'
+      - name: Fail if the image contract drifted from docs/openapi.yaml
+        run: |
+          set -euo pipefail
+          python -m pip install --quiet PyYAML
+          python - <<'PY'
+          import json, yaml
+          json.dump(yaml.safe_load(open('docs/openapi.yaml')), open('/tmp/contract.json', 'w'))
+          PY
+          docker run --rm --network ci-smoke --env-file /tmp/smoke.env \
+            -e ENVIRONMENT=production -e COOKIE_SECURE=true \
+            -e DATABASE_URL=postgresql+asyncpg://app_runtime:unused@postgres:5432/insurance \
+            -e REDIS_URL=redis://redis:6379/0 -v /tmp/contract.json:/tmp/contract.json:ro ci-api \
+            python -c "import json; from app.main import app; actual = app.openapi(); expected = json.load(open('/tmp/contract.json')); assert actual == expected, 'image does not match docs/openapi.yaml'; print('image matches contract', len(actual['paths']), 'paths')"
+      - if: always()
+        run: |
+          docker logs ci-api || true
+          docker rm -f ci-api ci-web || true
+          docker network rm ci-smoke || true
+      - name: Prove the production compose file renders
+        run: |
+          set -euo pipefail
+          python - <<'PY' > /tmp/prod.env
+          import base64, secrets
+          values = {
+              "POSTGRES_DB": "insurance", "POSTGRES_USER": "postgres",
+              "POSTGRES_PASSWORD": secrets.token_urlsafe(24),
+              "APP_DB_PASSWORD": secrets.token_urlsafe(24),
+              "APP_WORKER_DB_PASSWORD": secrets.token_urlsafe(24),
+              "MINIO_ROOT_USER": "minio-" + secrets.token_hex(6),
+              "MINIO_ROOT_PASSWORD": secrets.token_urlsafe(24),
+              "S3_BUCKET": "complaint-attachments",
+              "APP_ENCRYPTION_KEY": base64.urlsafe_b64encode(secrets.token_bytes(32)).decode(),
+              "APP_BLIND_INDEX_KEY": base64.urlsafe_b64encode(secrets.token_bytes(32)).decode(),
+              "JWT_SIGNING_KEY": secrets.token_urlsafe(48),
+              "SMTP_HOST": "smtp.example.invalid", "SMTP_FROM": "no-reply@example.invalid",
+              "PUBLIC_APP_URL": "https://app.example.invalid",
+              "IMAGE_OWNER": "ci-owner", "IMAGE_TAG": "ci",
+          }
+          for name, value in values.items():
+              print(f"{name}={value}")
+          PY
+          docker compose --env-file /tmp/prod.env -f docker-compose.prod.yml config --quiet
   postgres-rls:
     runs-on: ubuntu-latest
     steps:

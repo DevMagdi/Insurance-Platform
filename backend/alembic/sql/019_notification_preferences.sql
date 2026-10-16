@@ -1,22 +1,5 @@
--- AI insight writes/reviews and customer notification-preference delivery.
--- AI payloads remain encrypted application data; RLS only permits staff who
--- can already read the parent complaint and hold the complaint-edit floor.
-
-CREATE POLICY ai_insights_insert ON public.ai_insights FOR INSERT TO app_runtime
-    WITH CHECK (app_security.actor_scope() = 'staff'
-        AND app_security.has_permission('complaints.edit')
-        AND app_security.can_read_complaint_id(complaint_id, complaint_created_at));
-
-CREATE POLICY ai_insights_review ON public.ai_insights FOR UPDATE TO app_runtime
-    USING (app_security.actor_scope() = 'staff'
-        AND app_security.has_permission('complaints.edit')
-        AND app_security.can_read_complaint_id(complaint_id, complaint_created_at))
-    WITH CHECK (app_security.actor_scope() = 'staff'
-        AND app_security.has_permission('complaints.edit')
-        AND app_security.can_read_complaint_id(complaint_id, complaint_created_at));
-
-GRANT INSERT ON public.ai_insights TO app_runtime;
-GRANT UPDATE (review_status, reviewed_by_staff_id) ON public.ai_insights TO app_runtime;
+-- Customer notification-preference delivery. AI payload writes and review
+-- policies remain owned by migration 017's integration-job boundary.
 
 ALTER TABLE public.notification_outbox
     DROP CONSTRAINT notification_outbox_state_check;

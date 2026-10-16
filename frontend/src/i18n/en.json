@@ -1,0 +1,37 @@
+{
+  "app": { "name": "Insurance Complaint Management", "tagline": "Professional insurance complaint platform" },
+  "nav": { "home": "Home", "features": "Features", "how": "How it works", "pricing": "Pricing", "contact": "Contact", "login": "Sign in", "signup": "Get started", "dashboard": "Dashboard", "complaints": "Complaints", "analytics": "Analytics", "settings": "Settings", "logout": "Sign out" },
+  "landing": {
+    "heroTitle": "Insurance complaint management, with clearer visibility",
+    "heroSubtitle": "A complete SaaS platform for brokerages: intake, assignment, follow-up, resolution and escalation with analytics and dashboards.",
+    "ctaPrimary": "Request a demo",
+    "ctaSecondary": "Track a complaint",
+    "fileComplaint": "File a complaint",
+    "trackComplaint": "Track a complaint",
+    "howTitle": "How it works",
+    "featuresTitle": "Features",
+    "trustTitle": "Security & trust",
+    "statsTitle": "By the numbers",
+    "testimonialsTitle": "What customers say",
+    "faqTitle": "FAQ",
+    "demoTitle": "Request a demo"
+  },
+  "auth": {
+    "customerOtpTitle": "Customer sign-in via OTP",
+    "mobile": "Mobile number",
+    "sendOtp": "Send code",
+    "otpCode": "Verification code",
+    "verify": "Verify",
+    "staffLoginTitle": "Staff sign-in",
+    "email": "Email",
+    "password": "Password",
+    "signIn": "Sign in",
+    "acceptInviteTitle": "Accept invitation",
+    "newPassword": "New password",
+    "accept": "Accept",
+    "twoFactor": "Two-factor authentication"
+  },
+  "common": { "loading": "Loading...", "empty": "No data", "error": "Something went wrong", "retry": "Retry", "save": "Save", "cancel": "Cancel", "close": "Close", "search": "Search", "filter": "Filter", "export": "Export", "submit": "Submit" },
+  "errors": { "forbidden": "You do not have permission to access this page", "notFound": "Page not found" },
+  "permissions": { "denied": "Access denied" }
+}

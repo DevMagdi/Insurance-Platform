@@ -1,6 +1,6 @@
-# Phase 1–3 entity relationships
+# Phase 1–4 entity relationships
 
-Columns shown are key fields, not a complete schema. The migration DDL is authoritative. `complaints`, `complaint_events`, and `audit_logs` are monthly range-partitioned by `created_at`, `occurred_at`, and `created_at`, respectively. Complaint children carry composite `(complaint_id, complaint_created_at)` FKs; duplicate candidates carry both immutable complaint keys.
+Columns shown are key fields, not a complete schema. The migration DDL is authoritative. `complaints`, `complaint_events`, and `audit_logs` are monthly range-partitioned by `created_at`, `occurred_at`, and `created_at`, respectively. Complaint children carry composite `(complaint_id, complaint_created_at)` FKs; duplicate candidates carry both immutable complaint keys. Integration payloads are encrypted in `integration_jobs`; retry exhaustion creates an `integration_dead_letters` record.
 
 ```mermaid
 erDiagram
@@ -20,6 +20,11 @@ erDiagram
     COMPLAINTS |o--o{ NOTIFICATIONS : relates_to
     COMPLAINTS ||--o{ CALL_LOGS : call_history
     COMPLAINTS ||--o{ AI_INSIGHTS : ai_suggestions
+    COMPLAINTS |o--o{ INTEGRATION_JOBS : processes
+    STAFF_USERS |o--o{ INTEGRATION_JOBS : initiates
+    INTEGRATIONS_CONFIG |o--o{ INTEGRATION_JOBS : configures
+    WEBHOOKS |o--o{ INTEGRATION_JOBS : delivers
+    INTEGRATION_JOBS ||--o| INTEGRATION_DEAD_LETTERS : dead_letters
     COMPLAINTS ||--o{ DUPLICATE_CANDIDATES : first_candidate
     COMPLAINTS ||--o{ DUPLICATE_CANDIDATES : second_candidate
     COMPLAINTS ||--o{ CSAT_RESPONSES : customer_feedback
@@ -49,6 +54,7 @@ erDiagram
     STAFF_USERS ||--o{ REPORT_SCHEDULES : schedules
     STAFF_USERS ||--o{ EXPORT_JOBS : requests
     EXPORT_JOBS ||--o{ EXPORT_JOB_ROWS : authorizes
+    REPORT_SCHEDULES ||--o{ REPORT_RUNS : executes
     COMPLAINTS ||--o{ EXPORT_JOB_ROWS : manifests
     INSURANCE_COMPANIES |o--o{ ASSIGNMENT_RULES : routes
     TEAMS |o--o{ ASSIGNMENT_RULES : targets
@@ -188,6 +194,22 @@ erDiagram
       uuid complaint_id FK
       bytea payload_ciphertext
     }
+    INTEGRATION_JOBS {
+      uuid id PK
+      text job_kind
+      text provider
+      bytea payload_ciphertext
+      bytea idempotency_digest UK
+      uuid sender_staff_id FK
+      text state
+      integer attempts
+    }
+    INTEGRATION_DEAD_LETTERS {
+      uuid job_id PK, FK
+      text error_code
+      integer attempts
+      timestamptz replayed_at
+    }
     DUPLICATE_CANDIDATES {
       uuid id PK
       uuid first_complaint_id FK
@@ -250,5 +272,15 @@ erDiagram
       uuid job_id PK
       uuid complaint_id PK
       timestamptz complaint_created_at FK
+    }
+    REPORT_RUNS {
+      uuid id PK
+      uuid schedule_id FK
+      uuid owner_staff_id FK
+      text state
+    }
+    ANALYTICS_ROLLUP_STATE {
+      boolean id PK
+      timestamptz last_success_at
     }
 ```
