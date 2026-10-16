@@ -225,7 +225,7 @@ jobs:
           export TEST_PGBOUNCER_DATABASE_URL="postgresql+asyncpg://app_runtime:${APP_DB_PASSWORD}@127.0.0.1:6432/${POSTGRES_DB}"
           cd backend
           set +e
-          python -m pytest -m integration -v --timeout=300 --durations=15 > /tmp/insurance-integration.log 2>&1
+          timeout 1500 python -m pytest -m integration -v --timeout=240 --timeout-method=thread --durations=15 > /tmp/insurance-integration.log 2>&1
           code=$?
           set -e
           cat /tmp/insurance-integration.log
@@ -244,6 +244,13 @@ jobs:
           for name, trace in list(zip(parts[1::2], parts[2::2]))[:8]:
               tail = trace[-2200:].replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
               print(f'::error title=Trace {name[:70]}::{tail}')
+          text = '\n'.join(lines)
+          running = [line for line in lines if '::test_' in line][-3:]
+          print('::error title=Last tests::' + '%0A'.join(running).replace('%', '%25'))
+          marker = text.find('+++ Timeout +++')
+          chunk = text[marker:marker + 3500] if marker >= 0 else text[-3000:]
+          chunk = chunk.replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
+          print(f'::error title=Integration log excerpt::{chunk}')
           for line in (summary + errors)[:4]:
               escaped = line[:1200].replace('%', '%25').replace('\r', '%0D')
               print(f'::error title=PostgreSQL integration failure::{escaped}')
