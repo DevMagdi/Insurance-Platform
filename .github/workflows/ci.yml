@@ -279,7 +279,10 @@ jobs:
           . ./.env
           set +a
           # Non-production only: the multiplier relaxes per-IP windows for a single load generator.
-          RATE_LIMIT_MULTIPLIER=100 docker compose up -d api
+          export RATE_LIMIT_MULTIPLIER=100
+          scripts/ci/annotate.sh "compose up api" docker compose up -d api || {
+            scripts/ci/annotate.sh "compose state" sh -c 'docker compose ps -a; docker compose logs --no-color --tail=40; exit 1'
+          }
           ready=0
           for attempt in $(seq 1 60); do
             if docker compose exec -T api python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health/ready', timeout=2)" 2>/dev/null; then ready=1; break; fi
