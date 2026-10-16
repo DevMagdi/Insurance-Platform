@@ -57,6 +57,7 @@ export const en = {
     "title": "Track without an account",
     "subtitle": "Enter the ticket number and the matching national ID.",
     "ticketNo": "Ticket number",
+    "nationalId": "National ID (14 digits)",
     "action": "Track complaint",
     "company": "Insurance company",
     "status": "Status",

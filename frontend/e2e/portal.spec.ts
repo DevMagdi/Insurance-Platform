@@ -131,7 +131,7 @@ test('multi-step complaint wizard reaches the success ticket number', async ({ p
   await page.getByRole('button', { name: 'Next' }).click();
 
   await page.getByLabel(/Insurance company/).selectOption(COMPANY.id);
-  await page.getByRole('radio', { name: 'Health' }).click();
+  await page.getByRole('radio', { name: 'Health', exact: true }).click();
   await page.getByLabel(/Policy number/).fill('POL-000123');
   await page.getByRole('button', { name: 'Next' }).click();
 
