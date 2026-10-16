@@ -66,6 +66,11 @@ describe('Phase 6 customer portal shell', () => {
     expect(await screen.findByTestId('phase7-console')).toBeTruthy();
   });
 
+  it('mounts the custom admin dashboard at its deep link', async () => {
+    renderApp('/staff/admin');
+    expect(await screen.findByTestId('phase7-console')).toBeTruthy();
+  });
+
   it('mounts the first-party storage console at its deep link', async () => {
     renderApp('/staff/storage');
     expect(await screen.findByTestId('phase7-console')).toBeTruthy();

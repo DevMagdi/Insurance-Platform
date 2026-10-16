@@ -36,7 +36,7 @@ log. It returns object keys and operational metadata only. It is read-only by
 design: no raw file body, write/delete, ACL, policy, or credential APIs are
 exposed, so attachment scan verdicts, complaint scope, export ownership and
 recording decryption remain enforced by their existing application routes.
-This is a first-party product view, not a proxy to MinIO Console.
+This is a first-party product view, not a proxy to an external storage console.
 
 ### Authentication and authorization boundaries
 

@@ -27,7 +27,7 @@ def settings() -> Settings:
         ENVIRONMENT="development",
         SMTP_HOST="localhost",
         DEV_SMS_MAILBOX=True,
-        S3_ENDPOINT_URL="http://minio:9000",
+        S3_ENDPOINT_URL="http://object-store:9000",
         S3_ACCESS_KEY_ID="dev",
         S3_SECRET_ACCESS_KEY="dev-secret",
     )

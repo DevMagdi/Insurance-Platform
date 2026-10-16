@@ -48,6 +48,7 @@ SMTP_USERNAME=...
 SMTP_PASSWORD=...
 SMTP_START_TLS=true
 HTTP_PORT=8080
+OBJECT_STORE_VOLUME=insurance-platform-prod-object-store-data  # new installations only; see upgrade note below
 APP_WORKER_DB_PASSWORD=...
 # Phase 8: required in production (the API refuses to boot without them)
 TURNSTILE_SITE_KEY=...              # Cloudflare Turnstile widget key for public forms and OTP
@@ -62,14 +63,24 @@ APP_ENCRYPTION_PREVIOUS_KEYS=       # "<id>:<old key>,..." while re-encrypting
 APP_IDEMPOTENCY_KEY=                # set to the ORIGINAL encryption key before the first rotation
 ```
 
-Object storage: the bundled single-host store keeps the historical `minio` /
-`minio-init` service names and `MINIO_ROOT_*` variables, but runs SeaweedFS's
-S3 gateway (`chrislusf/seaweedfs`), because MinIO's community images and `mc`
-client were withdrawn upstream. `minio-init` is a one-shot run of the API image
-(`python -m app.scripts.init_bucket`) that creates the private bucket over the
-S3 API. In production, point `S3_ENDPOINT_URL`/credentials at **managed S3** (or
-an equivalent with versioning, SSE and replication) and drop the `minio`
-services.
+Object storage: the bundled `object-store` service runs SeaweedFS's S3
+gateway (`chrislusf/seaweedfs`). `object-store-init` creates the private bucket
+using the S3 API. The bundled gateway uses one S3 identity shared by the API,
+worker and bootstrap job; for production use **managed S3** with scoped IAM
+credentials, versioning, SSE and replication where possible.
+
+**Upgrading an existing installation (before deployment):** rename the two
+storage credential variables in your private environment file to
+`S3_ACCESS_KEY_ID` and `S3_SECRET_ACCESS_KEY`, retaining their *values*.
+Use `docker volume ls` / `docker volume inspect` to identify the volume currently
+mounted at `/data` by the storage container. Back up that volume and bucket.
+Set `OBJECT_STORE_VOLUME` in `.env.production` to the **exact existing Docker
+volume name**; the new service will mount the same data, rather than a new empty
+volume. Compose refuses to render production without this explicit choice.
+For local development, set `OBJECT_STORE_VOLUME` in `.env` to the existing
+volume name if preserving local objects; a fresh installation can leave it empty.
+After rollout, verify existing attachment keys and downloads before removing
+any old resources. Never use `docker compose down -v` during migration.
 
 Keep TLS in front of the `web` container (load balancer, Traefik, or certbot +
 Nginx on the host) — the container itself serves plain HTTP on the published

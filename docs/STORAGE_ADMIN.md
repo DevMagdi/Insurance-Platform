@@ -2,7 +2,7 @@
 
 The staff application includes a native storage browser at **`/staff/storage`**.
 It is part of the Insurance Platform React app and its FastAPI API; it does not
-embed, proxy, or depend on MinIO Console or another third-party administration
+embed, proxy, or depend on a third-party administration
 UI. It uses the platform's existing S3-compatible client, so it works with the
 configured private bucket whether the endpoint is SeaweedFS, Silo, or an
 S3-compatible provider.
@@ -21,7 +21,7 @@ S3-compatible provider.
   interface with a folder delimiter. The storage endpoint and credentials stay
   server-side. The browser communicates only with same-origin `/api` routes.
 - In Compose, set `S3_ENDPOINT_URL` to the S3 API address reachable by the API
-  container (for example `http://minio:9000`). Open the application normally,
+  container (for example `http://object-store:9000`). Open the application normally,
   then visit `http://localhost:8080/staff/storage`. No separate console port is
   needed; do not publish port `9001` for this feature.
 

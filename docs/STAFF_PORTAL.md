@@ -12,7 +12,8 @@ application as the customer portal. All browser calls remain same-origin
 | `/staff` | Scoped complaint queue, counters, filters, saved views, bulk assign/status, staff notifications and WebSocket live refresh | `complaints.view` |
 | `/staff/tickets/:id` | Detail, timeline, attachments, public replies/internal notes, status, assignment, escalation, merge, duplicate candidates, canned replies, national-ID reveal and AI review | endpoint-specific permissions |
 | `/staff/analytics` | Bounded-window KPIs, daily arrivals, status/company/type breakdowns, top issues and insurer scorecards | `analytics.view` + `complaints.view` |
-| `/staff/admin` | Staff invitations/actions, effective-access editing, roles, global 2FA policy and company/category/SLA/template catalog JSON editors | endpoint-specific admin permissions |
+| `/staff/admin` | First-party, Arabic RTL admin dashboard: live complaint KPIs, intake trend, case/company breakdown, team summary and permission-filtered shortcuts | global scope + `analytics.view` + `complaints.view` |
+| `/staff/users`, `/staff/roles`, `/staff/operations` | Staff accounts and access, roles, settings and catalog administration | endpoint-specific admin permissions |
 | `/staff/audit` | Audit events, access-change log and metadata-only CSV export | `audit.view` |
 | `/staff/storage` | First-party, read-only inventory of the configured private S3-compatible bucket | `storage.manage` and global scope |
 | `/staff/exports` | Async complaint/analytics export jobs and private downloads | `complaints.export` or `analytics.export` |
@@ -23,7 +24,7 @@ authority. The queue uses the staff WebSocket snapshot stream and invalidates
 the scoped REST queries when updates arrive.
 
 The storage route is a first-party page in the same product shell, not an
-embedded MinIO Console or external open-source dashboard. It lists metadata
+embedded third-party storage console or dashboard. It lists metadata
 from the one configured S3-compatible bucket, requires `storage.manage` plus
 global staff scope, and records successful inventory views. It is deliberately
 read-only: object contents and mutations stay behind complaint, scan, retention

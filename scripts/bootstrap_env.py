@@ -19,8 +19,8 @@ def bootstrap() -> Path:
         "POSTGRES_PASSWORD": secrets.token_urlsafe(36),
         "APP_DB_PASSWORD": secrets.token_urlsafe(36),
         "APP_WORKER_DB_PASSWORD": secrets.token_urlsafe(36),
-        "MINIO_ROOT_USER": "minio-" + secrets.token_hex(8),
-        "MINIO_ROOT_PASSWORD": secrets.token_urlsafe(36),
+        "S3_ACCESS_KEY_ID": "storage-" + secrets.token_hex(8),
+        "S3_SECRET_ACCESS_KEY": secrets.token_urlsafe(36),
         "APP_ENCRYPTION_KEY": base64.urlsafe_b64encode(
             secrets.token_bytes(32)
         ).decode(),

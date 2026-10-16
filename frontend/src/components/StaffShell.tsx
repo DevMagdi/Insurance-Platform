@@ -10,7 +10,7 @@ import { EmptyState, LoadingState, primaryButton } from './ui';
 const LINKS = [
   { path: '/staff', key: 'staff.queue', permission: 'complaints.view' },
   { path: '/staff/analytics', key: 'staff.analytics', permission: 'analytics.view' },
-  { path: '/staff/admin', key: 'staff.admin', permission: 'users.view' },
+  { path: '/staff/users', key: 'staff.admin', permission: 'users.view' },
   { path: '/staff/operations', key: 'staff.operations', permission: 'operations.access' },
   { path: '/staff/audit', key: 'staff.audit', permission: 'audit.view' },
   { path: '/staff/exports', key: 'staff.exports', permission: 'complaints.export' },
