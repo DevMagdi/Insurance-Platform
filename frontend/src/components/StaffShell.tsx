@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/api';
 import { navigate, usePathname } from '../lib/router';
-import { hasPermission } from '../lib/staffTypes';
+import { hasPermission, type StaffAccess } from '../lib/staffTypes';
 import { useStaffMe } from '../hooks/useStaffMe';
 import { EmptyState, LoadingState, primaryButton } from './ui';
 
@@ -11,9 +11,24 @@ const LINKS = [
   { path: '/staff', key: 'staff.queue', permission: 'complaints.view' },
   { path: '/staff/analytics', key: 'staff.analytics', permission: 'analytics.view' },
   { path: '/staff/admin', key: 'staff.admin', permission: 'users.view' },
+  { path: '/staff/operations', key: 'staff.operations', permission: 'operations.access' },
   { path: '/staff/audit', key: 'staff.audit', permission: 'audit.view' },
   { path: '/staff/exports', key: 'staff.exports', permission: 'complaints.export' },
 ] as const;
+const OPERATION_REQUIREMENTS: Array<{ permissions: string[]; global?: boolean }> = [
+  { permissions: ['companies.manage'] }, { permissions: ['categories.manage'] },
+  { permissions: ['sla.manage'] }, { permissions: ['templates.manage'] },
+  { permissions: ['teams.manage', 'users.view'], global: true },
+  { permissions: ['settings.manage', 'complaints.assign'], global: true },
+  { permissions: ['integrations.manage'] },
+  { permissions: ['reports.manage', 'analytics.view', 'analytics.export'] },
+];
+const operationsAllowed = (access: StaffAccess) => OPERATION_REQUIREMENTS.some(
+  (requirement) => (!requirement.global || (
+    access.all_companies && access.company_ids.length === 0
+    && access.insurance_types.length === 0 && access.ownership === 'all'
+  )) && requirement.permissions.every((permission) => hasPermission(access, permission)),
+);
 
 export function StaffShell({ children }: { children: ReactNode }) {
   const { t } = useTranslation();
@@ -61,7 +76,9 @@ export function StaffShell({ children }: { children: ReactNode }) {
           </button>
         </div>
         <nav className="mt-4 flex flex-wrap gap-2" aria-label="staff">
-          {LINKS.filter((link) => hasPermission(access, link.permission)).map((link) => (
+          {LINKS.filter((link) => link.path === '/staff/operations'
+            ? operationsAllowed(access)
+            : hasPermission(access, link.permission)).map((link) => (
             <button
               key={link.path}
               type="button"

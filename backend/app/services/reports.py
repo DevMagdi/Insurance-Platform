@@ -141,8 +141,13 @@ class ReportService:
     async def save(
         self, db: AsyncSession, schedule_id: UUID | None, item: ReportScheduleSpec
     ) -> UUID | None:
-        CronExpression(item.cron_expression, item.time_zone)  # reject dead expressions early
-        return await self.repository.save(db, schedule_id, schedule_payload(item))
+        cron = CronExpression(item.cron_expression, item.time_zone)
+        # Never trust a client-provided run time: schedule the next occurrence
+        # from the validated cron expression and IANA time zone on the server.
+        next_run_at = cron.next_after(datetime.now(UTC))
+        return await self.repository.save(
+            db, schedule_id, schedule_payload(item, next_run_at=next_run_at)
+        )
 
     async def delete(self, db: AsyncSession, schedule_id: UUID) -> bool:
         return await self.repository.delete(db, schedule_id)

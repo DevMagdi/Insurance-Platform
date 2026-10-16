@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react';
 import { Layout } from './components/Layout';
 import { usePathname } from './lib/router';
 import { HomePage } from './pages/HomePage';
@@ -14,13 +15,22 @@ import { TicketDetailPage } from './pages/TicketDetailPage';
 import { TicketsPage } from './pages/TicketsPage';
 import { TrackPage } from './pages/TrackPage';
 
-/** Phase 6 customer portal routes (mobile-first, Arabic-first RTL + English). */
+const StaffConsole = lazy(() => import('./StaffConsole'));
+
+/** Customer portal plus the Phase 4/5 staff workspace and Phase 7 administration. */
 function App() {
   const path = usePathname();
   const ticketMatch = path.match(/^\/tickets\/([0-9a-fA-F-]{36})$/);
   const portalTicketMatch = path.match(/^\/portal\/complaints\/([0-9a-fA-F-]{36})$/);
   const staffTicketMatch = path.match(/^\/staff\/tickets\/([0-9a-fA-F-]{36})$/);
+  const consoleTicketMatch = path.match(/^\/staff\/complaints\/([0-9a-fA-F-]{36})$/);
   const dashboardTicketMatch = path.match(/^\/dashboard\/complaints\/([0-9a-fA-F-]{36})$/);
+  const staffConsoleRoute = /^\/staff\/(?:overview|complaints|users|roles|operations|audit)$/.test(path);
+
+  if (consoleTicketMatch) {
+    return <Layout><StaffTicketPage complaintId={consoleTicketMatch[1]} /></Layout>;
+  }
+  if (staffConsoleRoute) return <Suspense fallback={<div className="min-h-screen p-6 text-center">جارٍ تحميل مساحة الإدارة…</div>}><StaffConsole /></Suspense>;
 
   let page: React.ReactNode;
   if (path === '/staff/login' || path === '/auth/staff' || path === '/auth') page = <StaffLoginPage />;

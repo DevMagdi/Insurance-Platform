@@ -209,6 +209,7 @@ export const en = {
     "queue": "Complaint queue",
     "analytics": "Analytics",
     "admin": "Administration",
+    "operations": "Operations & settings",
     "audit": "Audit",
     "exports": "Exports",
     "ticket": "Ticket",

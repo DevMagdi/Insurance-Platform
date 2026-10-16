@@ -2,11 +2,11 @@ openapi: 3.1.0
 info:
   title: Insurance Brokerage Complaint Management
   version: 0.2.0
-  description: Implemented Phase 2 and Phase 3 HTTP routes. Authenticate with an HttpOnly
-    access_token cookie; /api/auth/refresh uses the HttpOnly refresh_token cookie.
-    All protected writes, including refresh, need X-CSRF-Token matching the readable
-    csrf_token cookie. Authorization, AccessScope and PostgreSQL RLS are enforced
-    at runtime. Future routes are documented separately in openapi-roadmap.yaml.
+  description: Implemented HTTP routes across product Phases 1-7. Authenticate with
+    an HttpOnly access_token cookie; /api/auth/refresh uses the HttpOnly refresh_token
+    cookie. All protected writes, including refresh, need X-CSRF-Token matching the
+    readable csrf_token cookie. Authorization, AccessScope and PostgreSQL RLS are
+    enforced at runtime. Future routes are documented separately in openapi-roadmap.yaml.
 paths:
   /api/auth/customer/otp/start:
     post:
@@ -3818,6 +3818,16 @@ paths:
             format: uuid
           - type: 'null'
           title: Complaint Id
+      - name: action
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            minLength: 1
+            maxLength: 80
+          - type: 'null'
+          title: Action
       - name: limit
         in: query
         required: false
@@ -3872,6 +3882,24 @@ paths:
             format: uuid
           - type: 'null'
           title: Target Id
+      - name: start
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Start
+      - name: end
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: End
       - name: limit
         in: query
         required: false
@@ -3953,6 +3981,16 @@ paths:
             format: uuid
           - type: 'null'
           title: Complaint Id
+      - name: action
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            minLength: 1
+            maxLength: 80
+          - type: 'null'
+          title: Action
       responses:
         '200':
           description: Successful Response
@@ -4011,6 +4049,65 @@ paths:
             format: uuid
           - type: 'null'
           title: Complaint Id
+      - name: action
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            minLength: 1
+            maxLength: 80
+          - type: 'null'
+          title: Action
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: audit.view
+  /api/staff/audit/access-changes.csv:
+    get:
+      tags:
+      - audit
+      summary: Export Access Changes
+      operationId: export_access_changes_api_staff_audit_access_changes_csv_get
+      parameters:
+      - name: target_id
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Target Id
+      - name: start
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Start
+      - name: end
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: End
       responses:
         '200':
           description: Successful Response
@@ -4931,6 +5028,12 @@ paths:
           maxLength: 128
           pattern: ^[A-Za-z0-9._:-]+$
           title: Idempotency-Key
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
       requestBody:
         required: true
         content:
@@ -4953,6 +5056,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: integrations.send_email
   /api/staff/complaints/{complaint_id}/email/reply:
     post:
       tags:
@@ -4986,6 +5092,12 @@ paths:
           maxLength: 128
           pattern: ^[A-Za-z0-9._:-]+$
           title: Idempotency-Key
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
       requestBody:
         required: true
         content:
@@ -5008,6 +5120,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: integrations.send_email
   /api/staff/complaints/{complaint_id}/whatsapp:
     post:
       tags:
@@ -5031,6 +5146,12 @@ paths:
           maxLength: 128
           pattern: ^[A-Za-z0-9._:-]+$
           title: Idempotency-Key
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
       requestBody:
         required: true
         content:
@@ -5053,6 +5174,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: integrations.send_whatsapp
   /api/staff/complaints/{complaint_id}/ai/analyze:
     post:
       tags:
@@ -5076,6 +5200,12 @@ paths:
           maxLength: 128
           pattern: ^[A-Za-z0-9._:-]+$
           title: Idempotency-Key
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
       requestBody:
         required: true
         content:
@@ -5098,6 +5228,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: integrations.ai_call
   /api/staff/complaints/{complaint_id}/ai/insights:
     get:
       tags:
@@ -5130,6 +5263,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: integrations.ai_call
   /api/staff/complaints/{complaint_id}/ai/similar:
     get:
       tags:
@@ -5169,6 +5305,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: complaints.view
   /api/staff/complaints/{complaint_id}/ai/insights/{insight_id}/review:
     post:
       tags:
@@ -5190,6 +5329,12 @@ paths:
           type: string
           format: uuid
           title: Insight Id
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
       requestBody:
         required: true
         content:
@@ -5212,6 +5357,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: integrations.ai_call
   /api/staff/complaints/{complaint_id}/ai/insights/{insight_id}/send:
     post:
       tags:
@@ -5251,6 +5399,12 @@ paths:
           maxLength: 128
           pattern: ^[A-Za-z0-9._:-]+$
           title: Idempotency-Key
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
       responses:
         '202':
           description: Successful Response
@@ -5267,6 +5421,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: integrations.ai_call
   /api/staff/complaints/{complaint_id}/inbox:
     get:
       tags:
@@ -5297,6 +5454,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: complaints.view
   /api/staff/complaints/{complaint_id}/voice-followups:
     post:
       tags:
@@ -5320,6 +5480,12 @@ paths:
           maxLength: 128
           pattern: ^[A-Za-z0-9._:-]+$
           title: Idempotency-Key
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
       requestBody:
         required: true
         content:
@@ -5342,6 +5508,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: integrations.ai_call
   /api/staff/complaints/{complaint_id}/calls/{call_id}/recording:
     get:
       tags:
@@ -5375,6 +5544,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: integrations.ai_call
   /api/staff/integration-jobs/{job_id}:
     get:
       tags:
@@ -5405,6 +5577,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: complaints.view
   /api/staff/admin/integration-connections:
     get:
       tags:
@@ -5423,6 +5598,9 @@ paths:
                 type: array
                 title: Response Integrations Api Staff Admin Integration Connections
                   Get
+      security:
+      - AccessCookie: []
+      x-required-permission: integrations.manage
     put:
       tags:
       - integration-admin
@@ -5450,6 +5628,16 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: integrations.manage
+      parameters:
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
   /api/staff/admin/webhooks:
     get:
       tags:
@@ -5467,6 +5655,9 @@ paths:
                   type: object
                 type: array
                 title: Response Webhooks Api Staff Admin Webhooks Get
+      security:
+      - AccessCookie: []
+      x-required-permission: integrations.manage
     post:
       tags:
       - integration-admin
@@ -5493,6 +5684,16 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: integrations.manage
+      parameters:
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
   /api/staff/admin/webhooks/{webhook_id}:
     delete:
       tags:
@@ -5507,6 +5708,12 @@ paths:
           type: string
           format: uuid
           title: Webhook Id
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
       responses:
         '204':
           description: Successful Response
@@ -5516,6 +5723,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: integrations.manage
   /api/staff/admin/api-keys:
     get:
       tags:
@@ -5533,6 +5743,9 @@ paths:
                   type: object
                 type: array
                 title: Response Api Keys Api Staff Admin Api Keys Get
+      security:
+      - AccessCookie: []
+      x-required-permission: integrations.manage
     post:
       tags:
       - integration-admin
@@ -5559,6 +5772,16 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: integrations.manage
+      parameters:
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
   /api/staff/admin/api-keys/{key_id}:
     delete:
       tags:
@@ -5573,6 +5796,12 @@ paths:
           type: string
           format: uuid
           title: Key Id
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
       responses:
         '204':
           description: Successful Response
@@ -5582,6 +5811,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: integrations.manage
   /api/staff/admin/integration-jobs/dead-letters:
     get:
       tags:
@@ -5616,6 +5848,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: integrations.manage
   /api/staff/admin/integration-jobs/dead-letters/{job_id}/retry:
     post:
       tags:
@@ -5630,6 +5865,12 @@ paths:
           type: string
           format: uuid
           title: Job Id
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
       responses:
         '202':
           description: Successful Response
@@ -5647,6 +5888,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: integrations.manage
   /api/webhooks/{provider}/{company_id}:
     post:
       tags:
@@ -5689,6 +5933,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
   /api/webhooks/whatsapp/{company_id}:
     get:
       tags:
@@ -5740,6 +5986,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
   /api/public/v1/complaints/{ticket_no}:
     get:
       tags:
@@ -5778,6 +6026,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
   /api/staff/reports/schedules:
     get:
       tags:
@@ -6002,6 +6252,147 @@ paths:
       security:
       - AccessCookie: []
       x-required-permission: reports.manage
+  /api/staff/admin/access-options:
+    get:
+      tags:
+      - administration
+      summary: Access Options
+      operationId: access_options_api_staff_admin_access_options_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response Access Options Api Staff Admin Access Options Get
+      security:
+      - AccessCookie: []
+      x-required-permission: users.manage_access
+  /api/staff/admin/teams:
+    get:
+      tags:
+      - administration
+      summary: Teams
+      operationId: teams_api_staff_admin_teams_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                items:
+                  additionalProperties: true
+                  type: object
+                type: array
+                title: Response Teams Api Staff Admin Teams Get
+      security:
+      - AccessCookie: []
+      x-required-permission: teams.manage
+    post:
+      tags:
+      - administration
+      summary: Create Team
+      operationId: create_team_api_staff_admin_teams_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TeamSpec'
+        required: true
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                  format: uuid
+                type: object
+                title: Response Create Team Api Staff Admin Teams Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: teams.manage
+      parameters:
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
+  /api/staff/admin/teams/{team_id}:
+    put:
+      tags:
+      - administration
+      summary: Update Team
+      operationId: update_team_api_staff_admin_teams__team_id__put
+      parameters:
+      - name: team_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Team Id
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TeamSpec'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: string
+                  format: uuid
+                title: Response Update Team Api Staff Admin Teams  Team Id  Put
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: teams.manage
+  /api/staff/admin/automation-options:
+    get:
+      tags:
+      - administration
+      summary: Automation Options
+      operationId: automation_options_api_staff_admin_automation_options_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response Automation Options Api Staff Admin Automation Options
+                  Get
+      security:
+      - AccessCookie: []
+      x-required-permission: settings.manage
   /api/staff/admin/integrations:
     get:
       tags:
@@ -7450,8 +7841,10 @@ components:
           title: Format
           default: csv
         next_run_at:
-          type: string
-          format: date-time
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
           title: Next Run At
         is_active:
           type: boolean
@@ -7465,7 +7858,6 @@ components:
       - cron_expression
       - time_zone
       - recipient_emails
-      - next_run_at
       title: ReportScheduleSpec
     ReportScheduleView:
       properties:
@@ -7763,6 +8155,31 @@ components:
       required:
       - status
       title: StatusChangeRequest
+    TeamSpec:
+      properties:
+        name:
+          type: string
+          maxLength: 80
+          minLength: 2
+          title: Name
+        lead_staff_id:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Lead Staff Id
+        member_ids:
+          items:
+            type: string
+            format: uuid
+          type: array
+          maxItems: 100
+          title: Member Ids
+      additionalProperties: false
+      type: object
+      required:
+      - name
+      title: TeamSpec
     TemplateSpec:
       properties:
         company_id:

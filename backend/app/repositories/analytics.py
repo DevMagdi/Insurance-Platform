@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.domain.access import AccessScope
 from app.domain.enums import ComplaintStatus
 from app.domain.schemas import ComplaintFilter
+from app.models.access import StaffUser
 from app.models.identity import InsuranceCompany
 from app.models.tickets import Category, Complaint
 from app.repositories.complaints import ComplaintRepository
@@ -87,8 +88,10 @@ class AnalyticsRepository:
             .order_by(func.count().desc())
         )
         by_agent = await db.execute(
-            select(source.c.assigned_agent_id, func.count())
-            .group_by(source.c.assigned_agent_id)
+            select(source.c.assigned_agent_id, StaffUser.full_name, func.count())
+            .select_from(source)
+            .outerjoin(StaffUser, StaffUser.id == source.c.assigned_agent_id)
+            .group_by(source.c.assigned_agent_id, StaffUser.full_name)
             .order_by(func.count().desc())
             .limit(100)
         )
@@ -150,7 +153,9 @@ class AnalyticsRepository:
                 {"company_id": cid, "name": name, "count": int(n)} for cid, name, n in by_company
             ],
             "by_type": [{"insurance_type": str(kind), "count": int(n)} for kind, n in by_type],
-            "by_agent": [{"agent_id": agent, "count": int(n)} for agent, n in by_agent],
+            "by_agent": [
+                {"agent_id": agent, "name": name, "count": int(n)} for agent, name, n in by_agent
+            ],
             "resolution_hours": {label: int(n) for label, n in distribution},
             "heatmap": [
                 {"weekday": int(day), "hour": int(h), "count": int(n)} for day, h, n in heatmap

@@ -3,6 +3,9 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import App from './App';
 
+vi.mock('./StaffConsole', () => ({ default: () => <div data-testid="phase7-console" /> }));
+vi.mock('./pages/StaffTicketPage', () => ({ StaffTicketPage: ({ complaintId }: { complaintId: string }) => <div data-testid="staff-ticket">{complaintId}</div> }));
+
 function renderApp(path = '/') {
   window.history.pushState({}, '', path);
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -56,5 +59,16 @@ describe('Phase 6 customer portal shell', () => {
     );
     renderApp('/complaints/track');
     expect(await screen.findByText('تتبع شكوى بدون حساب')).toBeTruthy();
+  });
+
+  it('mounts the Phase 7 operations console without replacing customer routes', async () => {
+    renderApp('/staff/operations');
+    expect(await screen.findByTestId('phase7-console')).toBeTruthy();
+  });
+
+  it('routes Phase 7 complaint links to the main AI-capable staff ticket page', () => {
+    const complaintId = '8b4c88e4-1f68-4f25-a6d8-cfa41f1bbac1';
+    renderApp(`/staff/complaints/${complaintId}`);
+    expect(screen.getByTestId('staff-ticket').textContent).toBe(complaintId);
   });
 });

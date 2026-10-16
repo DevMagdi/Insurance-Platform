@@ -286,6 +286,7 @@ async def filter_options(
 ) -> dict[str, Any]:
     return {
         "companies": await ComplaintRepository().filter_options(ctx.db, ctx.scope),
+        "agents": await ComplaintRepository().agent_options(ctx.db),
         "statuses": [status.value for status in ComplaintStatus],
         "priorities": [priority.value for priority in ComplaintPriority],
         "channels": [channel.value for channel in CommunicationChannel],

@@ -83,7 +83,19 @@ def test_catalog_has_every_required_resource_action_and_frozen_migration() -> No
     with pytest.raises(ValueError):
         permission_parts("not.a.permission")
     sql = (ROOT / "backend/alembic/sql/003_permissions.sql").read_text()
-    assert set(re.findall(r"\('([^']+)',", sql)) == PERMISSIONS
+    seeded_permissions = set(re.findall(r"\('([^']+)',", sql))
+    phase7 = (ROOT / "backend/alembic/sql/020_staff_console.sql").read_text()
+    assert seeded_permissions | {"teams.manage"} == PERMISSIONS
+    assert "VALUES ('teams.manage', 'teams', 'manage'" in phase7
+
+
+def test_phase7_keeps_the_phase3_escalation_permission_contract() -> None:
+    phase7 = (ROOT / "backend/alembic/sql/020_staff_console.sql").read_text()
+    phase3 = (ROOT / "backend/alembic/sql/007_staff_workflow.sql").read_text()
+    assert "CREATE FUNCTION app_security.staff_escalate(" not in phase7
+    assert "CREATE OR REPLACE FUNCTION app_security.staff_escalate(" not in phase7
+    assert "NOT app_security.has_permission('complaints.escalate')" in phase3
+    assert "has_permission('integrations.send_email')" not in phase3
 
 
 def test_sql_migrations_cover_every_requested_table_and_fail_closed_rls() -> None:

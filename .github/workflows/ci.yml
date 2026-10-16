@@ -167,7 +167,7 @@ jobs:
           url = f"postgresql://postgres:{os.environ['POSTGRES_PASSWORD']}@127.0.0.1:5432/{os.environ['POSTGRES_DB']}"
           with psycopg.connect(url) as conn:
               assert conn.execute('SELECT count(*) FROM complaints').fetchone()[0] == 5000
-              assert conn.execute('SELECT count(*) FROM permissions').fetchone()[0] >= 33
+              assert conn.execute('SELECT count(*) FROM permissions').fetchone()[0] >= 34
           PY
       - if: always()
         run: docker compose down -v

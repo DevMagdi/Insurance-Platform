@@ -104,6 +104,13 @@ class ComplaintRepository:
             for row in rows
         ]
 
+    async def agent_options(self, db: AsyncSession) -> builtins.list[dict[str, Any]]:
+        """Return only agents attached to complaints visible under the current DB scope."""
+        rows = await db.execute(
+            text("SELECT id, full_name FROM app_security.visible_complaint_agents()")
+        )
+        return [dict(row._mapping) for row in rows]
+
     async def count(self, db: AsyncSession, scope: AccessScope, filters: ComplaintFilter) -> int:
         subquery = self.base_query(scope, filters).with_only_columns(Complaint.id).subquery()
         result = await db.scalar(select(func.count()).select_from(subquery))
@@ -256,6 +263,7 @@ class ComplaintRepository:
                     "from_status": e.from_status,
                     "to_status": e.to_status,
                     "occurred_at": e.occurred_at,
+                    "metadata": e.event_metadata,
                 }
                 for e in events
             ],
@@ -265,6 +273,7 @@ class ComplaintRepository:
                     "body": m.body,
                     "visibility": m.visibility,
                     "direction": m.direction,
+                    "channel": m.channel,
                     "created_at": m.created_at,
                 }
                 for m in messages

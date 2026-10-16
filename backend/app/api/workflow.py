@@ -66,6 +66,7 @@ async def escalate(
     ctx: RequestContext = Depends(require_permission("complaints.escalate")),
     _: None = Depends(csrf_required),
 ) -> dict[str, Any]:
+    require_permission("integrations.send_email").verify(ctx)
     return await service(ctx).escalate(ctx.db, ctx.scope, complaint_id, item.reason)
 
 

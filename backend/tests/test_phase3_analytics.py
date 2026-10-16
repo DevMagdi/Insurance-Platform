@@ -44,7 +44,7 @@ async def test_report_queries_derive_every_measure_from_the_scoped_source() -> N
         [(now, 3)],
         [(company, "In-scope insurer", 3)],
         [("health", 3)],
-        [(agent, 3)],
+        [(agent, "Visible agent", 3)],
         [("under_24h", 2)],
         [(2, 9, 3)],
         [("Delayed payment", 3)],
@@ -59,6 +59,7 @@ async def test_report_queries_derive_every_measure_from_the_scoped_source() -> N
     assert result["kpis"]["sla_breaches"] == 1
     assert result["kpis"]["reopen_rate"] == pytest.approx(1 / 3, abs=0.0001)
     assert result["time_series"] == [{"date": "2026-09-01", "arrived": 3}]
+    assert result["by_agent"] == [{"agent_id": agent, "name": "Visible agent", "count": 3}]
     assert result["heatmap"] == [{"weekday": 2, "hour": 9, "count": 3}]
     assert result["company_scorecards"][0]["name"] == "In-scope insurer"
     for call in db.execute.call_args_list:

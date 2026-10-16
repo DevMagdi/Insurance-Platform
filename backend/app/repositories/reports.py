@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from datetime import timedelta
+from datetime import datetime, timedelta
 from typing import Any
 from uuid import UUID
 
@@ -79,6 +79,8 @@ class ReportScheduleRepository:
         return [dict(row._mapping) for row in rows]
 
 
-def schedule_payload(item: Any) -> str:
+def schedule_payload(item: Any, *, next_run_at: datetime) -> str:
     """Serialize a validated spec; relative windows only, never absolute dates."""
-    return json.dumps(item.model_dump(mode="json", exclude_none=True), separators=(",", ":"))
+    payload = item.model_dump(mode="json", exclude_none=True)
+    payload["next_run_at"] = next_run_at.isoformat()
+    return json.dumps(payload, separators=(",", ":"))

@@ -23,6 +23,7 @@ class AuditRepository:
         *,
         actor_id: UUID | None = None,
         complaint_id: UUID | None = None,
+        action: str | None = None,
     ) -> list[dict[str, Any]]:
         stmt = (
             select(
@@ -43,6 +44,8 @@ class AuditRepository:
             stmt = stmt.where(AuditLog.actor_staff_id == actor_id)
         if complaint_id:
             stmt = stmt.where(AuditLog.complaint_id == complaint_id)
+        if action:
+            stmt = stmt.where(AuditLog.action == action)
         return [dict(row._mapping) for row in await db.execute(stmt)]
 
     async def access_changes(
@@ -51,12 +54,16 @@ class AuditRepository:
         target_id: UUID | None,
         limit: int,
         offset: int,
+        start: datetime | None = None,
+        end: datetime | None = None,
     ) -> list[dict[str, Any]]:
         stmt = text("""
             SELECT id, actor_staff_id, target_user_id, change_type,
                    before_state, after_state, created_at
             FROM access_change_log
             WHERE (CAST(:target AS uuid) IS NULL OR target_user_id = :target)
+              AND (CAST(:start AS timestamptz) IS NULL OR created_at >= :start)
+              AND (CAST(:end AS timestamptz) IS NULL OR created_at <= :end)
             ORDER BY created_at DESC, id DESC LIMIT :limit OFFSET :offset
         """)
         return [
@@ -65,6 +72,8 @@ class AuditRepository:
                 stmt,
                 {
                     "target": target_id,
+                    "start": start,
+                    "end": end,
                     "limit": limit,
                     "offset": offset,
                 },

@@ -205,7 +205,7 @@ class ReportScheduleSpec(StrictModel):
     time_zone: str = Field(min_length=3, max_length=64)
     recipient_emails: list[str] = Field(min_length=1, max_length=10)
     format: Literal["csv", "xlsx"] = "csv"
-    next_run_at: datetime
+    next_run_at: datetime | None = None
     is_active: bool = True
 
     @field_validator("recipient_emails")
@@ -228,8 +228,8 @@ class ReportScheduleSpec(StrictModel):
 
     @field_validator("next_run_at")
     @classmethod
-    def aware(cls, value: datetime) -> datetime:
-        return _require_tz(value)
+    def aware(cls, value: datetime | None) -> datetime | None:
+        return _require_tz(value) if value is not None else None
 
     @model_validator(mode="after")
     def bounded_window(self) -> ReportScheduleSpec:
@@ -322,6 +322,20 @@ class TemplateSpec(StrictModel):
     body_en: str = Field(min_length=2, max_length=2000)
     body_ar: str = Field(min_length=2, max_length=2000)
     is_active: bool = True
+
+
+class TeamSpec(StrictModel):
+    name: str = Field(min_length=2, max_length=80)
+    lead_staff_id: UUID | None = None
+    member_ids: list[UUID] = Field(default_factory=list, max_length=100)
+
+    @model_validator(mode="after")
+    def member_constraints(self) -> TeamSpec:
+        if len(set(self.member_ids)) != len(self.member_ids):
+            raise ValueError("Duplicate team members")
+        if self.lead_staff_id is not None and self.lead_staff_id not in self.member_ids:
+            raise ValueError("Team lead must be included in the members")
+        return self
 
 
 class InviteAcceptRequest(StrictModel):

@@ -1348,6 +1348,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/staff/audit/access-changes.csv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Export Access Changes */
+        get: operations["export_access_changes_api_staff_audit_access_changes_csv_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/staff/admin/companies": {
         parameters: {
             query?: never;
@@ -2146,6 +2163,75 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/staff/admin/access-options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Access Options */
+        get: operations["access_options_api_staff_admin_access_options_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/staff/admin/teams": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Teams */
+        get: operations["teams_api_staff_admin_teams_get"];
+        put?: never;
+        /** Create Team */
+        post: operations["create_team_api_staff_admin_teams_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/staff/admin/teams/{team_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Update Team */
+        put: operations["update_team_api_staff_admin_teams__team_id__put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/staff/admin/automation-options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Automation Options */
+        get: operations["automation_options_api_staff_admin_automation_options_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/staff/admin/integrations": {
         parameters: {
             query?: never;
@@ -2832,11 +2918,8 @@ export interface components {
              * @enum {string}
              */
             format: "csv" | "xlsx";
-            /**
-             * Next Run At
-             * Format: date-time
-             */
-            next_run_at: string;
+            /** Next Run At */
+            next_run_at?: string | null;
             /**
              * Is Active
              * @default true
@@ -2986,6 +3069,15 @@ export interface components {
         /** StatusChangeRequest */
         StatusChangeRequest: {
             status: components["schemas"]["ComplaintStatus"];
+        };
+        /** TeamSpec */
+        TeamSpec: {
+            /** Name */
+            name: string;
+            /** Lead Staff Id */
+            lead_staff_id?: string | null;
+            /** Member Ids */
+            member_ids?: string[];
         };
         /** TemplateSpec */
         TemplateSpec: {
@@ -5913,6 +6005,7 @@ export interface operations {
                 end?: string | null;
                 actor_id?: string | null;
                 complaint_id?: string | null;
+                action?: string | null;
                 limit?: number;
                 offset?: number;
             };
@@ -5948,6 +6041,8 @@ export interface operations {
         parameters: {
             query?: {
                 target_id?: string | null;
+                start?: string | null;
+                end?: string | null;
                 limit?: number;
                 offset?: number;
             };
@@ -5986,6 +6081,7 @@ export interface operations {
                 end?: string | null;
                 actor_id?: string | null;
                 complaint_id?: string | null;
+                action?: string | null;
             };
             header?: never;
             path?: never;
@@ -6020,6 +6116,40 @@ export interface operations {
                 end?: string | null;
                 actor_id?: string | null;
                 complaint_id?: string | null;
+                action?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    export_access_changes_api_staff_audit_access_changes_csv_get: {
+        parameters: {
+            query?: {
+                target_id?: string | null;
+                start?: string | null;
+                end?: string | null;
             };
             header?: never;
             path?: never;
@@ -6899,6 +7029,8 @@ export interface operations {
             query?: never;
             header: {
                 "Idempotency-Key": string;
+                /** @description Must equal the csrf_token cookie (double-submit). */
+                "X-CSRF-Token": string;
             };
             path: {
                 complaint_id: string;
@@ -6940,6 +7072,8 @@ export interface operations {
             };
             header: {
                 "Idempotency-Key": string;
+                /** @description Must equal the csrf_token cookie (double-submit). */
+                "X-CSRF-Token": string;
             };
             path: {
                 complaint_id: string;
@@ -6979,6 +7113,8 @@ export interface operations {
             query?: never;
             header: {
                 "Idempotency-Key": string;
+                /** @description Must equal the csrf_token cookie (double-submit). */
+                "X-CSRF-Token": string;
             };
             path: {
                 complaint_id: string;
@@ -7018,6 +7154,8 @@ export interface operations {
             query?: never;
             header: {
                 "Idempotency-Key": string;
+                /** @description Must equal the csrf_token cookie (double-submit). */
+                "X-CSRF-Token": string;
             };
             path: {
                 complaint_id: string;
@@ -7123,7 +7261,10 @@ export interface operations {
     review_ai_suggestion_api_staff_complaints__complaint_id__ai_insights__insight_id__review_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header: {
+                /** @description Must equal the csrf_token cookie (double-submit). */
+                "X-CSRF-Token": string;
+            };
             path: {
                 complaint_id: string;
                 insight_id: string;
@@ -7165,6 +7306,8 @@ export interface operations {
             };
             header: {
                 "Idempotency-Key": string;
+                /** @description Must equal the csrf_token cookie (double-submit). */
+                "X-CSRF-Token": string;
             };
             path: {
                 complaint_id: string;
@@ -7234,6 +7377,8 @@ export interface operations {
             query?: never;
             header: {
                 "Idempotency-Key": string;
+                /** @description Must equal the csrf_token cookie (double-submit). */
+                "X-CSRF-Token": string;
             };
             path: {
                 complaint_id: string;
@@ -7358,7 +7503,10 @@ export interface operations {
     configure_integration_api_staff_admin_integration_connections_put: {
         parameters: {
             query?: never;
-            header?: never;
+            header: {
+                /** @description Must equal the csrf_token cookie (double-submit). */
+                "X-CSRF-Token": string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -7415,7 +7563,10 @@ export interface operations {
     create_webhook_api_staff_admin_webhooks_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header: {
+                /** @description Must equal the csrf_token cookie (double-submit). */
+                "X-CSRF-Token": string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -7450,7 +7601,10 @@ export interface operations {
     deactivate_webhook_api_staff_admin_webhooks__webhook_id__delete: {
         parameters: {
             query?: never;
-            header?: never;
+            header: {
+                /** @description Must equal the csrf_token cookie (double-submit). */
+                "X-CSRF-Token": string;
+            };
             path: {
                 webhook_id: string;
             };
@@ -7501,7 +7655,10 @@ export interface operations {
     create_api_key_api_staff_admin_api_keys_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header: {
+                /** @description Must equal the csrf_token cookie (double-submit). */
+                "X-CSRF-Token": string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -7536,7 +7693,10 @@ export interface operations {
     revoke_api_key_api_staff_admin_api_keys__key_id__delete: {
         parameters: {
             query?: never;
-            header?: never;
+            header: {
+                /** @description Must equal the csrf_token cookie (double-submit). */
+                "X-CSRF-Token": string;
+            };
             path: {
                 key_id: string;
             };
@@ -7598,7 +7758,10 @@ export interface operations {
     retry_dead_letter_api_staff_admin_integration_jobs_dead_letters__job_id__retry_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header: {
+                /** @description Must equal the csrf_token cookie (double-submit). */
+                "X-CSRF-Token": string;
+            };
             path: {
                 job_id: string;
             };
@@ -7930,6 +8093,150 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    access_options_api_staff_admin_access_options_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    teams_api_staff_admin_teams_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    }[];
+                };
+            };
+        };
+    };
+    create_team_api_staff_admin_teams_post: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Must equal the csrf_token cookie (double-submit). */
+                "X-CSRF-Token": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TeamSpec"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: string;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_team_api_staff_admin_teams__team_id__put: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Must equal the csrf_token cookie (double-submit). */
+                "X-CSRF-Token": string;
+            };
+            path: {
+                team_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TeamSpec"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: string;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    automation_options_api_staff_admin_automation_options_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };

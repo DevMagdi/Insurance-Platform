@@ -209,6 +209,7 @@ export const ar = {
     "queue": "قائمة الشكاوى",
     "analytics": "التحليلات",
     "admin": "الإدارة",
+    "operations": "العمليات والإعدادات",
     "audit": "سجل التدقيق",
     "exports": "التصدير",
     "ticket": "التذكرة",
