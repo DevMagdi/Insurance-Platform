@@ -35,6 +35,7 @@ from app.api import (
     public_api,
     reports,
     staff,
+    storage_admin,
     websocket,
     workflow,
 )
@@ -205,6 +206,7 @@ app.include_router(reports.router)
 app.include_router(operations.router)
 app.include_router(websocket.router)
 app.include_router(privacy.router)
+app.include_router(storage_admin.router)
 app.include_router(platform.router)
 
 

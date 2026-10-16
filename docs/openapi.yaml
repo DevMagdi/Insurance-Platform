@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   title: Insurance Brokerage Complaint Management
   version: 0.8.0
-  description: Implemented HTTP routes across product Phases 1-8. Authenticate with
+  description: Implemented HTTP routes across product Phases 1-9. Authenticate with
     an HttpOnly access_token cookie; /api/auth/refresh uses the HttpOnly refresh_token
     cookie. All protected writes, including refresh, need X-CSRF-Token matching the
     readable csrf_token cookie. Authorization, AccessScope and PostgreSQL RLS are
@@ -7051,6 +7051,59 @@ paths:
       security:
       - AccessCookie: []
       x-required-permission: settings.manage
+  /api/staff/storage:
+    get:
+      tags:
+      - storage
+      summary: Browse Storage
+      description: Return one bounded page of bucket/folder/object metadata, never
+        file bytes.
+      operationId: browse_storage_api_staff_storage_get
+      parameters:
+      - name: prefix
+        in: query
+        required: false
+        schema:
+          type: string
+          maxLength: 1024
+          default: ''
+          title: Prefix
+      - name: continuation_token
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            maxLength: 4096
+          - type: 'null'
+          title: Continuation Token
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 500
+          minimum: 1
+          default: 100
+          title: Limit
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Browse Storage Api Staff Storage Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: storage.manage
   /api/public/config:
     get:
       tags:

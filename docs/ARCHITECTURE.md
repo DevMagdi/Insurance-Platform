@@ -1,6 +1,6 @@
-# Architecture through Phase 8
+# Architecture through Phase 9
 
-**Product authority:** [PROJECT_BRIEF.md](PROJECT_BRIEF.md). This describes the **implemented backend** plus its production boundaries. [openapi.yaml](openapi.yaml) is the generated, implemented HTTP contract; [openapi-roadmap.yaml](openapi-roadmap.yaml) retains the original `/api/v1` **future-route draft**. FastAPI currently implements `/api/*`, not that roadmap. The frontend includes the Phase 6 customer portal (see [CUSTOMER_PORTAL.md](CUSTOMER_PORTAL.md)), the staff workspace with human-reviewed AI assistance (see [STAFF_PORTAL.md](STAFF_PORTAL.md)), and the Phase 7 scoped operations/admin console (see [PHASE_7.md](PHASE_7.md)).
+**Product authority:** [PROJECT_BRIEF.md](PROJECT_BRIEF.md). This describes the **implemented backend** plus its production boundaries. [openapi.yaml](openapi.yaml) is the generated, implemented HTTP contract; [openapi-roadmap.yaml](openapi-roadmap.yaml) retains the original `/api/v1` **future-route draft**. FastAPI currently implements `/api/*`, not that roadmap. The frontend includes the Phase 6 customer portal (see [CUSTOMER_PORTAL.md](CUSTOMER_PORTAL.md)), the staff workspace with human-reviewed AI assistance (see [STAFF_PORTAL.md](STAFF_PORTAL.md)), the Phase 7 scoped operations/admin console (see [PHASE_7.md](PHASE_7.md)), and the Phase 9 first-party object-storage inventory (see [STORAGE_ADMIN.md](STORAGE_ADMIN.md)).
 
 ## Components and request flow
 
@@ -19,7 +19,24 @@ Read-only analytics (optional DATABASE_READ_URL) -- replica PgBouncer -- streami
 Prometheus (/metrics, bearer) -> alert rules -> Alertmanager / Grafana; Sentry (PII scrubbed); JSON logs
 ```
 
-The HTTP router → service → repository flow is in `backend/app/api/`, `app/services/`, `app/repositories/`; request/response constraints live in `app/domain/schemas.py`. The old Phase 1 SQL schema (`001`–`003`) is preserved; `004`–`006` add sessions, idempotency, upload reservations, notice outbox and SECURITY DEFINER commands. Phase 3 revisions `007`–`016` add staff workflows, automation, guarded administration, SLA calendars, scheduled reports, operations administration, analytics rollups and export formats; Phase 4 revision `017` adds encrypted integrations, queued actions, AI insights, API keys and voice/message delivery state. Phase 6 revisions `20261016_18`–`20261016_19` add customer profile/preference helpers and preference-aware notice delivery. Phase 7 revision `20261016_20` adds the staff-console team/assignment administration functions and permission catalog entries without duplicating the main branch's Phase 3/4 services. Phase 8 revisions `20261016_21` (PDPL consent evidence, privacy requests, retention, queue-depth telemetry) and `20261016_22` (statement-level InitPlan RLS for complaints) follow. There are twenty-two ordered Alembic revisions, with `20261016_22` as head. The typed SQLAlchemy 2 mappings in `app/models/` mirror the database. Partitioned complaint keys retain `(id, created_at)` so child queries and events join the correct partition. Ticket numbers are globally unique and customer-facing; UUIDs are internal IDs.
+The HTTP router → service → repository flow is in `backend/app/api/`, `app/services/`, `app/repositories/`; request/response constraints live in `app/domain/schemas.py`. The old Phase 1 SQL schema (`001`–`003`) is preserved; `004`–`006` add sessions, idempotency, upload reservations, notice outbox and SECURITY DEFINER commands. Phase 3 revisions `007`–`016` add staff workflows, automation, guarded administration, SLA calendars, scheduled reports, operations administration, analytics rollups and export formats; Phase 4 revision `017` adds encrypted integrations, queued actions, AI insights, API keys and voice/message delivery state. Phase 6 revisions `20261016_18`–`20261016_19` add customer profile/preference helpers and preference-aware notice delivery. Phase 7 revision `20261016_20` adds the staff-console team/assignment administration functions and permission catalog entries without duplicating the main branch's Phase 3/4 services. Phase 8 revisions `20261016_21` (PDPL consent evidence, privacy requests, retention, queue-depth telemetry) and `20261016_22` (statement-level InitPlan RLS for complaints) follow. Phase 9 revision `20261016_23` adds the `storage.manage` capability for the first-party, read-only S3-compatible storage inventory. There are twenty-three ordered Alembic revisions, with `20261016_23` as head. The typed SQLAlchemy 2 mappings in `app/models/` mirror the database. Partitioned complaint keys retain `(id, created_at)` so child queries and events join the correct partition. Ticket numbers are globally unique and customer-facing; UUIDs are internal IDs.
+
+### First-party object-storage administration
+
+The built-in `/staff/storage` route is part of the existing staff SPA and uses
+`GET /api/staff/storage` on the same origin. The API reads only the configured
+bucket using the existing S3-compatible client and `ListObjectsV2`; list pages
+are bounded, delimiter-aware and use opaque continuation tokens. The browser
+never receives storage credentials or calls the object-store host directly.
+
+The endpoint requires `storage.manage` and a global staff scope, checks those
+conditions on every request, limits per-user inventory requests, sets
+`Cache-Control: no-store`, and records successful inventory views in the audit
+log. It returns object keys and operational metadata only. It is read-only by
+design: no raw file body, write/delete, ACL, policy, or credential APIs are
+exposed, so attachment scan verdicts, complaint scope, export ownership and
+recording decryption remain enforced by their existing application routes.
+This is a first-party product view, not a proxy to MinIO Console.
 
 ### Authentication and authorization boundaries
 

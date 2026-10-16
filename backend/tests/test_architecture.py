@@ -77,6 +77,7 @@ def test_catalog_has_every_required_resource_action_and_frozen_migration() -> No
         "reports.manage",
         "audit.view",
         "settings.manage",
+        "storage.manage",
     }
     assert required <= PERMISSIONS
     assert permission_parts("complaints.view") == ("complaints", "view")
@@ -85,8 +86,11 @@ def test_catalog_has_every_required_resource_action_and_frozen_migration() -> No
     sql = (ROOT / "backend/alembic/sql/003_permissions.sql").read_text()
     seeded_permissions = set(re.findall(r"\('([^']+)',", sql))
     phase7 = (ROOT / "backend/alembic/sql/020_staff_console.sql").read_text()
-    assert seeded_permissions | {"teams.manage"} == PERMISSIONS
+    phase9 = (ROOT / "backend/alembic/sql/023_storage_console.sql").read_text()
+    assert seeded_permissions | {"teams.manage", "storage.manage"} == PERMISSIONS
     assert "VALUES ('teams.manage', 'teams', 'manage'" in phase7
+    assert "VALUES ('storage.manage', 'storage', 'manage'" in phase9
+    assert "WHERE name = 'administrator' AND is_system" in phase9
 
 
 def test_phase7_keeps_the_phase3_escalation_permission_contract() -> None:

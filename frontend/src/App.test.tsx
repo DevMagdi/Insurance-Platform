@@ -66,6 +66,11 @@ describe('Phase 6 customer portal shell', () => {
     expect(await screen.findByTestId('phase7-console')).toBeTruthy();
   });
 
+  it('mounts the first-party storage console at its deep link', async () => {
+    renderApp('/staff/storage');
+    expect(await screen.findByTestId('phase7-console')).toBeTruthy();
+  });
+
   it('routes Phase 7 complaint links to the main AI-capable staff ticket page', () => {
     const complaintId = '8b4c88e4-1f68-4f25-a6d8-cfa41f1bbac1';
     renderApp(`/staff/complaints/${complaintId}`);

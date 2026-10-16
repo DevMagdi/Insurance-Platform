@@ -26,6 +26,7 @@ from app.api import (
     public_api,
     reports,
     staff,
+    storage_admin,
     workflow,
 )
 from app.api.deps import PermissionGate
@@ -57,7 +58,7 @@ def dependencies(root: Dependant) -> Iterator[object]:
 def decorate_spec(app: FastAPI, spec: dict[str, Any]) -> dict[str, Any]:
     """Add accurate cookies, CSRF, permissions and WebSocket notes to live OpenAPI."""
     spec["info"]["description"] = (
-        "Implemented HTTP routes across product Phases 1-8. Authenticate with an HttpOnly "
+        "Implemented HTTP routes across product Phases 1-9. Authenticate with an HttpOnly "
         "access_token cookie; /api/auth/refresh uses the HttpOnly refresh_token cookie. "
         "All protected writes, including refresh, need X-CSRF-Token matching the readable "
         "csrf_token cookie. Authorization, AccessScope and PostgreSQL RLS are enforced at "
@@ -104,6 +105,7 @@ def decorate_spec(app: FastAPI, spec: dict[str, Any]) -> dict[str, Any]:
         *reports.router.routes,
         *operations.router.routes,
         *privacy.router.routes,
+        *storage_admin.router.routes,
         *platform.router.routes,
     ]
     for route in routes:

@@ -31,6 +31,7 @@ const GROUPS: Array<{ id: string; label: string; permissions: Permission[] }> = 
   { id: 'integrations', label: 'التكاملات والاتصال', permissions: PERMISSIONS.filter((code) => code.startsWith('integrations.')) },
   { id: 'reports', label: 'التقارير المجدولة', permissions: PERMISSIONS.filter((code) => code.startsWith('reports.')) },
   { id: 'audit-settings', label: 'التدقيق والإعدادات', permissions: PERMISSIONS.filter((code) => code.startsWith('audit.') || code.startsWith('settings.')) },
+  { id: 'storage', label: 'مخزن الملفات', permissions: PERMISSIONS.filter((code) => code.startsWith('storage.')) },
 ];
 const PERMISSION_LABELS: Record<Permission, string> = {
   'complaints.view': 'عرض الشكاوى', 'complaints.create': 'إنشاء شكوى', 'complaints.edit': 'تعديل بيانات الشكوى',
@@ -44,7 +45,7 @@ const PERMISSION_LABELS: Record<Permission, string> = {
   'categories.manage': 'إدارة التصنيفات', 'sla.manage': 'إدارة قواعد SLA', 'templates.manage': 'إدارة الردود الجاهزة',
   'integrations.manage': 'إدارة التكاملات', 'integrations.send_email': 'إرسال البريد للشركات',
   'integrations.send_whatsapp': 'إرسال واتساب', 'integrations.ai_call': 'الاتصال الصوتي الذكي',
-  'reports.manage': 'إدارة التقارير المجدولة', 'audit.view': 'عرض سجل التدقيق', 'settings.manage': 'إدارة إعدادات النظام',
+  'reports.manage': 'إدارة التقارير المجدولة', 'audit.view': 'عرض سجل التدقيق', 'settings.manage': 'إدارة إعدادات النظام', 'storage.manage': 'استعراض مخزن الملفات',
 };
 
 export function AccessEditor({ user, onClose, onSaved }: AccessEditorProps) {

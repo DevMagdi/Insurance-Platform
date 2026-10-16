@@ -46,6 +46,7 @@ export const PERMISSIONS = [
   'reports.manage',
   'audit.view',
   'settings.manage',
+  'storage.manage',
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
@@ -268,4 +269,5 @@ export type AppRoute =
   | { page: 'users' }
   | { page: 'roles' }
   | { page: 'operations' }
-  | { page: 'audit' };
+  | { page: 'audit' }
+  | { page: 'storage' };

@@ -1,7 +1,7 @@
 # Access control
 
 The decision record is in [ADR 0002](adr/0002-access-control.md). This page
-describes the model as implemented through Phase 8, the layers that enforce it,
+describes the model as implemented through Phase 9, the layers that enforce it,
 and the tests that prove it.
 
 ## Model
