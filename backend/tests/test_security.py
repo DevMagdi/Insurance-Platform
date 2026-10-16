@@ -70,7 +70,8 @@ def test_runtime_settings_reject_placeholder_or_reused_secrets() -> None:
         "TURNSTILE_SITE_KEY": "1x00000000000000000000AA",
         "TURNSTILE_SECRET_KEY": "1x0000000000000000000000000000000AA",
     }
-    assert Settings(**good).s3_bucket == "complaint-attachments"
+    # No object-storage endpoint is configurable: binaries live in PostgreSQL.
+    assert not hasattr(Settings(**good), "s3_bucket")
     with pytest.raises(ValidationError):
         Settings(**{**good, "APP_ENCRYPTION_KEY": "replace-with-generated-secret"})
     with pytest.raises(ValidationError):

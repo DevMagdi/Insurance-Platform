@@ -24,6 +24,7 @@ from app.db import Actor
 from app.domain.access import AccessScope
 from app.domain.enums import OwnershipLevel
 from app.domain.schemas import WhatsAppSendRequest
+from app.security.blobs import RECORDING, BlobCipher
 from app.security.integration_crypto import SecretCipher
 from app.services import integration_providers, integrations
 from app.services.integration_providers import (
@@ -170,18 +171,22 @@ async def test_smtp_ses_and_imap_adapters_use_mocked_transports(
             idempotency_key="smtp-idempotency",
         )
 
-    class SES:
-        def send_raw_email(self, **kwargs: Any) -> dict[str, str]:
-            self.request = kwargs
-            return {"MessageId": "ses-message-1"}
-
-    ses = SES()
-    monkeypatch.setattr(integration_providers.boto3, "client", lambda *_a, **_k: ses)
-    ses_result = await SESEmailProvider(
-        {"from_email": "agent@example.test", "region": "eu-west-1"}
+    smtp_send.reset_mock()
+    with pytest.raises(IntegrationProviderError, match="ses_configuration_missing"):
+        await SESEmailProvider({}).send(mail, idempotency_key="ses-idempotency")
+    await SESEmailProvider(
+        {
+            "from_email": "agent@example.test",
+            "region": "eu-west-1",
+            "smtp_username": "ses-user",
+            "smtp_password": "ses-password",
+        }
     ).send(mail, idempotency_key="ses-idempotency")
-    assert ses_result.provider_id == "ses-message-1"
-    assert b"proof.txt" in ses.request["RawMessage"]["Data"]
+    # SES is reached over its regional SMTP endpoint; no AWS SDK is involved.
+    assert smtp_send.await_args.kwargs["hostname"] == "email-smtp.eu-west-1.amazonaws.com"
+    assert smtp_send.await_args.kwargs["username"] == "ses-user"
+    assert smtp_send.await_args.kwargs["start_tls"] is True
+    assert "proof.txt" in smtp_send.await_args.args[0].as_string()
 
     class IMAP:
         def select(self, *_args: Any, **_kwargs: Any) -> tuple[str, list[bytes]]:
@@ -497,7 +502,9 @@ async def test_worker_dispatches_email_job_to_a_mock_provider(
         webhook_secret_ciphertext=None,
         webhook_url=None,
     )
-    await _process_integration_job({"engine": object(), "integration_cipher": cipher}, row)
+    await _process_integration_job(
+        {"engine": object(), "integration_cipher": cipher, "blobs": BlobCipher(b"b" * 32)}, row
+    )
     assert captured["request"].recipients == ("claims@example.test",)
     assert captured["idempotency_key"] == digest.hex()
     assert any("finish_integration_job" in sql for sql, _ in queries)
@@ -735,16 +742,7 @@ async def test_worker_encrypts_mock_voice_recording_and_transcript(
     call_id = uuid4()
     digest = b"v" * 32
 
-    class PrivateStorage:
-        def __init__(self) -> None:
-            self.key: str | None = None
-            self.encrypted: bytes | None = None
-
-        async def put(self, key: str, content: Any, _content_type: str) -> None:
-            self.key = key
-            self.encrypted = content.read()
-
-    storage = PrivateStorage()
+    blobs = BlobCipher(b"b" * 32)
     calls: list[tuple[str, dict[str, Any]]] = []
 
     async def query(_engine: Any, sql: str, params: dict[str, Any]) -> list[Any]:
@@ -780,12 +778,7 @@ async def test_worker_encrypts_mock_voice_recording_and_transcript(
         webhook_url=None,
     )
     await _process_integration_job(
-        {"engine": object(), "integration_cipher": cipher, "storage": storage}, row
-    )
-    assert storage.key == f"call-recordings/{call_id}/recording.gcm"
-    assert storage.encrypted is not None
-    assert cipher.decrypt(
-        storage.encrypted, associated_data=integrations.call_recording_aad(call_id)
+        {"engine": object(), "integration_cipher": cipher, "blobs": blobs}, row
     )
     call = next(params for sql, params in calls if "create_call_job" in sql)
     assert call["provider_id"].startswith("mock-call-")
@@ -793,7 +786,12 @@ async def test_worker_encrypts_mock_voice_recording_and_transcript(
         call["transcript"], associated_data=integrations.call_transcript_aad(call_id)
     ).decode()
     assert "Customer requested a status update" in transcript
-    assert call["recording_key"] == storage.key
+    # The recording is an encrypted column value bound to the call, not an object key.
+    assert "recording_key" not in call
+    assert (
+        blobs.decrypt(call["recording"], purpose=RECORDING, resource_id=call_id)
+        == b"mock-audio-recording"
+    )
 
 
 def _async_result(value: Any) -> Any:

@@ -296,11 +296,13 @@ def data() -> Data:
                 (messages["b"], b_id, b_created, "Other insurer", "public"),
             ],
         )
+        # Revision 24 stores bytes on the row itself; a stored blob is opaque ciphertext.
+        stored_blob = b"KR" + bytes([1]) + b"0" * 12 + b"ciphertext-and-tag".ljust(16, b"0")
         cur.executemany(
             "INSERT INTO attachments(id, complaint_id, complaint_created_at, message_id, "
-            "visibility, storage_key, original_filename, mime_type, size_bytes, "
-            "checksum_sha256, scan_status) VALUES "
-            "(%s, %s, %s, %s, %s, %s, 'fixture.txt', 'text/plain', 100, %s, %s)",
+            "visibility, original_filename, mime_type, size_bytes, "
+            "checksum_sha256, scan_status, content) VALUES "
+            "(%s, %s, %s, %s, %s, 'fixture.txt', 'text/plain', 100, %s, %s, %s)",
             [
                 (
                     attachments[name],
@@ -310,9 +312,9 @@ def data() -> Data:
                         "internal" if name == "internal" else "b" if name == "b" else "public"
                     ],
                     "internal" if name == "internal" else "public",
-                    f"test/{unique}/{name}",
                     "a" * 64,
                     "pending" if name == "pending" else "clean",
+                    stored_blob,
                 )
                 for name in attachments
             ],

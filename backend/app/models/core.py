@@ -100,7 +100,8 @@ class AttachmentUpload(Base):
     uploaded_by_staff_id: Mapped[UUID | None] = mapped_column(ForeignKey("staff_users.id"))
     uploaded_by_customer_id: Mapped[UUID | None] = mapped_column(ForeignKey("customers.id"))
     visibility: Mapped[MessageVisibility] = mapped_column(VISIBILITY_ENUM, server_default="public")
-    storage_key: Mapped[str] = mapped_column(Text, unique=True)
+    # Deprecated object-storage locator: nullable and unused since revision 24.
+    storage_key: Mapped[str | None] = mapped_column(Text, unique=True)
     original_filename: Mapped[str] = mapped_column(String(255))
     declared_mime: Mapped[str] = mapped_column(String(128))
     expected_checksum_sha256: Mapped[str | None] = mapped_column(Text)

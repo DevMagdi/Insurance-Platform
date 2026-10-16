@@ -13,7 +13,6 @@ import re
 from collections.abc import Awaitable, Callable
 from contextlib import suppress
 from datetime import UTC, datetime
-from io import BytesIO
 from typing import Any, ClassVar
 from uuid import NAMESPACE_URL, UUID, uuid5
 
@@ -29,10 +28,11 @@ from app.db import make_worker_engine
 from app.observability import metrics
 from app.observability.logging import configure_logging
 from app.observability.sentry import init_sentry
+from app.security.blobs import ATTACHMENT, EXPORT, RECORDING, BlobCipher
 from app.security.crypto import build_keyring, idempotency_root
 from app.security.integration_crypto import SecretCipher, derive_idempotency_key
 from app.services.backpressure import DEPTH_KEY
-from app.services.exports import render_export
+from app.services.exports import MAX_EXPORT_BYTES, render_export
 from app.services.integration_providers import (
     EmailProvider,
     EmailSendRequest,
@@ -55,17 +55,21 @@ from app.services.integration_providers import (
 )
 from app.services.integrations import (
     ai_insight_aad,
-    call_recording_aad,
     call_transcript_aad,
     config_aad,
     job_aad,
     minimize_pii,
     webhook_secret_aad,
 )
-from app.services.providers import Delivery, SMTPDelivery, UnconfiguredVirusScanner, VirusScanner
+from app.services.providers import (
+    Delivery,
+    ScanTarget,
+    SMTPDelivery,
+    UnconfiguredVirusScanner,
+    VirusScanner,
+)
 from app.services.render import EXTENSIONS, MEDIA_TYPES
 from app.services.reports import ReportService, render_report, report_message
-from app.services.storage import ObjectStorage, S3ObjectStorage
 
 logger = logging.getLogger(__name__)
 
@@ -86,11 +90,6 @@ class WorkerConfig(BaseSettings):
     retention_session_days: int = Field(default=30, validation_alias="RETENTION_SESSION_DAYS")
     retention_outbox_days: int = Field(default=180, validation_alias="RETENTION_OUTBOX_DAYS")
     redis_url: str = "redis://redis:6379/0"
-    s3_bucket: str = "complaint-attachments"
-    s3_endpoint_url: str | None = None
-    s3_access_key_id: str | None = None
-    s3_secret_access_key: str | None = None
-    s3_region: str = "us-east-1"
     smtp_host: str | None = None
     smtp_port: int = 1025
     smtp_from: str = "no-reply@insurance.local"
@@ -118,16 +117,13 @@ async def startup(ctx: dict[str, Any]) -> None:
     ctx["engine"] = make_worker_engine(config.worker_database_url)
     ctx["delivery"] = SMTPDelivery(config)
     ctx["scanner"] = UnconfiguredVirusScanner()
-    ctx["storage"] = (
-        S3ObjectStorage(config)
-        if config.s3_endpoint_url or (config.s3_access_key_id and config.s3_secret_access_key)
-        else None
-    )
     keyring = build_keyring(
         config.app_encryption_key,
         config.app_encryption_key_id,
         config.app_encryption_previous_keys,
     )
+    # Private binaries live in PostgreSQL; the worker decrypts them in memory only.
+    ctx["blobs"] = BlobCipher(keyring)
     ctx["integration_cipher"] = SecretCipher(keyring)
     ctx["integration_idempotency_key"] = derive_idempotency_key(
         idempotency_root(keyring, config.app_idempotency_key)
@@ -199,22 +195,16 @@ def _minimize_ai_value(value: Any) -> Any:
     return str(value)[:500]
 
 
-async def _store_call_recording(
+def _encrypt_call_recording(
     ctx: dict[str, Any], call_id: UUID, recording: bytes | None
-) -> str | None:
+) -> bytes | None:
+    """Encrypt the provider recording for ``call_logs.recording_content``."""
     if recording is None:
         return None
     if len(recording) > 25 * 1024 * 1024:
         raise IntegrationProviderError("voice_recording_too_large", retryable=False)
-    storage: ObjectStorage | None = ctx.get("storage")
-    if storage is None:
-        raise IntegrationProviderError("voice_recording_storage_unavailable")
-    encrypted = ctx["integration_cipher"].encrypt(
-        recording, associated_data=call_recording_aad(call_id)
-    )
-    key = f"call-recordings/{call_id}/recording.gcm"
-    await storage.put(key, BytesIO(encrypted), "application/octet-stream")
-    return key
+    blobs: BlobCipher = ctx["blobs"]
+    return blobs.encrypt(recording, purpose=RECORDING, resource_id=call_id)
 
 
 async def _complete_integration_job(
@@ -285,18 +275,31 @@ async def _process_integration_job(ctx: dict[str, Any], row: Any) -> None:
             if len(attachment_rows) != len(attachment_ids):
                 raise IntegrationProviderError("outbound_attachment_not_clean", retryable=False)
             outbound_attachments: list[OutboundAttachment] = []
-            storage: ObjectStorage | None = ctx.get("storage")
+            blobs: BlobCipher = ctx["blobs"]
             for attachment in attachment_rows:
-                if storage is None:
-                    raise IntegrationProviderError("attachment_storage_unavailable")
-                content = await storage.get(attachment.storage_key, int(attachment.size_bytes))
+                if attachment.content is None:
+                    raise IntegrationProviderError(
+                        "outbound_attachment_content_missing", retryable=False
+                    )
+                try:
+                    content = blobs.decrypt(
+                        bytes(attachment.content),
+                        purpose=ATTACHMENT,
+                        resource_id=attachment.attachment_id,
+                    )
+                except ValueError:
+                    raise IntegrationProviderError(
+                        "outbound_attachment_integrity_failed", retryable=False
+                    ) from None
                 if len(content) != attachment.size_bytes or not hmac.compare_digest(
                     hashlib.sha256(content).hexdigest(), attachment.checksum_sha256
                 ):
                     raise IntegrationProviderError(
                         "outbound_attachment_integrity_failed", retryable=False
                     )
-                filename = str(attachment.filename).replace("\r", "").replace("\n", "")[:200]
+                filename = (
+                    str(attachment.original_filename).replace("\r", "").replace("\n", "")[:200]
+                )
                 outbound_attachments.append(
                     OutboundAttachment(filename, attachment.mime_type, content)
                 )
@@ -398,27 +401,25 @@ async def _process_integration_job(ctx: dict[str, Any], row: Any) -> None:
                 else None
             )
             try:
-                recording_key = await _store_call_recording(
-                    ctx, row.call_log_id, call_result.recording
-                )
+                recording = _encrypt_call_recording(ctx, row.call_log_id, call_result.recording)
             except IntegrationProviderError as exc:
                 logger.warning(
                     "Call recording was not stored call_id=%s error=%s",
                     row.call_log_id,
                     exc.code,
                 )
-                recording_key = None
+                recording = None
             await _worker_query(
                 ctx["engine"],
                 "SELECT app_security.create_call_job("
-                ":id,:attempt,:provider_id,:outcome,:transcript,:recording_key)",
+                ":id,:attempt,:provider_id,:outcome,:transcript,:recording)",
                 {
                     "id": job_id,
                     "attempt": row.attempt,
                     "provider_id": call_result.provider_call_id,
                     "outcome": call_result.outcome,
                     "transcript": transcript,
-                    "recording_key": recording_key,
+                    "recording": recording,
                 },
             )
             return
@@ -453,14 +454,14 @@ async def _process_integration_job(ctx: dict[str, Any], row: Any) -> None:
                 else None
             )
             try:
-                recording_key = await _store_call_recording(ctx, call_id, inbound_result.recording)
+                recording = _encrypt_call_recording(ctx, call_id, inbound_result.recording)
             except IntegrationProviderError as exc:
                 logger.warning(
                     "Inbound call recording was not stored call_id=%s error=%s",
                     call_id,
                     exc.code,
                 )
-                recording_key = None
+                recording = None
             normalized = {
                 **payload,
                 "call_log_id": str(call_id),
@@ -469,7 +470,9 @@ async def _process_integration_job(ctx: dict[str, Any], row: Any) -> None:
                 "transcript_ciphertext": base64.b64encode(transcript).decode("ascii")
                 if transcript
                 else None,
-                "recording_storage_key": recording_key,
+                "recording_ciphertext": base64.b64encode(recording).decode("ascii")
+                if recording
+                else None,
             }
             await _worker_query(
                 ctx["engine"],
@@ -683,13 +686,43 @@ async def deliver_insurer(ctx: dict[str, Any]) -> str:
 
 
 async def scan_pending(ctx: dict[str, Any]) -> str:
+    """Decrypt one pending attachment at a time and hand it to the scanner.
+
+    Content is fetched row by row so a large queue cannot pull the whole table into
+    memory, and a payload that cannot be decrypted is recorded as ``error`` instead
+    of being silently left pending.
+    """
     engine: AsyncEngine = ctx["engine"]
     scanner: VirusScanner = ctx["scanner"]
+    blobs: BlobCipher = ctx["blobs"]
     rows = await _worker_query(
         engine, "SELECT * FROM app_security.pending_scans(:limit)", {"limit": 20}
     )
     for row in rows:
-        verdict = await scanner.scan(row.storage_key)
+        stored = await _worker_query(
+            engine,
+            "SELECT app_security.attachment_scan_content(:upload, :attachment) AS content",
+            {"upload": row.upload_id, "attachment": row.attachment_id},
+        )
+        content = bytes(stored[0].content) if stored and stored[0].content is not None else None
+        if content is None:
+            verdict: str | None = "error"
+        else:
+            try:
+                verdict = await scanner.scan(
+                    ScanTarget(
+                        attachment_id=row.attachment_id,
+                        original_filename=str(row.original_filename),
+                        mime_type=str(row.mime_type),
+                        size_bytes=int(row.size_bytes),
+                        checksum_sha256=str(row.checksum_sha256),
+                        content=blobs.decrypt(
+                            content, purpose=ATTACHMENT, resource_id=row.attachment_id
+                        ),
+                    )
+                )
+            except ValueError:
+                verdict = "error"
         if verdict in ("clean", "infected", "error"):
             await _worker_query(
                 engine,
@@ -700,17 +733,13 @@ async def scan_pending(ctx: dict[str, Any]) -> str:
 
 
 async def export_pending(ctx: dict[str, Any]) -> str:
+    """Render each claimed export, encrypt it, and store it on the job row."""
     engine: AsyncEngine = ctx["engine"]
-    storage: ObjectStorage | None = ctx.get("storage")
-    if storage is None:
-        return "export storage unavailable; jobs remain queued"
+    blobs: BlobCipher = ctx["blobs"]
     jobs = await _worker_query(
         engine, "SELECT * FROM app_security.claim_exports(:limit)", {"limit": 10}
     )
     for job in jobs:
-        media_type = MEDIA_TYPES.get(job.format, MEDIA_TYPES["csv"])
-        key = f"exports/{job.job_id}/{job.attempt}.{EXTENSIONS.get(job.format, 'csv')}"
-        uploaded = False
         try:
             rows = await _worker_query(
                 engine,
@@ -718,30 +747,25 @@ async def export_pending(ctx: dict[str, Any]) -> str:
                 {"id": job.job_id, "attempt": job.attempt},
             )
             data = render_export(job.kind, rows, job.format)
+            if len(data) > MAX_EXPORT_BYTES:
+                raise ValueError("Export artifact exceeds its size budget")
             manifest = [
                 {"id": str(row.complaint_id), "created_at": row.complaint_created_at.isoformat()}
                 for row in rows
             ]
-            await storage.put(key, BytesIO(data), media_type)
-            uploaded = True
-            finished = await _worker_query(
+            await _worker_query(
                 engine,
-                "SELECT app_security.finish_export(:id,:attempt,true,:key,"
+                "SELECT app_security.finish_export(:id,:attempt,true,:content,"
                 "CAST(:manifest AS jsonb)) AS finished",
                 {
                     "id": job.job_id,
                     "attempt": job.attempt,
-                    "key": key,
+                    "content": blobs.encrypt(data, purpose=EXPORT, resource_id=job.job_id),
                     "manifest": json.dumps(manifest),
                 },
             )
-            if not finished[0].finished:
-                await storage.delete(key)
         except Exception:
-            if uploaded:
-                # Private artifact stays unreferenced, even when cleanup fails.
-                with suppress(Exception):
-                    await storage.delete(key)
+            logger.warning("Export job failed job_id=%s", job.job_id)
             await _worker_query(
                 engine,
                 "SELECT app_security.finish_export(:id,:attempt,false,NULL,"
@@ -850,25 +874,26 @@ async def apply_retention(ctx: dict[str, Any]) -> str:
 
 
 async def clean_expired_exports(ctx: dict[str, Any]) -> str:
-    storage: ObjectStorage | None = ctx.get("storage")
-    if storage is None:
-        return "export storage unavailable; expired objects remain private"
+    """Shred expired export artifacts: the encrypted column is nulled in place."""
     engine: AsyncEngine = ctx["engine"]
     rows = await _worker_query(
         engine, "SELECT * FROM app_security.claim_export_cleanup(:limit)", {"limit": 20}
     )
+    cleaned = 0
     for row in rows:
+        if not row.has_content:
+            continue
         try:
-            await storage.delete(row.storage_key)
+            await _worker_query(
+                engine,
+                "SELECT app_security.finish_export_cleanup(:id)",
+                {"id": row.job_id},
+            )
         except Exception:
-            logger.warning("Expired private export object cleanup failed; retrying later")
+            logger.warning("Expired private export cleanup failed; retrying later")
             continue  # Remains private and marked expired; retry next maintenance run.
-        await _worker_query(
-            engine,
-            "SELECT app_security.finish_export_cleanup(:id,:key)",
-            {"id": row.job_id, "key": row.storage_key},
-        )
-    return f"cleaned {len(rows)} expired export object(s)"
+        cleaned += 1
+    return f"cleaned {cleaned} expired export artifact(s)"
 
 
 class WorkerSettings:

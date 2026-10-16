@@ -48,7 +48,6 @@ SMTP_USERNAME=...
 SMTP_PASSWORD=...
 SMTP_START_TLS=true
 HTTP_PORT=8080
-OBJECT_STORE_VOLUME=insurance-platform-prod-object-store-data  # new installations only; see upgrade note below
 APP_WORKER_DB_PASSWORD=...
 # Phase 8: required in production (the API refuses to boot without them)
 TURNSTILE_SITE_KEY=...              # Cloudflare Turnstile widget key for public forms and OTP
@@ -63,24 +62,25 @@ APP_ENCRYPTION_PREVIOUS_KEYS=       # "<id>:<old key>,..." while re-encrypting
 APP_IDEMPOTENCY_KEY=                # set to the ORIGINAL encryption key before the first rotation
 ```
 
-Object storage: the bundled `object-store` service runs SeaweedFS's S3
-gateway (`chrislusf/seaweedfs`). `object-store-init` creates the private bucket
-using the S3 API. The bundled gateway uses one S3 identity shared by the API,
-worker and bootstrap job; for production use **managed S3** with scoped IAM
-credentials, versioning, SSE and replication where possible.
+Private binary storage: nothing to configure. Attachments, generated export
+artifacts and call recordings are encrypted with `APP_ENCRYPTION_KEY` and stored
+in columns on their owning rows (`attachments.content`, `export_jobs.content`,
+`call_logs.recording_content`), so production runs PostgreSQL, PgBouncer, Redis
+and the app containers and nothing else. There is no bucket, endpoint, access
+key, IAM policy or storage volume to provision, rotate or back up separately —
+and therefore no second copy of customer documents to protect.
 
-**Upgrading an existing installation (before deployment):** rename the two
-storage credential variables in your private environment file to
-`S3_ACCESS_KEY_ID` and `S3_SECRET_ACCESS_KEY`, retaining their *values*.
-Use `docker volume ls` / `docker volume inspect` to identify the volume currently
-mounted at `/data` by the storage container. Back up that volume and bucket.
-Set `OBJECT_STORE_VOLUME` in `.env.production` to the **exact existing Docker
-volume name**; the new service will mount the same data, rather than a new empty
-volume. Compose refuses to render production without this explicit choice.
-For local development, set `OBJECT_STORE_VOLUME` in `.env` to the existing
-volume name if preserving local objects; a fresh installation can leave it empty.
-After rollout, verify existing attachment keys and downloads before removing
-any old resources. Never use `docker compose down -v` during migration.
+**Upgrading an installation that used the retired object store:** before
+deploying revision 24, the previous release is still running and still uses the
+object store. Deploy the new release as usual; rows created *before* revision 24
+keep `content IS NULL` and are reported by
+`GET /api/staff/storage` (`totals.attachment_metadata_without_content`) and
+refused by the download route with `410 Gone` rather than served from a stale
+copy. If that legacy data must be preserved, extract the objects with the old
+deployment's tooling while it is still running, then import them (one row at a
+time, encrypted) before decommissioning the object store. `pg_dump` and
+`pg_restore_drill.sh` continue to cover everything else, now including all new
+binary content.
 
 Keep TLS in front of the `web` container (load balancer, Traefik, or certbot +
 Nginx on the host) — the container itself serves plain HTTP on the published
@@ -114,7 +114,8 @@ database from backup (see below). Never edit a released revision in place.
 
 * `scripts/backup/pg_backup.sh` makes a custom-format `pg_dump` with a SHA-256
   file, optional gpg encryption (`BACKUP_GPG_RECIPIENT`), optional off-site
-  upload (`BACKUP_S3_URI`) and local retention. Run it as the migrator or
+  upload (`BACKUP_S3_URI`, an operator-owned *backup* destination — not
+  application storage) and local retention. Run it as the migrator or
   superuser role on a schedule (cron, or a Kubernetes CronJob). `make backup`
   wraps it for the compose stack.
 * `scripts/backup/pg_restore_drill.sh <dump>` restores into a scratch database
@@ -124,8 +125,11 @@ database from backup (see below). Never edit a released revision in place.
 * Prefer managed PostgreSQL with PITR (RPO ≤ 5 min). Logical dumps are the
   portable second line. RPO, RTO and the region-loss procedure are in
   [RUNBOOK.md](RUNBOOK.md#backups-and-disaster-recovery).
-* Snapshot or replicate the object store for attachments. Exports live under
-  the `exports/` prefix and expire through the worker cron.
+* Attachments, export artifacts and call recordings are rows in the database,
+  so the PostgreSQL backup (PITR + logical dump) is the complete copy — size the
+  dump window for the binary columns. Export artifacts expire 15 minutes after
+  completion (`clean_expired_exports` cron). Decompress/decrypt with
+  `APP_ENCRYPTION_KEY` only under an approved procedure.
 
 ## Kubernetes (Helm)
 
@@ -145,7 +149,7 @@ kubectl create namespace insurance
 # Secrets come from your secret manager (External Secrets / Sealed Secrets / Vault CSI).
 # Keys: APP_DB_PASSWORD, APP_WORKER_DB_PASSWORD (URL-safe), DATABASE_ADMIN_URL,
 # APP_ENCRYPTION_KEY, APP_BLIND_INDEX_KEY, JWT_SIGNING_KEY, TURNSTILE_SITE_KEY,
-# TURNSTILE_SECRET_KEY, METRICS_TOKEN, S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY, SMTP_PASSWORD, ...
+# TURNSTILE_SECRET_KEY, METRICS_TOKEN, SMTP_PASSWORD, ...
 helm upgrade --install ip deploy/helm/insurance-platform -n insurance \
   -f deploy/helm/insurance-platform/values-production.yaml \
   --set image.tag=<release tag or commit SHA>

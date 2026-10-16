@@ -68,10 +68,6 @@ def call_transcript_aad(call_id: UUID) -> str:
     return f"call-transcript:v1:{call_id}"
 
 
-def call_recording_aad(call_id: UUID) -> str:
-    return f"call-recording:v1:{call_id}"
-
-
 def webhook_secret_aad(webhook_id: UUID) -> str:
     return f"webhook-secret:v1:{webhook_id}"
 

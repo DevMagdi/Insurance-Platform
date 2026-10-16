@@ -14,9 +14,9 @@ imagePullSecrets: []
 publicUrl: https://complaints.example.com
 
 secrets:
-  # Must contain: APP_ENCRYPTION_KEY, APP_BLIND_INDEX_KEY, JWT_SIGNING_KEY,
-  # APP_DB_PASSWORD, APP_WORKER_DB_PASSWORD, TURNSTILE_SITE_KEY,
-  # TURNSTILE_SECRET_KEY, S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY,
+  # Must contain: APP_ENCRYPTION_KEY (also encrypts stored binaries),
+  # APP_BLIND_INDEX_KEY, JWT_SIGNING_KEY, APP_DB_PASSWORD,
+  # APP_WORKER_DB_PASSWORD, TURNSTILE_SITE_KEY, TURNSTILE_SECRET_KEY,
   # DATABASE_ADMIN_URL (migration hook only), optional METRICS_TOKEN,
   # SENTRY_DSN, SMTP_USERNAME, SMTP_PASSWORD, APP_ENCRYPTION_PREVIOUS_KEYS,
   # APP_IDEMPOTENCY_KEY.
@@ -34,10 +34,8 @@ database:
 redis:
   url: redis://redis-master.cache.svc:6379/0
 
-objectStorage:
-  bucket: complaint-attachments
-  endpointUrl: ""     # empty = AWS S3
-  region: eu-central-1
+# Private binaries (attachments, export artifacts, call recordings) are stored
+# encrypted inside PostgreSQL; there is no object-storage endpoint to configure.
 
 smtp:
   host: smtp.example.com

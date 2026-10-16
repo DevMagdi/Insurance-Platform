@@ -630,6 +630,8 @@ class IntegrationConfigSpec(StrictModel):
             "api_key",
             "access_key_id",
             "secret_access_key",
+            "smtp_username",
+            "smtp_password",
             "region",
             "access_token",
             "phone_number_id",

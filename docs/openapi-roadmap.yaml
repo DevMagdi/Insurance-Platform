@@ -214,7 +214,7 @@ paths:
       tags: [Customer]
       security: [{customerBearer: []}]
       summary: Own clean public attachments only
-      responses: {'200': {description: Attachment metadata; download uses a signed URL}}
+      responses: {'200': {description: Attachment metadata; download uses a short-lived one-use token}}
     post:
       tags: [Customer]
       security: [{customerBearer: []}]

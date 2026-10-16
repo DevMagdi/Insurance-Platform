@@ -64,7 +64,7 @@ cd frontend && npm run api:types                                  # typed client
 
 | Method and path | Who | Purpose |
 |---|---|---|
-| `GET /api/staff/storage?prefix=&limit=100&continuation_token=` | `storage.manage` with global scope | Bounded, audit-logged metadata inventory of the configured S3-compatible bucket; does not return object bodies or permit mutations |
+| `GET /api/staff/storage?prefix=&limit=100&continuation_token=` | `storage.manage` with global scope | Bounded, audit-logged metadata inventory of the platform's own PostgreSQL rows (attachments, exports, call recordings); does not return file bodies or permit mutations |
 
 See [STORAGE_ADMIN.md](STORAGE_ADMIN.md) for the built-in `/staff/storage` UI, access model and intentional privacy limits.
 

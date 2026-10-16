@@ -1,9 +1,11 @@
-"""First-party, read-only object-storage inventory for authorized administrators.
+"""First-party, read-only storage inventory for authorized administrators.
 
-This UI is deliberately served by the insurance platform itself. It speaks only
-through the configured S3-compatible SDK and never exposes storage credentials or
-raw object contents. Business files remain downloadable only through their
-scoped, audited application routes.
+The inventory describes what the platform itself stores in PostgreSQL: attachment
+bytes, generated export artifacts and call recordings. It speaks only to
+``app_security.storage_inventory``/``storage_totals`` (bounded metadata queries
+behind the ``storage.manage`` capability and global scope) and never returns file
+bytes, storage credentials or provider messages. Business files remain
+downloadable only through their scoped, audited application routes.
 """
 
 from __future__ import annotations
@@ -12,13 +14,23 @@ import logging
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
+from sqlalchemy.exc import DBAPIError
 
 from app.api.deps import RequestContext, require_permission
 from app.domain.enums import OwnershipLevel
 from app.models.tickets import AuditLog
+from app.repositories.storage import (
+    FOLDERS,
+    KINDS,
+    StorageInventoryRepository,
+    decode_cursor,
+)
 
 router = APIRouter(prefix="/api/staff/storage", tags=["storage"])
 logger = logging.getLogger(__name__)
+
+STORE_NAME = "insurance-platform"
+FORBIDDEN_DETAIL = "Global storage administration required"
 
 
 def require_global_storage_scope(ctx: RequestContext) -> None:
@@ -29,7 +41,18 @@ def require_global_storage_scope(ctx: RequestContext) -> None:
         or ctx.scope.insurance_types
         or ctx.scope.ownership != OwnershipLevel.ALL
     ):
-        raise HTTPException(status_code=403, detail="Global storage administration required")
+        raise HTTPException(status_code=403, detail=FORBIDDEN_DETAIL)
+
+
+def _kind_for_prefix(prefix: str) -> str | None:
+    """Map a logical folder prefix (``attachments/``) to one inventory kind."""
+    if not prefix:
+        return None
+    folder = prefix.split("/", 1)[0]
+    for kind in KINDS:
+        if f"{kind}s" == folder:
+            return kind
+    raise HTTPException(status_code=422, detail="Unknown storage prefix")
 
 
 @router.get("")
@@ -37,63 +60,73 @@ async def browse_storage(
     request: Request,
     response: Response,
     prefix: str = Query(default="", max_length=1024),
-    continuation_token: str | None = Query(default=None, max_length=4096),
-    limit: int = Query(default=100, ge=1, le=500),
+    continuation_token: str | None = Query(default=None, max_length=128),
+    limit: int = Query(default=100, ge=1, le=200),
     ctx: RequestContext = Depends(require_permission("storage.manage")),
 ) -> dict[str, Any]:
-    """Return one bounded page of bucket/folder/object metadata, never file bytes."""
+    """Return one bounded page of row metadata, never file bytes."""
     require_global_storage_scope(ctx)
     if "\x00" in prefix or len(prefix.encode("utf-8")) > 1024:
         raise HTTPException(status_code=422, detail="Invalid storage prefix")
+    kind = _kind_for_prefix(prefix)
+    after = None
+    if continuation_token:
+        decoded = decode_cursor(continuation_token)
+        if decoded is None or decoded[0] != kind:
+            raise HTTPException(status_code=422, detail="Invalid storage cursor")
+        after = decoded[1]
 
-    storage = getattr(request.app.state, "storage", None)
-    settings = getattr(request.app.state, "settings", None)
-    bucket = getattr(settings, "s3_bucket", None)
-    if storage is None or not isinstance(bucket, str) or not bucket:
-        raise HTTPException(status_code=503, detail="Private object storage is not configured")
-
+    repository = StorageInventoryRepository()
     try:
-        listing = await storage.list_objects(prefix, continuation_token, limit)
-    except Exception:
-        # Do not return SDK/provider messages: they can contain deployment details.
-        logger.exception("Storage inventory request failed")
+        totals = await repository.totals(ctx.db)
+        page = await repository.page(ctx.db, kind, after, limit) if kind is not None else None
+    except DBAPIError as exc:
+        # Never surface driver/SQL detail: it can describe deployment internals.
+        logger.warning("Storage inventory query failed: %s", type(exc).__name__)
         raise HTTPException(
-            status_code=503, detail="Object storage is temporarily unavailable"
+            status_code=503, detail="Storage inventory is temporarily unavailable"
         ) from None
 
     response.headers["Cache-Control"] = "no-store"
     response.headers["X-Content-Type-Options"] = "nosniff"
+    objects = (
+        [
+            {
+                "key": row.object_key,
+                "kind": row.kind,
+                "size_bytes": row.size_bytes,
+                "last_modified": row.last_modified,
+                "checksum_sha256": row.checksum_sha256,
+                "details": row.details,
+            }
+            for row in page.rows
+        ]
+        if page is not None
+        else []
+    )
     ctx.db.add(
         AuditLog(
             actor_staff_id=ctx.actor.id,
             action="storage_inventory_viewed",
-            resource_type="storage_bucket",
+            resource_type="storage_store",
             after_state={
-                "bucket": bucket,
+                "store": STORE_NAME,
                 "prefix": prefix,
                 "limit": limit,
-                "folders_returned": len(listing.folders),
-                "objects_returned": len(listing.objects),
+                "objects_returned": len(objects),
             },
         )
     )
     await ctx.db.flush()
 
     return {
-        "bucket": bucket,
-        "provider": "S3-compatible",
+        "backend": "postgresql",
+        "store": STORE_NAME,
         "status": "online",
         "prefix": prefix,
-        "folders": list(listing.folders),
-        "objects": [
-            {
-                "key": item.key,
-                "size_bytes": item.size_bytes,
-                "last_modified": item.last_modified,
-                "etag": item.etag,
-            }
-            for item in listing.objects
-        ],
-        "is_truncated": listing.is_truncated,
-        "next_page_token": listing.next_token,
+        "folders": list(FOLDERS) if kind is None else [],
+        "objects": objects,
+        "totals": totals,
+        "is_truncated": bool(page.is_truncated) if page else False,
+        "next_page_token": page.next_page_token if page else None,
     }

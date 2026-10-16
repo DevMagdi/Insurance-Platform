@@ -14,9 +14,9 @@ Procedure (docs/RUNBOOK.md#encryption-key-rotation):
 
 Values whose AAD depends on other columns are rebuilt with the same context
 functions the application uses, so authenticated context binding is preserved.
-Encrypted call recordings in object storage are NOT rewritten by this script:
-keep the old key in ``APP_ENCRYPTION_PREVIOUS_KEYS`` until recordings created
-before the rotation have aged out of retention (see docs/PRIVACY.md).
+This includes the private binaries stored in PostgreSQL (attachments, export
+artifacts and call recordings): they are re-encrypted row by row like any other
+column, so no second store has to be drained separately.
 """
 
 from __future__ import annotations
@@ -30,6 +30,7 @@ from typing import Any
 
 import psycopg
 
+from app.security.blobs import ATTACHMENT, EXPORT, RECORDING, BlobCipher
 from app.security.crypto import _AAD as NATIONAL_ID_AAD
 from app.security.crypto import build_keyring
 from app.security.keyring import Keyring
@@ -93,6 +94,27 @@ COLUMNS: tuple[Column, ...] = (
         "transcript_ciphertext",
         (),
         lambda r: _text(call_transcript_aad(r["id"])),
+    ),
+    Column(
+        "attachments",
+        "id",
+        "content",
+        (),
+        lambda r: BlobCipher.associated_data(ATTACHMENT, r["id"]),
+    ),
+    Column(
+        "export_jobs",
+        "id",
+        "content",
+        (),
+        lambda r: BlobCipher.associated_data(EXPORT, r["id"]),
+    ),
+    Column(
+        "call_logs",
+        "id",
+        "recording_content",
+        (),
+        lambda r: BlobCipher.associated_data(RECORDING, r["id"]),
     ),
 )
 

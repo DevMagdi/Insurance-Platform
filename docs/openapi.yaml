@@ -7056,8 +7056,7 @@ paths:
       tags:
       - storage
       summary: Browse Storage
-      description: Return one bounded page of bucket/folder/object metadata, never
-        file bytes.
+      description: Return one bounded page of row metadata, never file bytes.
       operationId: browse_storage_api_staff_storage_get
       parameters:
       - name: prefix
@@ -7074,7 +7073,7 @@ paths:
         schema:
           anyOf:
           - type: string
-            maxLength: 4096
+            maxLength: 128
           - type: 'null'
           title: Continuation Token
       - name: limit
@@ -7082,7 +7081,7 @@ paths:
         required: false
         schema:
           type: integer
-          maximum: 500
+          maximum: 200
           minimum: 1
           default: 100
           title: Limit

@@ -1,4 +1,9 @@
-"""Private upload reservations and scoped attachment metadata queries."""
+"""Private upload reservations and scoped attachment metadata queries.
+
+Attachment bytes live on the ``attachments`` row (revision 24), so reserving,
+storing and reading a file never leaves the PostgreSQL transaction that already
+enforces RLS and scope.
+"""
 
 from __future__ import annotations
 
@@ -41,7 +46,6 @@ class AttachmentRepository:
                 uploaded_by_customer_id=scope.actor.id if scope.actor.scope == "customer" else None,
                 uploaded_by_staff_id=scope.actor.id if scope.actor.scope == "staff" else None,
                 visibility=MessageVisibility.PUBLIC,
-                storage_key=f"attachments/{uuid4().hex}/{uuid4().hex}",
                 original_filename=item.filename,
                 declared_mime=item.mime_type,
                 expected_checksum_sha256=item.checksum_sha256,
@@ -81,17 +85,21 @@ class AttachmentRepository:
         scope: AccessScope,
         reservation: AttachmentUpload,
         *,
+        attachment_id: UUID,
         mime: str,
         size: int,
         checksum: str,
+        content: bytes,
     ) -> Attachment:
+        """Create the visible attachment row and its (already encrypted) bytes."""
         record = Attachment(
+            id=attachment_id,
             complaint_id=reservation.complaint_id,
             complaint_created_at=reservation.complaint_created_at,
             uploaded_by_customer_id=scope.actor.id if scope.actor.scope == "customer" else None,
             uploaded_by_staff_id=scope.actor.id if scope.actor.scope == "staff" else None,
             visibility=MessageVisibility.PUBLIC,
-            storage_key=reservation.storage_key,
+            content=content,
             original_filename=reservation.original_filename,
             mime_type=mime,
             size_bytes=size,

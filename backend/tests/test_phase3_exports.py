@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from io import BytesIO
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 from uuid import uuid4
@@ -20,7 +19,18 @@ from app.domain.access import AccessScope
 from app.domain.enums import OwnershipLevel
 from app.domain.schemas import ExportRequest
 from app.main import app
+from app.repositories.exports import ExportArtifact
+from app.security.blobs import EXPORT, BlobCipher
 from app.services.exports import render_export
+
+
+def last_artifact(calls: list[tuple[str, dict]]) -> bytes:
+    """The most recent encrypted artifact handed to ``finish_export``."""
+    return next(
+        params["content"]
+        for sql, params in reversed(calls)
+        if "finish_export" in sql and params.get("content")
+    )
 
 
 @pytest.fixture
@@ -37,16 +47,23 @@ async def api(monkeypatch: pytest.MonkeyPatch):
         SimpleNamespace(),
     )
     job = uuid4()
+    blobs = BlobCipher(b"x" * 32)
     repo = SimpleNamespace(
         request=AsyncMock(return_value=job),
         list=AsyncMock(return_value=[{"id": job, "status": "queued"}]),
-        authorize_download=AsyncMock(return_value=f"exports/{job}/1.csv"),
+        authorize_download=AsyncMock(
+            return_value=ExportArtifact(
+                content=blobs.encrypt(
+                    b"ticket_no\r\nCMP-2026-000001\r\n", purpose=EXPORT, resource_id=job
+                ),
+                format="csv",
+            )
+        ),
     )
-    storage = SimpleNamespace(get=AsyncMock(return_value=b"ticket_no\r\nCMP-2026-000001\r\n"))
     auth = SimpleNamespace(limits=SimpleNamespace(check=AsyncMock()))
     monkeypatch.setattr(exports_api, "ExportRepository", lambda: repo)
     app.state.auth = auth
-    app.state.storage = storage
+    app.state.blobs = blobs
 
     async def override():
         yield ctx
@@ -58,13 +75,13 @@ async def api(monkeypatch: pytest.MonkeyPatch):
             base_url="https://testserver",
             cookies={"csrf_token": "known"},
         ) as client:
-            yield client, ctx, repo, storage
+            yield client, ctx, repo, blobs
     finally:
         app.dependency_overrides.clear()
 
 
 async def test_async_export_permission_rate_csrf_and_download(api: tuple) -> None:
-    client, ctx, repo, storage = api
+    client, ctx, repo, blobs = api
     filters = {"date_from": "2026-09-01T00:00:00Z", "date_to": "2026-10-01T00:00:00Z"}
     path = "/api/staff/exports"
     payload = {"kind": "complaints", "filters": filters}
@@ -84,11 +101,23 @@ async def test_async_export_permission_rate_csrf_and_download(api: tuple) -> Non
     assert (await client.get(path)).json()[0]["status"] == "queued"
     repo.authorize_download.return_value = None
     assert (await client.get(f"{path}/{response.json()['id']}/download")).status_code == 404
-    repo.authorize_download.return_value = f"exports/{response.json()['id']}/1.csv"
-    exported = await client.get(f"{path}/{response.json()['id']}/download")
+    job_id = response.json()["id"]
+    repo.authorize_download.return_value = ExportArtifact(
+        content=blobs.encrypt(
+            b"ticket_no\r\nCMP-2026-000001\r\n", purpose=EXPORT, resource_id=job_id
+        ),
+        format="csv",
+    )
+    exported = await client.get(f"{path}/{job_id}/download")
     assert exported.status_code == 200 and exported.content.startswith(b"ticket_no")
     assert exported.headers["cache-control"] == "no-store"
-    storage.get.assert_awaited_once()
+    assert exported.headers["x-content-type-options"] == "nosniff"
+    # An artifact that fails authentication is never served, even to its owner.
+    repo.authorize_download.return_value = ExportArtifact(
+        content=blobs.encrypt(b"ticket_no\r\n", purpose=EXPORT, resource_id=uuid4()),
+        format="csv",
+    )
+    assert (await client.get(f"{path}/{job_id}/download")).status_code == 503
 
 
 def test_export_window_and_spreadsheet_safety() -> None:
@@ -141,10 +170,12 @@ async def test_export_worker_uses_only_guarded_functions_and_private_storage(
         csat_score=None,
     )
     calls: list[str] = []
+    calls_and_params: list[tuple[str, dict]] = []
     fmt = "csv"
 
     async def query(engine: object, sql: str, params: dict):
         calls.append(sql)
+        calls_and_params.append((sql, params))
         if "claim_exports" in sql:
             return [SimpleNamespace(job_id=job, attempt=1, kind="complaints", format=fmt)]
         if "export_rows" in sql:
@@ -154,46 +185,47 @@ async def test_export_worker_uses_only_guarded_functions_and_private_storage(
         return []
 
     monkeypatch.setattr(worker, "_worker_query", query)
-    storage = SimpleNamespace(put=AsyncMock(), delete=AsyncMock())
-    result = await worker.export_pending({"engine": object(), "storage": storage})
+    blobs = BlobCipher(b"x" * 32)
+    result = await worker.export_pending({"engine": object(), "blobs": blobs})
     assert result == "processed 1 export job(s)"
     assert all("app_security." in call for call in calls)
-    key, data, mime = storage.put.call_args.args
-    assert key == f"exports/{job}/1.csv" and isinstance(data, BytesIO)
-    assert mime.startswith("text/csv") and b"CMP-2026-000002" in data.getvalue()
-    storage.delete.assert_not_awaited()
-    # Excel and PDF jobs keep their own extension and media type.
+    csv_bytes = blobs.decrypt(last_artifact(calls_and_params), purpose=EXPORT, resource_id=job)
+    assert csv_bytes.decode().startswith("ticket_no") and b"CMP-2026-000002" in csv_bytes
+    # Excel and PDF jobs keep their own format on the same encrypted column.
     fmt = "xlsx"
-    await worker.export_pending({"engine": object(), "storage": storage})
-    key, data, mime = storage.put.call_args.args
-    assert key == f"exports/{job}/1.xlsx"
-    assert mime.startswith("application/vnd.openxmlformats") and data.getvalue()[:2] == b"PK"
+    await worker.export_pending({"engine": object(), "blobs": blobs})
+    data = blobs.decrypt(last_artifact(calls_and_params), purpose=EXPORT, resource_id=job)
+    assert data[:2] == b"PK"
     fmt = "pdf"
-    await worker.export_pending({"engine": object(), "storage": storage})
-    key, data, mime = storage.put.call_args.args
-    assert key == f"exports/{job}/1.pdf" and mime == "application/pdf"
-    assert data.getvalue().startswith(b"%PDF-1.4")
-    assert await worker.export_pending({"engine": object(), "storage": None}) == (
-        "export storage unavailable; jobs remain queued"
-    )
+    await worker.export_pending({"engine": object(), "blobs": blobs})
+    data = blobs.decrypt(last_artifact(calls_and_params), purpose=EXPORT, resource_id=job)
+    assert data.startswith(b"%PDF-1.4")
 
 
 async def test_cleanup_only_clears_key_after_successful_deletion(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     job = uuid4()
-    calls: list[str] = []
+    cleared: list[str] = []
+    fail = True
 
     async def query(engine: object, sql: str, params: dict):
-        calls.append(sql)
+        nonlocal fail
         if "claim_export_cleanup" in sql:
-            return [SimpleNamespace(job_id=job, storage_key="exports/example/1.csv")]
-        return []
+            return [SimpleNamespace(job_id=job, has_content=True)]
+        if fail:
+            fail = False
+            raise RuntimeError("database unavailable")
+        cleared.append(sql)
+        return [SimpleNamespace(finished=True)]
 
     monkeypatch.setattr(worker, "_worker_query", query)
-    storage = SimpleNamespace(delete=AsyncMock(side_effect=RuntimeError("offline")))
-    await worker.clean_expired_exports({"engine": object(), "storage": storage})
-    assert len(calls) == 1
-    storage.delete.side_effect = None
-    await worker.clean_expired_exports({"engine": object(), "storage": storage})
-    assert any("finish_export_cleanup" in sql for sql in calls)
+    # The column is only reported as cleaned once the worker confirmed the write.
+    assert await worker.clean_expired_exports({"engine": object()}) == (
+        "cleaned 0 expired export artifact(s)"
+    )
+    assert cleared == []
+    assert await worker.clean_expired_exports({"engine": object()}) == (
+        "cleaned 1 expired export artifact(s)"
+    )
+    assert any("finish_export_cleanup" in sql for sql in cleared)

@@ -51,6 +51,7 @@ from app.observability.sentry import init_sentry
 from app.openapi_contract import decorate_spec
 from app.repositories.attachments import AttachmentRepository
 from app.repositories.complaints import ComplaintRepository
+from app.security.blobs import BlobCipher
 from app.security.captcha import CaptchaVerifier
 from app.security.crypto import NationalIdProtector, decode_key
 from app.security.integration_crypto import SecretCipher, derive_idempotency_key
@@ -63,7 +64,6 @@ from app.services.backpressure import QueueBackpressure
 from app.services.complaints import ComplaintService
 from app.services.integrations import IntegrationService
 from app.services.providers import SMTPDelivery
-from app.services.storage import S3ObjectStorage
 from app.settings import Settings, get_settings
 
 
@@ -136,6 +136,9 @@ async def install_state(
     delivery = SMTPDelivery(settings)
     app.state.auth = AuthService(app.state.factory, redis, settings, delivery)
     keyring = settings.encryption_keyring()
+    # Private binaries (attachments, export artifacts, call recordings) are encrypted
+    # with this keyring and stored in PostgreSQL; no object storage is involved.
+    app.state.blobs = BlobCipher(keyring)
     integrations_service = IntegrationService(
         SecretCipher(keyring), derive_idempotency_key(settings.idempotency_master_key())
     )
@@ -147,12 +150,8 @@ async def install_state(
         settings.jwt_signing_key,
         integration_events=integrations_service,
     )
-    storage = (
-        S3ObjectStorage(settings) if settings.s3_endpoint_url or settings.s3_access_key_id else None
-    )
-    app.state.storage = storage
     app.state.attachments = AttachmentService(
-        AttachmentRepository(), TokenManager(settings), storage
+        AttachmentRepository(), TokenManager(settings), app.state.blobs
     )
 
     async def close() -> None:

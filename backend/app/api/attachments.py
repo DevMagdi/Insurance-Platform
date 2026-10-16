@@ -1,4 +1,9 @@
-"""Signed, short-lived API upload/download endpoints; browser sees only relative URLs."""
+"""Short-lived, one-use API upload/download endpoints; the browser sees only relative URLs.
+
+Bytes travel through the API process into PostgreSQL (``attachments.content``,
+encrypted) on the same transaction that records the attachment row, and come back
+the same way behind a single-use download token.
+"""
 
 from __future__ import annotations
 

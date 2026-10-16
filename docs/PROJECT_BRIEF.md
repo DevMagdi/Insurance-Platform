@@ -74,7 +74,7 @@ Modern, updated, premium/VIP: deep navy + gold/emerald accents, glassmorphism, s
 
 - Frontend: React JS + Vite + Tailwind CSS (+ TanStack Query, React Hook Form + Zod, Recharts, Framer Motion, i18n).
 
-- Backend: FastAPI (async) + PostgreSQL (SQLAlchemy 2 + Alembic) + Redis + Celery/ARQ + S3-compatible storage (SeaweedFS locally; managed S3 recommended for production).
+- Backend: FastAPI (async) + PostgreSQL (SQLAlchemy 2 + Alembic) + Redis + Celery/ARQ. Private binaries (attachments, export artifacts, call recordings) are stored AES-256-GCM-encrypted in PostgreSQL columns under `APP_ENCRYPTION_KEY`; there is no S3/MinIO/SeaweedFS dependency and no second stateful service.
 
 - Infra: Docker Compose (dev), Nginx, Kubernetes-ready.
 

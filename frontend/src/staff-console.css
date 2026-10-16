@@ -815,7 +815,7 @@
   border: 0;
 }
 
-/* First-party S3-compatible storage inventory. */
+/* First-party database-storage inventory (rows in PostgreSQL, no bucket). */
 .staff-console .storage-page { gap: 17px; }
 .staff-console .storage-overview {
   position: relative;

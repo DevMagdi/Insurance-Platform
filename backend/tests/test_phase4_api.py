@@ -24,16 +24,15 @@ from app.domain.schemas import (
     WebhookCreate,
     WhatsAppSendRequest,
 )
-from app.security.integration_crypto import SecretCipher
-from app.services.integrations import call_recording_aad
+from app.security.blobs import RECORDING, BlobCipher
 
 
-def make_request(service: Any, *, storage: Any = None) -> SimpleNamespace:
+def make_request(service: Any, *, blobs: Any = None) -> SimpleNamespace:
     return SimpleNamespace(
         app=SimpleNamespace(
             state=SimpleNamespace(
                 integrations=service,
-                storage=storage,
+                blobs=blobs,
                 auth=SimpleNamespace(limits=None),
                 factory=object(),
             )
@@ -173,35 +172,33 @@ async def test_staff_channel_endpoints_enforce_ai_and_channel_permissions() -> N
 
 
 async def test_recording_route_is_no_store_audited_and_ticket_scoped() -> None:
-    cipher = SecretCipher(b"r" * 32)
     call_id = uuid4()
     complaint_id = uuid4()
+    blobs = BlobCipher(b"r" * 32)
     call = SimpleNamespace(
         id=call_id,
         complaint_id=complaint_id,
         complaint_created_at=datetime.now(UTC),
-        recording_storage_key=f"call-recordings/{call_id}/recording.gcm",
+        recording_content=blobs.encrypt(b"audio-bytes", purpose=RECORDING, resource_id=call_id),
     )
-
-    class Storage:
-        async def get(self, key: str, max_bytes: int) -> bytes:
-            assert key == call.recording_storage_key
-            assert max_bytes > 25 * 1024 * 1024
-            return cipher.encrypt(b"audio-bytes", associated_data=call_recording_aad(call_id))
-
-    service = SimpleNamespace(cipher=cipher)
+    service = SimpleNamespace()
     db = SimpleNamespace(
         scalar=AsyncMock(return_value=call),
         add=Mock(),
         flush=AsyncMock(return_value=None),
     )
     ctx = make_context({"integrations.ai_call"}, db)
-    request = make_request(service, storage=Storage())
+    request = make_request(service, blobs=blobs)
     response = await integrations.call_recording(complaint_id, call_id, request, ctx)
     assert response.body == b"audio-bytes"
     assert response.headers["cache-control"] == "no-store"
     assert response.headers["x-content-type-options"] == "nosniff"
     assert db.add.call_args.args[0].action == "call_recording_accessed"
+    # A row whose ciphertext belongs to another call is never served.
+    call.recording_content = blobs.encrypt(b"audio-bytes", purpose=RECORDING, resource_id=uuid4())
+    with pytest.raises(HTTPException) as unreadable:
+        await integrations.call_recording(complaint_id, call_id, request, ctx)
+    assert unreadable.value.status_code == 503
     db.scalar.return_value = None
     with pytest.raises(HTTPException) as not_found:
         await integrations.call_recording(complaint_id, call_id, request, ctx)

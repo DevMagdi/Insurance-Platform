@@ -166,9 +166,10 @@ payloads, AI insights, transcripts and recordings.
 5. Verify with `python -m app.scripts.rotate_keys --check`. It must report
    0 stale values.
 6. Remove the old key from `APP_ENCRYPTION_PREVIOUS_KEYS` and redeploy.
-   **Exception:** encrypted call recordings in object storage are not
-   rewritten. Keep the old key until recordings created before the rotation
-   have passed retention.
+   `rotate_keys` walks every encrypted column — including the private binaries
+   held in PostgreSQL (`attachments.content`, `export_jobs.content` and
+   `call_logs.recording_content`) — so once `--check` reports 0 stale values no
+   old key is needed anywhere.
 
 `JWT_SIGNING_KEY` rotation invalidates every session (users sign in again), so
 do it in a quiet window. `APP_BLIND_INDEX_KEY` cannot be rotated online (see
@@ -184,11 +185,13 @@ do it in a quiet window. `APP_BLIND_INDEX_KEY` cannot be rotated online (see
 | Drill cadence | Restore drill on every CI run (`postgres-rls` job) and a full staged restore monthly |
 
 * **Logical backup:** `scripts/backup/pg_backup.sh`. It produces a
-  custom-format dump with a SHA-256 checksum, optional gpg encryption
-  (`BACKUP_GPG_RECIPIENT`) and optional off-site upload (`BACKUP_S3_URI`). It
-  must run as the migrator or superuser role: the runtime role is
-  RLS-filtered and would produce a partial dump. Use `make backup` for the
-  local stack.
+  custom-format dump (now including every attachment, export artifact and
+  recording, since they are rows) with a SHA-256 checksum, optional gpg
+  encryption (`BACKUP_GPG_RECIPIENT`) and an optional off-site copy
+  (`BACKUP_S3_URI`) whose destination is an operator-owned backup bucket — it
+  is not application storage and the API never depends on it. It must run as
+  the migrator or superuser role: the runtime role is RLS-filtered and would
+  produce a partial dump. Use `make backup` for the local stack.
 * **Restore drill:** `scripts/backup/pg_restore_drill.sh <dump>`. It restores
   into a throw-away database, then verifies:
   * the checksum;
@@ -198,9 +201,12 @@ do it in a quiet window. `APP_BLIND_INDEX_KEY` cannot be rotated online (see
   * the minimum row counts.
 
   CI runs it after every integration run.
-* **Object storage:** use versioning plus cross-region replication on the S3
-  bucket (managed S3 is recommended). Attachments are immutable, keyed by
-  UUID, and hold the SHA-256 checksum in the database.
+* **Private binaries:** attachments, export artifacts and call recordings are
+  rows in the primary database, so they follow PostgreSQL's own
+  replication/PITR story — there is no bucket to version or replicate and no
+  second store to keep consistent. `attachments.content` is immutable and the
+  SHA-256 checksum of the plaintext stays beside it in the row, so a restored
+  copy can prove exactly what it holds.
 * **Redis:** holds no system-of-record data (limits, OTP, caches, ARQ
   scheduling). It can be lost: users re-request OTPs and caches rebuild. The
   durable queues are in PostgreSQL.

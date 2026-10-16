@@ -234,7 +234,9 @@ class Attachment(Base):
     uploaded_by_staff_id: Mapped[UUID | None] = mapped_column(ForeignKey("staff_users.id"))
     uploaded_by_customer_id: Mapped[UUID | None] = mapped_column(ForeignKey("customers.id"))
     visibility: Mapped[MessageVisibility] = mapped_column(VISIBILITY_ENUM, server_default="public")
-    storage_key: Mapped[str] = mapped_column(Text, unique=True)
+    # Deprecated object-storage locator: nullable and unused since revision 24.
+    storage_key: Mapped[str | None] = mapped_column(Text, unique=True)
+    content: Mapped[bytes | None] = mapped_column(LargeBinary)
     original_filename: Mapped[str] = mapped_column(Text)
     mime_type: Mapped[str] = mapped_column(Text)
     size_bytes: Mapped[int] = mapped_column(BigInteger)
@@ -279,6 +281,7 @@ class CallLog(Base):
     direction: Mapped[MessageDirection] = mapped_column(DIRECTION_ENUM)
     provider_call_id: Mapped[str | None] = mapped_column(Text)
     transcript_ciphertext: Mapped[bytes | None] = mapped_column(LargeBinary)
+    recording_content: Mapped[bytes | None] = mapped_column(LargeBinary)
     recording_storage_key: Mapped[str | None] = mapped_column(Text)
     outcome: Mapped[str | None] = mapped_column(Text)
     consent_at: Mapped[datetime | None]
