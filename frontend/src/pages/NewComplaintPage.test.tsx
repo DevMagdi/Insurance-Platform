@@ -67,6 +67,11 @@ describe('complaint wizard', () => {
     expect(screen.getByText('•••• •••• ••23 45')).toBeTruthy(); // national ID stays masked
     expect(screen.getByText('+201123456789')).toBeTruthy();
 
+    // PDPL: submission is blocked until explicit consent is given.
+    fireEvent.click(screen.getByText('إرسال الشكوى الآن'));
+    await waitFor(() => expect(screen.getByText(/يلزم الموافقة على معالجة البيانات/)).toBeTruthy());
+    expect(screen.getByTestId('privacy-consent')).toBeTruthy();
+
     await waitFor(() => {
       const raw = localStorage.getItem('insurance-portal:complaint-draft:v1');
       expect(raw).toBeTruthy();

@@ -21,6 +21,8 @@ from app.api import (
     integration_webhooks,
     integrations,
     operations,
+    platform,
+    privacy,
     public_api,
     reports,
     staff,
@@ -42,6 +44,7 @@ PUBLIC = {
     "/api/auth/staff/2fa/verify",
     "/api/auth/staff/2fa/enroll/start",
     "/api/auth/staff/2fa/enroll/confirm",
+    "/api/public/config",
 }
 
 
@@ -54,11 +57,16 @@ def dependencies(root: Dependant) -> Iterator[object]:
 def decorate_spec(app: FastAPI, spec: dict[str, Any]) -> dict[str, Any]:
     """Add accurate cookies, CSRF, permissions and WebSocket notes to live OpenAPI."""
     spec["info"]["description"] = (
-        "Implemented HTTP routes across product Phases 1-7. Authenticate with an HttpOnly "
+        "Implemented HTTP routes across product Phases 1-8. Authenticate with an HttpOnly "
         "access_token cookie; /api/auth/refresh uses the HttpOnly refresh_token cookie. "
         "All protected writes, including refresh, need X-CSRF-Token matching the readable "
         "csrf_token cookie. Authorization, AccessScope and PostgreSQL RLS are enforced at "
-        "runtime. Future routes are documented separately in openapi-roadmap.yaml."
+        "runtime. Every /api route is rate limited per IP, user, API key and endpoint class; "
+        "a 429 response carries Retry-After and X-RateLimit-* headers. Public forms "
+        "(OTP start, guest tracking, staff login, invitation acceptance) require a "
+        "Cloudflare Turnstile token in X-Captcha-Token when CAPTCHA is configured "
+        "(see /api/public/config). Future routes are documented separately in "
+        "openapi-roadmap.yaml."
     )
     spec["components"].setdefault("securitySchemes", {}).update(
         {
@@ -95,9 +103,11 @@ def decorate_spec(app: FastAPI, spec: dict[str, Any]) -> dict[str, Any]:
         *public_api.router.routes,
         *reports.router.routes,
         *operations.router.routes,
+        *privacy.router.routes,
+        *platform.router.routes,
     ]
     for route in routes:
-        if not isinstance(route, APIRoute):
+        if not isinstance(route, APIRoute) or not route.include_in_schema:
             continue
         calls = tuple(dependencies(route.dependant))
         for method in route.methods or ():
@@ -112,6 +122,28 @@ def decorate_spec(app: FastAPI, spec: dict[str, Any]) -> dict[str, Any]:
             )
             if permission is not None:
                 operation["x-required-permission"] = permission
+            action = next(
+                (
+                    getattr(dep, "captcha_action", None)
+                    for dep in calls
+                    if hasattr(dep, "captcha_action")
+                ),
+                None,
+            )
+            if action is not None:
+                operation["x-captcha-action"] = action
+                operation.setdefault("parameters", []).append(
+                    {
+                        "name": "X-Captcha-Token",
+                        "in": "header",
+                        "required": False,
+                        "description": (
+                            "Cloudflare Turnstile token; mandatory whenever "
+                            "/api/public/config advertises a captcha site key."
+                        ),
+                        "schema": {"type": "string", "maxLength": 2048},
+                    }
+                )
             if csrf_required in calls or route.path == "/api/auth/refresh":
                 operation.setdefault("parameters", []).append(
                     {

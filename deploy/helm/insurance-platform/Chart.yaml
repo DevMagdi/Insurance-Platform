@@ -1,0 +1,8 @@
+apiVersion: v2
+name: insurance-platform
+description: Insurance complaints platform (API, worker, web edge, PgBouncer) for Kubernetes
+type: application
+version: 0.8.0
+appVersion: "0.8.0"
+kubeVersion: ">=1.27.0-0"
+keywords: [insurance, complaints, fastapi, rls]

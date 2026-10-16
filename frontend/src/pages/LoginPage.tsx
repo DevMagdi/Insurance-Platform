@@ -5,6 +5,7 @@ import { api, ApiError } from '../lib/api';
 import { navigate } from '../lib/router';
 import { isValidNationalId, isValidMobile, normalizeMobile } from '../lib/validation';
 import { Field, TextInput, Toggle, primaryButton } from '../components/ui';
+import { useCaptcha } from '../lib/captcha';
 
 /** Mobile OTP sign-in; first-time customers register with name + national ID. */
 export function LoginPage() {
@@ -18,8 +19,10 @@ export function LoginPage() {
   const [needsRegister, setNeedsRegister] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  const captcha = useCaptcha('otp_start');
   const start = useMutation({
-    mutationFn: () => api.otpStart(normalizeMobile(mobile)),
+    mutationFn: () => api.otpStart(normalizeMobile(mobile), captcha.token),
+    onSettled: () => captcha.reset(),
   });
 
   const verify = useMutation({
@@ -48,6 +51,10 @@ export function LoginPage() {
   const sendCode = () => {
     if (!isValidMobile(mobile)) {
       setErrors({ mobile: 'validation.mobile' });
+      return;
+    }
+    if (!captcha.ready) {
+      setErrors({ mobile: captcha.failed ? 'security.captchaFailed' : 'security.captchaRequired' });
       return;
     }
     setErrors({});
@@ -87,6 +94,12 @@ export function LoginPage() {
             </button>
           </div>
         </Field>
+        {captcha.widget}
+        {start.isError && (
+          <p role="alert" className="text-sm text-rose-500">
+            {start.error instanceof ApiError && start.error.status === 429 ? t('security.tooMany') : t('errors.generic')}
+          </p>
+        )}
         {start.isSuccess && (
           <p role="status" className="rounded-xl bg-emerald-500/10 px-3 py-2 text-sm text-emerald-600 dark:text-emerald-300">
             {t('auth.codeSent')}

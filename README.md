@@ -1,6 +1,16 @@
 # Insurance Brokerage Complaint Management
 
-Arabic-first insurance complaint platform. **[PROJECT_BRIEF.md](docs/PROJECT_BRIEF.md) is the product source of truth.** This checkout implements Phases 1–7: the secure backend, SLA/reporting and integration/AI workflows, bilingual customer portal, scoped staff workspace, Phase 7 operations/admin console, human-reviewed AI assistance, and CI/CD delivery pipeline. See the [architecture](docs/ARCHITECTURE.md), [customer portal notes](docs/CUSTOMER_PORTAL.md), [staff notes](docs/STAFF_PORTAL.md), [Phase 7 notes](docs/PHASE_7.md), [Phase 5 frontend notes](docs/PHASE5_FRONTEND.md), [ERD](docs/ERD.md), [implemented HTTP OpenAPI](docs/openapi.yaml), [future-route roadmap](docs/openapi-roadmap.yaml) and [deployment runbook](docs/DEPLOYMENT.md). The old `/api/v1/*` roadmap paths are **not** live routes.
+Arabic-first insurance complaint platform. **[PROJECT_BRIEF.md](docs/PROJECT_BRIEF.md) is the product source of truth.** This checkout implements Phases 1–8: the secure backend, SLA/reporting, integration and AI workflows, the bilingual customer portal, the scoped staff workspace, the Phase 7 operations and admin console, human-reviewed AI assistance, and the Phase 8 hardening, scalability, observability and delivery work.
+
+Documentation:
+
+* [Architecture](docs/ARCHITECTURE.md), [access control](docs/ACCESS_CONTROL.md), [ERD](docs/ERD.md)
+* [Security (OWASP + pen tests)](docs/SECURITY.md), [privacy / PDPL](docs/PRIVACY.md)
+* [Scalability and load tests](docs/SCALABILITY.md), [operations runbook and DR](docs/RUNBOOK.md), [deployment (Compose, Helm, CI/CD)](docs/DEPLOYMENT.md)
+* [API guide](docs/API.md), [implemented HTTP OpenAPI](docs/openapi.yaml), [future-route roadmap](docs/openapi-roadmap.yaml)
+* Portal and phase notes: [customer portal](docs/CUSTOMER_PORTAL.md), [staff](docs/STAFF_PORTAL.md), [Phase 7](docs/PHASE_7.md), [Phase 5 frontend](docs/PHASE5_FRONTEND.md)
+
+The old `/api/v1/*` roadmap paths are **not** live routes.
 
 ## What's implemented
 
@@ -8,8 +18,56 @@ Arabic-first insurance complaint platform. **[PROJECT_BRIEF.md](docs/PROJECT_BRI
 - **Access:** `resource.action` permission guards on staff HTTP routes, role union plus deny-wins per-user overrides, company/type/ownership `AccessScope` on complaint repository reads **and** PostgreSQL RLS on the same `SET LOCAL` transaction. Versioned Redis snapshots with DB token-version/session rechecks, access-change audit, delegation limits, last-administrator protection and `/api/me` effective access. The WebSocket checks origin and repeats authentication, permission and scope on each snapshot. IDs are masked; staff reveal requires a dedicated permission, reason and audit entry.
 - **Complaints:** Egyptian national-ID and mobile validation; strict input, supported insurer/type and policy-number validation; atomic 24-hour idempotency and unique tickets; scoped lists, full-text search, combinable filters, counters, detail, timeline, CSV export (staff), replies/internal notes, status changes, limited reopening and CSAT. Guest tracking requires **both** ticket and national ID and returns only public status metadata. Customer actions, staff changes, exports and ID reveals are audited.
 - **Files & notices:** 5-file/25 MB upload plans, 10 MB per file, short-lived signed one-use uploads, MIME sniffing/size/checksum checks, private S3-compatible storage, pending virus-scan state and *clean-only* scoped signed downloads. Transactional creation/status/reply notifications go to an outbox; a separate, table-blind `app_worker` DB login processes delivery and scan hooks. Unconfigured scanners never mark a file clean; unconfigured outbound providers do not pretend delivery succeeded.
-- **Foundation:** PostgreSQL 16 partitions and indexes, twenty ordered Alembic revisions (head `20261016_20`), a 34-key permission catalog, typed SQLAlchemy mappings, PgBouncer transaction pooling, Redis, Docker Compose/MinIO/Mailpit, 5,000-ticket opt-in synthetic seed, CI/CD with published container images, and a React/Vite/Tailwind Arabic-first RTL shell. Implemented routes are under `/api/*`, not `/api/v1/*`.
+- **Foundation:** PostgreSQL 16 partitions and indexes, twenty-two ordered Alembic revisions (head `20261016_22`), a 34-key permission catalog, typed SQLAlchemy mappings, PgBouncer transaction pooling, Redis, Docker Compose/S3-compatible object store (SeaweedFS)/Mailpit, 5,000-ticket opt-in synthetic seed, CI/CD with published container images, and a React/Vite/Tailwind Arabic-first RTL shell. Implemented routes are under `/api/*`, not `/api/v1/*`.
 - **Customer portal (Phase 6):** Mobile-first Arabic-first RTL + English, dark/light React portal: multi-step complaint wizard with live Egyptian national-ID/mobile validation and masking, WhatsApp toggle, insurer/type selection, drag-&-drop attachments (previews, XHR progress, 5-file/25 MB limits, remove/retry) uploaded via the signed plan flow after creation, autosaved draft with a stable idempotency key, inline OTP verification/registration for guests, and a success screen with the ticket number. My Tickets shows counters, search and status/company/date filters with pagination; ticket detail has the animated status timeline, assigned-agent display, public replies with attachments/downloads, reopen/CSAT actions whose eligibility mirrors the SQL windows, and live updates over a customer SSE endpoint that revalidates session/ownership every poll (30-second polling fallback). Guest tracking, OTP login, profile editing and email/WhatsApp/SMS notification preferences are included. Migration `20261016_18` adds SECURITY DEFINER profile helpers (no blanket customer UPDATE grant), `GET/PATCH /api/customer/profile`, notification read receipts and detail eligibility fields. See [CUSTOMER_PORTAL.md](docs/CUSTOMER_PORTAL.md).
+
+**Phase 8: hardening, scalability, observability and delivery.**
+
+* **Security:**
+  * OWASP Top 10 audit with fixes ([SECURITY.md](docs/SECURITY.md));
+  * strict CSP, HSTS and security headers on the API and Nginx;
+  * CORS allowlist plus an origin guard;
+  * double-submit CSRF everywhere;
+  * Turnstile CAPTCHA on OTP, guest tracking, staff login and invites;
+  * progressive brute-force lockout;
+  * Redis sliding-window rate limits per IP, user, endpoint and API key, plus
+    an abuse detector;
+  * request body limits;
+  * SSRF guard for outbound calls;
+  * AES-GCM **key rotation** (`app.scripts.rotate_keys`);
+  * PDPL consent evidence, data-subject requests, export and erasure, and
+    scheduled retention ([PRIVACY.md](docs/PRIVACY.md)).
+* **Access-control pen-test suite** (`tests/test_phase8_pentest.py`): IDOR,
+  horizontal and vertical escalation, scope bypass via search, export, cache
+  and attachments, self-escalation, stale permissions, enumeration, and RLS
+  under 100 interleaved requests (20 in flight) through PgBouncer.
+* **Scale:**
+  * stateless API on Gunicorn with Uvicorn workers;
+  * PgBouncer;
+  * read-replica routing for analytics (`DATABASE_READ_URL`);
+  * scope-aware Redis cache plus CDN cache headers;
+  * queue backpressure;
+  * graceful drain;
+  * zero-downtime migration lint;
+  * Kubernetes Helm chart with HPA, PDB and NetworkPolicies.
+
+  Load tests (k6 and Locust) found that RLS ran **per row** (3.3 s for 5k
+  rows). Migration `20261016_22` evaluates privileges once per statement
+  (InitPlans): **7 ms**, staff list 2.8 s → 60 ms, with identical semantics
+  proven by tests ([SCALABILITY.md](docs/SCALABILITY.md)).
+* **Observability:**
+  * JSON logs with request and user IDs;
+  * Prometheus metrics (`/metrics`, token-protected);
+  * Grafana dashboard;
+  * Sentry with PII scrubbing;
+  * liveness and readiness probes;
+  * availability and security alert rules (`infra/monitoring/`) with
+    runbook links ([RUNBOOK.md](docs/RUNBOOK.md)).
+* **Delivery:**
+  * CI adds migration lint, pip-audit, npm audit, Trivy fs and image scans,
+    `nginx -t`, Helm lint, render and kubeconform, a k6 smoke against the real
+    stack, and a backup/restore drill;
+  * backup and restore scripts in `scripts/backup/`.
 
 **Phase 3 + staff workspace:** Permission- and scope-filtered staff filters/search/workspace, assignment/reassignment, bulk status/assignment, escalation, merge/duplicate suggestions, saved views and private notifications are available in the React staff portal as well as the APIs. Rule-driven auto-assignment supports round-robin, least-workload and by-company strategies; the SLA engine honours calendars, alert lead times, response/resolution clocks, warnings, breach detection and auto-escalation. Analytics includes scoped KPIs, trends, heatmaps, scorecards, daily rollups and SLA/first-response metrics. Administration covers users/roles/scopes, companies/categories/SLA rules/templates, assignment rules, audit export and scheduled email reports. Audited async exports render CSV, Excel or PDF through the worker-only path with per-row scope reauthorization at download. See [STAFF_PORTAL.md](docs/STAFF_PORTAL.md).
 
@@ -24,7 +82,7 @@ Arabic-first insurance complaint platform. **[PROJECT_BRIEF.md](docs/PROJECT_BRI
 ## Local development (Docker Compose v2)
 
 1. `make init` creates a git-ignored mode-0600 `.env` with random development secrets (refuses to overwrite). For demo accounts set a **local-only**, 12+ character `DEMO_STAFF_PASSWORD` in `.env`; never commit the file.
-2. `make up` starts PostgreSQL, PgBouncer, Redis, MinIO/private bucket, Mailpit, migrations, API, worker, Vite and Nginx. Open `http://localhost:8080/`; API liveness `/api/health/live`, readiness `/api/health/ready`, browser API docs `/docs` via the API server. Mailpit UI: `http://localhost:8025/`, MinIO console: `http://localhost:9001/` (local ports). Direct PostgreSQL: `localhost:5432`; PgBouncer: `localhost:6432` (bound only to localhost).
+2. `make up` starts PostgreSQL, PgBouncer, Redis, an S3-compatible object store (SeaweedFS, service `minio`) with a private bucket, Mailpit, migrations, API, worker, Vite and Nginx. Open `http://localhost:8080/`; API liveness `/api/health/live`, readiness `/api/health/ready`, browser API docs `/docs` via the API server. Mailpit UI: `http://localhost:8025/`, S3 API: `http://localhost:9000/` (local ports). Direct PostgreSQL: `localhost:5432`; PgBouncer: `localhost:6432` (bound only to localhost).
 3. `make seed` optionally inserts four insurers, roles and scoped demo staff, and ~5,000 tickets. It is idempotent. Demo staff must change their password at first login; the password-change challenge does **not** give access to protected staff endpoints. Never seed a production database.
 4. `make partitions` prepares current/upcoming UTC monthly partitions. `make down` retains data; `docker compose down -v` **destroys local data**. Changing `POSTGRES_DB` after the first boot requires a new *development* data volume (init scripts only run on an empty volume).
 
@@ -48,11 +106,18 @@ Uploaded files remain **unavailable to download** until an integrated scanner re
 
 ## CI/CD
 
-Every pull request and push runs `.github/workflows/ci.yml`: Ruff + format check, strict mypy, offline pytest with an 80% coverage gate, frontend lint/typecheck/Vitest/build, a **container job** that builds the API and web images, boots them together and fails if the built image's contract drifts from `docs/openapi.yaml`, and a `postgres-rls` job that applies all Alembic revisions to real PostgreSQL 16 behind PgBouncer, proves RLS, and seeds 5,000 tickets twice for idempotence.
+Every pull request and push runs `.github/workflows/ci.yml`, which has six jobs:
+
+* **backend:** Ruff and format check (backend, scripts, loadtest), the zero-downtime migration lint, strict mypy, and offline pytest with an 80% coverage gate.
+* **frontend:** lint, typecheck, Vitest, build and Playwright e2e.
+* **containers:** builds the API and web images, runs `nginx -t`, scans them with Trivy (fails on fixable CRITICAL), boots them together, fails if the image contract drifts from `docs/openapi.yaml`, and renders the production compose file.
+* **security:** pip-audit, `npm audit`, and Trivy fs/secret/config.
+* **helm:** lint, template and kubeconform with default and production values, plus a monitoring-file drift check.
+* **postgres-rls:** applies every Alembic revision to real PostgreSQL 16 behind PgBouncer, runs the RLS, integration and pen-test suites, seeds 5,000 tickets twice, runs a **k6 load smoke** with real sessions, and runs a **backup/restore drill** that re-verifies RLS on the restored copy.
 
 `.github/workflows/cd.yml` runs on `main` and on `v*` tags: it publishes `ghcr.io/<owner>/insurance-platform-api` and `ghcr.io/<owner>/insurance-platform-web` tagged with the commit SHA, smoke-tests the **published** images end to end (SPA served, `/api/health/live` reachable through the web proxy, image contract equal to the committed OpenAPI), re-renders `docker-compose.prod.yml`, and only then optionally deploys over SSH — `pull` → `run --rm migrate` → `up -d` → readiness gate on `/api/health/ready`. Tag pushes additionally publish a GitHub Release. **Deployment is opt-in**: it needs the repository variable `DEPLOY_ENABLED=true` and the environment secrets `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY` (plus `DEPLOY_SSH_KNOWN_HOSTS` to pin the host key); when it is not enabled the job is skipped and the run summary says so. `make images`, `make prod-config`, `make deploy`, `make release VERSION=v1.2.3` wrap the same paths.
 
-Production runs the pulled images via [`docker-compose.prod.yml`](docker-compose.prod.yml) — Postgres, PgBouncer (transaction pooling), Redis, MinIO, migrations as a one-shot container, then api/worker/web with health checks, log rotation and exactly one published port. Credentials live only in an on-host `.env.production` (mode 0600); the API and worker containers never receive the admin URL or the Postgres superuser password. See the [deployment runbook](docs/DEPLOYMENT.md) for host preparation, rollback (a tag change) and backup drills.
+Production runs the pulled images via [`docker-compose.prod.yml`](docker-compose.prod.yml) — Postgres, PgBouncer (transaction pooling), Redis, an S3-compatible store (SeaweedFS; managed S3 recommended), migrations as a one-shot container, then api/worker/web with health checks, log rotation and exactly one published port. Credentials live only in an on-host `.env.production` (mode 0600); the API and worker containers never receive the admin URL or the Postgres superuser password. See the [deployment runbook](docs/DEPLOYMENT.md) for host preparation, rollback (a tag change) and backup drills.
 
 ## Tests and code quality
 
@@ -66,10 +131,21 @@ TEST_DIRECT_DATABASE_URL=postgresql+asyncpg://app_runtime:...@localhost:5432/ins
 TEST_PGBOUNCER_DATABASE_URL=postgresql+asyncpg://app_runtime:...@localhost:6432/insurance
 ```
 
-`cd frontend && npm run api:types` regenerates OpenAPI types from `docs/openapi.yaml`. The integrated Phase 1–7 tree is gated locally by Ruff/format, strict mypy, backend offline tests with the 80% coverage floor, frontend lint/typecheck/Vitest/build and Playwright discovery/execution in CI. Docker/PostgreSQL is exercised by the GitHub `postgres-rls` job, which applies every migration through PgBouncer, runs the RLS/integration suite and checks seed idempotence; the container job also proves the built API image matches `docs/openapi.yaml`. Check the PR and post-merge `main` CI/CD workflow status before claiming post-merge verification or deployment.
+`cd frontend && npm run api:types` regenerates OpenAPI types from `docs/openapi.yaml`. The integrated Phase 1–8 tree is gated locally by Ruff/format, strict mypy, backend offline tests with the 80% coverage floor, frontend lint/typecheck/Vitest/build and Playwright discovery/execution in CI. Docker/PostgreSQL is exercised by the GitHub `postgres-rls` job, which applies every migration through PgBouncer, runs the RLS/integration suite and checks seed idempotence; the container job also proves the built API image matches `docs/openapi.yaml`. Check the PR and post-merge `main` CI/CD workflow status before claiming post-merge verification or deployment.
 
 **Remaining frontend/production gates:** the Phase 5 landing demo form still needs a backend lead-capture route. Phase 7 provides an operations/admin console for teams, rules, integration references, reports and audit workflows; secure vendor credentials remain managed separately through the existing Phase 4 server-side integration boundary, and live provider behavior still needs verification. Accessibility review and production deployment checks remain external rollout work.
 
+## Operations quick reference
+
+| Task | Command |
+|---|---|
+| Backup / restore drill (compose) | `make backup`, `make restore-drill DUMP=/tmp/backups/<file>.dump` |
+| Mint load-test sessions / k6 smoke | `make loadtest-sessions`, `make loadtest-smoke` (needs `RATE_LIMIT_MULTIPLIER` on a non-production API) |
+| Helm checks | `make helm-lint` |
+| Encryption key rotation | see [RUNBOOK.md](docs/RUNBOOK.md#encryption-key-rotation), then `python -m app.scripts.rotate_keys [--check]` |
+| Migration lint | `make lint-migrations` |
+| Metrics | `curl -H "Authorization: Bearer $METRICS_TOKEN" http://api:8000/metrics` |
+
 ## Security and scale boundaries
 
-`app_runtime` is neither table owner nor BYPASSRLS, while `app_worker` has **no direct table privileges**. Authenticated transactions install `SET LOCAL app.user_id` / `app.scope`; queries also apply `AccessScope` so ID guessing, search filters, exports, child records, notifications and WebSockets inherit the caller's scope. National IDs are AES-GCM encrypted with separate HMAC blind indexes; default detail responses only contain a masked suffix. See the [access-control ADR](docs/adr/0002-access-control.md), [PII ADR](docs/adr/0004-pii-and-channels.md) and the [Phase 3 SLA/report/rollup ADR](docs/adr/0006-phase3-sla-reports-and-rollups.md). Production needs TLS termination, key rotation, real provider integrations, backup/recovery testing, PDPL compliance review, load tests, PgBouncer/read-replica sizing and monitoring before any scale claim.
+`app_runtime` is neither table owner nor BYPASSRLS, while `app_worker` has **no direct table privileges**. Authenticated transactions install `SET LOCAL app.user_id` / `app.scope`; queries also apply `AccessScope` so ID guessing, search filters, exports, child records, notifications and WebSockets inherit the caller's scope. National IDs are AES-GCM encrypted with separate HMAC blind indexes; default detail responses only contain a masked suffix. See the [access-control ADR](docs/adr/0002-access-control.md), [PII ADR](docs/adr/0004-pii-and-channels.md) and the [Phase 3 SLA/report/rollup ADR](docs/adr/0006-phase3-sla-reports-and-rollups.md). Phase 8 delivers key rotation, backup/restore drills, monitoring, alerting, load-test harnesses and PDPL tooling. Production still needs TLS termination, real provider integrations (SMS, AV scanner), an external penetration test, a PDPL legal review, and a capacity test on production-sized hardware (the k6 `stress`/`spike` profiles) before any 1M-user claim. See the production-readiness checklist in [SCALABILITY.md](docs/SCALABILITY.md#capacity-model) and [RUNBOOK.md](docs/RUNBOOK.md).

@@ -135,6 +135,7 @@ async def update_sla_rule(
 async def simulate_sla_rule(
     item: SlaSimulationRequest,
     ctx: RequestContext = Depends(require_permission("sla.manage")),
+    _: None = Depends(csrf_required),
 ) -> dict[str, Any]:
     """Preview the deadline the stored rules would set for a ticket shape."""
     result = await CatalogRepository().simulate_sla(
@@ -149,6 +150,7 @@ async def simulate_sla_rule(
 async def preview_business_hours(
     item: BusinessHoursTestRequest,
     ctx: RequestContext = Depends(require_permission("sla.manage")),
+    _: None = Depends(csrf_required),
 ) -> dict[str, Any]:
     """Validate a draft calendar and preview a deadline before it is saved."""
     calendar = item.business_hours.model_dump(mode="json") if item.business_hours else {}

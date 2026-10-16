@@ -18,6 +18,7 @@ from app.db import Actor, purpose_transaction, scoped_transaction
 from app.domain.schemas import CustomerVerifyRequest
 from app.repositories.auth import AuthRepository, StaffCredentials
 from app.security.crypto import NationalIdProtector, decode_key
+from app.security.lockout import LoginLockout
 from app.security.passwords import StaffPasswords, TotpProtector
 from app.security.rate_limit import MobileOTP, RateLimiter
 from app.security.tokens import TokenClaims, TokenManager
@@ -55,10 +56,11 @@ class AuthService:
         self.passwords = StaffPasswords()
         self.totp = TotpProtector(settings)
         self.protector = NationalIdProtector(
-            decode_key(settings.app_encryption_key), decode_key(settings.app_blind_index_key)
+            settings.encryption_keyring(), decode_key(settings.app_blind_index_key)
         )
         self.otp = MobileOTP(redis, settings.jwt_signing_key, settings.otp_seconds)
-        self.limits = RateLimiter(redis, settings.jwt_signing_key)
+        self.limits = RateLimiter(redis, settings.jwt_signing_key, settings.rate_limit_multiplier)
+        self.lockout = LoginLockout(redis, settings.jwt_signing_key)
 
     async def start_customer_otp(self, mobile: str, ip: str) -> None:
         await self.limits.check("otp:mobile", mobile, 3, 600)
@@ -80,7 +82,14 @@ class AuthService:
         user_agent: str,
     ) -> SessionTokens:
         await self.limits.check("otp:verify:ip", ip, 30, 3600)
-        await self.otp.verify(item.mobile, item.code)
+        await self.lockout.ensure_allowed("otp_verify", item.mobile)
+        try:
+            await self.otp.verify(item.mobile, item.code)
+        except HTTPException as exc:
+            if exc.status_code in (401, 429):
+                await self.lockout.failure("otp_verify", item.mobile)
+            raise
+        await self.lockout.success("otp_verify", item.mobile)
         blind = self.protector.blind_index(item.national_id) if item.national_id else None
         try:
             async with purpose_transaction(self.factory, "customer_auth") as db:
@@ -121,6 +130,9 @@ class AuthService:
         email = email.lower().strip()
         await self.limits.check("staff:login:ip", ip, 25, 900)
         await self.limits.check("staff:login:email", email, 8, 900)
+        # Locks apply identically to unknown e-mails, so they reveal nothing.
+        await self.lockout.ensure_allowed("staff_login_ip", ip)
+        await self.lockout.ensure_allowed("staff_login", email)
         async with purpose_transaction(self.factory, "staff_auth") as db:
             staff = await self.repo.staff_by_email(db, email)
         if (
@@ -128,7 +140,10 @@ class AuthService:
             or staff is None
             or staff.status != "active"
         ):
+            await self.lockout.failure("staff_login", email)
+            await self.lockout.failure("staff_login_ip", ip)
             raise HTTPException(status_code=401, detail="Invalid credentials")
+        await self.lockout.success("staff_login", email)
         if staff.must_change_password:
             return StaffLoginResult(
                 None, await self._challenge(staff, "password_change"), "password_change"
@@ -189,13 +204,17 @@ class AuthService:
         user_agent: str,
     ) -> SessionTokens:
         claims = await self._check_challenge(challenge, "totp_verify")
+        identity = str(claims.subject.id)
+        await self.lockout.ensure_allowed("staff_totp", identity)
         staff = await self._challenge_staff(claims)
         if (
             not staff.two_factor_enabled
             or not staff.totp_secret_ciphertext
             or not self.totp.verify(self.totp.decrypt(staff.totp_secret_ciphertext), code)
         ):
+            await self.lockout.failure("staff_totp", identity)
             raise HTTPException(status_code=401, detail="Invalid authentication code")
+        await self.lockout.success("staff_totp", identity)
         await self._consume_challenge(claims, "totp_verify")
         return await self.issue_session(claims.subject, claims.token_version, ip, user_agent)
 

@@ -39,6 +39,7 @@ from app.models.operations import (
     SlaRule,
     Webhook,
 )
+from app.models.privacy import ConsentRecord, PrivacyRequest
 from app.models.tickets import (
     AiInsight,
     Attachment,
@@ -72,6 +73,7 @@ __all__ = [
     "ComplaintIdempotency",
     "ComplaintKey",
     "ComplaintMessage",
+    "ConsentRecord",
     "CsatResponse",
     "Customer",
     "DuplicateCandidate",
@@ -86,6 +88,7 @@ __all__ = [
     "NotificationOutbox",
     "Permission",
     "Policy",
+    "PrivacyRequest",
     "ReportSchedule",
     "Role",
     "RolePermission",

@@ -1,8 +1,20 @@
+# API / worker / migration image (one image, different commands).
 FROM python:3.12-slim
-ENV PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PROMETHEUS_MULTIPROC_DIR=/tmp/prometheus-multiproc
 WORKDIR /srv/backend
+# Patched packaging toolchain first (pip-audit / Trivy flag the base image's copies).
+RUN python -m pip install --upgrade 'pip>=26.2' 'setuptools>=83' 'wheel>=0.45'
 COPY backend/ ./
-RUN pip install '.[seed]' && useradd --uid 10001 --create-home app
-USER app
+RUN pip install '.[seed]' \
+    && useradd --uid 10001 --create-home --shell /usr/sbin/nologin app \
+    && mkdir -p "$PROMETHEUS_MULTIPROC_DIR" && chown app "$PROMETHEUS_MULTIPROC_DIR"
+USER 10001
 EXPOSE 8000
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Gunicorn master + hardened Uvicorn workers (see backend/gunicorn.conf.py):
+# SIGTERM → stop accepting, finish in-flight requests within graceful_timeout.
+STOPSIGNAL SIGTERM
+CMD ["gunicorn", "-c", "gunicorn.conf.py", "app.main:app"]

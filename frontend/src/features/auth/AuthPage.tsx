@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { api, jsonBody } from '../../api';
 import { Icon } from '../../components/Icon';
+import { captchaHeaders, useCaptcha } from '../../lib/captcha';
 
 interface AuthPageProps {
   onAuthenticated: () => Promise<void> | void;
@@ -25,6 +26,18 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  const loginCaptcha = useCaptcha(mode === 'invite' ? 'invite_accept' : 'staff_login');
+
+  const guarded = (action: () => Promise<void>) => async () => {
+    if (!loginCaptcha.ready) {
+      throw new Error(loginCaptcha.failed ? 'تعذر تحميل التحقق الأمني. حدّث الصفحة وحاول مجددًا.' : 'يرجى إكمال التحقق الأمني أولًا.');
+    }
+    try {
+      await action();
+    } finally {
+      loginCaptcha.reset();
+    }
+  };
 
   const run = async (action: () => Promise<void>) => {
     setBusy(true);
@@ -41,10 +54,11 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
 
   const signIn = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    void run(async () => {
+    void run(guarded(async () => {
       const result = await api<StaffLoginResult>('/api/auth/staff/login', {
         method: 'POST',
         body: jsonBody({ email, password }),
+        headers: captchaHeaders(loginCaptcha.token),
       });
       setChallenge(result.challenge ?? '');
       if (result.next_step === 'totp_verify') {
@@ -65,7 +79,7 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
         return;
       }
       await onAuthenticated();
-    });
+    }));
   };
 
   const verifyTotp = (event: FormEvent<HTMLFormElement>) => {
@@ -108,16 +122,17 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
 
   const acceptInvite = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    void run(async () => {
+    void run(guarded(async () => {
       await api('/api/auth/staff/invitation/accept', {
         method: 'POST',
         body: jsonBody({ token: inviteToken, password: newPassword }),
+        headers: captchaHeaders(loginCaptcha.token),
       });
       window.history.replaceState({}, '', window.location.pathname);
       setMode('login');
       setNewPassword('');
       setNotice('تم إعداد الحساب. يمكنك تسجيل الدخول الآن.');
-    });
+    }));
   };
 
   const modeTitle: Record<AuthMode, string> = {
@@ -174,6 +189,7 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
               <label className="field-label">كلمة المرور
                 <input autoComplete="current-password" type="password" required value={password} onChange={(event) => setPassword(event.target.value)} placeholder="••••••••••••" dir="ltr" />
               </label>
+              {loginCaptcha.widget}
               <button className="button button-gold auth-submit" disabled={busy} type="submit">
                 {busy ? 'جارٍ التحقق…' : 'تسجيل الدخول'} <Icon name="arrow" size={16} />
               </button>
@@ -215,6 +231,7 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
               <label className="field-label">كلمة المرور
                 <input autoComplete="new-password" type="password" minLength={12} required value={newPassword} onChange={(event) => setNewPassword(event.target.value)} placeholder="١٢ حرفاً على الأقل" dir="ltr" />
               </label>
+              {loginCaptcha.widget}
               <button className="button button-gold auth-submit" disabled={busy} type="submit">تفعيل الحساب</button>
             </form>
           )}

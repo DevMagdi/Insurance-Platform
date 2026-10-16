@@ -6,14 +6,18 @@ import { formatDate } from '../lib/status';
 import { isValidNationalId, isValidTicketNo, maskNationalId } from '../lib/validation';
 import { Field, StatusChip, TextInput, primaryButton } from '../components/ui';
 import type { GuestTrackResult } from '../lib/types';
+import { useCaptcha } from '../lib/captcha';
 
 export function TrackForm() {
   const { t, i18n } = useTranslation();
   const [ticketNo, setTicketNo] = useState('');
   const [nationalId, setNationalId] = useState('');
   const [errors, setErrors] = useState<{ ticket?: string; national?: string }>({});
+  const captcha = useCaptcha('guest_track');
+  const [captchaError, setCaptchaError] = useState('');
   const track = useMutation({
-    mutationFn: () => api.guestTrack(ticketNo, nationalId),
+    mutationFn: () => api.guestTrack(ticketNo, nationalId, captcha.token),
+    onSettled: () => captcha.reset(),
   });
 
   const submit = (event: React.FormEvent) => {
@@ -23,7 +27,13 @@ export function TrackForm() {
       national: isValidNationalId(nationalId) ? undefined : 'validation.nationalId',
     };
     setErrors(next);
-    if (!next.ticket && !next.national) track.mutate();
+    if (next.ticket || next.national) return;
+    if (!captcha.ready) {
+      setCaptchaError(captcha.failed ? 'security.captchaFailed' : 'security.captchaRequired');
+      return;
+    }
+    setCaptchaError('');
+    track.mutate();
   };
 
   const result: GuestTrackResult | undefined = track.data;
@@ -49,6 +59,8 @@ export function TrackForm() {
           placeholder="•••• •••• •••• ••"
         />
       </Field>
+      {captcha.widget}
+      {captchaError && <p role="alert" className="text-sm text-rose-500">{t(captchaError)}</p>}
       <button type="submit" className={`${primaryButton} w-full sm:w-auto`} disabled={track.isPending}>
         {t('track.action')}
       </button>
@@ -56,7 +68,9 @@ export function TrackForm() {
         <p role="alert" className="rounded-xl bg-rose-500/10 px-3 py-2 text-sm text-rose-500">
           {track.error instanceof ApiError && track.error.status === 404
             ? t('track.notFound')
-            : t('errors.generic')}
+            : track.error instanceof ApiError && track.error.status === 429
+              ? t('security.tooMany')
+              : t('errors.generic')}
         </p>
       )}
       {result && (

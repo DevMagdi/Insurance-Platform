@@ -66,6 +66,9 @@ def test_runtime_settings_reject_placeholder_or_reused_secrets() -> None:
         "APP_ENCRYPTION_KEY": base64.urlsafe_b64encode(b"a" * 32).decode(),
         "APP_BLIND_INDEX_KEY": base64.urlsafe_b64encode(b"b" * 32).decode(),
         "JWT_SIGNING_KEY": "jwt-signing-secret-for-disposable-tests-only",
+        # Production (the default environment) requires CAPTCHA on public forms.
+        "TURNSTILE_SITE_KEY": "1x00000000000000000000AA",
+        "TURNSTILE_SECRET_KEY": "1x0000000000000000000000000000000AA",
     }
     assert Settings(**good).s3_bucket == "complaint-attachments"
     with pytest.raises(ValidationError):

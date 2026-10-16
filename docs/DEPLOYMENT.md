@@ -4,7 +4,7 @@ Two workflows own the lifecycle:
 
 | Workflow | Trigger | What it does |
 |---|---|---|
-| `.github/workflows/ci.yml` | every push and pull request | Ruff, ruff-format, strict mypy, offline pytest with an 80% coverage gate, frontend lint/typecheck/Vitest/build, **container build + smoke test of both images** and a `docker compose config` render of the production file, then the real PostgreSQL 16 + PgBouncer RLS/migration/seed suite |
+| `.github/workflows/ci.yml` | every push and pull request | Ruff, ruff-format and strict mypy; migration lint; offline pytest with an 80% coverage gate; frontend lint/typecheck/Vitest/build and Playwright e2e. **Container build** of both images with an `nginx -t` check, a Trivy image scan (fails on fixable CRITICAL) and a smoke test, plus a `docker compose config` render of the production file. **Security** job: pip-audit, `npm audit`, Trivy fs/secret/config. **Helm** job: lint, render and kubeconform. Then the real PostgreSQL 16 + PgBouncer RLS/pen-test/migration/seed suite, a **k6 load smoke** and a **backup/restore drill**. |
 | `.github/workflows/cd.yml` | push to `main`, tag `v*`, manual dispatch | builds and publishes the images to GHCR, smoke-tests the **published** images end to end (SPA served, `/api/health/live` reachable through the web proxy, image contract equals `docs/openapi.yaml`), re-renders the production compose file, optionally deploys over SSH, and publishes a GitHub Release for tags |
 
 Nothing deploys by accident: the `deploy` job runs only when the repository
@@ -49,7 +49,27 @@ SMTP_PASSWORD=...
 SMTP_START_TLS=true
 HTTP_PORT=8080
 APP_WORKER_DB_PASSWORD=...
+# Phase 8: required in production (the API refuses to boot without them)
+TURNSTILE_SITE_KEY=...              # Cloudflare Turnstile widget key for public forms and OTP
+TURNSTILE_SECRET_KEY=...
+METRICS_TOKEN=...                   # >= 24 chars; Prometheus scrapes /metrics with "Bearer <token>"
+# Phase 8: optional
+CORS_ALLOWED_ORIGINS=               # comma-separated https origins; empty = same-origin only (default SPA)
+SENTRY_DSN=                         # error tracking; PII is scrubbed before sending
+WEB_CONCURRENCY=4                   # Gunicorn Uvicorn workers per API container (default 2 x vCPU, max 8)
+APP_ENCRYPTION_KEY_ID=1             # bump on rotation (docs/RUNBOOK.md#encryption-key-rotation)
+APP_ENCRYPTION_PREVIOUS_KEYS=       # "<id>:<old key>,..." while re-encrypting
+APP_IDEMPOTENCY_KEY=                # set to the ORIGINAL encryption key before the first rotation
 ```
+
+Object storage: the bundled single-host store keeps the historical `minio` /
+`minio-init` service names and `MINIO_ROOT_*` variables, but runs SeaweedFS's
+S3 gateway (`chrislusf/seaweedfs`), because MinIO's community images and `mc`
+client were withdrawn upstream. `minio-init` is a one-shot run of the API image
+(`python -m app.scripts.init_bucket`) that creates the private bucket over the
+S3 API. In production, point `S3_ENDPOINT_URL`/credentials at **managed S3** (or
+an equivalent with versioning, SSE and replication) and drop the `minio`
+services.
 
 Keep TLS in front of the `web` container (load balancer, Traefik, or certbot +
 Nginx on the host) — the container itself serves plain HTTP on the published
@@ -81,12 +101,65 @@ database from backup (see below). Never edit a released revision in place.
 
 ## Backups and drills
 
-* `docker compose ... exec postgres pg_dump -U "$POSTGRES_USER" -Fc "$POSTGRES_DB" > backup.dump` on a schedule, stored off-host with encryption.
-* Snapshot the `minio_data` volume for attachments; exports live under the `exports/` prefix and expire through the worker cron.
-* Restore drills are part of the release checklist: restore into a scratch host, run `alembic upgrade head` and the integration suite, and confirm RLS still blocks cross-company reads.
+* `scripts/backup/pg_backup.sh` makes a custom-format `pg_dump` with a SHA-256
+  file, optional gpg encryption (`BACKUP_GPG_RECIPIENT`), optional off-site
+  upload (`BACKUP_S3_URI`) and local retention. Run it as the migrator or
+  superuser role on a schedule (cron, or a Kubernetes CronJob). `make backup`
+  wraps it for the compose stack.
+* `scripts/backup/pg_restore_drill.sh <dump>` restores into a scratch database
+  and verifies the checksum, the Alembic revision, that RLS is still enabled,
+  and that `app_runtime` sees **zero** rows without session context. CI runs
+  this drill on every push.
+* Prefer managed PostgreSQL with PITR (RPO ≤ 5 min). Logical dumps are the
+  portable second line. RPO, RTO and the region-loss procedure are in
+  [RUNBOOK.md](RUNBOOK.md#backups-and-disaster-recovery).
+* Snapshot or replicate the object store for attachments. Exports live under
+  the `exports/` prefix and expire through the worker cron.
+
+## Kubernetes (Helm)
+
+`deploy/helm/insurance-platform` is the scale-out target. It contains:
+
+* `api`, `worker` and `web` Deployments with HPA and PDB, a `preStop` drain,
+  probes, a read-only root filesystem and non-root users;
+* PgBouncer (transaction mode);
+* a migrate `pre-install`/`pre-upgrade` hook with `lock_timeout=5s`;
+* a monthly partitions CronJob;
+* Ingress and NetworkPolicies;
+* optional `ServiceMonitor`, `PrometheusRule` and Grafana dashboard
+  ConfigMaps.
+
+```bash
+kubectl create namespace insurance
+# Secrets come from your secret manager (External Secrets / Sealed Secrets / Vault CSI).
+# Keys: APP_DB_PASSWORD, APP_WORKER_DB_PASSWORD (URL-safe), DATABASE_ADMIN_URL,
+# APP_ENCRYPTION_KEY, APP_BLIND_INDEX_KEY, JWT_SIGNING_KEY, TURNSTILE_SITE_KEY,
+# TURNSTILE_SECRET_KEY, METRICS_TOKEN, S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY, SMTP_PASSWORD, ...
+helm upgrade --install ip deploy/helm/insurance-platform -n insurance \
+  -f deploy/helm/insurance-platform/values-production.yaml \
+  --set image.tag=<release tag or commit SHA>
+```
+
+Every push to CI runs `helm lint --strict`, `helm template` and `kubeconform`
+for both value files. The chart's `files/alerts.yaml` and
+`files/grafana-dashboard.json` must stay identical to `infra/monitoring/`; CI
+compares them.
+
+## Monitoring
+
+* **Prometheus:** scrape `api:8000/metrics` with `Bearer $METRICS_TOKEN`, and
+  the worker on port 9100. See `infra/monitoring/prometheus.yml`, or the
+  chart's ServiceMonitors.
+* **Alert rules:** `infra/monitoring/alerts.yaml` covers availability (5xx
+  ratio, p95 latency, queue depth and backpressure) and security (suspicious
+  access, denial spikes, lockouts, auth and CAPTCHA failures, export bursts,
+  rate-limit storms). Each rule links to [RUNBOOK.md](RUNBOOK.md).
+* **Grafana:** import `infra/monitoring/grafana/insurance-platform.json`.
+* **Sentry:** set `SENTRY_DSN`.
+* **Logs:** JSON lines on stdout with `request_id` and `user_id`.
 
 ## Honest limits
 
-* The pipeline is production-shaped, not a claim of production readiness: TLS, key rotation, backups, monitoring, load testing and the PDPL review are still required.
+* The pipeline is production-shaped. Phase 8 adds key rotation, backups with restore drills, monitoring, load tests and PDPL tooling, but TLS certificates, an external penetration test, the PDPL legal review and a capacity test on production-sized hardware are still required before go-live.
 * `postgres-rls` and the container smoke tests run on GitHub runners; a green pipeline here does not replace a staged rehearsal on the real host.
 * Deployment uses SSH from the runner. When nobody has supplied `DEPLOY_SSH_KNOWN_HOSTS`, the first connection accepts a new host key; pin the key before treating the path as trusted.

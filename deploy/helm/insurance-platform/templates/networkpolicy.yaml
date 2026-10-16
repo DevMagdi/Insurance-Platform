@@ -1,0 +1,81 @@
+{{- if .Values.networkPolicy.enabled }}
+# Default-deny ingress for the release; only the paths below are allowed.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "ip.fullname" . }}-default-deny
+  labels: {{- include "ip.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  policyTypes: [Ingress]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "ip.fullname" . }}-api
+  labels: {{- include "ip.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels: {{- include "ip.selector" (dict "root" . "component" "api") | nindent 6 }}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels: {kubernetes.io/metadata.name: {{ .Values.networkPolicy.ingressControllerNamespace }}}
+        - podSelector:
+            matchLabels: {{- include "ip.selector" (dict "root" . "component" "web") | nindent 14 }}
+        - namespaceSelector:
+            matchLabels: {kubernetes.io/metadata.name: {{ .Values.networkPolicy.monitoringNamespace }}}
+      ports:
+        - {port: 8000}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "ip.fullname" . }}-web
+  labels: {{- include "ip.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels: {{- include "ip.selector" (dict "root" . "component" "web") | nindent 6 }}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels: {kubernetes.io/metadata.name: {{ .Values.networkPolicy.ingressControllerNamespace }}}
+      ports:
+        - {port: 80}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "ip.fullname" . }}-pgbouncer
+  labels: {{- include "ip.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels: {{- include "ip.selector" (dict "root" . "component" "pgbouncer") | nindent 6 }}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels: {{- include "ip.selector" (dict "root" . "component" "api") | nindent 14 }}
+      ports:
+        - {port: 5432}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "ip.fullname" . }}-worker-metrics
+  labels: {{- include "ip.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels: {{- include "ip.selector" (dict "root" . "component" "worker") | nindent 6 }}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels: {kubernetes.io/metadata.name: {{ .Values.networkPolicy.monitoringNamespace }}}
+      ports:
+        - {port: {{ .Values.worker.metricsPort }}}
+{{- end }}

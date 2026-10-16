@@ -64,7 +64,11 @@ async def fixture(monkeypatch: pytest.MonkeyPatch):
         SimpleNamespace(),
     )
     mock_repo = SimpleNamespace(
-        get_session=AsyncMock(return_value=SimpleNamespace(id=sid, revoked_at=None)),
+        get_session=AsyncMock(
+            return_value=SimpleNamespace(
+                id=sid, revoked_at=None, subject_id=actor.id, subject_kind=actor.scope
+            )
+        ),
         list_sessions=AsyncMock(
             return_value=[
                 SimpleNamespace(

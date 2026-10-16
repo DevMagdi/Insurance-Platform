@@ -19,12 +19,17 @@ from app.domain.schemas import (
 )
 from app.models.tickets import AuditLog, CallLog
 from app.security.tokens import csrf_required
+from app.services.backpressure import backpressure
 from app.services.integrations import call_recording_aad
 
 router = APIRouter(prefix="/api/staff", tags=["integrations"])
 
 
-@router.post("/complaints/{complaint_id}/email", status_code=202)
+@router.post(
+    "/complaints/{complaint_id}/email",
+    status_code=202,
+    dependencies=[Depends(backpressure("integration"))],
+)
 async def send_complaint_email(
     complaint_id: UUID,
     item: SendComplaintEmailRequest,
@@ -40,7 +45,11 @@ async def send_complaint_email(
     )
 
 
-@router.post("/complaints/{complaint_id}/email/reply", status_code=202)
+@router.post(
+    "/complaints/{complaint_id}/email/reply",
+    status_code=202,
+    dependencies=[Depends(backpressure("integration"))],
+)
 async def send_customer_email_reply(
     complaint_id: UUID,
     item: ReplyRequest,
@@ -57,7 +66,11 @@ async def send_customer_email_reply(
     )
 
 
-@router.post("/complaints/{complaint_id}/whatsapp", status_code=202)
+@router.post(
+    "/complaints/{complaint_id}/whatsapp",
+    status_code=202,
+    dependencies=[Depends(backpressure("integration"))],
+)
 async def send_whatsapp_message(
     complaint_id: UUID,
     item: WhatsAppSendRequest,
@@ -73,7 +86,11 @@ async def send_whatsapp_message(
     )
 
 
-@router.post("/complaints/{complaint_id}/ai/analyze", status_code=202)
+@router.post(
+    "/complaints/{complaint_id}/ai/analyze",
+    status_code=202,
+    dependencies=[Depends(backpressure("integration"))],
+)
 async def request_ai_analysis(
     complaint_id: UUID,
     item: AIAnalysisRequest,
@@ -124,7 +141,11 @@ async def review_ai_suggestion(
     )
 
 
-@router.post("/complaints/{complaint_id}/ai/insights/{insight_id}/send", status_code=202)
+@router.post(
+    "/complaints/{complaint_id}/ai/insights/{insight_id}/send",
+    status_code=202,
+    dependencies=[Depends(backpressure("integration"))],
+)
 async def send_approved_ai_reply(
     complaint_id: UUID,
     insight_id: UUID,
@@ -157,7 +178,11 @@ async def unified_inbox(
     )
 
 
-@router.post("/complaints/{complaint_id}/voice-followups", status_code=202)
+@router.post(
+    "/complaints/{complaint_id}/voice-followups",
+    status_code=202,
+    dependencies=[Depends(backpressure("integration"))],
+)
 async def schedule_voice_followup(
     complaint_id: UUID,
     item: VoiceFollowupRequest,

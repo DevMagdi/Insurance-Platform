@@ -1,0 +1,24 @@
+# Example production overrides (sized for the 1M concurrent target; see docs/SCALABILITY.md).
+image:
+  tag: "v0.8.0"
+publicUrl: https://complaints.example.com
+database:
+  host: insurance-pg-primary.database.svc
+  readHost: insurance-pg-replica.database.svc
+api:
+  replicas: 12
+  webConcurrency: 4
+  hpa: {enabled: true, minReplicas: 12, maxReplicas: 400, targetCPU: 60, targetMemory: 75}
+  pdb: {minAvailable: "75%"}
+worker:
+  hpa: {enabled: true, minReplicas: 4, maxReplicas: 60, targetCPU: 65}
+web:
+  hpa: {enabled: true, minReplicas: 4, maxReplicas: 60, targetCPU: 65}
+pgbouncer:
+  replicas: 6
+  maxClientConn: 20000
+  defaultPoolSize: 60
+monitoring:
+  serviceMonitor: {enabled: true}
+  prometheusRule: {enabled: true}
+  grafanaDashboard: {enabled: true}

@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "ip.fullname" . }}-config
+  labels: {{- include "ip.labels" . | nindent 4 }}
+data:
+  PUBLIC_APP_URL: {{ .Values.publicUrl | quote }}
+  REDIS_URL: {{ .Values.redis.url | quote }}
+  S3_BUCKET: {{ .Values.objectStorage.bucket | quote }}
+  S3_REGION: {{ .Values.objectStorage.region | quote }}
+  {{- with .Values.objectStorage.endpointUrl }}
+  S3_ENDPOINT_URL: {{ . | quote }}
+  {{- end }}
+  SMTP_HOST: {{ .Values.smtp.host | quote }}
+  SMTP_PORT: {{ .Values.smtp.port | quote }}
+  SMTP_FROM: {{ .Values.smtp.from | quote }}
+  SMTP_START_TLS: {{ .Values.smtp.startTls | quote }}
+  PROMETHEUS_MULTIPROC_DIR: /tmp/prometheus-multiproc
+  {{- range $key, $value := .Values.config }}
+  {{ $key }}: {{ $value | quote }}
+  {{- end }}

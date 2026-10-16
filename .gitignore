@@ -22,3 +22,8 @@ frontend/playwright-report/
 .DS_Store
 .idea/
 .vscode/
+
+# Phase 8: load-test fixtures contain live session tokens; backups contain PII.
+loadtest/sessions.json
+loadtest/results/
+backups/

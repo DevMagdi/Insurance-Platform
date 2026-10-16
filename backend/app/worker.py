@@ -26,8 +26,12 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from app.db import make_worker_engine
-from app.security.crypto import decode_key
+from app.observability import metrics
+from app.observability.logging import configure_logging
+from app.observability.sentry import init_sentry
+from app.security.crypto import build_keyring, idempotency_root
 from app.security.integration_crypto import SecretCipher, derive_idempotency_key
+from app.services.backpressure import DEPTH_KEY
 from app.services.exports import render_export
 from app.services.integration_providers import (
     EmailProvider,
@@ -69,6 +73,18 @@ logger = logging.getLogger(__name__)
 class WorkerConfig(BaseSettings):
     worker_database_url: str = Field(validation_alias="WORKER_DATABASE_URL")
     app_encryption_key: str = Field(validation_alias="APP_ENCRYPTION_KEY")
+    app_encryption_key_id: int = Field(default=1, validation_alias="APP_ENCRYPTION_KEY_ID")
+    app_encryption_previous_keys: str = Field(
+        default="", validation_alias="APP_ENCRYPTION_PREVIOUS_KEYS"
+    )
+    app_idempotency_key: str | None = Field(default=None, validation_alias="APP_IDEMPOTENCY_KEY")
+    worker_metrics_port: int | None = Field(default=None, validation_alias="WORKER_METRICS_PORT")
+    sentry_dsn: str | None = Field(default=None, validation_alias="SENTRY_DSN")
+    app_release: str | None = Field(default=None, validation_alias="APP_RELEASE")
+    log_level: str = Field(default="INFO", validation_alias="LOG_LEVEL")
+    log_json: bool = Field(default=True, validation_alias="LOG_JSON")
+    retention_session_days: int = Field(default=30, validation_alias="RETENTION_SESSION_DAYS")
+    retention_outbox_days: int = Field(default=180, validation_alias="RETENTION_OUTBOX_DAYS")
     redis_url: str = "redis://redis:6379/0"
     s3_bucket: str = "complaint-attachments"
     s3_endpoint_url: str | None = None
@@ -87,6 +103,18 @@ class WorkerConfig(BaseSettings):
 
 async def startup(ctx: dict[str, Any]) -> None:
     config = WorkerConfig()  # type: ignore[call-arg]
+    configure_logging(
+        level=config.log_level,
+        json_logs=config.log_json,
+        service="worker",
+        release=config.app_release,
+    )
+    init_sentry(config.sentry_dsn, config.environment, config.app_release, 0.0)
+    if config.worker_metrics_port:
+        from prometheus_client import start_http_server
+
+        start_http_server(config.worker_metrics_port)
+    ctx["config"] = config
     ctx["engine"] = make_worker_engine(config.worker_database_url)
     ctx["delivery"] = SMTPDelivery(config)
     ctx["scanner"] = UnconfiguredVirusScanner()
@@ -95,9 +123,15 @@ async def startup(ctx: dict[str, Any]) -> None:
         if config.s3_endpoint_url or (config.s3_access_key_id and config.s3_secret_access_key)
         else None
     )
-    encryption_key = decode_key(config.app_encryption_key)
-    ctx["integration_cipher"] = SecretCipher(encryption_key)
-    ctx["integration_idempotency_key"] = derive_idempotency_key(encryption_key)
+    keyring = build_keyring(
+        config.app_encryption_key,
+        config.app_encryption_key_id,
+        config.app_encryption_previous_keys,
+    )
+    ctx["integration_cipher"] = SecretCipher(keyring)
+    ctx["integration_idempotency_key"] = derive_idempotency_key(
+        idempotency_root(keyring, config.app_idempotency_key)
+    )
 
 
 async def shutdown(ctx: dict[str, Any]) -> None:
@@ -786,6 +820,35 @@ async def deliver_report_runs(ctx: dict[str, Any]) -> str:
     return f"processed {len(claimed)} scheduled report(s)"
 
 
+async def publish_queue_metrics(ctx: dict[str, Any]) -> str:
+    """Publish durable queue depths for Prometheus and API backpressure."""
+    rows = await _worker_query(ctx["engine"], "SELECT * FROM app_security.queue_depths()", {})
+    depths = {str(row.queue): int(row.depth) for row in rows}
+    for queue, depth in depths.items():
+        metrics.QUEUE_DEPTH.labels(queue=queue).set(depth)
+    redis = ctx.get("redis")
+    if depths and redis is not None:
+        await redis.hset(DEPTH_KEY, mapping=depths)
+        await redis.expire(DEPTH_KEY, 300)
+    return json.dumps(depths, sort_keys=True)
+
+
+async def apply_retention(ctx: dict[str, Any]) -> str:
+    """PDPL storage limitation: purge expired operational personal data."""
+    config: WorkerConfig | None = ctx.get("config")
+    rows = await _worker_query(
+        ctx["engine"],
+        "SELECT app_security.apply_retention(:sessions, :outbox) AS purged",
+        {
+            "sessions": config.retention_session_days if config else 30,
+            "outbox": config.retention_outbox_days if config else 180,
+        },
+    )
+    purged = rows[0].purged if rows else None
+    logger.info("retention.applied", extra={"event": "retention.applied", "purged": purged})
+    return json.dumps(purged, sort_keys=True, default=str)
+
+
 async def clean_expired_exports(ctx: dict[str, Any]) -> str:
     storage: ObjectStorage | None = ctx.get("storage")
     if storage is None:
@@ -824,6 +887,8 @@ class WorkerSettings:
         cron(deliver_report_runs, minute={0, 10, 20, 30, 40, 50}, second=10, run_at_startup=True),
         cron(scan_duplicates, minute={5, 35}, second=15, run_at_startup=True),
         cron(refresh_analytics_rollup, minute={2, 32}, second=20, run_at_startup=True),
+        cron(publish_queue_metrics, second=40, run_at_startup=True),
+        cron(apply_retention, hour={3}, minute={17}, second=0),
     ]
     on_startup = startup
     on_shutdown = shutdown

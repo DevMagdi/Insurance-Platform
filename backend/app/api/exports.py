@@ -13,13 +13,14 @@ from app.api.staff import access_error
 from app.domain.schemas import ExportRequest
 from app.repositories.exports import ExportRepository
 from app.security.tokens import csrf_required
+from app.services.backpressure import backpressure
 from app.services.render import EXTENSIONS, MEDIA_TYPES
 from app.services.storage import ObjectStorage
 
 router = APIRouter(prefix="/api/staff/exports", tags=["exports"])
 
 
-@router.post("", status_code=202)
+@router.post("", status_code=202, dependencies=[Depends(backpressure("export"))])
 async def request_export(
     item: ExportRequest,
     request: Request,

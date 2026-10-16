@@ -43,6 +43,9 @@ erDiagram
     STAFF_USERS ||--o{ ACCESS_CHANGE_LOG : target
     STAFF_USERS ||--o{ AUTH_SESSIONS : signs_in
     CUSTOMERS ||--o{ AUTH_SESSIONS : signs_in
+    CUSTOMERS ||--o{ CONSENT_RECORDS : consents
+    CUSTOMERS ||--o{ PRIVACY_REQUESTS : requests
+    STAFF_USERS ||--o{ PRIVACY_REQUESTS : handles
     STAFF_USERS ||--o{ STAFF_INVITATIONS : receives
     STAFF_USERS |o--o{ SECURITY_SETTINGS : updates
     CUSTOMERS ||--o{ COMPLAINT_IDEMPOTENCY : submits
@@ -228,6 +231,22 @@ erDiagram
     SECURITY_SETTINGS {
       boolean singleton PK
       boolean staff_2fa_required
+    }
+    CONSENT_RECORDS {
+      uuid id PK
+      uuid customer_id FK
+      text purpose
+      boolean granted
+      text policy_version
+      timestamptz created_at
+    }
+    PRIVACY_REQUESTS {
+      uuid id PK
+      uuid customer_id FK
+      text kind
+      text status
+      uuid handled_by FK
+      timestamptz due_at
     }
     AUTH_SESSIONS {
       uuid id PK
