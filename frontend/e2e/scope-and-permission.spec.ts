@@ -92,7 +92,7 @@ test('one-company scope is reflected in charts, list search, export, and direct 
   await expect(page.getByText('Other Insurer')).toHaveCount(0);
   await expect(page.getByText('جميع الشركات')).toHaveCount(0);
 
-  await page.getByRole('button', { name: 'قائمة الشكاوى' }).click();
+  await page.getByRole('navigation', { name: 'مساحة العمل' }).getByRole('button', { name: /قائمة الشكاوى/ }).click();
   await expect(page.getByRole('heading', { name: 'صندوق الشكاوى' })).toBeVisible();
   await expect(page.getByText('Scoped claim review')).toBeVisible();
   const search = page.getByRole('textbox', { name: 'البحث في الشكاوى' });
