@@ -235,6 +235,8 @@ class ExportJob(Base):
     format: Mapped[str] = mapped_column(Text, server_default="csv")
     filters: Mapped[dict[str, Any]] = mapped_column(JSONB, server_default=text("'{}'::jsonb"))
     status: Mapped[str] = mapped_column(Text, server_default="queued")
+    content: Mapped[bytes | None] = mapped_column(LargeBinary)
+    # Deprecated object-storage locator: unused since revision 24.
     private_storage_key: Mapped[str | None] = mapped_column(Text)
     expires_at: Mapped[datetime | None]
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())

@@ -34,6 +34,7 @@ from app.domain.permissions import PERMISSIONS
 from app.main import app
 from app.repositories.attachments import AttachmentRepository
 from app.repositories.complaints import ComplaintRepository
+from app.security.blobs import BlobCipher
 from app.security.crypto import NationalIdProtector, decode_key
 from app.security.tokens import TokenManager
 from app.services.attachments import AttachmentService
@@ -67,20 +68,6 @@ class Mailbox:
         self, mobile: str, email: str | None, kind: str, payload: dict[str, str]
     ) -> bool:
         return False
-
-
-class Objects:
-    def __init__(self) -> None:
-        self.values: dict[str, bytes] = {}
-
-    async def put(self, key: str, file: object, mime: str) -> None:
-        self.values[key] = file.read()
-
-    async def get(self, key: str, max_bytes: int) -> bytes:
-        return self.values[key]
-
-    async def delete(self, key: str) -> None:
-        self.values.pop(key, None)
 
 
 @pytest.fixture(scope="module")
@@ -217,7 +204,7 @@ async def test_app(stack: dict, identities: dict):
     redis = Redis.from_url(stack["redis"])
     await redis.flushdb()  # Isolate per-IP/mobile limits across otherwise independent cases.
     mailbox = Mailbox()
-    objects = Objects()
+    blobs = BlobCipher(decode_key(settings.app_encryption_key))
     factory = async_sessionmaker(engine, expire_on_commit=False)
     app.state.engine = engine
     app.state.factory = factory
@@ -230,10 +217,8 @@ async def test_app(stack: dict, identities: dict):
         ),
         settings.jwt_signing_key,
     )
-    app.state.attachments = AttachmentService(
-        AttachmentRepository(), TokenManager(settings), objects
-    )
-    app.state.storage = objects
+    app.state.attachments = AttachmentService(AttachmentRepository(), TokenManager(settings), blobs)
+    app.state.blobs = blobs
     async with (
         AsyncClient(transport=ASGITransport(app=app), base_url="https://testserver") as customer,
         AsyncClient(transport=ASGITransport(app=app), base_url="https://testserver") as admin,
@@ -244,7 +229,7 @@ async def test_app(stack: dict, identities: dict):
             admin=admin,
             agent=agent,
             mailbox=mailbox,
-            objects=objects,
+            blobs=blobs,
             stack=stack,
             identities=identities,
         )
@@ -500,7 +485,7 @@ def test_phase4_migration_rls_grants_and_permission_codes(stack: dict, identitie
     """Validate the Phase 4 schema and role boundaries on real PostgreSQL 16."""
     with psycopg.connect(stack["admin"]) as db:
         revision = db.execute("SELECT version_num FROM alembic_version").fetchone()[0]
-        assert revision == "20261016_23"
+        assert revision == "20261016_24"
         guarded = db.execute(
             """SELECT relname, relrowsecurity, relforcerowsecurity
                FROM pg_class
@@ -847,7 +832,7 @@ async def test_phase3_export_rechecks_ticket_scope_at_download(test_app: SimpleN
     assert request.status_code == 202, request.text
     worker_engine = make_worker_engine(ctx.stack["worker"])
     try:
-        result = await export_pending({"engine": worker_engine, "storage": ctx.objects})
+        result = await export_pending({"engine": worker_engine, "blobs": ctx.blobs})
         assert result.startswith("processed ")
     finally:
         await worker_engine.dispose()

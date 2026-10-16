@@ -45,7 +45,7 @@ app.kubernetes.io/component: {{ .component }}
 {{/* Environment shared by the API container. */}}
 {{- define "ip.apiEnv" -}}
 {{- $root := . -}}
-{{- range $name := list "APP_DB_PASSWORD" "APP_ENCRYPTION_KEY" "APP_BLIND_INDEX_KEY" "JWT_SIGNING_KEY" "TURNSTILE_SITE_KEY" "TURNSTILE_SECRET_KEY" "S3_ACCESS_KEY_ID" "S3_SECRET_ACCESS_KEY" }}
+{{- range $name := list "APP_DB_PASSWORD" "APP_ENCRYPTION_KEY" "APP_BLIND_INDEX_KEY" "JWT_SIGNING_KEY" "TURNSTILE_SITE_KEY" "TURNSTILE_SECRET_KEY" }}
 {{ include "ip.secretEnv" (dict "root" $root "name" $name) }}
 {{- end }}
 {{- range $name := list "METRICS_TOKEN" "SENTRY_DSN" "SMTP_USERNAME" "SMTP_PASSWORD" "APP_ENCRYPTION_PREVIOUS_KEYS" "APP_IDEMPOTENCY_KEY" }}

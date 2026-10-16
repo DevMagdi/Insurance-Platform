@@ -118,7 +118,8 @@ erDiagram
       uuid id PK
       uuid complaint_id FK
       uuid message_id FK
-      text storage_key UK
+      bytea content
+      text checksum_sha256
       string scan_status
     }
     NOTIFICATIONS {
@@ -267,7 +268,8 @@ erDiagram
     ATTACHMENT_UPLOADS {
       uuid id PK
       uuid complaint_id FK
-      text storage_key UK
+      string status
+      timestamptz expires_at
     }
     NOTIFICATION_OUTBOX {
       uuid id PK

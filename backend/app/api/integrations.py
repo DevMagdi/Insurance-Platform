@@ -18,9 +18,9 @@ from app.domain.schemas import (
     WhatsAppSendRequest,
 )
 from app.models.tickets import AuditLog, CallLog
+from app.security.blobs import RECORDING, BlobCipher
 from app.security.tokens import csrf_required
 from app.services.backpressure import backpressure
-from app.services.integrations import call_recording_aad
 
 router = APIRouter(prefix="/api/staff", tags=["integrations"])
 
@@ -211,17 +211,14 @@ async def call_recording(
             CallLog.complaint_id == complaint_id,
         )
     )
-    if call is None or not call.recording_storage_key:
+    if call is None or call.recording_content is None:
         raise HTTPException(status_code=404, detail="Call recording unavailable")
-    storage = getattr(request.app.state, "storage", None)
-    if storage is None:
-        raise HTTPException(status_code=503, detail="Private recording storage is unavailable")
+    # Recordings are encrypted rows in the platform database, so this route is the
+    # only way to the bytes: scope, permission and audit all apply first.
+    blobs: BlobCipher = request.app.state.blobs
     try:
-        ciphertext = await storage.get(call.recording_storage_key, 25 * 1024 * 1024 + 28)
-        audio = integration_service(request).cipher.decrypt(
-            ciphertext, associated_data=call_recording_aad(call.id)
-        )
-    except Exception as exc:
+        audio = blobs.decrypt(call.recording_content, purpose=RECORDING, resource_id=call.id)
+    except ValueError as exc:
         raise HTTPException(status_code=503, detail="Call recording could not be read") from exc
     ctx.db.add(
         AuditLog(

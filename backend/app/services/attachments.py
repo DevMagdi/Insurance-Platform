@@ -1,14 +1,19 @@
-"""One-use signed multi-file uploads and reauthorized, clean-only downloads."""
+"""One-use signed uploads and reauthorized, clean-only downloads.
+
+Bytes are encrypted and written in the same database transaction that records the
+attachment, so the platform has no second store to keep consistent: no signed
+bucket URL, no orphan object when a transaction rolls back, and a database dump
+without ``APP_ENCRYPTION_KEY`` never reveals a customer document.
+"""
 
 from __future__ import annotations
 
 import hashlib
 import hmac
-from contextlib import suppress
 from datetime import UTC, datetime, timedelta
 from tempfile import SpooledTemporaryFile
 from typing import Any
-from uuid import UUID
+from uuid import UUID, uuid4
 
 import filetype
 from fastapi import HTTPException, Request
@@ -19,24 +24,19 @@ from app.domain.access import AccessScope
 from app.domain.schemas import UploadPlan
 from app.models.tickets import Attachment, AuditLog, Complaint
 from app.repositories.attachments import AttachmentRepository
+from app.security.blobs import ATTACHMENT, BlobCipher
 from app.security.tokens import TokenManager
-from app.services.storage import ObjectStorage
 
 _ALLOWED = frozenset({"application/pdf", "image/jpeg", "image/png"})
 
 
 class AttachmentService:
     def __init__(
-        self, repository: AttachmentRepository, tokens: TokenManager, storage: ObjectStorage | None
+        self, repository: AttachmentRepository, tokens: TokenManager, blobs: BlobCipher
     ) -> None:
         self.repository = repository
         self.tokens = tokens
-        self.storage = storage
-
-    def _configured(self) -> ObjectStorage:
-        if self.storage is None:
-            raise HTTPException(status_code=503, detail="Private object storage is not configured")
-        return self.storage
+        self.blobs = blobs
 
     async def plan(
         self,
@@ -47,7 +47,6 @@ class AttachmentService:
         complaint: Complaint,
         plan: UploadPlan,
     ) -> list[dict[str, Any]]:
-        self._configured()
         reservations = await self.repository.reserve(db, scope, complaint, plan.files)
         if len(reservations) != len(plan.files):
             raise HTTPException(status_code=404, detail="Complaint not found")
@@ -74,7 +73,6 @@ class AttachmentService:
         token: str | None,
         request: Request,
     ) -> dict[str, Any]:
-        storage = self._configured()
         claims = self.tokens.parse(token, "upload")
         if (
             claims.subject != scope.actor
@@ -125,36 +123,39 @@ class AttachmentService:
             ):
                 raise HTTPException(status_code=422, detail="Attachment checksum or size mismatch")
             buffer.seek(0)
-            try:
-                await storage.put(reservation.storage_key, buffer, actual_mime)  # type: ignore[arg-type]
-            except Exception:
-                raise HTTPException(status_code=503, detail="Storage unavailable") from None
-        try:
-            attachment = await self.repository.finalize(
-                db, scope, reservation, mime=actual_mime, size=size, checksum=digest
+            # Encrypt before the row exists: the database only ever receives ciphertext,
+            # bound to the attachment id the row will carry.
+            attachment_id = uuid4()
+            content = self.blobs.encrypt(
+                buffer.read(), purpose=ATTACHMENT, resource_id=attachment_id
             )
-            if scope.actor.scope == "customer":
-                await db.execute(
-                    text("SELECT app_security.audit_customer_action(:id, :created, 'upload')"),
-                    {"id": reservation.complaint_id, "created": reservation.complaint_created_at},
+        attachment = await self.repository.finalize(
+            db,
+            scope,
+            reservation,
+            attachment_id=attachment_id,
+            mime=actual_mime,
+            size=size,
+            checksum=digest,
+            content=content,
+        )
+        if scope.actor.scope == "customer":
+            await db.execute(
+                text("SELECT app_security.audit_customer_action(:id, :created, 'upload')"),
+                {"id": reservation.complaint_id, "created": reservation.complaint_created_at},
+            )
+        else:
+            db.add(
+                AuditLog(
+                    actor_staff_id=scope.actor.id,
+                    action="attachment_uploaded",
+                    resource_type="attachment",
+                    resource_id=attachment.id,
+                    complaint_id=reservation.complaint_id,
+                    complaint_created_at=reservation.complaint_created_at,
                 )
-            else:
-                db.add(
-                    AuditLog(
-                        actor_staff_id=scope.actor.id,
-                        action="attachment_uploaded",
-                        resource_type="attachment",
-                        resource_id=attachment.id,
-                        complaint_id=reservation.complaint_id,
-                        complaint_created_at=reservation.complaint_created_at,
-                    )
-                )
-            await db.flush()
-        except Exception:
-            # Best-effort cleanup for the object if database finalization fails.
-            with suppress(Exception):
-                await storage.delete(reservation.storage_key)
-            raise
+            )
+        await db.flush()
         return {
             "id": attachment.id,
             "scan_status": "pending",
@@ -173,7 +174,6 @@ class AttachmentService:
         attachment = await self.repository.clean_attachment(db, scope, attachment_id)
         if attachment is None:
             raise HTTPException(status_code=404, detail="Clean attachment not found")
-        self._configured()
         return {
             "download_url": f"/api/{scope.actor.scope}/attachments/{attachment_id}/content",
             "download_token": self.tokens.issue(
@@ -209,10 +209,18 @@ class AttachmentService:
         attachment = await self.repository.clean_attachment(db, scope, attachment_id)
         if attachment is None:
             raise HTTPException(status_code=404, detail="Clean attachment not found")
+        if attachment.content is None:
+            # Rows created before revision 24 kept their bytes in the retired object
+            # store; they are never served from a stale copy.
+            raise HTTPException(status_code=410, detail="Attachment content is no longer stored")
         try:
-            data = await self._configured().get(attachment.storage_key, attachment.size_bytes)
-        except Exception:
-            raise HTTPException(status_code=503, detail="Stored attachment unavailable") from None
+            data = self.blobs.decrypt(
+                attachment.content, purpose=ATTACHMENT, resource_id=attachment.id
+            )
+        except ValueError:
+            raise HTTPException(
+                status_code=503, detail="Attachment integrity verification failed"
+            ) from None
         if len(data) != attachment.size_bytes or not hmac.compare_digest(
             hashlib.sha256(data).hexdigest(), attachment.checksum_sha256
         ):

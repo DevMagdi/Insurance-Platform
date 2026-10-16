@@ -14,7 +14,7 @@ is described in [ACCESS_CONTROL.md](ACCESS_CONTROL.md), privacy in
 | A03 | Injection | SQLAlchemy bound parameters everywhere; `test_no_dynamic_sql_outside_reviewed_allowlist` fails the build on dynamic (f-string) SQL. Pydantic strict schemas. React escaping. No `dangerouslySetInnerHTML`. CSV formula neutralisation. | Reviewed; no SQLi/XSS found. **Added:** the dynamic-SQL allowlist test. |
 | A04 | Insecure design | Guest tracking needs ticket **and** national ID. Same response whether or not an account exists. Idempotent complaint creation. Queue backpressure. Human approval for AI replies. | **Added:** Turnstile CAPTCHA on OTP start, guest tracking, staff login and invite acceptance (`X-Captcha-Token`). Progressive lockout. Abuse detector. |
 | A05 | Security misconfiguration | API CSP `default-src 'none'`. SPA CSP self plus Turnstile only. HSTS (`HSTS_SECONDS`), `nosniff`, `DENY` framing, COOP/CORP, Permissions-Policy, `Server` header removed. `/docs` disabled in production. Strict `CORS_ALLOWED_ORIGINS` allowlist (https only in production). Non-root, read-only containers. | **Added:** security header middleware and nginx snippets. **Added:** origin guard (CORS plus a cross-site write block). **Added:** production settings validation that refuses to boot on weak config. **Added:** self-hosted fonts (no third-party CSS). |
-| A06 | Vulnerable components | CI: `pip-audit`, `npm audit --audit-level=high`, Trivy fs/secret/config and image scans (fail on fixable CRITICAL, report HIGH). Pinned, checksum-verified scanner binaries. | **Fixed:** bumped `cryptography`, `pytest`, `pip` and `setuptools` after pip-audit findings. **Fixed:** the bundled store runs SeaweedFS with an S3-API bootstrap script. **Residual:** a self-hosted object store is still one more stateful service to patch, so use managed S3 in production. |
+| A06 | Vulnerable components | CI: `pip-audit`, `npm audit --audit-level=high`, Trivy fs/secret/config and image scans (fail on fixable CRITICAL, report HIGH). Pinned, checksum-verified scanner binaries. | **Fixed:** bumped `cryptography`, `pytest`, `pip` and `setuptools` after pip-audit findings. **Fixed:** the bundled SeaweedFS/`boto3` object store was removed entirely in revision 24 — private binaries are rows in PostgreSQL, so the platform no longer ships a second database-like service (or its SDK) to patch, and `pip-audit` now sees one less dependency tree. |
 | A07 | Identification & auth failures | 15-minute access JWT, rotating refresh with replay-family revocation, token_version checks, TOTP, enforced 2FA. Lockout policies: staff password 5 per 15 min, TOTP 5 per 15 min, OTP verify 8 per hour, per-IP staff login 30 per 15 min. Lock durations double up to 24 h. | **Added:** `LoginLockout` with uniform responses (no e-mail enumeration) and `account_lockouts_total` / `auth_failures_total` metrics. |
 | A08 | Software & data integrity | Images built in CI, SHA-tagged, smoke-tested and contract-checked before deploy. Migrations forward-only and linted. Webhook HMAC with timestamps. Idempotency keys. | **Added:** migration lint in CI, and chart-file drift check. |
 | A09 | Logging & monitoring failures | JSON logs with `request_id`, `user_id`, route, status and latency. No PII or tokens in logs. Prometheus metrics. Sentry with PII scrubbing (`send_default_pii=False` plus `before_send`). Security alerts. | **Added:** observability stack and suspicious-access alerts ([RUNBOOK.md](RUNBOOK.md)). |
@@ -48,8 +48,14 @@ The SPA is same-origin, so the default allowlist is empty.
 * Body limit middleware: `Content-Length` is checked first, then streamed
   bodies are counted.
 * Magic-byte MIME sniffing against an allowlist; exact SHA-256 checksum.
-* Private object storage. Downloads only after a `clean` scanner verdict, with
-  `no-store`, `nosniff` and `Content-Disposition: attachment`.
+* Private storage inside PostgreSQL: uploaded bytes are encrypted with the
+  versioned keyring (`APP_ENCRYPTION_KEY`) using AES-256-GCM whose associated
+  data binds the blob to the owning row and purpose, so one row's ciphertext
+  cannot be replayed as another's. Downloads only after a `clean` scanner
+  verdict, with `no-store`, `nosniff` and `Content-Disposition: attachment`.
+* No object-storage credentials exist in the runtime at all (no S3/MinIO/
+  SeaweedFS client, endpoint or bucket setting), so there is nothing to leak or
+  rotate outside the database and the application keyring.
 * nginx limits upload rate (2 r/s) and body size per route.
 
 ### Secrets management
@@ -57,7 +63,9 @@ The SPA is same-origin, so the default allowlist is empty.
 * No secret in Git, images or workflow logs.
 * Compose reads `.env.production` (mode 0600). Kubernetes reads
   `secrets.existingSecret` (Sealed Secrets, External Secrets or Vault CSI).
-* The API never receives the admin DB URL or object-store root credentials.
+* The API never receives the admin DB URL, and there are no object-store
+  credentials to hand out: the API and worker only ever see their own
+  least-privilege PostgreSQL logins plus `APP_ENCRYPTION_KEY`.
 * Trivy's secret scanner runs on every push.
 * Production startup validation rejects:
   * placeholder or short keys;
@@ -132,7 +140,10 @@ authorize ordering, CSRF on preview endpoints, `client_ip` trust.
 ## Residual risks and required external work
 
 * An independent penetration test and PDPL legal review before go-live.
-* Managed S3 instead of the self-hosted SeaweedFS store.
+* Database growth from binary content: `attachments.content` grows the
+  primary cluster, so PITR windows, replica lag and `pg_dump`/restore drills
+  are sized for it (a 10 MB per-file cap and 15-minute export expiry bound the
+  steady-state footprint).
 * A real AV scanner integration (uploads stay pending until one exists).
 * `APP_BLIND_INDEX_KEY` cannot be rotated online. Rotating it requires
   recomputing every blind index in a maintenance job. Treat it as long-lived

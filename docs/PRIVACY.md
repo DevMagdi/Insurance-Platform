@@ -13,9 +13,9 @@ go-live.
 |---|---|---|---|
 | Identity (sensitive) | Egyptian national ID | `customers`, `complaints` | AES-256-GCM (versioned keyring) plus an HMAC blind index for lookup. Masked by default. Full reveal needs a permission, a reason and an audit entry. |
 | Contact | mobile, e-mail, WhatsApp availability | `customers` | RLS (owner or scoped staff). Mobile is used for OTP. |
-| Complaint content | subject, description, replies, attachments | partitioned `complaints` and child tables, private S3 | RLS and scope. Attachments are private, scanned, and downloaded through signed URLs only. |
+| Complaint content | subject, description, replies, attachments | partitioned `complaints` and child tables; attachment bytes encrypted into `attachments.content` | RLS and scope. Attachments are private, scanned, and downloaded through short-lived single-use download tokens only. |
 | Health or financial details inside complaints | free text and files | as above | Treated as sensitive. Minimised before any AI provider call (IDs, phones, e-mails, names and policy numbers are masked). |
-| Voice | call transcripts and recordings | encrypted columns, encrypted objects | Only with recorded voice consent. AES-GCM. Downloads are permission-gated and audited. |
+| Voice | call transcripts and recordings | encrypted columns (`call_logs`, including `recording_content`) | Only with recorded voice consent. AES-GCM with a keyring header for online rotation. Downloads are permission-gated and audited. |
 | Technical | IP, user agent, session metadata | `auth_sessions`, consent evidence, logs | Limited retention. Logs carry no national IDs, OTPs or tokens. Redis keys are HMAC-hashed. |
 
 ## Lawful basis and consent
@@ -58,7 +58,7 @@ global scope. Staff decisions are written to `audit_logs`. Requests are due with
 | Expired or revoked refresh-token families | 30 days after the last expiry or revocation (`RETENTION_SESSION_DAYS`, 7–365) | worker `apply_retention`, daily at 03:17 UTC |
 | Sent, failed or suppressed notification and insurer outbox rows | 180 days (`RETENTION_OUTBOX_DAYS`, 30–3650) | same |
 | Integration jobs and dead letters | kept (they are audit evidence for regulator inquiries) | admin replay or purge |
-| Export files | short-lived; the `exports/` prefix expires through the worker cron and bucket lifecycle | |
+| Export artifacts | short-lived; `export_jobs.content` is nulled by the worker cron once `expires_at` passes (15 minutes after completion) | worker `clean_expired_exports` |
 | Complaints, events, audit log | per insurance-regulatory and broker licence obligations (set by legal; typically ≥ 5 years after closure) | partition detach and archive, then drop, as a reviewed operation |
 | Logs | 30–90 days in the log platform | platform policy |
 | Backups | 35 days PITR, 90 days encrypted off-site | see [RUNBOOK.md](RUNBOOK.md#backups-and-disaster-recovery) |

@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import base64
 import json
-from io import BytesIO
 from types import SimpleNamespace
 from typing import Any
 from uuid import NAMESPACE_URL, uuid4, uuid5
@@ -12,13 +11,14 @@ from uuid import NAMESPACE_URL, uuid4, uuid5
 import pytest
 
 from app import worker
+from app.security.blobs import RECORDING, BlobCipher
 from app.security.integration_crypto import SecretCipher
 from app.services.integration_providers import (
     IncomingEmail,
     ProviderResult,
     WhatsAppSendRequest,
 )
-from app.services.integrations import call_recording_aad, call_transcript_aad, config_aad, job_aad
+from app.services.integrations import call_transcript_aad, config_aad, job_aad
 from app.worker import (
     _minimize_ai_value,
     _process_integration_job,
@@ -107,18 +107,7 @@ async def test_worker_persists_minimized_inbound_voice_transcript_and_encrypted_
         queries.append((sql, params))
         return []
 
-    class Storage:
-        def __init__(self) -> None:
-            self.object: tuple[str, bytes, str] | None = None
-
-        async def put(self, key: str, stream: BytesIO, content_type: str) -> None:
-            self.object = (key, stream.read(), content_type)
-
-        async def get(self, _key: str, _max_bytes: int) -> bytes:
-            assert self.object is not None
-            return self.object[1]
-
-    storage = Storage()
+    blobs = BlobCipher(b"b" * 32)
     row = make_job(
         cipher,
         "inbound_voice",
@@ -133,7 +122,7 @@ async def test_worker_persists_minimized_inbound_voice_transcript_and_encrypted_
     )
     monkeypatch.setattr(worker, "_worker_query", query)
     await _process_integration_job(
-        {"engine": object(), "integration_cipher": cipher, "storage": storage}, row
+        {"engine": object(), "integration_cipher": cipher, "blobs": blobs}, row
     )
     assert len(queries) == 1
     document = json.loads(queries[0][1]["data"])
@@ -148,12 +137,12 @@ async def test_worker_persists_minimized_inbound_voice_transcript_and_encrypted_
     ).decode()
     assert "29876543210987" not in transcript
     assert "[NATIONAL_ID]" in transcript
-    assert document["recording_storage_key"] == f"call-recordings/{call_id}/recording.gcm"
-    assert storage.object is not None
-    assert (
-        cipher.decrypt(storage.object[1], associated_data=call_recording_aad(call_id))
-        == b"mock-audio-recording"
-    )
+    # The recording travels as ciphertext bound to the call id: no bucket key exists.
+    assert "recording_storage_key" not in document
+    stored = base64.b64decode(document["recording_ciphertext"])
+    assert blobs.decrypt(stored, purpose=RECORDING, resource_id=call_id) == b"mock-audio-recording"
+    with pytest.raises(ValueError):
+        blobs.decrypt(stored, purpose=RECORDING, resource_id=uuid4())
 
 
 async def test_worker_handles_signed_inbound_status_and_invalid_ciphertext(

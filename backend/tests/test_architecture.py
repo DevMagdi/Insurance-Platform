@@ -270,17 +270,9 @@ def test_runtime_engine_rejects_admin_connection() -> None:
 
 def test_production_compose_pulls_published_images_without_admin_secrets() -> None:
     compose = yaml.safe_load((ROOT / "docker-compose.prod.yml").read_text())["services"]
-    expected = {
-        "postgres",
-        "pgbouncer",
-        "redis",
-        "object-store",
-        "object-store-init",
-        "migrate",
-        "api",
-        "worker",
-        "web",
-    }
+    expected = {"postgres", "pgbouncer", "redis", "migrate", "api", "worker", "web"}
+    # No object store is part of the platform: binaries live in PostgreSQL.
+    assert not any("object-store" in name or "minio" in name for name in compose)
     assert expected <= set(compose)
     # Production runs the images the CD pipeline verified; it never builds on the host.
     for name in ("migrate", "api", "worker", "web"):
@@ -304,7 +296,8 @@ def test_production_compose_pulls_published_images_without_admin_secrets() -> No
     assert "app_worker" in compose["worker"]["environment"]["WORKER_DATABASE_URL"]
     assert compose["api"]["environment"]["ENVIRONMENT"] == "production"
     volumes = yaml.safe_load((ROOT / "docker-compose.prod.yml").read_text())["volumes"]
-    assert volumes["object_store_data"]["name"].startswith("${OBJECT_STORE_VOLUME:?")
+    # PostgreSQL, Redis and nothing else: no object-store volume to migrate or lose.
+    assert set(volumes) == {"postgres_data", "redis_data"}
     assert compose["api"]["environment"]["COOKIE_SECURE"] == "true"
     # Migrations run first, as a one-shot container with the migrator URL only.
     migrate = compose["migrate"]
@@ -320,10 +313,9 @@ def test_production_compose_pulls_published_images_without_admin_secrets() -> No
     published = {
         name: service.get("ports", []) for name, service in compose.items() if service.get("ports")
     }
-    assert set(published) == {"web", "postgres", "object-store"}
+    assert set(published) == {"web", "postgres"}
     assert published["web"] == ["${HTTP_PORT:-8080}:80"]
-    for name in ("postgres", "object-store"):
-        assert all(entry.startswith("127.0.0.1:") for entry in published[name]), name
+    assert all(entry.startswith("127.0.0.1:") for entry in published["postgres"])
     # Every variable the stack demands must be documented outside the compose file.
     documented = (ROOT / ".env.example").read_text() + (ROOT / "docs/DEPLOYMENT.md").read_text()
     raw = (ROOT / "docker-compose.prod.yml").read_text()
@@ -367,12 +359,78 @@ def test_cd_pipeline_gates_deployment_and_verifies_artifacts() -> None:
 
 def test_dev_compose_is_transaction_pooled_without_admin_secrets_in_api() -> None:
     compose = yaml.safe_load((ROOT / "docker-compose.yml").read_text())["services"]
-    assert {"postgres", "pgbouncer", "redis", "object-store", "api", "worker", "nginx"} <= set(
-        compose
-    )
+    assert {"postgres", "pgbouncer", "redis", "api", "worker", "nginx"} <= set(compose)
+    assert not any("object-store" in name for name in compose)
+    for process in ("api", "worker"):
+        environment = compose[process]["environment"]
+        assert not any(key.startswith("S3_") or key.startswith("MINIO_") for key in environment)
     assert compose["pgbouncer"]["environment"]["POOL_MODE"] == "transaction"
     assert compose["pgbouncer"]["environment"]["MAX_PREPARED_STATEMENTS"] == "100"
     for process in ("api", "worker"):
         assert "env_file" not in compose[process]
         assert "DATABASE_ADMIN_URL" not in compose[process]["environment"]
         assert "POSTGRES_PASSWORD" not in compose[process]["environment"]
+
+
+# Object-storage SDKs, gateways and credentials were removed in revision 24. The
+# guard below fails the build if any of them is reintroduced anywhere that runs
+# in production (application code or deployment configuration). Documentation is
+# excluded because it describes the removal on purpose, and the optional backup
+# script upload is an operator-owned backup destination, not application storage.
+_OBJECT_STORAGE_MARKERS = (
+    "boto3",
+    "botocore",
+    "minio",
+    "seaweed",
+    "list_objects_v2",
+    "listobjectsv2",
+    "s3_bucket",
+    "s3_endpoint",
+    "s3_access_key",
+    "put_object",
+    "get_object",
+    "presigned",
+)
+
+
+def test_no_object_storage_dependency_can_creep_back_in() -> None:
+    scanned = [*sorted((ROOT / "backend/app").rglob("*.py"))]
+    scanned += [
+        ROOT / "backend/pyproject.toml",
+        ROOT / "docker-compose.yml",
+        ROOT / "docker-compose.prod.yml",
+        ROOT / ".env.example",
+        ROOT / "Makefile",
+        ROOT / "deploy/helm/insurance-platform/values.yaml",
+        ROOT / "deploy/helm/insurance-platform/templates/_helpers.tpl",
+        ROOT / "deploy/helm/insurance-platform/templates/configmap.yaml",
+        ROOT / "deploy/helm/insurance-platform/templates/worker.yaml",
+        ROOT / "deploy/helm/insurance-platform/templates/api.yaml",
+        ROOT / ".github/workflows/ci.yml",
+        ROOT / ".github/workflows/cd.yml",
+        ROOT / "infra/Dockerfile.backend",
+        ROOT / "infra/Dockerfile.web",
+    ]
+    offenders: list[str] = []
+    for path in scanned:
+        text = path.read_text(encoding="utf-8").lower()
+        for marker in _OBJECT_STORAGE_MARKERS:
+            if marker in text:
+                offenders.append(f"{path.relative_to(ROOT)}:{marker}")
+    assert offenders == [], f"object storage is not part of this platform: {offenders}"
+
+
+def test_private_binaries_are_columns_on_their_own_rows() -> None:
+    sql = (ROOT / "backend/alembic/sql/024_database_storage.sql").read_text(encoding="utf-8")
+    for table in ("attachments", "export_jobs", "call_logs"):
+        assert f"ALTER TABLE public.{table}" in sql, table
+    # Envelope overhead (2 magic + 1 key id + 12 nonce + 16 tag) is the floor of
+    # every size CHECK and of every definer function that writes a blob.
+    assert sql.count("BETWEEN 31 AND") >= 3
+    # Both legacy locators are relaxed so the reservation path never writes a key.
+    assert "ALTER TABLE public.attachment_uploads ALTER COLUMN storage_key DROP NOT NULL" in sql
+    models = (ROOT / "backend/app/models/tickets.py").read_text(encoding="utf-8")
+    assert "content: Mapped[bytes | None]" in models
+    assert "recording_content: Mapped[bytes | None]" in models
+    routers = (ROOT / "backend/app/api/storage_admin.py").read_text(encoding="utf-8")
+    assert "storage_inventory" in routers and "bucket" not in routers.lower()

@@ -32,11 +32,6 @@ class Settings(BaseSettings):
     app_idempotency_key: str | None = Field(default=None, validation_alias="APP_IDEMPOTENCY_KEY")
     app_blind_index_key: str = Field(validation_alias="APP_BLIND_INDEX_KEY")
     jwt_signing_key: str = Field(validation_alias="JWT_SIGNING_KEY")
-    s3_bucket: str = "complaint-attachments"
-    s3_endpoint_url: str | None = None
-    s3_access_key_id: str | None = None
-    s3_secret_access_key: str | None = None
-    s3_region: str = "us-east-1"
     smtp_host: str | None = None
     smtp_port: int = 1025
     smtp_from: str = "no-reply@insurance.local"
@@ -50,6 +45,8 @@ class Settings(BaseSettings):
     access_token_minutes: int = 15
     refresh_token_days: int = 7
     otp_seconds: int = 300
+    # Attachments, export artifacts and call recordings are stored in PostgreSQL
+    # (encrypted with APP_ENCRYPTION_KEY); no object-storage endpoint is configured.
     upload_max_bytes: int = 10_485_760
 
     # --- Phase 8 hardening -------------------------------------------------
@@ -94,8 +91,6 @@ class Settings(BaseSettings):
             raise ValueError("Dev SMS mailbox requires development mode and SMTP")
         if self.environment == "production" and not self.cookie_secure:
             raise ValueError("Authentication cookies must be Secure in production")
-        if (self.s3_access_key_id is None) != (self.s3_secret_access_key is None):
-            raise ValueError("Both S3 credentials must be set together")
         if not 1 <= self.access_token_minutes <= 30 or not 1 <= self.refresh_token_days <= 30:
             raise ValueError("Invalid session duration")
         if not 60 <= self.otp_seconds <= 600 or not 1 <= self.upload_max_bytes <= 10_485_760:

@@ -4,17 +4,29 @@ from __future__ import annotations
 
 import base64
 from contextlib import asynccontextmanager
-from io import BytesIO
+from datetime import UTC, datetime
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 from uuid import uuid4
 
 import pytest
 
-from app.services.providers import ProviderUnavailable, SMTPDelivery, UnconfiguredVirusScanner
-from app.services.storage import S3ObjectStorage
+from app.security.blobs import ATTACHMENT, EXPORT, BlobCipher
+from app.services.providers import (
+    ProviderUnavailable,
+    ScanTarget,
+    SMTPDelivery,
+    UnconfiguredVirusScanner,
+)
 from app.settings import Settings
-from app.worker import _worker_query, deliver_notices, health_job, scan_pending
+from app.worker import (
+    _worker_query,
+    clean_expired_exports,
+    deliver_notices,
+    export_pending,
+    health_job,
+    scan_pending,
+)
 
 
 @pytest.fixture
@@ -27,9 +39,6 @@ def settings() -> Settings:
         ENVIRONMENT="development",
         SMTP_HOST="localhost",
         DEV_SMS_MAILBOX=True,
-        S3_ENDPOINT_URL="http://object-store:9000",
-        S3_ACCESS_KEY_ID="dev",
-        S3_SECRET_ACCESS_KEY="dev-secret",
     )
 
 
@@ -68,8 +77,24 @@ async def test_mail_adapter_dev_otp_invite_and_notices(
     )
 
 
+def scan_target(blobs: BlobCipher, content: bytes = b"%PDF-1.4 scan me") -> ScanTarget:
+    attachment_id = uuid4()
+    return ScanTarget(
+        attachment_id=attachment_id,
+        original_filename="report.pdf",
+        mime_type="application/pdf",
+        size_bytes=len(content),
+        checksum_sha256="a" * 64,
+        content=blobs.decrypt(
+            blobs.encrypt(content, purpose=ATTACHMENT, resource_id=attachment_id),
+            purpose=ATTACHMENT,
+            resource_id=attachment_id,
+        ),
+    )
+
+
 async def test_scanner_stub_cannot_mark_clean() -> None:
-    assert await UnconfiguredVirusScanner().scan("private/key") is None
+    assert await UnconfiguredVirusScanner().scan(scan_target(BlobCipher(b"k" * 32))) is None
 
 
 async def test_worker_claims_notices_and_acks_or_retries(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -103,25 +128,77 @@ async def test_worker_claims_notices_and_acks_or_retries(monkeypatch: pytest.Mon
     assert calls[-1][1]["state"] == "retry"
 
 
-async def test_worker_scan_only_records_explicit_verdicts(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_worker_scan_decrypts_one_row_and_only_records_explicit_verdicts(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     upload = uuid4()
+    attachment = uuid4()
+    content = b"%PDF-1.4 real content"
+    blobs = BlobCipher(b"k" * 32)
+    stored = blobs.encrypt(content, purpose=ATTACHMENT, resource_id=attachment)
     calls: list[tuple[str, dict]] = []
 
     async def query(engine: object, sql: str, params: dict):
         calls.append((sql, params))
         if "pending_scans" in sql:
-            return [SimpleNamespace(upload_id=upload, storage_key="private/file")]
+            return [
+                SimpleNamespace(
+                    upload_id=upload,
+                    attachment_id=attachment,
+                    original_filename="report.pdf",
+                    mime_type="application/pdf",
+                    size_bytes=len(content),
+                    checksum_sha256="a" * 64,
+                )
+            ]
+        if "attachment_scan_content" in sql:
+            return [SimpleNamespace(content=stored)]
         return []
 
     monkeypatch.setattr("app.worker._worker_query", query)
     scanner = SimpleNamespace(scan=AsyncMock(return_value=None))
-    ctx = {"engine": SimpleNamespace(), "scanner": scanner}
+    ctx = {"engine": SimpleNamespace(), "scanner": scanner, "blobs": blobs}
     assert await scan_pending(ctx) == "checked 1 pending scan(s)"
-    assert len(calls) == 1
+    scanner.scan.assert_awaited_once()
+    target = scanner.scan.await_args.args[0]
+    assert target.content == content and target.attachment_id == attachment
+    # An unconfigured scanner records nothing; only an explicit verdict is stored.
+    assert len(calls) == 2
     scanner.scan.return_value = "clean"
     await scan_pending(ctx)
     assert calls[-1][1] == {"id": upload, "verdict": "clean"}
     assert await health_job({}) == "ok"
+
+
+async def test_worker_scan_marks_unreadable_content_as_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A row that cannot be decrypted (or is missing) fails closed, never silently pending."""
+    calls: list[tuple[str, dict]] = []
+
+    async def query(engine: object, sql: str, params: dict):
+        calls.append((sql, params))
+        if "pending_scans" in sql:
+            return [
+                SimpleNamespace(
+                    upload_id=uuid4(),
+                    attachment_id=uuid4(),
+                    original_filename="report.pdf",
+                    mime_type="application/pdf",
+                    size_bytes=4,
+                    checksum_sha256="b" * 64,
+                )
+            ]
+        if "attachment_scan_content" in sql:
+            return [SimpleNamespace(content=None)]
+        return []
+
+    monkeypatch.setattr("app.worker._worker_query", query)
+    scanner = SimpleNamespace(scan=AsyncMock(return_value="clean"))
+    ctx = {"engine": SimpleNamespace(), "scanner": scanner, "blobs": BlobCipher(b"k" * 32)}
+    await scan_pending(ctx)
+    scanner.scan.assert_not_awaited()
+    assert calls[-1][1]["verdict"] == "error"
 
 
 async def test_worker_db_context_only_sets_worker_scope() -> None:
@@ -144,32 +221,66 @@ async def test_worker_db_context_only_sets_worker_scope() -> None:
     assert "pending_scans" in executed[1]
 
 
-async def test_private_s3_adapter_limits_reads_and_deletes(
-    settings: Settings, monkeypatch: pytest.MonkeyPatch
+async def test_export_jobs_store_the_artifact_encrypted_on_the_job_row(
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    values: dict[str, bytes] = {}
+    job_id = uuid4()
+    blobs = BlobCipher(b"k" * 32)
+    calls: list[tuple[str, dict]] = []
 
-    class FakeS3:
-        def upload_fileobj(self, stream: BytesIO, bucket: str, key: str, ExtraArgs: dict):
-            assert (
-                bucket == "complaint-attachments" and ExtraArgs["ContentType"] == "application/pdf"
-            )
-            values[key] = stream.read()
+    async def query(engine: object, sql: str, params: dict):
+        calls.append((sql, params))
+        if "claim_exports" in sql:
+            return [SimpleNamespace(job_id=job_id, attempt=1, kind="complaints", format="csv")]
+        if "export_rows" in sql:
+            return [
+                SimpleNamespace(
+                    complaint_id=uuid4(),
+                    complaint_created_at=datetime.now(UTC),
+                    ticket_no="CMP-2026-000001",
+                    created_at=datetime.now(UTC),
+                    company_id=uuid4(),
+                    insurance_type="health",
+                    status="new",
+                    subject="Late claim",
+                    policy_number="POL-1",
+                    sla_breached=False,
+                    resolved_at=None,
+                    csat_score=None,
+                )
+            ]
+        return [SimpleNamespace(finished=True)]
 
-        def get_object(self, Bucket: str, Key: str):
-            return {"Body": BytesIO(values[Key])}
+    monkeypatch.setattr("app.worker._worker_query", query)
+    ctx = {"engine": SimpleNamespace(), "blobs": blobs}
+    assert await export_pending(ctx) == "processed 1 export job(s)"
+    stored = next(
+        params for sql, params in calls if "finish_export" in sql and params.get("content")
+    )
+    assert (
+        "CMP-2026-000001"
+        in blobs.decrypt(stored["content"], purpose=EXPORT, resource_id=job_id).decode()
+    )
+    assert "key" not in stored
 
-        def delete_object(self, Bucket: str, Key: str):
-            values.pop(Key, None)
 
-    monkeypatch.setattr("app.services.storage.boto3.client", lambda *args, **kw: FakeS3())
-    storage = S3ObjectStorage(settings)
-    await storage.put("private/key", BytesIO(b"%PDF"), "application/pdf")
-    assert await storage.get("private/key", 4) == b"%PDF"
-    with pytest.raises(ValueError):
-        await storage.get("private/key", 3)
-    await storage.delete("private/key")
-    assert values == {}
+async def test_expired_export_cleanup_nullifies_the_stored_column(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    job_id = uuid4()
+    calls: list[tuple[str, dict]] = []
+
+    async def query(engine: object, sql: str, params: dict):
+        calls.append((sql, params))
+        if "claim_export_cleanup" in sql:
+            return [SimpleNamespace(job_id=job_id, has_content=True)]
+        return [SimpleNamespace(finished=True)]
+
+    monkeypatch.setattr("app.worker._worker_query", query)
+    assert await clean_expired_exports({"engine": SimpleNamespace()}) == (
+        "cleaned 1 expired export artifact(s)"
+    )
+    assert calls[-1][1] == {"id": job_id}
 
 
 async def test_worker_startup_uses_isolated_role_and_shutdown(
@@ -188,6 +299,9 @@ async def test_worker_startup_uses_isolated_role_and_shutdown(
     await startup(context)
     assert context["engine"] is fake_engine
     assert factory.call_args.args[0].startswith("postgresql+asyncpg://app_worker")
-    assert await context["scanner"].scan("private/unscanned") is None
+    assert await context["scanner"].scan(scan_target(context["blobs"])) is None
+    # The worker holds the deployment keyring, never an object-storage client.
+    assert isinstance(context["blobs"], BlobCipher)
+    assert "storage" not in context
     await shutdown(context)
     fake_engine.dispose.assert_awaited_once()

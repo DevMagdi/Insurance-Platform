@@ -2460,7 +2460,7 @@ export interface paths {
         };
         /**
          * Browse Storage
-         * @description Return one bounded page of bucket/folder/object metadata, never file bytes.
+         * @description Return one bounded page of row metadata, never file bytes.
          */
         get: operations["browse_storage_api_staff_storage_get"];
         put?: never;

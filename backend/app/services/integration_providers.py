@@ -24,7 +24,6 @@ from typing import Any, Protocol
 from xml.sax.saxutils import escape
 
 import aiosmtplib
-import boto3
 import httpx
 import jwt
 
@@ -367,10 +366,25 @@ class SendGridEmailProvider:
 
 
 class SESEmailProvider:
-    """AWS SES RawMessage adapter with attachment support and bounded SMTP-equivalent payloads."""
+    """Amazon SES through its SMTP interface; no AWS SDK is required.
+
+    ``region`` selects the regional SES SMTP endpoint. ``smtp_username`` /
+    ``smtp_password`` must be the SES SMTP credentials; ``access_key_id`` /
+    ``secret_access_key`` are accepted as the same pair for existing
+    configurations. Messages keep the same bounded, attachment-aware shape as the
+    SMTP provider.
+    """
 
     def __init__(self, config: dict[str, Any]) -> None:
         self.config = config
+
+    def _credentials(self) -> tuple[str | None, str | None]:
+        username = self.config.get("smtp_username") or self.config.get("access_key_id")
+        password = self.config.get("smtp_password") or self.config.get("secret_access_key")
+        return (
+            str(username) if username else None,
+            str(password) if password else None,
+        )
 
     async def send(self, request: EmailSendRequest, *, idempotency_key: str) -> ProviderResult:
         sender = str(self.config.get("from_email", ""))
@@ -391,23 +405,20 @@ class SESEmailProvider:
                 subtype=subtype,
                 filename=item.filename,
             )
-        raw = message.as_bytes()
+        username, password = self._credentials()
         try:
-            client = boto3.client(
-                "ses",
-                region_name=region,
-                aws_access_key_id=self.config.get("access_key_id"),
-                aws_secret_access_key=self.config.get("secret_access_key"),
-            )
-            result = await asyncio.to_thread(
-                client.send_raw_email,
-                Source=sender,
-                Destinations=list(request.recipients),
-                RawMessage={"Data": raw},
+            await aiosmtplib.send(
+                message,
+                hostname=str(self.config.get("host") or f"email-smtp.{region}.amazonaws.com"),
+                port=int(self.config.get("port") or 587),
+                username=username,
+                password=password,
+                start_tls=True,
             )
         except Exception as exc:
             raise IntegrationProviderError("ses_delivery_failed") from exc
-        return ProviderResult(provider_id=str(result.get("MessageId", "")) or None)
+        # SES' SMTP interface does not return a message id; the queue keeps its own.
+        return ProviderResult(provider_id=None)
 
 
 class WhatsAppCloudProvider:

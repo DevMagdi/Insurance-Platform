@@ -1,6 +1,6 @@
 # Architecture through Phase 9
 
-**Product authority:** [PROJECT_BRIEF.md](PROJECT_BRIEF.md). This describes the **implemented backend** plus its production boundaries. [openapi.yaml](openapi.yaml) is the generated, implemented HTTP contract; [openapi-roadmap.yaml](openapi-roadmap.yaml) retains the original `/api/v1` **future-route draft**. FastAPI currently implements `/api/*`, not that roadmap. The frontend includes the Phase 6 customer portal (see [CUSTOMER_PORTAL.md](CUSTOMER_PORTAL.md)), the staff workspace with human-reviewed AI assistance (see [STAFF_PORTAL.md](STAFF_PORTAL.md)), the Phase 7 scoped operations/admin console (see [PHASE_7.md](PHASE_7.md)), and the Phase 9 first-party object-storage inventory (see [STORAGE_ADMIN.md](STORAGE_ADMIN.md)).
+**Product authority:** [PROJECT_BRIEF.md](PROJECT_BRIEF.md). This describes the **implemented backend** plus its production boundaries. [openapi.yaml](openapi.yaml) is the generated, implemented HTTP contract; [openapi-roadmap.yaml](openapi-roadmap.yaml) retains the original `/api/v1` **future-route draft**. FastAPI currently implements `/api/*`, not that roadmap. The frontend includes the Phase 6 customer portal (see [CUSTOMER_PORTAL.md](CUSTOMER_PORTAL.md)), the staff workspace with human-reviewed AI assistance (see [STAFF_PORTAL.md](STAFF_PORTAL.md)), the Phase 7 scoped operations/admin console (see [PHASE_7.md](PHASE_7.md)), and and the Phase 9 first-party database-storage inventory (see [STORAGE_ADMIN.md](STORAGE_ADMIN.md)).
 
 ## Components and request flow
 
@@ -10,7 +10,7 @@ CDN (immutable assets, public reference data only)
 Arabic-first React/Vite (browser) -- same-origin /api -- Nginx (limit_req, CSP/HSTS) -- FastAPI on Gunicorn/Uvicorn (stateless, HPA)
                                   |                         |-- PgBouncer (transaction) -- PostgreSQL 16
                                   |                         |-- Redis (limits, OTP, challenges, access cache)
-                                  |                         `-- private S3 bucket (SeaweedFS locally; proxied upload/download)
+                                  |                         `-- encrypted private binaries (attachments/exports/recordings) in PostgreSQL
                                   `-- Vite dev shell
 Separate ARQ worker -- Redis cron -- restricted app_worker login -- PostgreSQL definer functions
                            `-- SMTP delivery (Mailpit dev)/AV hook (unconfigured by default)
@@ -19,15 +19,16 @@ Read-only analytics (optional DATABASE_READ_URL) -- replica PgBouncer -- streami
 Prometheus (/metrics, bearer) -> alert rules -> Alertmanager / Grafana; Sentry (PII scrubbed); JSON logs
 ```
 
-The HTTP router → service → repository flow is in `backend/app/api/`, `app/services/`, `app/repositories/`; request/response constraints live in `app/domain/schemas.py`. The old Phase 1 SQL schema (`001`–`003`) is preserved; `004`–`006` add sessions, idempotency, upload reservations, notice outbox and SECURITY DEFINER commands. Phase 3 revisions `007`–`016` add staff workflows, automation, guarded administration, SLA calendars, scheduled reports, operations administration, analytics rollups and export formats; Phase 4 revision `017` adds encrypted integrations, queued actions, AI insights, API keys and voice/message delivery state. Phase 6 revisions `20261016_18`–`20261016_19` add customer profile/preference helpers and preference-aware notice delivery. Phase 7 revision `20261016_20` adds the staff-console team/assignment administration functions and permission catalog entries without duplicating the main branch's Phase 3/4 services. Phase 8 revisions `20261016_21` (PDPL consent evidence, privacy requests, retention, queue-depth telemetry) and `20261016_22` (statement-level InitPlan RLS for complaints) follow. Phase 9 revision `20261016_23` adds the `storage.manage` capability for the first-party, read-only S3-compatible storage inventory. There are twenty-three ordered Alembic revisions, with `20261016_23` as head. The typed SQLAlchemy 2 mappings in `app/models/` mirror the database. Partitioned complaint keys retain `(id, created_at)` so child queries and events join the correct partition. Ticket numbers are globally unique and customer-facing; UUIDs are internal IDs.
+The HTTP router → service → repository flow is in `backend/app/api/`, `app/services/`, `app/repositories/`; request/response constraints live in `app/domain/schemas.py`. The old Phase 1 SQL schema (`001`–`003`) is preserved; `004`–`006` add sessions, idempotency, upload reservations, notice outbox and SECURITY DEFINER commands. Phase 3 revisions `007`–`016` add staff workflows, automation, guarded administration, SLA calendars, scheduled reports, operations administration, analytics rollups and export formats; Phase 4 revision `017` adds encrypted integrations, queued actions, AI insights, API keys and voice/message delivery state. Phase 6 revisions `20261016_18`–`20261016_19` add customer profile/preference helpers and preference-aware notice delivery. Phase 7 revision `20261016_20` adds the staff-console team/assignment administration functions and permission catalog entries without duplicating the main branch's Phase 3/4 services. Phase 8 revisions `20261016_21` (PDPL consent evidence, privacy requests, retention, queue-depth telemetry) and `20261016_22` (statement-level InitPlan RLS for complaints) follow. Phase 9 revision `20261016_23` adds the `storage.manage` capability for the first-party, read-only storage inventory; revision `20261016_24` moves that inventory — and the bytes it describes — from the retired S3-compatible object store onto the owning rows in PostgreSQL (`attachments.content`, `export_jobs.content`, `call_logs.recording_content`), all encrypted with `APP_ENCRYPTION_KEY` before they reach the database. There are twenty-four ordered Alembic revisions, with `20261016_24` as head. The typed SQLAlchemy 2 mappings in `app/models/` mirror the database. Partitioned complaint keys retain `(id, created_at)` so child queries and events join the correct partition. Ticket numbers are globally unique and customer-facing; UUIDs are internal IDs.
 
-### First-party object-storage administration
+### First-party database-storage administration
 
 The built-in `/staff/storage` route is part of the existing staff SPA and uses
-`GET /api/staff/storage` on the same origin. The API reads only the configured
-bucket using the existing S3-compatible client and `ListObjectsV2`; list pages
-are bounded, delimiter-aware and use opaque continuation tokens. The browser
-never receives storage credentials or calls the object-store host directly.
+`GET /api/staff/storage` on the same origin. The API reads only the platform's
+own tables (`attachments`, `export_jobs`, `call_logs`); list pages are bounded,
+keyset-paginated and use opaque continuation tokens. The browser never receives
+storage credentials, never sees ciphertext and never calls a storage service
+directly — there is none to call.
 
 The endpoint requires `storage.manage` and a global staff scope, checks those
 conditions on every request, limits per-user inventory requests, sets
@@ -130,7 +131,7 @@ This is a first-party product view, not a proxy to an external storage console.
   - **helm:** lint, template and kubeconform;
   - **postgres-rls:** migrates real PostgreSQL 16 through PgBouncer, runs the integration and pen-test suites plus a double seed, a k6 smoke and a backup/restore drill.
 - CD (`cd.yml`) publishes immutable, SHA-tagged images to GHCR, then verifies the published artifacts by running them (SPA served by Nginx, API reachable through the same-origin proxy, contract parity) before any deployment is considered. The deploy job is gated on the `DEPLOY_ENABLED` variable, runs in a protected GitHub environment, validates the image owner/tag, ships only code (compose file, `infra/`, docs) over SSH, and passes values as `argv` so nothing is interpolated into a remote command string. On the host it pulls, migrates once, replaces `api`/`worker`/`web`, and only succeeds if `/api/health/ready` — which checks PostgreSQL through PgBouncer *and* Redis — turns green within 150 seconds.
-- Production uses images, never building on the host (`docker-compose.prod.yml`), keeps the database and object store on loopback with only the web port published, and takes its credentials from an on-host `.env.production`. Rollback is a tag change; schema rollback is not offered because the SQL revisions are forward-only.
+- Production uses images, never building on the host (`docker-compose.prod.yml`), keeps the database on loopback with only the web port published, and takes its credentials from an on-host `.env.production`. Rollback is a tag change; schema rollback is not offered because the SQL revisions are forward-only.
 
 ## Data and operating model
 

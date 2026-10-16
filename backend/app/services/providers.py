@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from email.message import EmailMessage
 from typing import Any, Protocol
+from uuid import UUID
 
 import aiosmtplib
 
@@ -173,11 +175,23 @@ class SMTPDelivery:
         return True
 
 
+@dataclass(frozen=True)
+class ScanTarget:
+    """One pending attachment, decrypted in the worker and never written to disk."""
+
+    attachment_id: UUID
+    original_filename: str
+    mime_type: str
+    size_bytes: int
+    checksum_sha256: str
+    content: bytes
+
+
 class VirusScanner(Protocol):
-    async def scan(self, storage_key: str) -> str | None: ...
+    async def scan(self, target: ScanTarget) -> str | None: ...
 
 
 class UnconfiguredVirusScanner:
-    async def scan(self, storage_key: str) -> str | None:
+    async def scan(self, target: ScanTarget) -> str | None:
         # Never treat unscanned content as clean.
         return None

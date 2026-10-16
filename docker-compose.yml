@@ -58,30 +58,6 @@ services:
       timeout: 3s
       retries: 10
 
-  object-store:
-    # S3-compatible SeaweedFS gateway for local development.
-    image: chrislusf/seaweedfs:4.48
-    command: ['mini', '-s3.port=9000', '-s3.port.iceberg=0', '-s3.port.lance=0']
-    environment:
-      AWS_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:?run make init}
-      AWS_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:?run make init}
-    volumes:
-      - object_store_data:/data
-    ports:
-      - '127.0.0.1:9000:9000'
-  object-store-init:
-    build:
-      context: .
-      dockerfile: infra/Dockerfile.backend
-    environment:
-      S3_ENDPOINT_URL: http://object-store:9000
-      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:?run make init}
-      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:?run make init}
-      S3_BUCKET: ${S3_BUCKET:?run make init}
-    depends_on:
-      - object-store
-    command: ['python', '-m', 'app.scripts.init_bucket']
-
   migrate:
     build:
       context: .
@@ -102,10 +78,6 @@ services:
       APP_ENCRYPTION_KEY: ${APP_ENCRYPTION_KEY:?run make init}
       APP_BLIND_INDEX_KEY: ${APP_BLIND_INDEX_KEY:?run make init}
       JWT_SIGNING_KEY: ${JWT_SIGNING_KEY:?run make init}
-      S3_BUCKET: ${S3_BUCKET:?run make init}
-      S3_ENDPOINT_URL: http://object-store:9000
-      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:?run make init}
-      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:?run make init}
       SMTP_HOST: mailpit
       SMTP_PORT: '1025'
       ENVIRONMENT: development
@@ -123,8 +95,6 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-      object-store-init:
-        condition: service_completed_successfully
       mailpit:
         condition: service_started
     healthcheck:
@@ -141,10 +111,6 @@ services:
       WORKER_DATABASE_URL: postgresql+asyncpg://app_worker:${APP_WORKER_DB_PASSWORD}@postgres:5432/${POSTGRES_DB}
       APP_ENCRYPTION_KEY: ${APP_ENCRYPTION_KEY:?run make init}
       REDIS_URL: redis://redis:6379/0
-      S3_BUCKET: ${S3_BUCKET:?run make init}
-      S3_ENDPOINT_URL: http://object-store:9000
-      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:?run make init}
-      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:?run make init}
       SMTP_HOST: mailpit
       SMTP_PORT: '1025'
       DEV_SMS_MAILBOX: 'true'
@@ -157,8 +123,6 @@ services:
         condition: service_healthy
       postgres:
         condition: service_healthy
-      object-store-init:
-        condition: service_completed_successfully
       mailpit:
         condition: service_started
 
@@ -210,9 +174,8 @@ services:
       frontend:
         condition: service_started
 
+# PostgreSQL, Redis and Mailpit only: private binaries (attachments, exports and
+# call recordings) live encrypted inside PostgreSQL, so no object store is started.
 volumes:
   postgres_data:
   redis_data:
-  object_store_data:
-    # Set this to an existing local volume name when upgrading without moving data.
-    name: ${OBJECT_STORE_VOLUME:-insurance-platform-object-store-data}

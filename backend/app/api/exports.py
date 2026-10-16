@@ -12,10 +12,10 @@ from app.api.deps import RequestContext, require_permission, require_staff
 from app.api.staff import access_error
 from app.domain.schemas import ExportRequest
 from app.repositories.exports import ExportRepository
+from app.security.blobs import EXPORT, BlobCipher
 from app.security.tokens import csrf_required
 from app.services.backpressure import backpressure
 from app.services.render import EXTENSIONS, MEDIA_TYPES
-from app.services.storage import ObjectStorage
 
 router = APIRouter(prefix="/api/staff/exports", tags=["exports"])
 
@@ -53,19 +53,18 @@ async def download_export(
     ctx: RequestContext = Depends(require_staff),
 ) -> Response:
     await request.app.state.auth.limits.check("exports:download", str(ctx.actor.id), 15, 300)
-    key = await ExportRepository().authorize_download(ctx.db, job_id)
-    if key is None:
+    artifact = await ExportRepository().authorize_download(ctx.db, job_id)
+    if artifact is None:
         raise HTTPException(status_code=404, detail="Completed export unavailable")
-    storage: ObjectStorage | None = request.app.state.storage
-    if storage is None:
-        raise HTTPException(status_code=503, detail="Private export storage unavailable")
+    blobs: BlobCipher = request.app.state.blobs
     try:
-        data = await storage.get(key, max_bytes=2_000_000)
-    except Exception:
-        raise HTTPException(status_code=503, detail="Private export storage unavailable") from None
-    # Media type and filename come from the server-generated key, never the client.
-    suffix = key.rsplit(".", 1)[-1]
-    fmt = suffix if suffix in EXTENSIONS.values() else "csv"
+        data = blobs.decrypt(artifact.content, purpose=EXPORT, resource_id=job_id)
+    except ValueError:
+        raise HTTPException(status_code=503, detail="Private export artifact unavailable") from None
+    if len(data) > 2_000_000:
+        raise HTTPException(status_code=503, detail="Private export artifact unavailable")
+    # Media type and filename come from the server-decided format, never the client.
+    fmt = artifact.format if artifact.format in EXTENSIONS else "csv"
     return Response(
         content=data,
         media_type=MEDIA_TYPES[fmt],
