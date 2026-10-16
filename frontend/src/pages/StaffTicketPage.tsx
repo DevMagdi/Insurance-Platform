@@ -52,7 +52,15 @@ export function StaffTicketPage({ complaintId }: { complaintId: string }) {
 
   const aiMutation = useMutation({
     mutationFn: () => staffApi.generateAi(complaintId),
-    onSuccess: async () => queryClient.invalidateQueries({ queryKey: ['staff-ticket-ai', complaintId] }),
+    onSuccess: async (created) => {
+      queryClient.setQueryData(
+        ['staff-ticket-ai', complaintId],
+        (current: typeof created | undefined) => [
+          ...created,
+          ...(current ?? []).filter((item) => !created.some((next) => next.id === item.id)),
+        ],
+      );
+    },
     onError: (caught) => setError(caught instanceof ApiError ? caught.detail : t('errors.generic')),
   });
 

@@ -25,7 +25,7 @@ jobs:
         run: |
           cd frontend
           npx playwright install --with-deps chromium
-          npm run test:e2e
+          npm run test:e2e -- --reporter=github
   postgres-rls:
     runs-on: ubuntu-latest
     steps:
