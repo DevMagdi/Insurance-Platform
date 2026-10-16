@@ -1,3 +1,22 @@
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700;800&family=Tajawal:wght@400;500;700;800&display=swap');
 @import 'tailwindcss';
-:root { font-family: system-ui, -apple-system, "Segoe UI", Tahoma, sans-serif; }
-:focus-visible { outline: 3px solid #fbbf24; outline-offset: 3px; }
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root { font-family: 'Cairo', 'Tajawal', 'Inter', system-ui, sans-serif; color-scheme: light; font-synthesis: none; text-rendering: optimizeLegibility; scroll-behavior: smooth; }
+:root.dark { color-scheme: dark; }
+* { box-sizing: border-box; }
+body { margin: 0; min-width: 320px; background: #f8fafb; color: #10253c; }
+:focus-visible { outline: 3px solid #d6ae58; outline-offset: 3px; }
+::selection { background: rgb(16 185 129 / .22); }
+@theme {
+  --color-navy: #081a2f;
+  --color-gold: #d6ae58;
+  --color-emerald: #168b69;
+  --color-cream: #f7f9fa;
+}
+.glass-card { border: 1px solid rgb(15 35 57 / .08); background: rgb(255 255 255 / .85); backdrop-filter: blur(18px); }
+.dark .glass-card { border-color: rgb(255 255 255 / .1); background: rgb(16 37 60 / .82); color: #f8fafc; }
+.hero-glow { background-image: radial-gradient(ellipse at 80% 10%, rgb(22 139 105 / .22), transparent 40%), radial-gradient(ellipse at 10% 80%, rgb(214 174 88 / .12), transparent 38%); }
+input, textarea, select, button { font: inherit; }
+summary::-webkit-details-marker { display: none; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; } }

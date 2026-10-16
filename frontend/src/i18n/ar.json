@@ -1,0 +1,37 @@
+{
+  "app": { "name": "نظام إدارة شكاوى التأمين", "tagline": "منصة احترافية لإدارة شكاوى التأمين" },
+  "nav": { "home": "الرئيسية", "features": "الميزات", "how": "كيف يعمل", "pricing": "الأسعار", "contact": "اتصل بنا", "login": "تسجيل الدخول", "signup": "ابدأ الآن", "dashboard": "لوحة التحكم", "complaints": "الشكاوى", "analytics": "التحليلات", "settings": "الإعدادات", "logout": "تسجيل الخروج" },
+  "landing": {
+    "heroTitle": "إدارة شكاوى التأمين، برؤية أوضح",
+    "heroSubtitle": "منصة SaaS متكاملة لشركات الوساطة: استقبال، تعيين، متابعة، حل، وتصعيد الشكاوى مع تحليلات ولوحات تحكم.",
+    "ctaPrimary": "اطلب عرضاً تجريبياً",
+    "ctaSecondary": "تتبع شكوى",
+    "fileComplaint": "تقديم شكوى",
+    "trackComplaint": "تتبع شكوى",
+    "howTitle": "كيف يعمل",
+    "featuresTitle": "الميزات",
+    "trustTitle": "الأمان والثقة",
+    "statsTitle": "أرقام",
+    "testimonialsTitle": "آراء العملاء",
+    "faqTitle": "الأسئلة الشائعة",
+    "demoTitle": "طلب عرض تجريبي"
+  },
+  "auth": {
+    "customerOtpTitle": "دخول العملاء عبر OTP",
+    "mobile": "رقم الجوال",
+    "sendOtp": "إرسال رمز التحقق",
+    "otpCode": "رمز التحقق",
+    "verify": "تحقق",
+    "staffLoginTitle": "تسجيل دخول الموظفين",
+    "email": "البريد الإلكتروني",
+    "password": "كلمة المرور",
+    "signIn": "تسجيل الدخول",
+    "acceptInviteTitle": "قبول الدعوة",
+    "newPassword": "كلمة المرور الجديدة",
+    "accept": "قبول",
+    "twoFactor": "التحقق بخطوتين"
+  },
+  "common": { "loading": "جاري التحميل...", "empty": "لا توجد بيانات", "error": "حدث خطأ", "retry": "إعادة المحاولة", "save": "حفظ", "cancel": "إلغاء", "close": "إغلاق", "search": "بحث", "filter": "تصفية", "export": "تصدير", "submit": "إرسال" },
+  "errors": { "forbidden": "ليس لديك صلاحية للوصول إلى هذه الصفحة", "notFound": "الصفحة غير موجودة" },
+  "permissions": { "denied": "تم رفض الوصول" }
+}
