@@ -37,7 +37,7 @@ jobs:
           docker build -f infra/Dockerfile.backend -t ci-api .
           docker build -f infra/Dockerfile.web -t ci-web .
       - name: Validate the production Nginx configuration inside the image
-        run: docker run --rm --add-host api:127.0.0.1 ci-web nginx -t
+        run: scripts/ci/annotate.sh "nginx -t" docker run --rm --add-host api:127.0.0.1 ci-web nginx -t
       - name: Install Trivy (pinned release, checksum verified)
         run: |
           set -euo pipefail
@@ -53,8 +53,9 @@ jobs:
         run: |
           set -euo pipefail
           for image in ci-api ci-web; do
-            trivy image --quiet --scanners vuln --severity HIGH,CRITICAL --ignore-unfixed --exit-code 0 "$image"
-            trivy image --quiet --scanners vuln --severity CRITICAL --ignore-unfixed --exit-code 1 "$image"
+            scripts/ci/annotate.sh "Trivy report" trivy image --quiet --scanners vuln --severity HIGH,CRITICAL --ignore-unfixed --exit-code 0 "$image"
+            scripts/ci/annotate.sh "Trivy CRITICAL in $image" \
+              trivy image --quiet --scanners vuln --severity CRITICAL --ignore-unfixed --exit-code 1 "$image"
           done
       - name: Boot the images together and check the same-origin contract
         run: |
@@ -136,9 +137,11 @@ jobs:
         run: |
           python -m pip install --upgrade pip setuptools
           python -m pip install -e './backend[dev,seed]'
-          python -m pip_audit --skip-editable --progress-spinner off
+          scripts/ci/annotate.sh "pip-audit" python -m pip_audit --skip-editable --progress-spinner off
       - name: Frontend dependency audit
-        run: cd frontend && npm ci --ignore-scripts && npm audit --audit-level=high
+        run: |
+          cd frontend && npm ci --ignore-scripts
+          ../scripts/ci/annotate.sh "npm audit" npm audit --audit-level=high
       - name: Repository scan (dependencies, secrets, IaC misconfiguration)
         run: |
           set -euo pipefail
@@ -150,10 +153,13 @@ jobs:
           tar -xzf "trivy_${V}_Linux-64bit.tar.gz" trivy
           sudo install -m 0755 trivy /usr/local/bin/trivy
           cd "$GITHUB_WORKSPACE"
-          trivy fs --quiet --scanners vuln,secret --severity HIGH,CRITICAL --exit-code 0 --skip-dirs frontend/node_modules .
-          trivy fs --quiet --scanners vuln,secret --severity CRITICAL --ignore-unfixed --exit-code 1 --skip-dirs frontend/node_modules .
+          scripts/ci/annotate.sh "Trivy report" trivy fs --quiet --scanners vuln,secret --severity HIGH,CRITICAL --exit-code 0 --skip-dirs frontend/node_modules .
+          scripts/ci/annotate.sh "Trivy fs CRITICAL" \
+            trivy fs --quiet --scanners vuln,secret --severity CRITICAL --ignore-unfixed --exit-code 1 --skip-dirs frontend/node_modules .
           # Misconfiguration findings are reported for review, not gating (dev compose is intentionally permissive).
-          trivy config --quiet --severity HIGH,CRITICAL --exit-code 0 deploy/helm/insurance-platform infra
+          for target in deploy/helm/insurance-platform infra; do
+            scripts/ci/annotate.sh "Trivy config report" trivy config --quiet --severity HIGH,CRITICAL --exit-code 0 "$target"
+          done
   helm:
     runs-on: ubuntu-latest
     steps:
@@ -277,7 +283,11 @@ jobs:
           docker run --rm --network insurance-platform_default \
             -v "$PWD/loadtest/k6:/scripts:ro" -v /tmp/sessions.json:/tmp/sessions.json:ro \
             -e BASE_URL=http://api:8000 -e SESSIONS=/tmp/sessions.json -e PROFILE=smoke \
-            grafana/k6:2.3.0 run --quiet /scripts/platform.js
+            grafana/k6:2.3.0 run --quiet /scripts/platform.js > /tmp/k6.log 2>&1 || {
+              cat /tmp/k6.log
+              scripts/ci/annotate.sh "k6 smoke" sh -c 'grep -E "✗|thresholds|http_req_duration|unexpected|checks|ERRO|level=error" /tmp/k6.log | tail -60; exit 1'
+            }
+          cat /tmp/k6.log
       - name: Backup and restore drill (checksum, revision, RLS still enforced)
         run: |
           set -euo pipefail
