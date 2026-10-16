@@ -280,14 +280,21 @@ jobs:
           set +a
           # Non-production only: the multiplier relaxes per-IP windows for a single load generator.
           RATE_LIMIT_MULTIPLIER=100 docker compose up -d api
+          ready=0
           for attempt in $(seq 1 60); do
-            if docker compose exec -T api python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health/ready', timeout=2)" 2>/dev/null; then break; fi
+            if docker compose exec -T api python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health/ready', timeout=2)" 2>/dev/null; then ready=1; break; fi
             sleep 2
           done
+          if [ "$ready" -ne 1 ]; then
+            scripts/ci/annotate.sh "API not ready" sh -c 'docker compose logs --no-color --tail=80 api; exit 1'
+          fi
           docker compose run --rm -T --no-deps \
             -e "DATABASE_ADMIN_URL=postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}" \
-            api python -m app.scripts.loadtest_sessions --customers 100 --staff 10 > /tmp/sessions.json
-          python -c "import json; d = json.load(open('/tmp/sessions.json')); print({k: len(v) for k, v in d.items()}); assert d['customers'] and d['tracking'] and d['staff']"
+            api python -m app.scripts.loadtest_sessions --customers 100 --staff 10 \
+            > /tmp/sessions.json 2> /tmp/sessions.err || {
+              scripts/ci/annotate.sh "load-test sessions" sh -c 'cat /tmp/sessions.err; head -c 500 /tmp/sessions.json; exit 1'
+            }
+          scripts/ci/annotate.sh "load-test sessions output" python -c "import json; d = json.load(open('/tmp/sessions.json')); print({k: len(v) for k, v in d.items()}); assert d['customers'] and d['tracking'] and d['staff']"
           docker run --rm --network insurance-platform_default \
             -v "$PWD/loadtest/k6:/scripts:ro" -v /tmp/sessions.json:/tmp/sessions.json:ro \
             -e BASE_URL=http://api:8000 -e SESSIONS=/tmp/sessions.json -e PROFILE=smoke \
