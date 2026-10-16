@@ -10,7 +10,7 @@ CDN (immutable assets, public reference data only)
 Arabic-first React/Vite (browser) -- same-origin /api -- Nginx (limit_req, CSP/HSTS) -- FastAPI on Gunicorn/Uvicorn (stateless, HPA)
                                   |                         |-- PgBouncer (transaction) -- PostgreSQL 16
                                   |                         |-- Redis (limits, OTP, challenges, access cache)
-                                  |                         `-- private MinIO S3 (proxied upload/download)
+                                  |                         `-- private S3 bucket (SeaweedFS locally; proxied upload/download)
                                   `-- Vite dev shell
 Separate ARQ worker -- Redis cron -- restricted app_worker login -- PostgreSQL definer functions
                            `-- SMTP delivery (Mailpit dev)/AV hook (unconfigured by default)

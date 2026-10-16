@@ -59,27 +59,30 @@ services:
       retries: 10
 
   minio:
-    image: minio/minio:RELEASE.2025-09-07T16-13-09Z
-    command: ['server', '/data', '--console-address', ':9001']
+    # S3-compatible object store for local development. The service keeps its
+    # historical name (and the MINIO_ROOT_* variables) so existing .env files keep
+    # working; MinIO's community images were withdrawn upstream, so it runs SeaweedFS.
+    image: chrislusf/seaweedfs:4.48
+    command: ['mini', '-s3.port=9000', '-s3.port.iceberg=0', '-s3.port.lance=0']
     environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?run make init}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?run make init}
+      AWS_ACCESS_KEY_ID: ${MINIO_ROOT_USER:?run make init}
+      AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:?run make init}
     volumes:
       - minio_data:/data
     ports:
       - '127.0.0.1:9000:9000'
-      - '127.0.0.1:9001:9001'
   minio-init:
-    image: minio/mc:RELEASE.2025-08-13T08-35-41Z
+    build:
+      context: .
+      dockerfile: infra/Dockerfile.backend
     environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?run make init}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?run make init}
+      S3_ENDPOINT_URL: http://minio:9000
+      S3_ACCESS_KEY_ID: ${MINIO_ROOT_USER:?run make init}
+      S3_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:?run make init}
       S3_BUCKET: ${S3_BUCKET:?run make init}
     depends_on:
       - minio
-    volumes:
-      - ./infra/minio/init_bucket.sh:/usr/local/bin/init_bucket.sh:ro
-    entrypoint: ['/bin/sh', '/usr/local/bin/init_bucket.sh']
+    command: ['python', '-m', 'app.scripts.init_bucket']
 
   migrate:
     build:

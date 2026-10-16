@@ -62,8 +62,12 @@ APP_ENCRYPTION_PREVIOUS_KEYS=       # "<id>:<old key>,..." while re-encrypting
 APP_IDEMPOTENCY_KEY=                # set to the ORIGINAL encryption key before the first rotation
 ```
 
-Object storage: the bundled MinIO is convenient but lags upstream security
-fixes. In production, point `S3_ENDPOINT_URL`/credentials at **managed S3** (or
+Object storage: the bundled single-host store keeps the historical `minio` /
+`minio-init` service names and `MINIO_ROOT_*` variables, but runs SeaweedFS's
+S3 gateway (`chrislusf/seaweedfs`), because MinIO's community images and `mc`
+client were withdrawn upstream. `minio-init` is a one-shot run of the API image
+(`python -m app.scripts.init_bucket`) that creates the private bucket over the
+S3 API. In production, point `S3_ENDPOINT_URL`/credentials at **managed S3** (or
 an equivalent with versioning, SSE and replication) and drop the `minio`
 services.
 
