@@ -194,6 +194,7 @@ jobs:
           grep -q 'kind: PodDisruptionBudget' /tmp/render-values-production.yaml
   postgres-rls:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -224,7 +225,7 @@ jobs:
           export TEST_PGBOUNCER_DATABASE_URL="postgresql+asyncpg://app_runtime:${APP_DB_PASSWORD}@127.0.0.1:6432/${POSTGRES_DB}"
           cd backend
           set +e
-          python -m pytest -m integration -v > /tmp/insurance-integration.log 2>&1
+          python -m pytest -m integration -v --timeout=300 --durations=15 > /tmp/insurance-integration.log 2>&1
           code=$?
           set -e
           cat /tmp/insurance-integration.log
