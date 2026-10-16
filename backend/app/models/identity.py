@@ -50,6 +50,8 @@ class Customer(Base):
     token_version: Mapped[int] = mapped_column(server_default=text("0"))
     mobile: Mapped[str] = mapped_column(Text)
     whatsapp_available: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
+    voice_followup_opt_in: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
+    voice_consent_at: Mapped[datetime | None]
     email: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(server_default=func.now())

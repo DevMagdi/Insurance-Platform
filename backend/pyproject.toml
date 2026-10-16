@@ -19,6 +19,7 @@ dependencies = [
   "asyncpg>=0.30,<1",
   "cryptography>=44,<47",
   "fastapi>=0.115,<1",
+  "httpx>=0.28,<1",
   "psycopg[binary]>=3.2,<4",
   "pydantic-settings>=2.6,<3",
   "redis>=5,<7",
@@ -65,6 +66,9 @@ ignore = ["S101"] # assertions are appropriate in tests
 "tests/*" = ["S", "RUF012"]
 "app/api/*" = ["B008"] # FastAPI Depends/Query are dependency declarations.
 "app/api/deps.py" = ["B008", "S104"] # 0.0.0.0 is an unknown-IP sentinel.
+"app/services/email_templates.py" = ["RUF001"] # Arabic literals are intentional localized copy.
+"app/services/integration_providers.py" = ["RUF001"] # Arabic mock dialogue exercises bilingual flows.
+"app/services/integrations.py" = ["RUF001"] # Arabic call scripts are intentional.
 "alembic/versions/*" = ["S"]
 "app/scripts/*" = ["S"]
 
