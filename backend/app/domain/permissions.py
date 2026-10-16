@@ -28,6 +28,7 @@ PERMISSIONS: Final[frozenset[str]] = frozenset(
         "users.deactivate",
         "users.manage_access",
         "roles.manage",
+        "teams.manage",
         "companies.manage",
         "categories.manage",
         "sla.manage",

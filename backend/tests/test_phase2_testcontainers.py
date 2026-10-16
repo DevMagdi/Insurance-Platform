@@ -344,12 +344,18 @@ async def test_api_ownership_guest_audit_status_and_refresh(test_app: SimpleName
     assert listed.status_code == 200 and [item["id"] for item in listed.json()["items"]] == [
         complaint_id
     ]
+    scoped_options = await ctx.agent.get("/api/staff/complaints/filter-options")
+    assert scoped_options.status_code == 200
+    assert {row["id"] for row in scoped_options.json()["companies"]} == {str(ctx.identities["a"])}
     assert (await ctx.agent.get(f"/api/staff/complaints/{second.json()['id']}")).status_code == 404
+    outside_ticket = second.json()["ticket_no"]
     for suffix in (f"?company_id={ctx.identities['b']}", "?search=dispute"):
         result = await ctx.agent.get("/api/staff/complaints" + suffix)
         assert result.status_code == 200 and result.json()["items"] == []
         export = await ctx.agent.get("/api/staff/complaints/export" + suffix)
-        assert export.status_code == 200 and ticket.encode() not in export.content
+        assert export.status_code == 200
+        assert ticket.encode() not in export.content
+        assert outside_ticket.encode() not in export.content
     assert (await ctx.agent.get("/api/staff/complaints/counters")).json()["new"] == 1
     assert (
         await ctx.agent.post(
@@ -560,6 +566,7 @@ async def test_phase3_role_delegation_revocation_and_reset(test_app: SimpleNames
         assert role_edit.status_code == 200, role_edit.text
         assert (await recipient.get("/api/me")).status_code == 401
         await sign_in_staff(recipient, email)
+        assert (await recipient.get("/api/staff/complaints/export")).status_code == 403
         notices = await recipient.get("/api/me/notifications")
         assert notices.status_code == 200, notices.text
         assert any(n["kind"] == "access_changed" for n in notices.json())

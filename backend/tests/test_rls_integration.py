@@ -714,7 +714,7 @@ async def test_deny_override_is_immediate(data: Data, runtime_url: str) -> None:
 
 def test_partition_placement_catalog_and_runtime_role(data: Data) -> None:
     with psycopg.connect(data.admin_url) as conn:
-        assert conn.execute("SELECT count(*) FROM permissions").fetchone()[0] >= 33
+        assert conn.execute("SELECT count(*) FROM permissions").fetchone()[0] >= 34
         db_columns = conn.execute(
             "SELECT table_name, column_name FROM information_schema.columns "
             "WHERE table_schema = 'public' AND table_name = ANY(%s)",

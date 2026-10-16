@@ -3456,6 +3456,16 @@ paths:
             format: uuid
           - type: 'null'
           title: Complaint Id
+      - name: action
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            minLength: 1
+            maxLength: 80
+          - type: 'null'
+          title: Action
       - name: limit
         in: query
         required: false
@@ -3510,6 +3520,24 @@ paths:
             format: uuid
           - type: 'null'
           title: Target Id
+      - name: start
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Start
+      - name: end
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: End
       - name: limit
         in: query
         required: false
@@ -3591,6 +3619,65 @@ paths:
             format: uuid
           - type: 'null'
           title: Complaint Id
+      - name: action
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            minLength: 1
+            maxLength: 80
+          - type: 'null'
+          title: Action
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: audit.view
+  /api/staff/audit/access-changes.csv:
+    get:
+      tags:
+      - audit
+      summary: Export Access Changes
+      operationId: export_access_changes_api_staff_audit_access_changes_csv_get
+      parameters:
+      - name: target_id
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Target Id
+      - name: start
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Start
+      - name: end
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: End
       responses:
         '200':
           description: Successful Response
@@ -4022,6 +4109,338 @@ paths:
       security:
       - AccessCookie: []
       x-required-permission: templates.manage
+  /api/staff/admin/access-options:
+    get:
+      tags:
+      - administration
+      summary: Access Options
+      operationId: access_options_api_staff_admin_access_options_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response Access Options Api Staff Admin Access Options Get
+  /api/staff/admin/teams:
+    get:
+      tags:
+      - administration
+      summary: Teams
+      operationId: teams_api_staff_admin_teams_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                items:
+                  additionalProperties: true
+                  type: object
+                type: array
+                title: Response Teams Api Staff Admin Teams Get
+    post:
+      tags:
+      - administration
+      summary: Create Team
+      operationId: create_team_api_staff_admin_teams_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TeamSpec'
+        required: true
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                  format: uuid
+                type: object
+                title: Response Create Team Api Staff Admin Teams Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/staff/admin/teams/{team_id}:
+    put:
+      tags:
+      - administration
+      summary: Update Team
+      operationId: update_team_api_staff_admin_teams__team_id__put
+      parameters:
+      - name: team_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Team Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TeamSpec'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: string
+                  format: uuid
+                title: Response Update Team Api Staff Admin Teams  Team Id  Put
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/staff/admin/automation-options:
+    get:
+      tags:
+      - administration
+      summary: Automation Options
+      operationId: automation_options_api_staff_admin_automation_options_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response Automation Options Api Staff Admin Automation Options
+                  Get
+  /api/staff/admin/assignment-rules:
+    get:
+      tags:
+      - administration
+      summary: Assignment Rules
+      operationId: assignment_rules_api_staff_admin_assignment_rules_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                items:
+                  additionalProperties: true
+                  type: object
+                type: array
+                title: Response Assignment Rules Api Staff Admin Assignment Rules
+                  Get
+    post:
+      tags:
+      - administration
+      summary: Create Assignment Rule
+      operationId: create_assignment_rule_api_staff_admin_assignment_rules_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssignmentRuleSpec'
+        required: true
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                  format: uuid
+                type: object
+                title: Response Create Assignment Rule Api Staff Admin Assignment
+                  Rules Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/staff/admin/assignment-rules/{rule_id}:
+    put:
+      tags:
+      - administration
+      summary: Update Assignment Rule
+      operationId: update_assignment_rule_api_staff_admin_assignment_rules__rule_id__put
+      parameters:
+      - name: rule_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Rule Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssignmentRuleSpec'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: string
+                  format: uuid
+                title: Response Update Assignment Rule Api Staff Admin Assignment
+                  Rules  Rule Id  Put
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/staff/admin/report-schedules:
+    get:
+      tags:
+      - administration
+      summary: Report Schedules
+      operationId: report_schedules_api_staff_admin_report_schedules_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response Report Schedules Api Staff Admin Report Schedules
+                  Get
+    post:
+      tags:
+      - administration
+      summary: Create Report Schedule
+      operationId: create_report_schedule_api_staff_admin_report_schedules_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReportScheduleSpec'
+        required: true
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response Create Report Schedule Api Staff Admin Report Schedules
+                  Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/staff/admin/report-schedules/{schedule_id}:
+    put:
+      tags:
+      - administration
+      summary: Update Report Schedule
+      operationId: update_report_schedule_api_staff_admin_report_schedules__schedule_id__put
+      parameters:
+      - name: schedule_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Schedule Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReportScheduleSpec'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Update Report Schedule Api Staff Admin Report Schedules  Schedule
+                  Id  Put
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/staff/admin/integrations:
+    get:
+      tags:
+      - administration
+      summary: Integrations
+      operationId: integrations_api_staff_admin_integrations_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                items:
+                  additionalProperties: true
+                  type: object
+                type: array
+                title: Response Integrations Api Staff Admin Integrations Get
+  /api/staff/admin/integrations/{provider}:
+    put:
+      tags:
+      - administration
+      summary: Update Integration
+      operationId: update_integration_api_staff_admin_integrations__provider__put
+      parameters:
+      - name: provider
+        in: path
+        required: true
+        schema:
+          enum:
+          - email
+          - whatsapp
+          type: string
+          title: Provider
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IntegrationConfigSpec'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: boolean
+                title: Response Update Integration Api Staff Admin Integrations  Provider  Put
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
   /api/staff/exports:
     get:
       tags:
@@ -4529,6 +4948,61 @@ components:
       required:
       - agent_id
       title: AssignmentRequest
+    AssignmentRuleSpec:
+      properties:
+        company_id:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Company Id
+        insurance_type:
+          anyOf:
+          - $ref: '#/components/schemas/InsuranceType'
+          - type: 'null'
+        category_id:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Category Id
+        priority:
+          anyOf:
+          - $ref: '#/components/schemas/ComplaintPriority'
+          - type: 'null'
+        target_team_id:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Target Team Id
+        target_agent_id:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Target Agent Id
+        strategy:
+          type: string
+          enum:
+          - round_robin
+          - least_workload
+          - by_company
+          title: Strategy
+          default: least_workload
+        sort_order:
+          type: integer
+          maximum: 100000.0
+          minimum: 0.0
+          title: Sort Order
+          default: 100
+        is_active:
+          type: boolean
+          title: Is Active
+          default: true
+      additionalProperties: false
+      type: object
+      title: AssignmentRuleSpec
     BulkAction:
       properties:
         action:
@@ -4941,6 +5415,27 @@ components:
       - general
       - both
       title: InsuranceType
+    IntegrationConfigSpec:
+      properties:
+        company_id:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Company Id
+        enabled:
+          type: boolean
+          title: Enabled
+          default: false
+        secret_ref:
+          anyOf:
+          - type: string
+            maxLength: 160
+          - type: 'null'
+          title: Secret Ref
+      additionalProperties: false
+      type: object
+      title: IntegrationConfigSpec
     InviteAcceptRequest:
       properties:
         token:
@@ -5000,6 +5495,45 @@ components:
       required:
       - body
       title: ReplyRequest
+    ReportScheduleSpec:
+      properties:
+        name:
+          type: string
+          maxLength: 120
+          minLength: 2
+          title: Name
+        filters:
+          $ref: '#/components/schemas/ComplaintFilter'
+        cron_expression:
+          type: string
+          maxLength: 80
+          minLength: 9
+          title: Cron Expression
+          default: 0 8 * * 1
+        time_zone:
+          type: string
+          maxLength: 64
+          minLength: 3
+          title: Time Zone
+          default: Africa/Cairo
+        recipient_emails:
+          items:
+            type: string
+          type: array
+          maxItems: 10
+          minItems: 1
+          title: Recipient Emails
+        is_active:
+          type: boolean
+          title: Is Active
+          default: false
+      additionalProperties: false
+      type: object
+      required:
+      - name
+      - filters
+      - recipient_emails
+      title: ReportScheduleSpec
     RevealReason:
       properties:
         reason:
@@ -5171,6 +5705,31 @@ components:
       required:
       - status
       title: StatusChangeRequest
+    TeamSpec:
+      properties:
+        name:
+          type: string
+          maxLength: 80
+          minLength: 2
+          title: Name
+        lead_staff_id:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Lead Staff Id
+        member_ids:
+          items:
+            type: string
+            format: uuid
+          type: array
+          maxItems: 100
+          title: Member Ids
+      additionalProperties: false
+      type: object
+      required:
+      - name
+      title: TeamSpec
     TemplateSpec:
       properties:
         company_id:

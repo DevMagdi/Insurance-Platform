@@ -136,6 +136,55 @@ class TemplateSpec(StrictModel):
     is_active: bool = True
 
 
+class TeamSpec(StrictModel):
+    name: str = Field(min_length=2, max_length=80)
+    lead_staff_id: UUID | None = None
+    member_ids: list[UUID] = Field(default_factory=list, max_length=100)
+
+    @model_validator(mode="after")
+    def member_constraints(self) -> TeamSpec:
+        if len(set(self.member_ids)) != len(self.member_ids):
+            raise ValueError("Duplicate team members")
+        if self.lead_staff_id is not None and self.lead_staff_id not in self.member_ids:
+            raise ValueError("Team lead must be included in the members")
+        return self
+
+
+class AssignmentRuleSpec(StrictModel):
+    company_id: UUID | None = None
+    insurance_type: InsuranceType | None = None
+    category_id: UUID | None = None
+    priority: ComplaintPriority | None = None
+    target_team_id: UUID | None = None
+    target_agent_id: UUID | None = None
+    strategy: Literal["round_robin", "least_workload", "by_company"] = "least_workload"
+    sort_order: int = Field(default=100, ge=0, le=100000)
+    is_active: bool = True
+
+    @model_validator(mode="after")
+    def assignment_target(self) -> AssignmentRuleSpec:
+        if self.target_team_id is None and self.target_agent_id is None:
+            raise ValueError("An assignment rule must target a team or agent")
+        return self
+
+
+class IntegrationConfigSpec(StrictModel):
+    company_id: UUID | None = None
+    enabled: bool = False
+    secret_ref: str | None = Field(default=None, max_length=160)
+
+    @field_validator("secret_ref")
+    @classmethod
+    def secret_reference_only(cls, value: str | None) -> str | None:
+        import re
+
+        if value is not None and not re.fullmatch(r"vault://[A-Za-z0-9/_-]{1,150}", value):
+            raise ValueError(
+                "Use a vault:// secret reference; secret values are never accepted here"
+            )
+        return value
+
+
 class InviteAcceptRequest(StrictModel):
     token: str = Field(min_length=40, max_length=128)
     password: str = Field(min_length=12, max_length=128)
@@ -216,6 +265,52 @@ class ComplaintFilter(StrictModel):
         if self.date_from and self.date_to and self.date_from > self.date_to:
             raise ValueError("date_from must not follow date_to")
         return self
+
+
+class ReportScheduleSpec(StrictModel):
+    name: str = Field(min_length=2, max_length=120)
+    filters: ComplaintFilter
+    cron_expression: str = Field(default="0 8 * * 1", min_length=9, max_length=80)
+    time_zone: str = Field(default="Africa/Cairo", min_length=3, max_length=64)
+    recipient_emails: list[str] = Field(min_length=1, max_length=10)
+    is_active: bool = False
+
+    @field_validator("cron_expression")
+    @classmethod
+    def safe_cron_shape(cls, value: str) -> str:
+        import re
+
+        fields = value.split()
+        if len(fields) != 5 or any(not re.fullmatch(r"[0-9*/,-]+", field) for field in fields):
+            raise ValueError("Cron expression must use five numeric fields")
+        return value
+
+    @field_validator("time_zone")
+    @classmethod
+    def supported_time_zone(cls, value: str) -> str:
+        from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+
+        try:
+            ZoneInfo(value)
+        except ZoneInfoNotFoundError as exc:
+            raise ValueError("Unknown time zone") from exc
+        return value
+
+    @field_validator("recipient_emails")
+    @classmethod
+    def valid_recipient_emails(cls, values: list[str]) -> list[str]:
+        import re
+
+        if any(
+            value != value.lower()
+            or not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", value)
+            or len(value) > 254
+            for value in values
+        ):
+            raise ValueError("Recipients must be lowercase email addresses")
+        if len(set(values)) != len(values):
+            raise ValueError("Duplicate report recipients")
+        return values
 
 
 class ExportRequest(StrictModel):

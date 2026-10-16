@@ -97,13 +97,16 @@ async def test_staff_workflow_permission_csrf_scope_and_bulk(http: tuple) -> Non
             headers={"X-CSRF-Token": "known"},
         )
     ).status_code == 200
+    escalation_url = f"/api/staff/complaints/{target}/escalate"
+    escalation_body = {"reason": "Contact insurer urgently"}
+    headers = {"X-CSRF-Token": "known"}
     assert (
-        await client.post(
-            f"/api/staff/complaints/{target}/escalate",
-            json={"reason": "Contact insurer urgently"},
-            headers={"X-CSRF-Token": "known"},
-        )
-    ).json()["delivery"] == "queued"
+        await client.post(escalation_url, json=escalation_body, headers=headers)
+    ).status_code == 403
+    context.permissions = frozenset({*context.permissions, "integrations.send_email"})
+    assert (await client.post(escalation_url, json=escalation_body, headers=headers)).json()[
+        "delivery"
+    ] == "queued"
     assert (
         await client.post(
             f"/api/staff/complaints/{target}/merge",

@@ -156,6 +156,46 @@ async def test_access_change_audit_requires_both_permissions_and_global_scope(
     auth.limits.check.assert_awaited_once()
 
 
+async def test_audit_filters_and_access_change_export_are_scoped_and_bounded(api: tuple) -> None:
+    client, ctx, _, audit, auth = api
+    ctx.permissions = frozenset({"audit.view", "users.manage_access"})
+    ctx.scope = AccessScope(ctx.actor, all_companies=True, ownership=OwnershipLevel.ALL)
+    actor_id, complaint_id, target_id = uuid4(), uuid4(), uuid4()
+    event_response = await client.get(
+        f"/api/staff/audit/events?actor_id={actor_id}&complaint_id={complaint_id}&action=status_changed"
+    )
+    assert event_response.status_code == 200
+    assert audit.events.await_args.kwargs == {
+        "actor_id": actor_id,
+        "complaint_id": complaint_id,
+        "action": "status_changed",
+    }
+    change = {
+        "id": uuid4(),
+        "created_at": datetime.now(UTC),
+        "actor_staff_id": ctx.actor.id,
+        "target_user_id": target_id,
+        "change_type": "access_replaced",
+        "before_state": {"roles": ["safe"]},
+        "after_state": {"roles": ["updated"]},
+    }
+    audit.access_changes.return_value = [change]
+    start, end = "2026-01-01T00:00:00Z", "2026-01-31T23:59:59Z"
+    changes = await client.get(
+        f"/api/staff/audit/access-changes?target_id={target_id}&start={start}&end={end}"
+    )
+    assert changes.status_code == 200
+    assert audit.access_changes.await_args.args[1] == target_id
+    assert audit.access_changes.await_args.args[4] is not None
+    exported = await client.get(
+        f"/api/staff/audit/access-changes.csv?target_id={target_id}&start={start}&end={end}"
+    )
+    assert exported.status_code == 200
+    assert "access_replaced" in exported.text
+    assert "no-store" in exported.headers["cache-control"]
+    assert auth.limits.check.await_count == 1
+
+
 async def test_staff_notifications_include_null_complaint_without_scope_bypass(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
