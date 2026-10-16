@@ -36,6 +36,26 @@ from app.security.tokens import clear_auth_cookies, csrf_required, set_auth_cook
 router = APIRouter(prefix="/api", tags=["auth"])
 
 
+@router.get("/auth/csrf", include_in_schema=False)
+async def migrate_csrf_cookie(request: Request, response: Response) -> dict[str, bool]:
+    """Expose a legacy API-scoped CSRF cookie to the SPA without invalidating sessions."""
+    legacy_token = request.cookies.get("csrf_token")
+    if legacy_token:
+        settings = request.app.state.auth.settings
+        response.set_cookie(
+            "csrf_token",
+            legacy_token,
+            max_age=settings.refresh_token_days * 86400,
+            secure=settings.cookie_secure,
+            httponly=False,
+            samesite="lax",
+            path="/",
+        )
+        response.delete_cookie("csrf_token", path="/api", secure=settings.cookie_secure)
+    response.headers["Cache-Control"] = "no-store"
+    return {"available": bool(legacy_token)}
+
+
 @router.post(
     "/auth/customer/otp/start",
     status_code=202,

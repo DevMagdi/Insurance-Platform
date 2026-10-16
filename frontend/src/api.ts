@@ -1,3 +1,5 @@
+import { getCsrfToken, notifyAuthExpired, refreshSession, shouldAttemptRefresh } from './lib/session';
+
 export class ApiError extends Error {
   readonly status: number;
   readonly detail: string;
@@ -8,13 +10,6 @@ export class ApiError extends Error {
     this.status = status;
     this.detail = detail;
   }
-}
-
-function csrfToken(): string | null {
-  const cookie = document.cookie
-    .split('; ')
-    .find((item) => item.startsWith('csrf_token='));
-  return cookie ? decodeURIComponent(cookie.slice('csrf_token='.length)) : null;
 }
 
 function assertSameOriginApiPath(path: string): void {
@@ -31,25 +26,10 @@ function makeHeaders(init: RequestInit): Headers {
   }
   const method = (init.method ?? 'GET').toUpperCase();
   if (!['GET', 'HEAD', 'OPTIONS'].includes(method)) {
-    const token = csrfToken();
+    const token = getCsrfToken();
     if (token) headers.set('X-CSRF-Token', token);
   }
   return headers;
-}
-
-async function refreshSession(): Promise<boolean> {
-  const token = csrfToken();
-  if (!token) return false;
-  try {
-    const response = await fetch('/api/auth/refresh', {
-      method: 'POST',
-      credentials: 'include',
-      headers: { Accept: 'application/json', 'X-CSRF-Token': token },
-    });
-    return response.ok;
-  } catch {
-    return false;
-  }
 }
 
 async function send(path: string, init: RequestInit, allowRefresh: boolean): Promise<Response> {
@@ -59,11 +39,9 @@ async function send(path: string, init: RequestInit, allowRefresh: boolean): Pro
     credentials: 'include',
     headers: makeHeaders(init),
   });
-  if (response.status === 401 && allowRefresh && path !== '/api/auth/refresh') {
-    if (await refreshSession()) {
-      return send(path, init, false);
-    }
-    window.dispatchEvent(new CustomEvent('insurance:auth-expired'));
+  if (response.status === 401 && shouldAttemptRefresh(path)) {
+    if (allowRefresh && await refreshSession()) return send(path, init, false);
+    notifyAuthExpired();
   }
   if (response.status === 403) {
     window.dispatchEvent(new CustomEvent('insurance:permission-denied'));

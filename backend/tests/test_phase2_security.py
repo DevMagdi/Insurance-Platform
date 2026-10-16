@@ -216,9 +216,23 @@ def test_tokens_expiration_type_integrity_and_cookie_security(settings: Settings
     assert any(
         "access_token=" in value and "HttpOnly" in value and "Secure" in value for value in cookies
     )
-    assert any("csrf_token=" in value and "SameSite=lax" in value for value in cookies)
+    csrf_cookie = next(
+        value
+        for value in cookies
+        if "csrf_token=" in value and "Max-Age=0" not in value and "Path=/;" in value
+    )
+    assert "SameSite=lax" in csrf_cookie and "HttpOnly" not in csrf_cookie
+    assert any(
+        "csrf_token=" in value and "Max-Age=0" in value and "Path=/api" in value
+        for value in cookies
+    )
     clear_auth_cookies(response, settings)
-    assert len(response.headers.getlist("set-cookie")) == 6
+    assert len(response.headers.getlist("set-cookie")) == 8
+    cleared_csrf = sum(
+        "csrf_token=" in value and "Max-Age=0" in value
+        for value in response.headers.getlist("set-cookie")
+    )
+    assert cleared_csrf == 3
 
 
 def test_csrf_and_websocket_origin() -> None:
@@ -266,6 +280,8 @@ async def test_redis_rate_limits_otp_attempts_and_single_use(
         await otp.start("+201123456789")
     with pytest.raises(HTTPException):
         await otp.verify("+201123456789", "999999" if code != "999999" else "888888")
+    await otp.verify("+201123456789", code, consume=False)
+    assert await redis.exists(otp._key("+201123456789"))
     await otp.verify("+201123456789", code)
     with pytest.raises(HTTPException):
         await otp.verify("+201123456789", code)

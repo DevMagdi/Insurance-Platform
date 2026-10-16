@@ -17,9 +17,10 @@ cd frontend && npm run api:types                                  # typed client
   `openapi-roadmap.yaml` are a draft and not live.) The partner API is
   `/api/public/v1/*` with `X-API-Key`.
 * **Auth:** HttpOnly `access_token` (15 min) and `refresh_token` cookies
-  (rotated via `POST /api/auth/refresh`), plus a readable `csrf_token`. Every
-  authenticated `POST`/`PUT`/`PATCH`/`DELETE` needs
-  `X-CSRF-Token: <csrf_token cookie>`.
+  (rotated via `POST /api/auth/refresh`), plus a readable `csrf_token` scoped
+  to `/` so the SPA can read it. Every authenticated
+  `POST`/`PUT`/`PATCH`/`DELETE` needs `X-CSRF-Token: <csrf_token cookie>`.
+  Existing `/api`-scoped CSRF cookies are migrated on the next page load.
 * **CAPTCHA:** public forms (`/api/auth/customer/otp/start`,
   `/api/guest/track`, staff login, invite accept) need a Turnstile token in
   `X-Captcha-Token` when CAPTCHA is configured. `GET /api/public/config`

@@ -148,9 +148,19 @@ async def test_otp_login_new_registration_and_replay(fixture: tuple) -> None:
     next_mobile = "+201155555555"
     await auth.start_customer_otp(next_mobile, "127.0.0.1")
     repo.customers_by_mobile.return_value = []
+    registration_code = delivery.codes[next_mobile]
+    with pytest.raises(HTTPException) as exc:
+        await auth.verify_customer(
+            CustomerVerifyRequest(mobile=next_mobile, code=registration_code),
+            "127.0.0.1",
+            "Browser",
+        )
+    assert exc.value.status_code == 409
+    assert await _redis.exists(auth.otp._key(next_mobile))
+
     registration = CustomerVerifyRequest(
         mobile=next_mobile,
-        code=delivery.codes[next_mobile],
+        code=registration_code,
         national_id=NID,
         full_name="New Customer",
     )
@@ -158,6 +168,7 @@ async def test_otp_login_new_registration_and_replay(fixture: tuple) -> None:
     assert repo.register_customer.await_count == 1
     assert repo.register_customer.call_args.kwargs["last4"] == NID[-4:]
     assert len(repo.register_customer.call_args.kwargs["blind"]) == 32
+    assert not await _redis.exists(auth.otp._key(next_mobile))
 
 
 async def test_otp_multi_profile_and_provider_failure(fixture: tuple) -> None:
@@ -169,12 +180,24 @@ async def test_otp_multi_profile_and_provider_failure(fixture: tuple) -> None:
     assert not await redis.exists(auth.otp._key(MOBILE))
     delivery.fail_otp = False
     await auth.start_customer_otp(MOBILE, "127.0.0.1")
-    repo.customers_by_mobile.return_value = [(uuid4(), 0), (uuid4(), 0)]
+    customer_id = uuid4()
+    repo.customers_by_mobile.return_value = [(customer_id, 0), (uuid4(), 0)]
+    code = delivery.codes[MOBILE]
     with pytest.raises(HTTPException) as exc:
         await auth.verify_customer(
-            CustomerVerifyRequest(mobile=MOBILE, code=delivery.codes[MOBILE]), "127.0.0.1", "Agent"
+            CustomerVerifyRequest(mobile=MOBILE, code=code), "127.0.0.1", "Agent"
         )
     assert exc.value.status_code == 409
+    assert await redis.exists(auth.otp._key(MOBILE))
+
+    repo.customers_by_mobile.return_value = [(customer_id, 0)]
+    tokens = await auth.verify_customer(
+        CustomerVerifyRequest(mobile=MOBILE, code=code, national_id=NID, full_name="Customer"),
+        "127.0.0.1",
+        "Agent",
+    )
+    assert auth.tokens.parse(tokens.access, "access").subject.id == customer_id
+    assert not await redis.exists(auth.otp._key(MOBILE))
 
 
 async def test_staff_unknown_disabled_forced_password_and_login(fixture: tuple) -> None:

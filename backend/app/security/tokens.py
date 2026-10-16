@@ -143,6 +143,10 @@ def set_auth_cookies(response: Response, access: str, refresh: str, settings: Se
         samesite="lax",
         path="/api/auth",
     )
+    # The SPA is served at `/`, so the readable double-submit token must also be
+    # scoped to `/` for document.cookie to expose it to browser API clients.
+    # Expire the legacy `/api` cookie to avoid duplicate names during rollout.
+    response.delete_cookie("csrf_token", path="/api", secure=settings.cookie_secure)
     response.set_cookie(
         "csrf_token",
         secrets.token_urlsafe(32),
@@ -150,11 +154,13 @@ def set_auth_cookies(response: Response, access: str, refresh: str, settings: Se
         secure=settings.cookie_secure,
         httponly=False,
         samesite="lax",
-        path="/api",
+        path="/",
     )
 
 
 def clear_auth_cookies(response: Response, settings: Settings) -> None:
     response.delete_cookie("access_token", path="/api", secure=settings.cookie_secure)
     response.delete_cookie("refresh_token", path="/api/auth", secure=settings.cookie_secure)
+    # Clear both the legacy API-scoped token and the new SPA-readable root token.
     response.delete_cookie("csrf_token", path="/api", secure=settings.cookie_secure)
+    response.delete_cookie("csrf_token", path="/", secure=settings.cookie_secure)

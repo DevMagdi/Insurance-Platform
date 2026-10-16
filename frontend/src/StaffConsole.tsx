@@ -1,5 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { api, jsonBody } from './api';
+import { ensureCsrfCookie } from './lib/session';
 import { AccessDenied, ScopeBadge } from './components/Access';
 import { DateRangePicker } from './components/DateRangePicker';
 import { Icon, type IconName } from './components/Icon';
@@ -152,6 +153,12 @@ function App() {
   const [theme, setTheme] = useState<Theme>(readTheme);
 
   const refreshAccess = useCallback(async () => {
+    if (!(await ensureCsrfCookie())) {
+      setAccess(null);
+      setSessionState('unauthenticated');
+      setSessionError('سجّل الدخول لمتابعة العمل.');
+      return;
+    }
     try {
       const result = await api<MeResponse>('/api/me');
       if (result.kind !== 'staff') {

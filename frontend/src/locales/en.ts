@@ -48,7 +48,7 @@ export const en = {
     "code": "Verification code",
     "verify": "Verify & sign in",
     "codeSent": "Code sent. In development it arrives in the test mailbox.",
-    "needRegister": "First time? Enter your name and national ID to create your account.",
+    "needRegister": "Enter your name and national ID to verify your identity. A new account will be created if needed.",
     "fullName": "Full name",
     "nationalId": "National ID",
     "loggedOut": "Signed out"
