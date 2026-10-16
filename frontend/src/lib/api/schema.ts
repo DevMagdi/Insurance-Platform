@@ -501,6 +501,44 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/customer/profile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Customer Profile */
+        get: operations["customer_profile_api_customer_profile_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update Customer Profile */
+        patch: operations["update_customer_profile_api_customer_profile_patch"];
+        trace?: never;
+    };
+    "/api/customer/complaints/{complaint_id}/stream": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Customer Complaint Stream
+         * @description SSE ticket updates; cookie auth is revalidated on every poll (see realtime).
+         */
+        get: operations["customer_complaint_stream_api_customer_complaints__complaint_id__stream_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/customer/notifications": {
         parameters: {
             query?: never;
@@ -516,6 +554,23 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/customer/notifications/{notification_id}/read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Read Customer Notification */
+        patch: operations["read_customer_notification_api_customer_notifications__notification_id__read_patch"];
         trace?: never;
     };
     "/api/staff/users": {
@@ -2539,6 +2594,22 @@ export interface components {
             /** Comment */
             comment?: string | null;
         };
+        /**
+         * CustomerProfileUpdate
+         * @description Self-service profile edit; identity fields (mobile, national ID) are immutable here.
+         */
+        CustomerProfileUpdate: {
+            /** Full Name */
+            full_name: string;
+            /** Email */
+            email?: string | null;
+            /**
+             * Whatsapp Available
+             * @default false
+             */
+            whatsapp_available: boolean;
+            notification_preferences?: components["schemas"]["NotificationPreferences"];
+        };
         /** CustomerVerifyRequest */
         CustomerVerifyRequest: {
             /** Mobile */
@@ -2661,6 +2732,27 @@ export interface components {
         MobileOTPRequest: {
             /** Mobile */
             mobile: string;
+        };
+        /**
+         * NotificationPreferences
+         * @description Customer delivery choices; channels stay opt-out, never opt-in by surprise.
+         */
+        NotificationPreferences: {
+            /**
+             * Email
+             * @default true
+             */
+            email: boolean;
+            /**
+             * Whatsapp
+             * @default true
+             */
+            whatsapp: boolean;
+            /**
+             * Sms
+             * @default true
+             */
+            sms: boolean;
         };
         /**
          * OwnershipLevel
@@ -4013,6 +4105,97 @@ export interface operations {
             };
         };
     };
+    customer_profile_api_customer_profile_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    update_customer_profile_api_customer_profile_patch: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Must equal the csrf_token cookie (double-submit). */
+                "X-CSRF-Token": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CustomerProfileUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    customer_complaint_stream_api_customer_complaints__complaint_id__stream_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                complaint_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     customer_notifications_api_customer_notifications_get: {
         parameters: {
             query?: never;
@@ -4031,6 +4214,42 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     }[];
+                };
+            };
+        };
+    };
+    read_customer_notification_api_customer_notifications__notification_id__read_patch: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Must equal the csrf_token cookie (double-submit). */
+                "X-CSRF-Token": string;
+            };
+            path: {
+                notification_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: boolean;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

@@ -6,6 +6,7 @@ from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, Response
+from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 
 from app.api.deps import RequestContext, client_ip, integration_service, require_customer
@@ -14,13 +15,16 @@ from app.domain.schemas import (
     ComplaintCreate,
     ComplaintFilter,
     CsatRequest,
+    CustomerProfileUpdate,
     GuestTrackRequest,
     ReplyRequest,
     VoiceConsentRequest,
 )
 from app.models.identity import InsuranceCompany
 from app.repositories.complaints import ComplaintRepository
+from app.repositories.profile import CustomerProfileRepository
 from app.security.tokens import csrf_required
+from app.services.realtime import stream_customer_complaint
 
 router = APIRouter(prefix="/api", tags=["customer"])
 
@@ -176,12 +180,82 @@ async def customer_attachments(
     ]
 
 
+@router.get("/customer/profile")
+async def customer_profile(
+    ctx: RequestContext = Depends(require_customer),
+) -> dict[str, Any]:
+    profile = await CustomerProfileRepository().profile(ctx.db)
+    if profile is None:
+        raise HTTPException(status_code=404, detail="Customer unavailable")
+    return profile
+
+
+@router.patch("/customer/profile")
+async def update_customer_profile(
+    item: CustomerProfileUpdate,
+    ctx: RequestContext = Depends(require_customer),
+    _: None = Depends(csrf_required),
+) -> dict[str, Any]:
+    try:
+        profile = await CustomerProfileRepository().update(ctx.db, item)
+    except Exception as exc:  # The definer raises 22023 for invalid payloads.
+        if "22023" in str(exc) or "invalid customer profile" in str(exc):
+            raise HTTPException(status_code=422, detail="Invalid customer profile") from exc
+        raise
+    if profile is None:
+        raise HTTPException(status_code=404, detail="Customer unavailable")
+    return profile
+
+
+@router.get("/customer/complaints/{complaint_id}/stream")
+async def customer_complaint_stream(complaint_id: UUID, request: Request) -> StreamingResponse:
+    """SSE ticket updates; cookie auth is revalidated on every poll (see realtime)."""
+    auth = request.app.state.auth
+    claims = auth.tokens.parse(request.cookies.get("access_token"), "access")
+    if claims.subject.scope != "customer":
+        raise HTTPException(status_code=403, detail="Customer account required")
+    generator = stream_customer_complaint(
+        factory=request.app.state.factory,
+        redis=request.app.state.redis,
+        complaints=request.app.state.complaints,
+        claims=claims,
+        complaint_id=complaint_id,
+        is_disconnected=request.is_disconnected,
+    )
+    return StreamingResponse(
+        generator,
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache, no-store",
+            "X-Accel-Buffering": "no",
+            "Connection": "keep-alive",
+        },
+    )
+
+
 @router.get("/customer/notifications")
 async def customer_notifications(
     ctx: RequestContext = Depends(require_customer),
 ) -> list[dict[str, Any]]:
     records = await ComplaintRepository().notifications(ctx.db, ctx.scope)
     return [
-        {"id": item.id, "kind": item.kind, "payload": item.payload, "created_at": item.created_at}
+        {
+            "id": item.id,
+            "kind": item.kind,
+            "payload": item.payload,
+            "created_at": item.created_at,
+            "read_at": item.read_at,
+        }
         for item in records
     ]
+
+
+@router.patch("/customer/notifications/{notification_id}/read")
+async def read_customer_notification(
+    notification_id: UUID,
+    ctx: RequestContext = Depends(require_customer),
+    _: None = Depends(csrf_required),
+) -> dict[str, bool]:
+    if not await CustomerProfileRepository().mark_notification_read(ctx.db, notification_id):
+        raise HTTPException(status_code=404, detail="Notification unavailable")
+    return {"read": True}

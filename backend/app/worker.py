@@ -112,6 +112,23 @@ async def _worker_query(engine: AsyncEngine, query: str, params: dict[str, Any])
         return list(result.all())
 
 
+def enabled_notification_channels(preferences: Any) -> tuple[str, ...]:
+    """Normalize customer preferences; missing values retain opt-out defaults."""
+
+    if isinstance(preferences, str):
+        try:
+            preferences = json.loads(preferences)
+        except json.JSONDecodeError:
+            preferences = None
+    if not isinstance(preferences, dict):
+        preferences = {}
+    return tuple(
+        channel
+        for channel in ("email", "whatsapp", "sms")
+        if preferences.get(channel, True) is not False
+    )
+
+
 def _email_provider(provider: str, config: dict[str, Any]) -> EmailProvider:
     if provider == "smtp":
         return SMTPEmailProvider(config)
@@ -552,8 +569,28 @@ async def deliver_notices(ctx: dict[str, Any]) -> str:
     for row in rows:
         notice_id: UUID = row.notice_id
         payload = json.loads(row.payload) if isinstance(row.payload, str) else row.payload
+        preferences = getattr(row, "notification_preferences", None)
+        if isinstance(preferences, str):
+            try:
+                preferences = json.loads(preferences)
+            except json.JSONDecodeError:
+                preferences = None
+        if not enabled_notification_channels(preferences):
+            state = "suppressed"
+            await _worker_query(
+                engine,
+                "SELECT app_security.finish_notice(:id, :state)",
+                {"id": notice_id, "state": state},
+            )
+            continue
         try:
-            delivered = await delivery.send_notice(row.mobile, row.email, row.kind, payload)
+            delivered = await delivery.send_notice(
+                row.mobile,
+                row.email,
+                row.kind,
+                payload,
+                preferences if isinstance(preferences, dict) else None,
+            )
             state = "sent" if delivered else "pending_provider"
         except Exception:
             state = "retry"

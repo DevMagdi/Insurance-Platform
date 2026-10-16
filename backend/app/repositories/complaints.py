@@ -272,6 +272,16 @@ class ComplaintRepository:
             "page": page,
         }
 
+    async def assigned_agent_name(self, db: AsyncSession, complaint: Complaint) -> str | None:
+        """Display name only, via a definer that re-checks complaint scope."""
+        if complaint.assigned_agent_id is None:
+            return None
+        result: str | None = await db.scalar(
+            text("SELECT app_security.assigned_agent_display(:id, :created)"),
+            {"id": complaint.id, "created": complaint.created_at},
+        )
+        return result
+
     async def active_company(
         self,
         db: AsyncSession,
