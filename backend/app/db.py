@@ -63,14 +63,17 @@ def make_worker_engine(url: str) -> AsyncEngine:
 
 @asynccontextmanager
 async def scoped_transaction(
-    factory: async_sessionmaker[AsyncSession], actor: Actor
+    factory: async_sessionmaker[AsyncSession], actor: Actor, *, read_only: bool = False
 ) -> AsyncIterator[AsyncSession]:
     """A caller-authenticated actor; never accept an actor ID from request payloads.
 
     SET LOCAL is effective only until this transaction commits/rolls back. Both
     GUCs and all queries MUST use this same connection inside this block.
+    ``read_only`` is used for replica-routed analytics (RLS applies unchanged).
     """
     async with factory() as session, session.begin():
+        if read_only:
+            await session.execute(text("SET TRANSACTION READ ONLY"))
         await session.execute(
             text(
                 "SELECT set_config('app.user_id', :actor_id, true), "

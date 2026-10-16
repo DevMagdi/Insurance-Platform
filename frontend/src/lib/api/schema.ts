@@ -2361,6 +2361,116 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/customer/privacy/consents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Consents */
+        get: operations["list_consents_api_customer_privacy_consents_get"];
+        put?: never;
+        /** Record Consent */
+        post: operations["record_consent_api_customer_privacy_consents_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/customer/privacy/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Export My Data
+         * @description Right of access (Law 151/2020): a machine-readable copy of the customer's data.
+         */
+        get: operations["export_my_data_api_customer_privacy_export_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/customer/privacy/requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** My Requests */
+        get: operations["my_requests_api_customer_privacy_requests_get"];
+        put?: never;
+        /** Create Request */
+        post: operations["create_request_api_customer_privacy_requests_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/staff/privacy/requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Privacy Queue */
+        get: operations["privacy_queue_api_staff_privacy_requests_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/staff/privacy/requests/{request_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Decide Request */
+        post: operations["decide_request_api_staff_privacy_requests__request_id__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/public/config": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Public Config
+         * @description Non-secret settings the SPA needs before sign-in (CAPTCHA site key, policy).
+         */
+        get: operations["public_config_api_public_config_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/health/live": {
         parameters: {
             query?: never;
@@ -2673,6 +2783,17 @@ export interface components {
          * @enum {string}
          */
         ComplaintStatus: "new" | "assigned" | "in_review" | "resolved" | "reopened" | "transferred";
+        /**
+         * ConsentPurpose
+         * @enum {string}
+         */
+        ConsentPurpose: "complaint_processing" | "notifications" | "voice_followup" | "ai_processing" | "marketing";
+        /** ConsentUpdate */
+        ConsentUpdate: {
+            purpose: components["schemas"]["ConsentPurpose"];
+            /** Granted */
+            granted: boolean;
+        };
         /** CsatRequest */
         CsatRequest: {
             /** Score */
@@ -2845,6 +2966,28 @@ export interface components {
          * @enum {string}
          */
         OwnershipLevel: "own" | "team" | "all";
+        /**
+         * PrivacyDecision
+         * @enum {string}
+         */
+        PrivacyDecision: "in_progress" | "completed" | "rejected";
+        /** PrivacyRequestCreate */
+        PrivacyRequestCreate: {
+            kind: components["schemas"]["PrivacyRequestKind"];
+            /** Details */
+            details?: string | null;
+        };
+        /** PrivacyRequestDecision */
+        PrivacyRequestDecision: {
+            status: components["schemas"]["PrivacyDecision"];
+            /** Resolution */
+            resolution?: string | null;
+        };
+        /**
+         * PrivacyRequestKind
+         * @enum {string}
+         */
+        PrivacyRequestKind: "access" | "erasure" | "rectification" | "objection";
         /** ReplyRequest */
         ReplyRequest: {
             /** Body */
@@ -3198,7 +3341,10 @@ export interface operations {
     start_otp_api_auth_customer_otp_start_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Cloudflare Turnstile token; mandatory whenever /api/public/config advertises a captcha site key. */
+                "X-Captcha-Token"?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -3268,7 +3414,10 @@ export interface operations {
     staff_login_api_auth_staff_login_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Cloudflare Turnstile token; mandatory whenever /api/public/config advertises a captcha site key. */
+                "X-Captcha-Token"?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -3303,7 +3452,10 @@ export interface operations {
     accept_invitation_api_auth_staff_invitation_accept_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Cloudflare Turnstile token; mandatory whenever /api/public/config advertises a captcha site key. */
+                "X-Captcha-Token"?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -3774,7 +3926,10 @@ export interface operations {
     guest_track_api_guest_track_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Cloudflare Turnstile token; mandatory whenever /api/public/config advertises a captcha site key. */
+                "X-Captcha-Token"?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -6480,7 +6635,10 @@ export interface operations {
     simulate_sla_rule_api_staff_admin_sla_rules_simulate_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header: {
+                /** @description Must equal the csrf_token cookie (double-submit). */
+                "X-CSRF-Token": string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -6515,7 +6673,10 @@ export interface operations {
     preview_business_hours_api_staff_admin_sla_rules_business_hours_preview_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header: {
+                /** @description Must equal the csrf_token cookie (double-submit). */
+                "X-CSRF-Token": string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -8508,7 +8669,10 @@ export interface operations {
     preview_assignment_api_staff_admin_assignment_rules_preview_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header: {
+                /** @description Must equal the csrf_token cookie (double-submit). */
+                "X-CSRF-Token": string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -8605,6 +8769,243 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_consents_api_customer_privacy_consents_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    }[];
+                };
+            };
+        };
+    };
+    record_consent_api_customer_privacy_consents_post: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Must equal the csrf_token cookie (double-submit). */
+                "X-CSRF-Token": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConsentUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    export_my_data_api_customer_privacy_export_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    my_requests_api_customer_privacy_requests_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    }[];
+                };
+            };
+        };
+    };
+    create_request_api_customer_privacy_requests_post: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Must equal the csrf_token cookie (double-submit). */
+                "X-CSRF-Token": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PrivacyRequestCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: string;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    privacy_queue_api_staff_privacy_requests_get: {
+        parameters: {
+            query?: {
+                status?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    }[];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    decide_request_api_staff_privacy_requests__request_id__post: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Must equal the csrf_token cookie (double-submit). */
+                "X-CSRF-Token": string;
+            };
+            path: {
+                request_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PrivacyRequestDecision"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: boolean;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    public_config_api_public_config_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };

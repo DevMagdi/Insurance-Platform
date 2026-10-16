@@ -30,12 +30,17 @@ from app.models.identity import Customer
 from app.repositories.auth import AuthRepository
 from app.repositories.complaints import ComplaintRepository
 from app.repositories.workflow import StaffWorkflowRepository
+from app.security.captcha import captcha_guard
 from app.security.tokens import clear_auth_cookies, csrf_required, set_auth_cookies
 
 router = APIRouter(prefix="/api", tags=["auth"])
 
 
-@router.post("/auth/customer/otp/start", status_code=202)
+@router.post(
+    "/auth/customer/otp/start",
+    status_code=202,
+    dependencies=[Depends(captcha_guard("otp_start"))],
+)
 async def start_otp(item: MobileOTPRequest, request: Request) -> dict[str, str]:
     await request.app.state.auth.start_customer_otp(item.mobile, client_ip(request))
     return {"message": "If delivery is available, a one-time code has been sent"}
@@ -51,7 +56,7 @@ async def verify_otp(
     return {"authenticated_as": "customer"}
 
 
-@router.post("/auth/staff/login")
+@router.post("/auth/staff/login", dependencies=[Depends(captcha_guard("staff_login"))])
 async def staff_login(
     item: StaffLoginRequest, request: Request, response: Response
 ) -> dict[str, str | None]:
@@ -67,7 +72,9 @@ async def staff_login(
     return {"next_step": result.next_step or "authenticated", "challenge": result.challenge}
 
 
-@router.post("/auth/staff/invitation/accept")
+@router.post(
+    "/auth/staff/invitation/accept", dependencies=[Depends(captcha_guard("invite_accept"))]
+)
 async def accept_invitation(item: InviteAcceptRequest, request: Request) -> dict[str, str]:
     auth = request.app.state.auth
     await auth.limits.check("invite:accept", client_ip(request), 10, 3600)
@@ -236,7 +243,12 @@ async def revoke_session(
     from datetime import UTC, datetime
 
     record = await AuthRepository().get_session(ctx.db, session_id, lock=True)
-    if record is None:
+    # RLS already limits sessions to their owner; the explicit check is defence in depth.
+    if (
+        record is None
+        or record.subject_id != ctx.actor.id
+        or record.subject_kind != ctx.actor.scope
+    ):
         raise HTTPException(status_code=404, detail="Session not found")
     record.revoked_at = datetime.now(UTC)
     if session_id == ctx.session_id:

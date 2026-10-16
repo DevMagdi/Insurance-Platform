@@ -9,3 +9,14 @@ The API must authenticate/authorize each command by explicit permission and enfo
 **DB boundary.** `app_runtime` is nonowner/non-BYPASSRLS; FORCE RLS also prevents accidental owner bypass. The API installs `SET LOCAL app.user_id` and `app.scope` *only after authentication* inside every transaction. Custom GUCs are not cryptographically authenticated by PostgreSQL; if an attacker can run arbitrary SQL as `app_runtime`, they can forge an ID. Never expose SQL to clients, disallow unsafe raw interpolation, and use parameterized queries plus least-privilege DB credentials. SECURITY DEFINER functions belong to a trusted migrator with BYPASSRLS (the Postgres superuser in local dev), never to the runtime role, and use a fixed search path. FORCE RLS means even an ordinary table owner cannot bypass policies; the migration checks this precondition so child-table lookups cannot recurse. Out-of-scope lookups return no rows; no GUC or invalid GUC fails closed. The runtime role has no direct table permissions on scope internals, no DELETE on tickets/audits, and no SELECT on national-ID bytes.
 
 **Trade-off.** Per-row scope checks are more expensive than a broad WHERE filter; filter predicates/indexes and partition pruning remain necessary. RLS is a final backstop, not a substitute for server authorization, row ownership checks on mutations, audit, rate limiting or tests.
+
+**Phase 8 update (migration `20261016_22`).** The trade-off above became
+measurable: `can_read_complaint()` ran once per row, at about 0.65 ms per row
+(3.3 s for 5k rows). The `complaints_read` policy now evaluates the actor's
+mode, company, type, ownership and team scope **once per statement**, as
+InitPlans of `STABLE SECURITY DEFINER` helpers. Rows are then compared against
+those values (`company_id = ANY(...)`). The semantics, including deny overrides
+and immediate revocation, are proven equal by
+`test_initplan_rls_policy_matches_reference_predicate`. See
+[ACCESS_CONTROL.md](../ACCESS_CONTROL.md) and
+[SCALABILITY.md](../SCALABILITY.md#bottleneck-found-rls-evaluated-per-row).

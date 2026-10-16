@@ -169,10 +169,11 @@ class AttachmentService:
         version: int,
         attachment_id: UUID,
     ) -> dict[str, Any]:
-        self._configured()
+        # Authorize first so storage state never precedes the access decision.
         attachment = await self.repository.clean_attachment(db, scope, attachment_id)
         if attachment is None:
             raise HTTPException(status_code=404, detail="Clean attachment not found")
+        self._configured()
         return {
             "download_url": f"/api/{scope.actor.scope}/attachments/{attachment_id}/content",
             "download_token": self.tokens.issue(

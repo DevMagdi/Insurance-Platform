@@ -3,15 +3,12 @@
 from __future__ import annotations
 
 import asyncio
-import os
 from typing import Final
 
 import pyotp
 from argon2 import PasswordHasher
 from argon2.exceptions import InvalidHashError, VerifyMismatchError
-from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
-from app.security.crypto import decode_key
 from app.settings import Settings
 
 _DUMMY_HASH: Final = (
@@ -50,16 +47,15 @@ class StaffPasswords:
 
 class TotpProtector:
     def __init__(self, settings: Settings) -> None:
-        self._cipher = AESGCM(decode_key(settings.app_encryption_key))
+        self.keyring = settings.encryption_keyring()
 
     def encrypt(self, secret: str) -> bytes:
-        nonce = os.urandom(12)
-        return nonce + self._cipher.encrypt(nonce, secret.encode("ascii"), _TOTP_AAD)
+        return self.keyring.encrypt(secret.encode("ascii"), _TOTP_AAD)
 
     def decrypt(self, data: bytes) -> str:
         if len(data) < 29:
             raise ValueError("Corrupt TOTP secret")
-        return self._cipher.decrypt(data[:12], data[12:], _TOTP_AAD).decode("ascii")
+        return self.keyring.decrypt(data, _TOTP_AAD).decode("ascii")
 
     @staticmethod
     def new_secret() -> str:

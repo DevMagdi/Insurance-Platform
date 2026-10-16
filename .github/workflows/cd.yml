@@ -107,6 +107,9 @@ jobs:
           print("APP_ENCRYPTION_KEY=" + base64.urlsafe_b64encode(secrets.token_bytes(32)).decode())
           print("APP_BLIND_INDEX_KEY=" + base64.urlsafe_b64encode(secrets.token_bytes(32)).decode())
           print("JWT_SIGNING_KEY=" + secrets.token_urlsafe(48))
+          # Cloudflare's documented always-pass test keys: production refuses to boot without CAPTCHA.
+          print("TURNSTILE_SITE_KEY=1x00000000000000000000AA")
+          print("TURNSTILE_SECRET_KEY=1x0000000000000000000000000000000AA")
           PY
           # shellcheck disable=SC2046
           docker run -d --name cd-api --network cd-smoke --network-alias api \
@@ -181,6 +184,8 @@ jobs:
               "PUBLIC_APP_URL": "https://app.example.invalid",
               "IMAGE_OWNER": "${{ needs.images.outputs.owner }}",
               "IMAGE_TAG": "${{ needs.images.outputs.tag }}",
+              "TURNSTILE_SITE_KEY": "1x00000000000000000000AA",
+              "TURNSTILE_SECRET_KEY": "1x0000000000000000000000000000000AA",
           }
           for name, value in values.items():
               print(f"{name}={value}")

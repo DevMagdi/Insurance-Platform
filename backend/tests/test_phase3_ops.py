@@ -34,6 +34,8 @@ from app.domain.schemas import (
 from app.main import app
 from app.services.reports import ReportService
 
+CSRF = {"X-CSRF-Token": "known"}
+
 
 def report_spec(**changes: object) -> ReportScheduleSpec:
     payload: dict[str, object] = {
@@ -274,10 +276,10 @@ async def test_sla_simulation_and_calendar_preview_are_permission_bound(api: tup
         "priority": "urgent",
         "created_at": "2026-10-15T09:00:00Z",
     }
-    denied = await client.post("/api/staff/admin/sla-rules/simulate", json=simulate)
+    denied = await client.post("/api/staff/admin/sla-rules/simulate", json=simulate, headers=CSRF)
     assert denied.status_code == 403
     ctx.permissions = frozenset({"sla.manage"})
-    preview = await client.post("/api/staff/admin/sla-rules/simulate", json=simulate)
+    preview = await client.post("/api/staff/admin/sla-rules/simulate", json=simulate, headers=CSRF)
     assert preview.status_code == 200 and preview.json()["matched"] is True
     assert repo.simulate_sla.call_args.args[1:4] == (
         UUID(simulate["company_id"]),
@@ -292,12 +294,14 @@ async def test_sla_simulation_and_calendar_preview_are_permission_bound(api: tup
         "minutes": 480,
         "from_at": "2026-10-15T09:00:00Z",
     }
-    response = await client.post("/api/staff/admin/sla-rules/business-hours/preview", json=calendar)
+    response = await client.post(
+        "/api/staff/admin/sla-rules/business-hours/preview", json=calendar, headers=CSRF
+    )
     assert response.status_code == 200 and response.json()["valid"] is True
     assert repo.test_business_hours.call_args.args[1]["time_zone"] == "Africa/Cairo"
     repo.simulate_sla.return_value = None
     assert (
-        await client.post("/api/staff/admin/sla-rules/simulate", json=simulate)
+        await client.post("/api/staff/admin/sla-rules/simulate", json=simulate, headers=CSRF)
     ).status_code == 403
     # An empty calendar means continuous coverage and is not a validation error.
     assert SlaRuleSpec.model_validate({"response_minutes": 30, "resolution_minutes": 60})
@@ -305,6 +309,7 @@ async def test_sla_simulation_and_calendar_preview_are_permission_bound(api: tup
         await client.post(
             "/api/staff/admin/sla-rules/business-hours/preview",
             json={**calendar, "business_hours": None},
+            headers=CSRF,
         )
     ).status_code == 200
 
@@ -353,6 +358,7 @@ async def test_integration_assignment_and_duplicate_routes(api: tuple) -> None:
         await client.post(
             "/api/staff/admin/assignment-rules/preview",
             json={"company_id": str(uuid4()), "insurance_type": "health"},
+            headers=CSRF,
         )
     ).status_code == 200
     assert (

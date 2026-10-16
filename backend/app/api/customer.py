@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import json
 from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, Response
 from fastapi.responses import StreamingResponse
+from redis.asyncio import Redis
 from sqlalchemy import select
 
 from app.api.deps import RequestContext, client_ip, integration_service, require_customer
@@ -21,17 +23,38 @@ from app.domain.schemas import (
     VoiceConsentRequest,
 )
 from app.models.identity import InsuranceCompany
+from app.observability import metrics
 from app.repositories.complaints import ComplaintRepository
 from app.repositories.profile import CustomerProfileRepository
+from app.security.captcha import captcha_guard
 from app.security.tokens import csrf_required
 from app.services.realtime import stream_customer_complaint
 
 router = APIRouter(prefix="/api", tags=["customer"])
 
 
+COMPANIES_CACHE_KEY = "cache:public:companies:v1"
+
+
 @router.get("/companies")
-async def public_companies(request: Request) -> list[dict[str, Any]]:
+async def public_companies(request: Request, response: Response) -> list[dict[str, Any]]:
     await request.app.state.auth.limits.check("companies:ip", client_ip(request), 120, 60)
+    # Non-personal reference data: shareable by browsers and the CDN.
+    response.headers["Cache-Control"] = "public, max-age=300, stale-while-revalidate=60"
+    state_redis = getattr(request.app.state, "redis", None)
+    redis = state_redis if isinstance(state_redis, Redis) else None
+    cached = await redis.get(COMPANIES_CACHE_KEY) if redis is not None else None
+    if cached:
+        metrics.CACHE_REQUESTS.labels(cache="companies", result="hit").inc()
+        return json.loads(cached)  # type: ignore[no-any-return]
+    metrics.CACHE_REQUESTS.labels(cache="companies", result="miss").inc()
+    companies = await _load_companies(request)
+    if redis is not None:
+        await redis.set(COMPANIES_CACHE_KEY, json.dumps(companies, default=str), ex=60)
+    return companies
+
+
+async def _load_companies(request: Request) -> list[dict[str, Any]]:
     async with purpose_transaction(request.app.state.factory, "guest") as db:
         result = await db.execute(
             select(
@@ -54,7 +77,7 @@ async def public_companies(request: Request) -> list[dict[str, Any]]:
         ]
 
 
-@router.post("/guest/track")
+@router.post("/guest/track", dependencies=[Depends(captcha_guard("guest_track"))])
 async def guest_track(item: GuestTrackRequest, request: Request) -> dict[str, Any]:
     auth = request.app.state.auth
     await auth.limits.check("guest:ip", client_ip(request), 15, 600)

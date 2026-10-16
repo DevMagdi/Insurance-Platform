@@ -219,6 +219,7 @@ async def delete_assignment_rule(
 async def preview_assignment(
     item: AssignmentPreview,
     ctx: RequestContext = Depends(require_permission("complaints.assign")),
+    _: None = Depends(csrf_required),
 ) -> dict[str, Any]:
     """Dry run: which in-scope agents the current rules would offer, in order."""
     result = await AssignmentRuleRepository().preview(ctx.db, item)

@@ -7,7 +7,8 @@ IMAGE_OWNER ?= $(shell git config --get remote.origin.url | sed -E 's#.+[:/]([^/
 IMAGE_TAG ?= $(shell git rev-parse HEAD)
 
 .PHONY: help init install up down logs migrate partitions seed test test-integration lint format ci \
-	images prod-config deploy release
+	images prod-config deploy release backup restore-drill loadtest-sessions loadtest-smoke helm-lint \
+	rotate-keys lint-migrations
 help:
 	@echo 'init                Generate ignored .env with unique local credentials'
 	@echo 'install             Create .venv; install backend dev and frontend dependencies'
@@ -19,6 +20,13 @@ help:
 	@echo 'prod-config         Render docker-compose.prod.yml (needs .env.production)'
 	@echo 'deploy              Trigger the CD workflow for production (requires gh auth)'
 	@echo 'release             Tag the current commit and let CD publish images + release'
+	@echo 'backup              pg_dump (custom format + sha256) into ./backups from the dev stack'
+	@echo 'restore-drill       Restore DUMP=... into a scratch DB and verify revision + RLS'
+	@echo 'loadtest-sessions   Mint non-production load-test sessions into loadtest/sessions.json'
+	@echo 'loadtest-smoke      Run the k6 smoke profile (needs k6; BASE_URL defaults to localhost:8080)'
+	@echo 'helm-lint           helm lint + template with default and production values'
+	@echo 'rotate-keys         Re-encrypt PII with the current key (see docs/RUNBOOK.md)'
+	@echo 'lint-migrations     Static zero-downtime checks for new SQL revisions'
 init:
 	$(BOOTSTRAP_PYTHON) scripts/bootstrap_env.py
 install:
@@ -42,13 +50,14 @@ test:
 test-integration:
 	cd backend && ../$(PYTHON) -m pytest -m integration
 lint:
-	$(PYTHON) -m ruff check backend scripts
-	$(PYTHON) -m ruff format --check backend scripts
+	$(PYTHON) -m ruff check backend scripts loadtest
+	$(PYTHON) -m ruff format --check backend scripts loadtest
+	cd backend && ../$(PYTHON) -m app.scripts.lint_migrations
 	cd backend && ../$(PYTHON) -m mypy app
 	cd frontend && npm run lint && npm run typecheck
 format:
-	$(PYTHON) -m ruff check --fix backend scripts
-	$(PYTHON) -m ruff format backend scripts
+	$(PYTHON) -m ruff check --fix backend scripts loadtest
+	$(PYTHON) -m ruff format backend scripts loadtest
 ci: lint test
 	cd frontend && npm run test && npm run build
 
@@ -63,3 +72,28 @@ release:
 	@test -n "$(VERSION)" || (echo 'Usage: make release VERSION=v1.2.3' && exit 1)
 	git tag -a "$(VERSION)" -m "Release $(VERSION)"
 	git push origin "$(VERSION)"
+
+backup:
+	$(COMPOSE) cp scripts/backup postgres:/tmp/backup
+	mkdir -p backups
+	$(COMPOSE) exec -T -e BACKUP_DIR=/tmp/backups postgres sh -ec \
+		'export PGUSER="$$POSTGRES_USER" PGDATABASE="$$POSTGRES_DB"; sh /tmp/backup/pg_backup.sh' > backups/latest.txt
+	$(COMPOSE) cp postgres:/tmp/backups/. backups/
+	@cat backups/latest.txt
+restore-drill:
+	@test -n "$(DUMP)" || (echo 'Usage: make restore-drill DUMP=/tmp/backups/insurance-....dump (path inside the postgres container)' && exit 1)
+	$(COMPOSE) cp scripts/backup postgres:/tmp/backup
+	$(COMPOSE) exec -T postgres sh -ec 'export PGUSER="$$POSTGRES_USER" PGDATABASE="$$POSTGRES_DB"; sh /tmp/backup/pg_restore_drill.sh "$(DUMP)"'
+loadtest-sessions:
+	$(COMPOSE) run --rm -T --no-deps -e DATABASE_ADMIN_URL="$$(grep -E '^(POSTGRES_USER|POSTGRES_PASSWORD|POSTGRES_DB)=' .env | sort | awk -F= '{v[$$1]=$$2} END {printf "postgresql+psycopg://%s:%s@postgres:5432/%s", v["POSTGRES_USER"], v["POSTGRES_PASSWORD"], v["POSTGRES_DB"]}')" \
+		api python -m app.scripts.loadtest_sessions --customers 200 --staff 20 > loadtest/sessions.json
+loadtest-smoke:
+	k6 run -e BASE_URL=$${BASE_URL:-http://localhost:8080} -e SESSIONS=$(CURDIR)/loadtest/sessions.json -e PROFILE=$${PROFILE:-smoke} loadtest/k6/platform.js
+helm-lint:
+	helm lint --strict deploy/helm/insurance-platform
+	helm lint --strict deploy/helm/insurance-platform -f deploy/helm/insurance-platform/values-production.yaml
+	helm template ip deploy/helm/insurance-platform -f deploy/helm/insurance-platform/values-production.yaml > /dev/null
+rotate-keys:
+	$(COMPOSE) run --rm --no-deps -e DATABASE_ADMIN_URL="$$DATABASE_ADMIN_URL" api python -m app.scripts.rotate_keys
+lint-migrations:
+	cd backend && ../$(PYTHON) -m app.scripts.lint_migrations

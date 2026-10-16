@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "ip.fullname" . }}-web
+  labels: {{- include "ip.labels" . | nindent 4 }}
+    app.kubernetes.io/component: web
+spec:
+  {{- if not .Values.web.hpa.enabled }}
+  replicas: {{ .Values.web.replicas }}
+  {{- end }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate: {maxSurge: 25%, maxUnavailable: 0}
+  selector:
+    matchLabels: {{- include "ip.selector" (dict "root" . "component" "web") | nindent 6 }}
+  template:
+    metadata:
+      labels: {{- include "ip.selector" (dict "root" . "component" "web") | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "ip.fullname" . }}
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: web
+          image: {{ include "ip.webImage" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - {name: http, containerPort: 80}
+          readinessProbe:
+            httpGet: {path: /, port: http}
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: {path: /, port: http}
+            periodSeconds: 15
+          lifecycle:
+            preStop:
+              exec: {command: ["sleep", "5"]}
+          resources: {{- toYaml .Values.web.resources | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: {drop: [ALL], add: [CHOWN, SETUID, SETGID, NET_BIND_SERVICE]}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "ip.fullname" . }}-web
+  labels: {{- include "ip.labels" . | nindent 4 }}
+    app.kubernetes.io/component: web
+spec:
+  selector: {{- include "ip.selector" (dict "root" . "component" "web") | nindent 4 }}
+  ports:
+    - {name: http, port: 80, targetPort: http}

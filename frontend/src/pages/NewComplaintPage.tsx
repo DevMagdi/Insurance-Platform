@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
-import { api, uploadFiles } from '../lib/api';
+import { ApiError, api, uploadFiles } from '../lib/api';
+import { useCaptcha } from '../lib/captcha';
 import {
   clearDraft,
   emptyDraft,
@@ -58,6 +59,9 @@ export function NewComplaintPage() {
   const [busy, setBusy] = useState<'otp' | 'submit' | 'upload' | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [success, setSuccess] = useState<SuccessState | null>(null);
+  // PDPL: explicit, purpose-bound consent is recorded server-side before submission.
+  const [consent, setConsent] = useState(false);
+  const otpCaptcha = useCaptcha('otp_start');
 
   const companiesQuery = useQuery({ queryKey: ['companies'], queryFn: api.companies, staleTime: 300_000 });
   const companies = useMemo(() => companiesQuery.data ?? [], [companiesQuery.data]);
@@ -130,14 +134,19 @@ export function NewComplaintPage() {
   };
 
   const sendOtp = async () => {
+    if (!otpCaptcha.ready) {
+      setSubmitError(t(otpCaptcha.failed ? 'security.captchaFailed' : 'security.captchaRequired'));
+      return;
+    }
     setBusy('otp');
     setSubmitError(null);
     try {
-      await api.otpStart(normalizeMobile(draft.mobile));
+      await api.otpStart(normalizeMobile(draft.mobile), otpCaptcha.token);
       setOtpSent(true);
-    } catch {
-      setSubmitError(t('errors.generic'));
+    } catch (error) {
+      setSubmitError(error instanceof ApiError && error.status === 429 ? t('security.tooMany') : t('errors.generic'));
     } finally {
+      otpCaptcha.reset();
       setBusy(null);
     }
   };
@@ -180,6 +189,10 @@ export function NewComplaintPage() {
       setStep(0);
       return;
     }
+    if (!consent) {
+      setSubmitError(t('security.consentRequired'));
+      return;
+    }
     setBusy('submit');
     setSubmitError(null);
     try {
@@ -199,6 +212,7 @@ export function NewComplaintPage() {
         });
         await queryClient.invalidateQueries({ queryKey: ['me'] });
       }
+      await api.recordConsent('complaint_processing', true);
       const created = await api.createComplaint(
         {
           national_id: draft.national_id.replace(/[\s-]/g, ''),
@@ -221,8 +235,8 @@ export function NewComplaintPage() {
         uploaded: uploadOutcome.done,
         total: uploadOutcome.total,
       });
-    } catch {
-      setSubmitError(t('errors.generic'));
+    } catch (error) {
+      setSubmitError(error instanceof ApiError && error.status === 429 ? t('security.tooMany') : t('errors.generic'));
     } finally {
       setBusy(null);
     }
@@ -446,9 +460,20 @@ export function NewComplaintPage() {
                     {t('wizard.sendOtp')}
                   </button>
                 </div>
+                {otpCaptcha.widget}
                 {otpSent && <p className="text-sm text-emerald-500">{t('auth.codeSent')}</p>}
               </div>
             )}
+            <label className="flex items-start gap-3 rounded-xl border border-slate-200/80 px-3 py-3 text-sm leading-6 dark:border-white/10">
+              <input
+                type="checkbox"
+                className="mt-1 h-4 w-4 shrink-0 accent-amber-500"
+                checked={consent}
+                onChange={(e) => setConsent(e.target.checked)}
+                data-testid="privacy-consent"
+              />
+              <span>{t('security.consentLabel')}</span>
+            </label>
             {submitError && (
               <p role="alert" className="rounded-xl bg-rose-500/10 px-3 py-2 text-sm text-rose-500">{submitError}</p>
             )}

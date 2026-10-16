@@ -29,6 +29,14 @@ import {
   type StaffRole,
   type StaffUser,
 } from './staffTypes';
+import { captchaHeaders } from './captcha';
+
+export type ConsentPurpose =
+  | 'complaint_processing'
+  | 'notifications'
+  | 'voice_followup'
+  | 'ai_processing'
+  | 'marketing';
 
 export class ApiError extends Error {
   readonly status: number;
@@ -150,16 +158,25 @@ function queryString(filters: ComplaintFilters): string {
 export const api = {
   companies: () => request<Company[]>('/api/companies'),
 
-  guestTrack: (ticket_no: string, national_id: string) =>
+  guestTrack: (ticket_no: string, national_id: string, captcha?: string | null) =>
     request<GuestTrackResult>('/api/guest/track', {
       method: 'POST',
       body: { ticket_no: ticket_no.trim(), national_id: national_id.replace(/[\s-]/g, '') },
+      headers: captchaHeaders(captcha),
     }),
 
-  otpStart: (mobile: string) =>
+  otpStart: (mobile: string, captcha?: string | null) =>
     request<{ message: string }>('/api/auth/customer/otp/start', {
       method: 'POST',
       body: { mobile },
+      headers: captchaHeaders(captcha),
+    }),
+
+  /** PDPL (Law 151/2020): append-only consent record for the signed-in customer. */
+  recordConsent: (purpose: ConsentPurpose, granted: boolean) =>
+    request<{ purpose: ConsentPurpose; granted: boolean }>('/api/customer/privacy/consents', {
+      method: 'POST',
+      body: { purpose, granted },
     }),
 
   otpVerify: (body: {
@@ -255,10 +272,11 @@ export const api = {
 };
 
 export const staffApi = {
-  login: (email: string, password: string) =>
+  login: (email: string, password: string, captcha?: string | null) =>
     request<{ next_step: string; challenge: string | null }>('/api/auth/staff/login', {
       method: 'POST',
       body: { email, password },
+      headers: captchaHeaders(captcha),
     }),
 
   changePassword: (challenge: string, password: string) =>

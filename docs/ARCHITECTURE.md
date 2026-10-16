@@ -1,11 +1,13 @@
-# Architecture through Phase 7
+# Architecture through Phase 8
 
 **Product authority:** [PROJECT_BRIEF.md](PROJECT_BRIEF.md). This describes the **implemented backend** plus its production boundaries. [openapi.yaml](openapi.yaml) is the generated, implemented HTTP contract; [openapi-roadmap.yaml](openapi-roadmap.yaml) retains the original `/api/v1` **future-route draft**. FastAPI currently implements `/api/*`, not that roadmap. The frontend includes the Phase 6 customer portal (see [CUSTOMER_PORTAL.md](CUSTOMER_PORTAL.md)), the staff workspace with human-reviewed AI assistance (see [STAFF_PORTAL.md](STAFF_PORTAL.md)), and the Phase 7 scoped operations/admin console (see [PHASE_7.md](PHASE_7.md)).
 
 ## Components and request flow
 
 ```text
-Arabic-first React/Vite (browser) -- same-origin /api -- Nginx -- FastAPI (stateless)
+CDN (immutable assets, public reference data only)
+  |
+Arabic-first React/Vite (browser) -- same-origin /api -- Nginx (limit_req, CSP/HSTS) -- FastAPI on Gunicorn/Uvicorn (stateless, HPA)
                                   |                         |-- PgBouncer (transaction) -- PostgreSQL 16
                                   |                         |-- Redis (limits, OTP, challenges, access cache)
                                   |                         `-- private MinIO S3 (proxied upload/download)
@@ -13,9 +15,11 @@ Arabic-first React/Vite (browser) -- same-origin /api -- Nginx -- FastAPI (state
 Separate ARQ worker -- Redis cron -- restricted app_worker login -- PostgreSQL definer functions
                            `-- SMTP delivery (Mailpit dev)/AV hook (unconfigured by default)
 Admin-only migrator + synthetic seed ------------------------> PostgreSQL directly
+Read-only analytics (optional DATABASE_READ_URL) -- replica PgBouncer -- streaming replica (same RLS)
+Prometheus (/metrics, bearer) -> alert rules -> Alertmanager / Grafana; Sentry (PII scrubbed); JSON logs
 ```
 
-The HTTP router → service → repository flow is in `backend/app/api/`, `app/services/`, `app/repositories/`; request/response constraints live in `app/domain/schemas.py`. The old Phase 1 SQL schema (`001`–`003`) is preserved; `004`–`006` add sessions, idempotency, upload reservations, notice outbox and SECURITY DEFINER commands. Phase 3 revisions `007`–`016` add staff workflows, automation, guarded administration, SLA calendars, scheduled reports, operations administration, analytics rollups and export formats; Phase 4 revision `017` adds encrypted integrations, queued actions, AI insights, API keys and voice/message delivery state. Phase 6 revisions `20261016_18`–`20261016_19` add customer profile/preference helpers and preference-aware notice delivery. Phase 7 revision `20261016_20` adds the staff-console team/assignment administration functions and permission catalog entries without duplicating the main branch's Phase 3/4 services. There are twenty ordered Alembic revisions, with `20261016_20` as head. The typed SQLAlchemy 2 mappings in `app/models/` mirror the database. Partitioned complaint keys retain `(id, created_at)` so child queries and events join the correct partition. Ticket numbers are globally unique and customer-facing; UUIDs are internal IDs.
+The HTTP router → service → repository flow is in `backend/app/api/`, `app/services/`, `app/repositories/`; request/response constraints live in `app/domain/schemas.py`. The old Phase 1 SQL schema (`001`–`003`) is preserved; `004`–`006` add sessions, idempotency, upload reservations, notice outbox and SECURITY DEFINER commands. Phase 3 revisions `007`–`016` add staff workflows, automation, guarded administration, SLA calendars, scheduled reports, operations administration, analytics rollups and export formats; Phase 4 revision `017` adds encrypted integrations, queued actions, AI insights, API keys and voice/message delivery state. Phase 6 revisions `20261016_18`–`20261016_19` add customer profile/preference helpers and preference-aware notice delivery. Phase 7 revision `20261016_20` adds the staff-console team/assignment administration functions and permission catalog entries without duplicating the main branch's Phase 3/4 services. Phase 8 revisions `20261016_21` (PDPL consent evidence, privacy requests, retention, queue-depth telemetry) and `20261016_22` (statement-level InitPlan RLS for complaints) follow. There are twenty-two ordered Alembic revisions, with `20261016_22` as head. The typed SQLAlchemy 2 mappings in `app/models/` mirror the database. Partitioned complaint keys retain `(id, created_at)` so child queries and events join the correct partition. Ticket numbers are globally unique and customer-facing; UUIDs are internal IDs.
 
 ### Authentication and authorization boundaries
 
@@ -56,15 +60,64 @@ The HTTP router → service → repository flow is in `backend/app/api/`, `app/s
 - Integration secrets are encrypted with `APP_ENCRYPTION_KEY`, which must be supplied to both API and worker. Admin list responses never return credential values; webhook signing secrets are shown once and stored encrypted. Public API keys store a one-way hash, validate the owner's live access and carry explicit permissions plus a company allow-list/global scope. Outgoing webhook requests use timestamped HMAC-SHA256 signatures and disable redirects; generic webhook endpoints are rate-limited and payload-bounded. Twilio's native form status callback verifies `X-Twilio-Signature` against the configured callback URL/auth token.
 - Provider/worker tests use mocked HTTP transports and fake storage; no production provider was contacted. The Phase 4 migration is checked into the existing PostgreSQL testcontainers upgrade path. In this local environment Docker/PostgreSQL were unavailable: PostgreSQL and PL/pgSQL syntax parsers accepted the migration, but only CI/testcontainers can establish real database execution.
 
+### Phase 8: hardening, scale, observability and delivery
+
+* **Request pipeline.** The ASGI middleware runs outermost first:
+  1. `RequestContextMiddleware`: request ID, JSON access log and metrics;
+  2. `SecurityHeadersMiddleware`: CSP, HSTS, `nosniff`, framing, COOP/CORP,
+     `no-store` for `/api`;
+  3. `OriginGuardMiddleware`: CORS allowlist and cross-site write block;
+  4. `BodySizeLimitMiddleware`: declared and streamed body limits, `413`;
+  5. `RateLimitMiddleware`: Redis sliding windows per IP, user, endpoint
+     class and API key, plus the abuse detector.
+
+  Route-level guards add CAPTCHA (`captcha_guard`), lockout, CSRF,
+  `require_permission`, and queue backpressure (`backpressure(...)` on AI,
+  integration and export enqueue).
+* **Client IP.** `X-Forwarded-For` is only honoured from
+  `TRUSTED_PROXY_CIDRS` (`app/security/proxy.py`). Rate limits and audits use
+  the resolved IP.
+* **Keys.** `app/security/keyring.py` stores versioned AES-GCM ciphertext
+  (`KR` + key id). Legacy ciphertext stays readable.
+  `app.scripts.rotate_keys` re-encrypts online.
+* **Privacy.** Migration 021 adds append-only `consent_records`,
+  `privacy_requests` (30-day due date), the `record_consent`,
+  `create_privacy_request` and `process_privacy_request` definers, worker-only
+  `apply_retention`, and `queue_depths()` for backpressure and metrics. API:
+  `app/api/privacy.py`. See [PRIVACY.md](PRIVACY.md).
+* **RLS at scale.** Migration 022 rewrites `complaints_read` as InitPlans over
+  `rls_*` helpers, so privileges are evaluated once per statement. See
+  [ACCESS_CONTROL.md](ACCESS_CONTROL.md#rls-at-scale-phase-8-migration-022).
+* **Runtime.** `backend/gunicorn.conf.py` and `app/gunicorn_worker.py`
+  (Uvicorn worker without proxy-header trust or a server header). Readiness
+  returns `503` while draining. Prometheus runs in multiprocess mode. Sentry
+  is initialised only when `SENTRY_DSN` is set.
+* **Observability.** `app/observability/{logging,metrics,sentry}.py`. Alert
+  rules and the Grafana dashboard are in `infra/monitoring/`, mirrored into
+  the Helm chart.
+* **Kubernetes.** `deploy/helm/insurance-platform`: API, worker, web,
+  PgBouncer, HPA, PDB, NetworkPolicies, Ingress, a migrate hook, a partitions
+  CronJob, and monitoring CRDs.
+* **Load and DR.** `loadtest/` (k6 and Locust, with
+  `app.scripts.loadtest_sessions` fixtures); `scripts/backup/` (dump and
+  restore drill). See [SCALABILITY.md](SCALABILITY.md) and
+  [RUNBOOK.md](RUNBOOK.md).
+
 ## Delivery pipeline
 
-- CI (`ci.yml`) gates four independent jobs: backend lint/format/strict-mypy/offline tests with coverage, frontend lint/typecheck/test/build, a container job that builds both images and proves the built API image still matches the committed contract, and a `postgres-rls` job that migrates real PostgreSQL 16 through PgBouncer and runs the integration suite plus a double seed.
+- CI (`ci.yml`) gates six independent jobs:
+  - **backend:** lint, format, migration lint, strict mypy and offline tests with coverage;
+  - **frontend:** lint, typecheck, test, build and e2e;
+  - **containers:** builds both images, runs `nginx -t` and a Trivy image scan, and proves the built API image still matches the committed contract;
+  - **security:** pip-audit, npm audit and Trivy fs/secret/config;
+  - **helm:** lint, template and kubeconform;
+  - **postgres-rls:** migrates real PostgreSQL 16 through PgBouncer, runs the integration and pen-test suites plus a double seed, a k6 smoke and a backup/restore drill.
 - CD (`cd.yml`) publishes immutable, SHA-tagged images to GHCR, then verifies the published artifacts by running them (SPA served by Nginx, API reachable through the same-origin proxy, contract parity) before any deployment is considered. The deploy job is gated on the `DEPLOY_ENABLED` variable, runs in a protected GitHub environment, validates the image owner/tag, ships only code (compose file, `infra/`, docs) over SSH, and passes values as `argv` so nothing is interpolated into a remote command string. On the host it pulls, migrates once, replaces `api`/`worker`/`web`, and only succeeds if `/api/health/ready` — which checks PostgreSQL through PgBouncer *and* Redis — turns green within 150 seconds.
 - Production uses images, never building on the host (`docker-compose.prod.yml`), keeps the database and object store on loopback with only the web port published, and takes its credentials from an on-host `.env.production`. Rollback is a tag change; schema rollback is not offered because the SQL revisions are forward-only.
 
 ## Data and operating model
 
-- Date-range and `(created_at DESC, id DESC)` pages benefit from partitions/indexes; status/company/type/agent composite indexes and GIN `search_vector` cover common lists/search. The current API uses bounded offset pages, **not** distributed keyset cursor pages; ranking and performance of Arabic full-text search need measurement. Do not advertise a 1M-user capacity without PgBouncer/read-replica tuning, load testing and an observability plan.
+- Date-range and `(created_at DESC, id DESC)` pages benefit from partitions/indexes; status/company/type/agent composite indexes and GIN `search_vector` cover common lists/search. The current API uses bounded offset pages, **not** distributed keyset cursor pages; ranking and performance of Arabic full-text search need measurement. Phase 8 adds the tuning, load-test harnesses and observability (see [SCALABILITY.md](SCALABILITY.md)). A 1M-user figure still requires running the k6 stress profile on production-sized infrastructure.
 - Maintenance must provision the non-BYPASSRLS roles, apply Alembic migrations with a trusted BYPASSRLS migrator and run `app.scripts.partitions` monthly. Future partitions need controlled redistribution if DEFAULT already contains those dates. The synthetic seed is admin-only and opt-in; never run against production.
 - Unit/API tests exercise validation, auth/CSRF, permission/scope injection, worker/AV fail-closed behavior and WebSocket reauthorization. The legacy integration suite probes direct PostgreSQL and PgBouncer RLS/transaction leakage. Additional Docker-dependent PostgreSQL 16 + Redis testcontainers cases exercise migrations, real API requests, refresh replay, scan gate, worker login and last-admin protection; they **skip locally when Docker is unavailable**, not substitute an emulator for real PostgreSQL. `make test` gates whole-`app` coverage at >80%.
 
@@ -74,4 +127,4 @@ Phase 6 adds the bilingual customer portal and staff workspace, a customer SSE s
 
 Phase 7 adds a lazy-loaded staff console for scoped overview analytics and complaint queues, staff/role/access administration, operations configuration, teams and audit/report workflows. It deliberately reuses existing main-branch APIs: `/staff/complaints/{id}` remains the AI-capable `StaffTicketPage`; operations metadata uses the Phase 3 catalog/assignment/report APIs; encrypted provider credentials and AI continue through Phase 4. Migration `20261016_20` is additive and follows `20261016_19`. The console's `.staff-console` stylesheet is locally scoped, and its UI permission checks are only presentation — API permission gates, `AccessScope`, SECURITY DEFINER functions and PostgreSQL RLS remain authoritative. See [PHASE_7.md](PHASE_7.md) for screen-to-API boundaries and verification details.
 
-Production SMS/WhatsApp rollout and live-provider verification, production antivirus, payment providers, dedicated push beyond WebSocket/SSE/polling, vendor-specific inbound IVR/STT/TTS, TLS and secret/key rotation, independent RLS/security review, Arabic full-text tuning, backup/recovery drills, PDPL compliance and load testing remain unfinished or unverified. The CD workflow publishes and smoke-tests images on `main`; deployment remains opt-in, and no successful production deployment is implied by CI. No production deployment or 1M concurrent-user claim follows from the current Compose setup. See the [ADRs](adr/) for access-control, PII, partitioning, pooling and Phase 3 SLA/report/rollup rationale.
+Production SMS/WhatsApp rollout and live-provider verification, production antivirus, payment providers, dedicated push beyond WebSocket/SSE/polling, vendor-specific inbound IVR/STT/TTS, TLS certificates, an independent security review, Arabic full-text tuning, the PDPL legal review and production-scale capacity testing remain unfinished or unverified. Phase 8 supplies key rotation, automated restore drills, PDPL tooling, load-test harnesses and monitoring. The CD workflow publishes and smoke-tests images on `main`; deployment remains opt-in, and no successful production deployment is implied by CI. No production deployment or 1M concurrent-user claim follows from the current Compose setup. See the [ADRs](adr/) for access-control, PII, partitioning, pooling and Phase 3 SLA/report/rollup rationale.

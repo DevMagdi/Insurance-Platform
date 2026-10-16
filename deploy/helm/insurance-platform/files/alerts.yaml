@@ -1,0 +1,91 @@
+# Prometheus alerting rules (also embedded in the Helm PrometheusRule).
+groups:
+  - name: insurance-platform.availability
+    rules:
+      - alert: ApiHighErrorRate
+        expr: |
+          sum(rate(http_requests_total{status=~"5.."}[5m]))
+            / clamp_min(sum(rate(http_requests_total[5m])), 1) > 0.02
+        for: 5m
+        labels: {severity: page}
+        annotations:
+          summary: "API 5xx ratio above 2% for 5 minutes"
+          runbook: docs/RUNBOOK.md#api-errors
+      - alert: ApiLatencyP95High
+        expr: |
+          histogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket[5m]))) > 0.8
+        for: 10m
+        labels: {severity: page}
+        annotations:
+          summary: "API p95 latency above 800 ms"
+          runbook: docs/RUNBOOK.md#latency
+      - alert: DashboardLatencyP95High
+        expr: |
+          histogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket{route=~"/api/staff/analytics.*"}[5m]))) > 1.5
+        for: 10m
+        labels: {severity: ticket}
+        annotations:
+          summary: "Scoped analytics p95 above 1.5 s (check cache hit ratio / replica lag)"
+          runbook: docs/RUNBOOK.md#latency
+      - alert: QueueBacklogGrowing
+        expr: max by (queue) (queue_depth) > 2000
+        for: 10m
+        labels: {severity: ticket}
+        annotations:
+          summary: "Durable queue {{ $labels.queue }} above 2000 pending jobs"
+          runbook: docs/RUNBOOK.md#queue-backlog
+      - alert: QueueBackpressureActive
+        expr: sum(rate(queue_backpressure_rejections_total[5m])) > 0
+        for: 5m
+        labels: {severity: page}
+        annotations:
+          summary: "Enqueue endpoints are shedding load (503 + Retry-After)"
+          runbook: docs/RUNBOOK.md#queue-backlog
+  - name: insurance-platform.security
+    rules:
+      - alert: SuspiciousAccessPattern
+        expr: sum by (reason) (increase(suspicious_access_total[10m])) > 5
+        labels: {severity: page}
+        annotations:
+          summary: "Abuse detector fired ({{ $labels.reason }}): possible IDOR / enumeration"
+          runbook: docs/RUNBOOK.md#suspicious-access
+      - alert: AccessDeniedSpike
+        expr: sum(rate(access_denied_total[5m])) > 5 * sum(rate(access_denied_total[1h] offset 1d)) + 1
+        for: 10m
+        labels: {severity: ticket}
+        annotations:
+          summary: "403/404 denials 5x above yesterday's baseline"
+          runbook: docs/RUNBOOK.md#suspicious-access
+      - alert: BruteForceLockouts
+        expr: sum(increase(account_lockouts_total[15m])) > 20
+        labels: {severity: page}
+        annotations:
+          summary: "More than 20 account lockouts in 15 minutes (credential stuffing?)"
+          runbook: docs/RUNBOOK.md#brute-force
+      - alert: AuthFailureSpike
+        expr: sum(rate(auth_failures_total[5m])) > 10
+        for: 5m
+        labels: {severity: ticket}
+        annotations:
+          summary: "Sustained authentication failures"
+          runbook: docs/RUNBOOK.md#brute-force
+      - alert: CaptchaFailureSpike
+        expr: sum(rate(captcha_failures_total[5m])) > 5
+        for: 10m
+        labels: {severity: ticket}
+        annotations:
+          summary: "Bot traffic against public forms (CAPTCHA rejections)"
+          runbook: docs/RUNBOOK.md#brute-force
+      - alert: SensitiveExportBurst
+        expr: sum by (action) (increase(sensitive_actions_total[15m])) > 100
+        labels: {severity: page}
+        annotations:
+          summary: "Unusual volume of {{ $labels.action }} (possible data exfiltration)"
+          runbook: docs/RUNBOOK.md#suspicious-access
+      - alert: RateLimitStorm
+        expr: sum by (category) (rate(rate_limited_total[5m])) > 50
+        for: 10m
+        labels: {severity: ticket}
+        annotations:
+          summary: "Rate limiter rejecting >50 rps in {{ $labels.category }}"
+          runbook: docs/RUNBOOK.md#rate-limits

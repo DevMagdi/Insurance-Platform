@@ -7,9 +7,10 @@ RUN npm ci --no-audit --no-fund
 COPY frontend/ ./
 RUN npm run build
 
-FROM nginx:1.27-alpine
+FROM nginx:1.28-alpine
 # The proxy target is a compose service name; TLS terminates in front of this image.
 COPY infra/nginx/prod.conf /etc/nginx/conf.d/default.conf
+COPY infra/nginx/snippets/ /etc/nginx/snippets/
 COPY --from=build /srv/dist /usr/share/nginx/html
 EXPOSE 80
 HEALTHCHECK --interval=15s --timeout=3s --retries=5 \

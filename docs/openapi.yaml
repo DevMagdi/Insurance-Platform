@@ -1,12 +1,16 @@
 openapi: 3.1.0
 info:
   title: Insurance Brokerage Complaint Management
-  version: 0.2.0
-  description: Implemented HTTP routes across product Phases 1-7. Authenticate with
+  version: 0.8.0
+  description: Implemented HTTP routes across product Phases 1-8. Authenticate with
     an HttpOnly access_token cookie; /api/auth/refresh uses the HttpOnly refresh_token
     cookie. All protected writes, including refresh, need X-CSRF-Token matching the
     readable csrf_token cookie. Authorization, AccessScope and PostgreSQL RLS are
-    enforced at runtime. Future routes are documented separately in openapi-roadmap.yaml.
+    enforced at runtime. Every /api route is rate limited per IP, user, API key and
+    endpoint class; a 429 response carries Retry-After and X-RateLimit-* headers.
+    Public forms (OTP start, guest tracking, staff login, invitation acceptance) require
+    a Cloudflare Turnstile token in X-Captcha-Token when CAPTCHA is configured (see
+    /api/public/config). Future routes are documented separately in openapi-roadmap.yaml.
 paths:
   /api/auth/customer/otp/start:
     post:
@@ -37,6 +41,16 @@ paths:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
       security: []
+      x-captcha-action: otp_start
+      parameters:
+      - name: X-Captcha-Token
+        in: header
+        required: false
+        description: Cloudflare Turnstile token; mandatory whenever /api/public/config
+          advertises a captcha site key.
+        schema:
+          type: string
+          maxLength: 2048
   /api/auth/customer/otp/verify:
     post:
       tags:
@@ -97,6 +111,16 @@ paths:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
       security: []
+      x-captcha-action: staff_login
+      parameters:
+      - name: X-Captcha-Token
+        in: header
+        required: false
+        description: Cloudflare Turnstile token; mandatory whenever /api/public/config
+          advertises a captcha site key.
+        schema:
+          type: string
+          maxLength: 2048
   /api/auth/staff/invitation/accept:
     post:
       tags:
@@ -127,6 +151,16 @@ paths:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
       security: []
+      x-captcha-action: invite_accept
+      parameters:
+      - name: X-Captcha-Token
+        in: header
+        required: false
+        description: Cloudflare Turnstile token; mandatory whenever /api/public/config
+          advertises a captcha site key.
+        schema:
+          type: string
+          maxLength: 2048
   /api/auth/staff/password/change:
     post:
       tags:
@@ -559,6 +593,16 @@ paths:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
       security: []
+      x-captcha-action: guest_track
+      parameters:
+      - name: X-Captcha-Token
+        in: header
+        required: false
+        description: Cloudflare Turnstile token; mandatory whenever /api/public/config
+          advertises a captcha site key.
+        schema:
+          type: string
+          maxLength: 2048
   /api/customer/complaints:
     post:
       tags:
@@ -4467,6 +4511,13 @@ paths:
       security:
       - AccessCookie: []
       x-required-permission: sla.manage
+      parameters:
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
   /api/staff/admin/sla-rules/business-hours/preview:
     post:
       tags:
@@ -4499,6 +4550,13 @@ paths:
       security:
       - AccessCookie: []
       x-required-permission: sla.manage
+      parameters:
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
   /api/staff/admin/templates:
     get:
       tags:
@@ -6700,6 +6758,13 @@ paths:
       security:
       - AccessCookie: []
       x-required-permission: complaints.assign
+      parameters:
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
   /api/staff/admin/duplicates:
     get:
       tags:
@@ -6775,6 +6840,235 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
       security:
       - AccessCookie: []
+  /api/customer/privacy/consents:
+    get:
+      tags:
+      - privacy
+      summary: List Consents
+      operationId: list_consents_api_customer_privacy_consents_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                items:
+                  additionalProperties: true
+                  type: object
+                type: array
+                title: Response List Consents Api Customer Privacy Consents Get
+      security:
+      - AccessCookie: []
+    post:
+      tags:
+      - privacy
+      summary: Record Consent
+      operationId: record_consent_api_customer_privacy_consents_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConsentUpdate'
+        required: true
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response Record Consent Api Customer Privacy Consents Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      parameters:
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
+  /api/customer/privacy/export:
+    get:
+      tags:
+      - privacy
+      summary: Export My Data
+      description: 'Right of access (Law 151/2020): a machine-readable copy of the
+        customer''s data.'
+      operationId: export_my_data_api_customer_privacy_export_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response Export My Data Api Customer Privacy Export Get
+      security:
+      - AccessCookie: []
+  /api/customer/privacy/requests:
+    get:
+      tags:
+      - privacy
+      summary: My Requests
+      operationId: my_requests_api_customer_privacy_requests_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                items:
+                  additionalProperties: true
+                  type: object
+                type: array
+                title: Response My Requests Api Customer Privacy Requests Get
+      security:
+      - AccessCookie: []
+    post:
+      tags:
+      - privacy
+      summary: Create Request
+      operationId: create_request_api_customer_privacy_requests_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PrivacyRequestCreate'
+        required: true
+      responses:
+        '202':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                  format: uuid
+                type: object
+                title: Response Create Request Api Customer Privacy Requests Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      parameters:
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
+  /api/staff/privacy/requests:
+    get:
+      tags:
+      - privacy
+      summary: Privacy Queue
+      operationId: privacy_queue_api_staff_privacy_requests_get
+      parameters:
+      - name: status
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            pattern: ^(pending|in_progress|completed|rejected)$
+          - type: 'null'
+          title: Status
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: true
+                title: Response Privacy Queue Api Staff Privacy Requests Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: settings.manage
+  /api/staff/privacy/requests/{request_id}:
+    post:
+      tags:
+      - privacy
+      summary: Decide Request
+      operationId: decide_request_api_staff_privacy_requests__request_id__post
+      parameters:
+      - name: request_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Request Id
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PrivacyRequestDecision'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: boolean
+                title: Response Decide Request Api Staff Privacy Requests  Request
+                  Id  Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: settings.manage
+  /api/public/config:
+    get:
+      tags:
+      - platform
+      summary: Public Config
+      description: Non-secret settings the SPA needs before sign-in (CAPTCHA site
+        key, policy).
+      operationId: public_config_api_public_config_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response Public Config Api Public Config Get
+      security: []
   /api/health/live:
     get:
       tags:
@@ -7391,6 +7685,28 @@ components:
       - reopened
       - transferred
       title: ComplaintStatus
+    ConsentPurpose:
+      type: string
+      enum:
+      - complaint_processing
+      - notifications
+      - voice_followup
+      - ai_processing
+      - marketing
+      title: ConsentPurpose
+    ConsentUpdate:
+      properties:
+        purpose:
+          $ref: '#/components/schemas/ConsentPurpose'
+        granted:
+          type: boolean
+          title: Granted
+      additionalProperties: false
+      type: object
+      required:
+      - purpose
+      - granted
+      title: ConsentUpdate
     CsatRequest:
       properties:
         score:
@@ -7695,6 +8011,51 @@ components:
       - team
       - all
       title: OwnershipLevel
+    PrivacyDecision:
+      type: string
+      enum:
+      - in_progress
+      - completed
+      - rejected
+      title: PrivacyDecision
+    PrivacyRequestCreate:
+      properties:
+        kind:
+          $ref: '#/components/schemas/PrivacyRequestKind'
+        details:
+          anyOf:
+          - type: string
+            maxLength: 2000
+          - type: 'null'
+          title: Details
+      additionalProperties: false
+      type: object
+      required:
+      - kind
+      title: PrivacyRequestCreate
+    PrivacyRequestDecision:
+      properties:
+        status:
+          $ref: '#/components/schemas/PrivacyDecision'
+        resolution:
+          anyOf:
+          - type: string
+            maxLength: 2000
+          - type: 'null'
+          title: Resolution
+      additionalProperties: false
+      type: object
+      required:
+      - status
+      title: PrivacyRequestDecision
+    PrivacyRequestKind:
+      type: string
+      enum:
+      - access
+      - erasure
+      - rectification
+      - objection
+      title: PrivacyRequestKind
     ReplyRequest:
       properties:
         body:

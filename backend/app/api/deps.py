@@ -6,7 +6,6 @@ import json
 from collections.abc import AsyncIterator
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from ipaddress import ip_address
 from typing import Any, cast
 from uuid import UUID
 
@@ -17,6 +16,8 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from app.db import Actor, scoped_transaction
 from app.domain.access import AccessScope
 from app.domain.permissions import PERMISSIONS
+from app.middleware.policy import policy_for
+from app.observability.logging import bind_actor
 from app.repositories.access import AccessRepository
 from app.repositories.auth import AuthRepository
 from app.security.tokens import TokenClaims, TokenManager
@@ -41,11 +42,15 @@ def integration_service(request: Request) -> IntegrationService:
 
 
 def client_ip(request: Request) -> str:
-    raw = request.client.host if request.client else "0.0.0.0"
-    try:
-        return str(ip_address(raw))
-    except ValueError:
-        return "0.0.0.0"
+    """Real client IP: X-Forwarded-For is honoured only from TRUSTED_PROXY_CIDRS."""
+    resolved = request.scope.get("state", {}).get("client_ip")
+    if isinstance(resolved, str):
+        return resolved
+    policy = policy_for(request.scope)
+    peer = request.client.host if request.client else None
+    ip = policy.resolver.resolve(peer, request.headers.get("x-forwarded-for"))
+    request.scope.setdefault("state", {})["client_ip"] = ip
+    return ip
 
 
 def user_agent(request: Request) -> str:
@@ -113,6 +118,9 @@ async def authenticated_context(request: Request) -> AsyncIterator[RequestContex
     manager: TokenManager = request.app.state.auth.tokens
     claims = manager.parse(request.cookies.get("access_token"), "access")
     factory: async_sessionmaker[AsyncSession] = request.app.state.factory
+    request.state.actor_id = str(claims.subject.id)
+    request.state.actor_kind = claims.subject.scope
+    bind_actor(str(claims.subject.id), claims.subject.scope)
     async with scoped_transaction(factory, claims.subject) as db:
         redis: Redis = request.app.state.redis
         yield await load_context(db, claims, redis, request.app.state.complaints)

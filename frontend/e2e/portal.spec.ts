@@ -28,6 +28,8 @@ const summary = {
   updated_at: '2026-10-03T10:00:00Z',
 };
 
+const consents: unknown[] = [];
+
 async function mockApi(page: Page, { authed = false } = {}) {
   await page.route('**/api/**', async (route: Route) => {
     const url = new URL(route.request().url());
@@ -49,6 +51,11 @@ async function mockApi(page: Page, { authed = false } = {}) {
         public_company: 'Nile Insurance',
         created: '2026-10-01T10:00:00Z',
       });
+    }
+    if (path === '/api/public/config') return json({ captcha: null, privacy_policy_version: '2026-10' });
+    if (path === '/api/customer/privacy/consents' && route.request().method() === 'POST') {
+      consents.push(route.request().postDataJSON());
+      return json({ purpose: 'complaint_processing', granted: true }, 201);
     }
     if (path === '/api/auth/customer/otp/start') return json({ message: 'sent' }, 202);
     if (path === '/api/auth/customer/otp/verify') return json({ authenticated_as: 'customer' });
@@ -146,8 +153,12 @@ test('multi-step complaint wizard reaches the success ticket number', async ({ p
   await page.getByRole('button', { name: 'Send verification code' }).click();
   await page.getByLabel(/Verification code/).fill('123456');
   await page.getByRole('button', { name: 'Submit complaint now' }).click();
+  await expect(page.getByText(/Consent to data processing is required/)).toBeVisible();
+  await page.getByTestId('privacy-consent').check();
+  await page.getByRole('button', { name: 'Submit complaint now' }).click();
 
   await expect(page.getByTestId('ticket-number')).toHaveText('CMP-2026-000123');
+  expect(consents).toContainEqual({ purpose: 'complaint_processing', granted: true });
 });
 
 test('my tickets dashboard shows counters and opens the animated timeline', async ({ page }) => {

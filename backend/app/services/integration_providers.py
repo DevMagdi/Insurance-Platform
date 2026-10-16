@@ -28,6 +28,8 @@ import boto3
 import httpx
 import jwt
 
+from app.security.ssrf import UnsafeDestination, pin_public_url
+
 
 class IntegrationProviderError(Exception):
     """Sanitized provider failure safe to persist as an error code."""
@@ -515,6 +517,10 @@ class OpenAICompatibleProvider:
             raise IntegrationProviderError("llm_configuration_missing", retryable=False)
         if not base_url.startswith("https://"):
             raise IntegrationProviderError("llm_endpoint_must_use_https", retryable=False)
+        try:
+            await pin_public_url(base_url)
+        except UnsafeDestination as exc:
+            raise IntegrationProviderError("llm_endpoint_blocked", retryable=False) from exc
         prompt = (
             "Return one JSON object with classification {category,priority}, "
             "sentiment {sentiment}, summary {summary}, and reply {reply,locale}. "
@@ -772,15 +778,21 @@ class SignedWebhookProvider:
             secret.encode("utf-8"), str(timestamp).encode() + b"." + body, hashlib.sha256
         ).hexdigest()
         try:
+            target = await pin_public_url(url)
+        except UnsafeDestination as exc:
+            raise IntegrationProviderError("webhook_destination_blocked", retryable=False) from exc
+        try:
             async with httpx.AsyncClient(timeout=15, follow_redirects=False) as client:
                 response = await client.post(
-                    url,
+                    target.url,
                     content=body,
                     headers={
+                        "Host": target.host_header,
                         "Content-Type": "application/json",
                         "X-Insurance-Timestamp": str(timestamp),
                         "X-Insurance-Signature": f"sha256={signature}",
                     },
+                    extensions=target.extensions,
                 )
         except httpx.HTTPError as exc:
             raise IntegrationProviderError("webhook_unreachable") from exc

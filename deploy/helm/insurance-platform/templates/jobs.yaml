@@ -1,0 +1,75 @@
+{{- if .Values.migrations.enabled }}
+# Expand-only migrations (enforced by app.scripts.lint_migrations in CI) run
+# BEFORE new pods roll out, so old and new versions share the schema safely.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "ip.fullname" . }}-migrate-{{ .Release.Revision }}
+  labels: {{- include "ip.labels" . | nindent 4 }}
+    app.kubernetes.io/component: migrate
+  annotations:
+    helm.sh/hook: pre-install,pre-upgrade
+    helm.sh/hook-weight: "-5"
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: {{ .Values.migrations.backoffLimit }}
+  activeDeadlineSeconds: {{ .Values.migrations.activeDeadlineSeconds }}
+  template:
+    metadata:
+      labels: {{- include "ip.selector" (dict "root" . "component" "migrate") | nindent 8 }}
+    spec:
+      restartPolicy: Never
+      automountServiceAccountToken: false
+      securityContext: {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: migrate
+          image: {{ include "ip.apiImage" . }}
+          command: ["alembic", "upgrade", "head"]
+          env:
+            {{- include "ip.secretEnv" (dict "root" . "name" "DATABASE_ADMIN_URL") | nindent 12 }}
+            {{- include "ip.secretEnv" (dict "root" . "name" "APP_WORKER_DB_PASSWORD") | nindent 12 }}
+            # Bounded lock waits: a blocked migration fails fast instead of queueing traffic.
+            - {name: PGOPTIONS, value: "-c lock_timeout=5s -c statement_timeout=600s"}
+          securityContext: {{- toYaml .Values.containerSecurityContext | nindent 12 }}
+          volumeMounts:
+            - {name: tmp, mountPath: /tmp}
+      volumes:
+        - name: tmp
+          emptyDir: {}
+{{- end }}
+{{- if .Values.partitions.enabled }}
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "ip.fullname" . }}-partitions
+  labels: {{- include "ip.labels" . | nindent 4 }}
+    app.kubernetes.io/component: partitions
+spec:
+  schedule: {{ .Values.partitions.schedule | quote }}
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        metadata:
+          labels: {{- include "ip.selector" (dict "root" . "component" "partitions") | nindent 12 }}
+        spec:
+          restartPolicy: Never
+          automountServiceAccountToken: false
+          securityContext: {{- toYaml .Values.podSecurityContext | nindent 12 }}
+          containers:
+            - name: partitions
+              image: {{ include "ip.apiImage" . }}
+              command: ["python", "-m", "app.scripts.partitions"]
+              env:
+                {{- include "ip.secretEnv" (dict "root" . "name" "DATABASE_ADMIN_URL") | nindent 16 }}
+              securityContext: {{- toYaml .Values.containerSecurityContext | nindent 16 }}
+              volumeMounts:
+                - {name: tmp, mountPath: /tmp}
+          volumes:
+            - name: tmp
+              emptyDir: {}
+{{- end }}

@@ -264,5 +264,12 @@ export const en = {
     "generic": "Something went wrong. Please try again.",
     "network": "Could not reach the server.",
     "loadCompanies": "Could not load insurance companies."
+  },
+  "security": {
+    "captchaRequired": "Please complete the security check first.",
+    "captchaFailed": "The security check could not load. Refresh the page and try again.",
+    "consentLabel": "I agree to the processing of my personal data to handle this complaint, under the privacy policy and Egypt's Personal Data Protection Law No. 151 of 2020.",
+    "consentRequired": "Consent to data processing is required to submit the complaint.",
+    "tooMany": "Too many attempts. Please wait a moment and try again."
   }
 } as const;

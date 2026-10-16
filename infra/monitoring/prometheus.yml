@@ -1,0 +1,18 @@
+# Standalone Prometheus scrape config (docker / VM deployments). Kubernetes uses
+# the Helm ServiceMonitor instead. /metrics is not exposed by the web edge.
+global:
+  scrape_interval: 30s
+  evaluation_interval: 30s
+rule_files:
+  - /etc/prometheus/alerts.yaml
+scrape_configs:
+  - job_name: insurance-api
+    metrics_path: /metrics
+    authorization:
+      type: Bearer
+      credentials_file: /etc/prometheus/metrics_token
+    static_configs:
+      - targets: ['api:8000']
+  - job_name: insurance-worker
+    static_configs:
+      - targets: ['worker:9100']

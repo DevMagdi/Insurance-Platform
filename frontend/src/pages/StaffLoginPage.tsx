@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { ApiError, staffApi } from '../lib/api';
 import { navigate } from '../lib/router';
 import { ErrorState, Field, TextInput, primaryButton } from '../components/ui';
+import { useCaptcha } from '../lib/captcha';
 
 type Step = 'credentials' | 'password_change' | 'totp_verify' | 'totp_setup';
 
@@ -17,16 +18,21 @@ export function StaffLoginPage() {
   const [provisioningUri, setProvisioningUri] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const captcha = useCaptcha('staff_login');
 
   const fail = (caught: unknown) => {
     setError(caught instanceof ApiError ? caught.detail : t('errors.generic'));
   };
 
   const login = async () => {
+    if (!captcha.ready) {
+      setError(t(captcha.failed ? 'security.captchaFailed' : 'security.captchaRequired'));
+      return;
+    }
     setBusy(true);
     setError('');
     try {
-      const result = await staffApi.login(email.trim().toLowerCase(), password);
+      const result = await staffApi.login(email.trim().toLowerCase(), password, captcha.token);
       if (result.next_step === 'authenticated' || !result.challenge) {
         navigate('/staff');
         window.location.reload();
@@ -45,6 +51,7 @@ export function StaffLoginPage() {
     } catch (caught) {
       fail(caught);
     } finally {
+      captcha.reset();
       setBusy(false);
     }
   };
@@ -96,6 +103,7 @@ export function StaffLoginPage() {
           <Field label={t('staff.password')}>
             <TextInput type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} required />
           </Field>
+          {captcha.widget}
           <button type="submit" disabled={busy} className={`${primaryButton} w-full`}>
             {t('nav.login')}
           </button>

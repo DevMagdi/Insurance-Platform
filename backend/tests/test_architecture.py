@@ -101,7 +101,12 @@ def test_phase7_keeps_the_phase3_escalation_permission_contract() -> None:
 def test_sql_migrations_cover_every_requested_table_and_fail_closed_rls() -> None:
     schema = (ROOT / "backend/alembic/sql/001_schema.sql").read_text()
     rls = (ROOT / "backend/alembic/sql/002_access_rls.sql").read_text()
-    for late in ("011_async_exports.sql", "013_scheduled_reports.sql", "015_analytics_rollup.sql"):
+    for late in (
+        "011_async_exports.sql",
+        "013_scheduled_reports.sql",
+        "015_analytics_rollup.sql",
+        "021_privacy_operations.sql",
+    ):
         rls += (ROOT / "backend/alembic/sql" / late).read_text()
     assert len(sqlparse.split(schema)) >= 70  # PL/pgSQL bodies must not be split
     assert len(sqlparse.split(rls)) >= 60
@@ -164,6 +169,7 @@ def test_sql_migrations_cover_every_requested_table_and_fail_closed_rls() -> Non
             "015_analytics_rollup.sql",
             "016_export_formats.sql",
             "017_integrations_ai.sql",
+            "021_privacy_operations.sql",
         )
     )
     declared_tables = set(re.findall(r"CREATE TABLE (?:public\.)?(\w+) \(", schema + additive))
@@ -199,6 +205,8 @@ def test_sql_migrations_cover_every_requested_table_and_fail_closed_rls() -> Non
         "analytics_rollup_state",
     ):
         assert f"ALTER TABLE {table} FORCE ROW LEVEL SECURITY" in rls
+    for table in ("consent_records", "privacy_requests"):
+        assert f"ALTER TABLE public.{table} FORCE ROW LEVEL SECURITY" in rls
 
 
 def test_live_openapi_is_valid_and_cannot_claim_unimplemented_routes() -> None:

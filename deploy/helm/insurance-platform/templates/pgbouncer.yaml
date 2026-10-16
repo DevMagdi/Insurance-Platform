@@ -1,0 +1,77 @@
+{{- if .Values.pgbouncer.enabled }}
+# Transaction pooling: the API sets RLS context with SET LOCAL inside each
+# transaction, so pooled server connections never leak actor context
+# (proved by the pgbouncer variants of the RLS / pen-test suites in CI).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "ip.fullname" . }}-pgbouncer
+  labels: {{- include "ip.labels" . | nindent 4 }}
+    app.kubernetes.io/component: pgbouncer
+spec:
+  replicas: {{ .Values.pgbouncer.replicas }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate: {maxSurge: 1, maxUnavailable: 0}
+  selector:
+    matchLabels: {{- include "ip.selector" (dict "root" . "component" "pgbouncer") | nindent 6 }}
+  template:
+    metadata:
+      labels: {{- include "ip.selector" (dict "root" . "component" "pgbouncer") | nindent 8 }}
+    spec:
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 60
+      containers:
+        - name: pgbouncer
+          image: {{ .Values.pgbouncer.image }}
+          ports:
+            - {name: pg, containerPort: 5432}
+          env:
+            - {name: DB_HOST, value: {{ .Values.database.host | quote }}}
+            - {name: DB_PORT, value: {{ .Values.database.port | quote }}}
+            - {name: DB_NAME, value: {{ .Values.database.name | quote }}}
+            - {name: DB_USER, value: app_runtime}
+            {{- include "ip.secretEnv" (dict "root" . "name" "APP_DB_PASSWORD") | nindent 12 }}
+            - {name: DB_PASSWORD, value: "$(APP_DB_PASSWORD)"}
+            - {name: AUTH_TYPE, value: scram-sha-256}
+            - {name: POOL_MODE, value: {{ .Values.pgbouncer.poolMode | quote }}}
+            - {name: MAX_CLIENT_CONN, value: {{ .Values.pgbouncer.maxClientConn | quote }}}
+            - {name: DEFAULT_POOL_SIZE, value: {{ .Values.pgbouncer.defaultPoolSize | quote }}}
+            - {name: MAX_PREPARED_STATEMENTS, value: {{ .Values.pgbouncer.maxPreparedStatements | quote }}}
+            - {name: SERVER_RESET_QUERY, value: "DISCARD ALL"}
+          readinessProbe:
+            tcpSocket: {port: pg}
+            periodSeconds: 5
+          livenessProbe:
+            tcpSocket: {port: pg}
+            periodSeconds: 15
+          lifecycle:
+            preStop:
+              # PAUSE-like drain: stop taking new clients, let transactions finish.
+              exec: {command: ["sh", "-c", "sleep 15"]}
+          resources: {{- toYaml .Values.pgbouncer.resources | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: {drop: [ALL]}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "ip.fullname" . }}-pgbouncer
+  labels: {{- include "ip.labels" . | nindent 4 }}
+    app.kubernetes.io/component: pgbouncer
+spec:
+  selector: {{- include "ip.selector" (dict "root" . "component" "pgbouncer") | nindent 4 }}
+  ports:
+    - {name: pg, port: 5432, targetPort: pg}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "ip.fullname" . }}-pgbouncer
+  labels: {{- include "ip.labels" . | nindent 4 }}
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels: {{- include "ip.selector" (dict "root" . "component" "pgbouncer") | nindent 6 }}
+{{- end }}
