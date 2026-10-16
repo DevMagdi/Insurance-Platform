@@ -102,6 +102,7 @@ ENDPOINT_CLASSES: tuple[EndpointClass, ...] = (
     ),
     _cls("privacy_export", r"^/api/customer/privacy/export$", None, Limit("user", 5, 3600)),
     _cls("privacy_request", r"^/api/customer/privacy/requests$", "POST", Limit("user", 5, 86_400)),
+    _cls("storage_inventory", r"^/api/staff/storage$", "GET", Limit("user", 120, 60)),
     _cls("webhook", r"^/api/webhooks/", None, Limit("ip", 600, 60)),
     _cls("public_api", r"^/api/public/v1/", None, Limit("key", 300, 60), Limit("ip", 900, 60)),
 )

@@ -60,6 +60,14 @@ cd frontend && npm run api:types                                  # typed client
 | `GET /metrics` | Prometheus (bearer `METRICS_TOKEN`, or a private network when the token is unset) | metrics (not in the OpenAPI contract) |
 | `GET /api/health/live`, `GET /api/health/ready` | probes | liveness; readiness (DB through PgBouncer, plus Redis; `503` while draining) |
 
+## Phase 9 endpoint
+
+| Method and path | Who | Purpose |
+|---|---|---|
+| `GET /api/staff/storage?prefix=&limit=100&continuation_token=` | `storage.manage` with global scope | Bounded, audit-logged metadata inventory of the configured S3-compatible bucket; does not return object bodies or permit mutations |
+
+See [STORAGE_ADMIN.md](STORAGE_ADMIN.md) for the built-in `/staff/storage` UI, access model and intentional privacy limits.
+
 Rate limits per endpoint class are listed in
 [SECURITY.md](SECURITY.md#rate-limiting-and-abuse-detection). The access model
 behind every staff route is in [ACCESS_CONTROL.md](ACCESS_CONTROL.md).

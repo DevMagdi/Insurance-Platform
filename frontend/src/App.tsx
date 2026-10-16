@@ -25,7 +25,7 @@ function App() {
   const staffTicketMatch = path.match(/^\/staff\/tickets\/([0-9a-fA-F-]{36})$/);
   const consoleTicketMatch = path.match(/^\/staff\/complaints\/([0-9a-fA-F-]{36})$/);
   const dashboardTicketMatch = path.match(/^\/dashboard\/complaints\/([0-9a-fA-F-]{36})$/);
-  const staffConsoleRoute = /^\/staff\/(?:overview|complaints|users|roles|operations|audit)$/.test(path);
+  const staffConsoleRoute = /^\/staff\/(?:overview|complaints|users|roles|operations|audit|storage)$/.test(path);
 
   if (consoleTicketMatch) {
     return <Layout><StaffTicketPage complaintId={consoleTicketMatch[1]} /></Layout>;

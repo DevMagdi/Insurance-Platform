@@ -84,3 +84,4 @@ python_version = "3.11"
 strict = true
 packages = ["app"]
 ignore_missing_imports = true
+disable_error_code = ["import-untyped"]

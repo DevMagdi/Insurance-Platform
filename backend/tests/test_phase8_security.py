@@ -439,6 +439,7 @@ def test_endpoint_classes_cover_sensitive_routes() -> None:
     assert match("POST", f"/api/staff/complaints/{cid}/voice-followups") == "ai_call"
     assert match("POST", f"/api/staff/complaints/{cid}/national-id:reveal") == "pii_reveal"
     assert match("GET", "/api/customer/privacy/export") == "privacy_export"
+    assert match("GET", "/api/staff/storage") == "storage_inventory"
     assert match("GET", "/api/public/v1/complaints/CMP-1") == "public_api"
     assert match("GET", "/api/staff/complaints") is None
 

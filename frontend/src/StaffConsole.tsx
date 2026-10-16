@@ -17,6 +17,7 @@ const AuditPage = lazy(async () => ({ default: (await import('./features/admin/A
 const OperationsPage = lazy(async () => ({ default: (await import('./features/admin/OperationsPage')).OperationsPage }));
 const RolesPage = lazy(async () => ({ default: (await import('./features/admin/RolesPage')).RolesPage }));
 const UsersPage = lazy(async () => ({ default: (await import('./features/admin/UsersPage')).UsersPage }));
+const StoragePage = lazy(async () => ({ default: (await import('./features/admin/StoragePage')).StoragePage }));
 
 type SessionState = 'loading' | 'authenticated' | 'unauthenticated';
 type Theme = 'light' | 'dark';
@@ -36,6 +37,7 @@ const NAVIGATION: NavigationItem[] = [
   { page: 'roles', label: 'الأدوار والصلاحيات', icon: 'roles', section: 'admin', permission: 'roles.manage' },
   { page: 'operations', label: 'العمليات والكتالوج', icon: 'settings', section: 'admin' },
   { page: 'audit', label: 'سجل التدقيق', icon: 'audit', section: 'admin', permission: 'audit.view' },
+  { page: 'storage', label: 'مركز التخزين', icon: 'layers', section: 'admin', permission: 'storage.manage' },
 ];
 const OPERATION_REQUIREMENTS: Array<{ permissions: Permission[]; global?: boolean }> = [
   { permissions: ['companies.manage'] }, { permissions: ['categories.manage'] },
@@ -57,6 +59,7 @@ function routeFromPath(pathname: string): AppRoute {
   if (pathname === '/staff/roles') return { page: 'roles' };
   if (pathname === '/staff/operations') return { page: 'operations' };
   if (pathname === '/staff/audit') return { page: 'audit' };
+  if (pathname === '/staff/storage') return { page: 'storage' };
   return { page: 'overview' };
 }
 function pathForRoute(route: AppRoute): string {
@@ -76,12 +79,16 @@ function operationsAllowed(access: StaffAccess): boolean {
     && requirement.permissions.every((permission) => hasPermission(access, permission)),
   );
 }
+function storageAllowed(access: StaffAccess): boolean {
+  return hasGlobalAdminScope(access) && hasPermission(access, 'storage.manage');
+}
 function defaultPage(access: StaffAccess): AppRoute {
   if (hasPermission(access, 'analytics.view') && hasPermission(access, 'complaints.view')) return { page: 'overview' };
   if (hasPermission(access, 'complaints.view')) return { page: 'complaints' };
   if (hasPermission(access, 'users.view')) return { page: 'users' };
   if (hasPermission(access, 'roles.manage')) return { page: 'roles' };
   if (operationsAllowed(access)) return { page: 'operations' };
+  if (storageAllowed(access)) return { page: 'storage' };
   if (hasPermission(access, 'audit.view')) return { page: 'audit' };
   return { page: 'overview' };
 }
@@ -91,7 +98,10 @@ function initials(name: string): string { return name.split(/\s+/).map((part) =>
 function CommandPalette({ access, onNavigate, onClose }: { access: StaffAccess; onNavigate: (route: AppRoute) => void; onClose: () => void }) {
   const [search, setSearch] = useState('');
   const [activeIndex, setActiveIndex] = useState(0);
-  const entries = NAVIGATION.filter((item) => item.page !== 'operations' || operationsAllowed(access)).filter((item) => !item.permission || (hasPermission(access, item.permission) && (!item.extraPermission || hasPermission(access, item.extraPermission))));
+  const entries = NAVIGATION
+    .filter((item) => item.page !== 'operations' || operationsAllowed(access))
+    .filter((item) => item.page !== 'storage' || storageAllowed(access))
+    .filter((item) => !item.permission || (hasPermission(access, item.permission) && (!item.extraPermission || hasPermission(access, item.extraPermission))));
   const options = entries.filter((item) => item.label.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase()));
   const activate = (index: number) => {
     const item = options[index];
@@ -232,6 +242,7 @@ function App() {
   const companyNames = useMemo(() => new Map(filterOptions.companies.map((company) => [company.id, company.name_ar || company.name_en])), [filterOptions.companies]);
   const visibleNavigation = useMemo(() => !access ? [] : NAVIGATION.filter((item) => {
     if (item.page === 'operations') return operationsAllowed(access);
+    if (item.page === 'storage') return storageAllowed(access);
     return Boolean(item.permission && hasPermission(access, item.permission) && (!item.extraPermission || hasPermission(access, item.extraPermission)));
   }), [access]);
   const unread = notifications.filter((item) => !item.read_at).length;
@@ -256,7 +267,9 @@ function App() {
             ? <RolesPage access={access} />
             : route.page === 'operations'
               ? <OperationsPage access={access} range={range} inScopeCompanies={scopeCompanies} />
-              : <AuditPage access={access} range={range} />;
+              : route.page === 'storage'
+                ? <StoragePage access={access} />
+                : <AuditPage access={access} range={range} />;
   const navSections: Array<{ id: 'workspace' | 'admin'; title: string }> = [{ id: 'workspace', title: 'مساحة العمل' }, { id: 'admin', title: 'الإدارة والحوكمة' }];
 
   return <div className={`staff-console${theme === 'light' ? ' theme-light' : ''}`}><div className="app-shell" dir="rtl">
@@ -279,7 +292,7 @@ function App() {
       <main className="main-content"><div className="main-content-inner">
         {notice && <div className="inline-alert info global-notice" role="status">{notice}<button className="notice-close" type="button" aria-label="إخفاء" onClick={() => setNotice('')}><Icon name="close" size={14} /></button></div>}
         <Suspense fallback={<div className="loading-surface"><span className="loading-spinner" /> جارٍ تحميل مساحة العمل…</div>}>
-          {route.page === 'overview' && !(hasPermission(access, 'analytics.view') && hasPermission(access, 'complaints.view')) ? <AccessDenied title="لوحة المؤشرات غير متاحة" /> : route.page === 'complaints' || route.page === 'ticket' ? pageContent : route.page === 'users' && !hasPermission(access, 'users.view') ? <AccessDenied title="إدارة المستخدمين غير متاحة" /> : route.page === 'roles' && !hasPermission(access, 'roles.manage') ? <AccessDenied title="إدارة الأدوار غير متاحة" /> : route.page === 'operations' && !operationsAllowed(access) ? <AccessDenied title="إعدادات الإدارة غير متاحة" /> : route.page === 'audit' && !hasPermission(access, 'audit.view') ? <AccessDenied title="سجل التدقيق غير متاح" /> : pageContent}
+          {route.page === 'overview' && !(hasPermission(access, 'analytics.view') && hasPermission(access, 'complaints.view')) ? <AccessDenied title="لوحة المؤشرات غير متاحة" /> : route.page === 'complaints' || route.page === 'ticket' ? pageContent : route.page === 'users' && !hasPermission(access, 'users.view') ? <AccessDenied title="إدارة المستخدمين غير متاحة" /> : route.page === 'roles' && !hasPermission(access, 'roles.manage') ? <AccessDenied title="إدارة الأدوار غير متاحة" /> : route.page === 'operations' && !operationsAllowed(access) ? <AccessDenied title="إعدادات الإدارة غير متاحة" /> : route.page === 'storage' && !storageAllowed(access) ? <AccessDenied title="مركز التخزين غير متاح" /> : route.page === 'audit' && !hasPermission(access, 'audit.view') ? <AccessDenied title="سجل التدقيق غير متاح" /> : pageContent}
         </Suspense>
       </div></main>
       <footer className="app-footer"><span>وَثيق · منصة تشغيل وساطة التأمين</span><span><Icon name="shield" size={13} /> كل إجراء محمي بنطاق الوصول الفعّال</span><button type="button" onClick={() => setShortcutsOpen(true)}><Icon name="keyboard" size={13} /> اختصارات لوحة المفاتيح</button></footer>

@@ -40,6 +40,7 @@ PERMISSIONS: Final[frozenset[str]] = frozenset(
         "reports.manage",
         "audit.view",
         "settings.manage",
+        "storage.manage",
     }
 )
 
