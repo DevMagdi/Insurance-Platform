@@ -485,7 +485,7 @@ def test_phase4_migration_rls_grants_and_permission_codes(stack: dict, identitie
     """Validate the Phase 4 schema and role boundaries on real PostgreSQL 16."""
     with psycopg.connect(stack["admin"]) as db:
         revision = db.execute("SELECT version_num FROM alembic_version").fetchone()[0]
-        assert revision == "20261016_23"
+        assert revision == "20261016_24"
         guarded = db.execute(
             """SELECT relname, relrowsecurity, relforcerowsecurity
                FROM pg_class

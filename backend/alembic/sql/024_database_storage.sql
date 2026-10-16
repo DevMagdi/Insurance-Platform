@@ -19,6 +19,9 @@ ALTER TABLE public.attachments
     ADD CONSTRAINT ck_attachment_content_size
     CHECK (content IS NULL OR octet_length(content) BETWEEN 31 AND 10485791);
 ALTER TABLE public.attachments ALTER COLUMN storage_key DROP NOT NULL;
+-- The reservation row no longer names an object: the bytes are written straight
+-- onto the attachment row, so the legacy locator becomes nullable here too.
+ALTER TABLE public.attachment_uploads ALTER COLUMN storage_key DROP NOT NULL;
 COMMENT ON COLUMN public.attachments.content IS
     'Encrypted attachment bytes (AES-256-GCM, APP_ENCRYPTION_KEY); NULL only for rows created before revision 24.';
 COMMENT ON COLUMN public.attachments.storage_key IS

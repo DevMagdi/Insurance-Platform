@@ -427,6 +427,8 @@ def test_private_binaries_are_columns_on_their_own_rows() -> None:
     # Envelope overhead (2 magic + 1 key id + 12 nonce + 16 tag) is the floor of
     # every size CHECK and of every definer function that writes a blob.
     assert sql.count("BETWEEN 31 AND") >= 3
+    # Both legacy locators are relaxed so the reservation path never writes a key.
+    assert "ALTER TABLE public.attachment_uploads ALTER COLUMN storage_key DROP NOT NULL" in sql
     models = (ROOT / "backend/app/models/tickets.py").read_text(encoding="utf-8")
     assert "content: Mapped[bytes | None]" in models
     assert "recording_content: Mapped[bytes | None]" in models
