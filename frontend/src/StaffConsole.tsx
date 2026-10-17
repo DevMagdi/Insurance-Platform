@@ -23,6 +23,19 @@ const UsersPage = lazy(async () => ({ default: (await import('./features/admin/U
 const AdminDashboard = lazy(async () => ({ default: (await import('./features/admin/AdminDashboard')).AdminDashboard }));
 const StoragePage = lazy(async () => ({ default: (await import('./features/admin/StoragePage')).StoragePage }));
 
+const EMPTY_FILTER_OPTIONS: ComplaintFilterOptions = { companies: [], agents: [], statuses: [], priorities: [], channels: [], insurance_types: [] };
+/** Filter options come from the server; tolerate a partial payload instead of blanking the console. */
+function normalizeFilterOptions(value: Partial<ComplaintFilterOptions> | null | undefined): ComplaintFilterOptions {
+  const list = <T,>(candidate: T[] | undefined): T[] => Array.isArray(candidate) ? candidate : [];
+  return {
+    companies: list(value?.companies),
+    agents: list(value?.agents),
+    statuses: list(value?.statuses),
+    priorities: list(value?.priorities),
+    channels: list(value?.channels),
+    insurance_types: list(value?.insurance_types),
+  };
+}
 type SessionState = 'loading' | 'authenticated' | 'unauthenticated';
 type Theme = 'light' | 'dark';
 interface NavigationItem {
@@ -144,7 +157,7 @@ function App() {
   const [sessionError, setSessionError] = useState('');
   const [route, setRoute] = useState<AppRoute>(() => routeFromPath(window.location.pathname));
   const [range, setRange] = useState<DateRange>(() => presetRange('30d'));
-  const [filterOptions, setFilterOptions] = useState<ComplaintFilterOptions>({ companies: [], agents: [], statuses: [], priorities: [], channels: [], insurance_types: [] });
+  const [filterOptions, setFilterOptions] = useState<ComplaintFilterOptions>(EMPTY_FILTER_OPTIONS);
   const [companyId, setCompanyId] = useState('');
   const [insuranceType, setInsuranceType] = useState<InsuranceType | ''>('');
   const [mobileNav, setMobileNav] = useState(false);
@@ -241,9 +254,9 @@ function App() {
       if (!active) return;
       if (access && hasPermission(access, 'complaints.view')) {
         void api<ComplaintFilterOptions>('/api/staff/complaints/filter-options')
-          .then((result) => { if (active) setFilterOptions(result); })
-          .catch(() => { if (active) setFilterOptions({ companies: [], agents: [], statuses: [], priorities: [], channels: [], insurance_types: [] }); });
-      } else setFilterOptions({ companies: [], agents: [], statuses: [], priorities: [], channels: [], insurance_types: [] });
+          .then((result) => { if (active) setFilterOptions(normalizeFilterOptions(result)); })
+          .catch(() => { if (active) setFilterOptions(EMPTY_FILTER_OPTIONS); });
+      } else setFilterOptions(EMPTY_FILTER_OPTIONS);
     });
     return () => { active = false; };
   }, [access]);
@@ -253,7 +266,7 @@ function App() {
     queueMicrotask(() => {
       if (!active) return;
       setNotificationsLoading(true);
-      void api<NotificationItem[]>('/api/me/notifications').then((result) => { if (active) setNotifications(result); }).catch(() => { if (active) setNotifications([]); }).finally(() => { if (active) setNotificationsLoading(false); });
+      void api<NotificationItem[]>('/api/me/notifications').then((result) => { if (active) setNotifications(Array.isArray(result) ? result : []); }).catch(() => { if (active) setNotifications([]); }).finally(() => { if (active) setNotificationsLoading(false); });
     });
     return () => { active = false; };
   }, [access]);

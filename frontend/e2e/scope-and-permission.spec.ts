@@ -120,7 +120,8 @@ test('one-company scope is reflected in charts, list search, export, and direct 
   const directTicketResponse = page.waitForResponse((response) => new URL(response.url()).pathname === `/api/staff/complaints/${outsideId}`);
   await page.goto(`/staff/complaints/${outsideId}`);
   expect((await directTicketResponse).status()).toBe(404);
-  await expect(page.getByRole('alert')).toContainText('تعذر تحميل مساحة العمل.');
+  // Out-of-scope tickets stay inside the console shell and show its locked state.
+  await expect(page.getByRole('heading', { name: 'الشكوى غير متاحة' })).toBeVisible();
   await expect(page.getByText('Scoped Customer')).toHaveCount(0);
   await expect(page.getByText('Other Insurer')).toHaveCount(0);
 });

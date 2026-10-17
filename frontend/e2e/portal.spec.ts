@@ -173,7 +173,7 @@ test('my tickets dashboard shows counters and opens the animated timeline', asyn
   await expect(page.getByTestId('counter-transferred')).toHaveText('1');
   await page.getByText('Delayed claim payment').click();
   await expect(page).toHaveURL(new RegExp(`/tickets/${TICKET_ID}`));
-  // assigned agent expected below
-  await expect(page.getByText('Karim Adel')).toBeVisible();
+  // The agent name appears in the timeline and in the overview side list.
+  await expect(page.getByText('Karim Adel').first()).toBeVisible();
   await expect(page.getByText('We are reviewing your documents.')).toBeVisible();
 });
