@@ -54,7 +54,10 @@ def _worker_url() -> str:
 
     url = make_url(RUNTIME)
     password = os.getenv("APP_WORKER_DB_PASSWORD") or url.password or ""
-    return str(url.set(username="app_worker").set(password=password))
+    # `str(url)` masks the password as "***"; the worker login needs the real one.
+    return (
+        url.set(username="app_worker").set(password=password).render_as_string(hide_password=False)
+    )
 
 
 WORKER = _worker_url() if RUNTIME else ""

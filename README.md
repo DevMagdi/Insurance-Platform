@@ -108,6 +108,22 @@ Some useful implemented routes (see [OpenAPI](docs/openapi.yaml) for request sch
 
 Uploaded files remain **unavailable to download** until an integrated scanner returns `clean` via the restricted worker hook. The Compose worker intentionally has no scanner implementation, so local uploads stay pending unless an authorized scan verdict is recorded in a disposable test environment. Email invitations use Mailpit locally. A production rollout needs a real SMS/AV provider, HTTPS, a service-specific secrets store and independent security review.
 
+## Local development (no Docker daemon)
+
+Sandboxes, CI images and locked-down desktops often have no container runtime, which leaves the SPA behind a reverse proxy that answers *Bad Gateway*. `scripts/local_stack.py` starts the same services as the Compose stack from pinned wheels that embed the servers themselves — `pgserver` ships PostgreSQL, `redislite` ships Redis — and runs the API, the worker and Vite directly.
+
+```bash
+make init            # once: creates the git-ignored .env with local-only secrets
+make local-install   # installs the 'localstack' extra (pgserver + redislite)
+cd frontend && npm ci && cd ..
+make local-up        # postgres + redis + smtp + api + worker + vite
+make local-seed      # migrations + demo dataset (needs DEMO_STAFF_PASSWORD in .env)
+```
+
+Open `http://localhost:5173/`; the API listens on `http://127.0.0.1:8000/` (`/api/health/ready` proves the database and Redis are reachable) and Vite proxies the browser's relative `/api` calls to it. `make local-status` lists the running services, `make local-down` stops them again, and logs, the database cluster and the captured emails live in the git-ignored `.local-stack/`.
+
+Differences from the Compose stack, all development-only: no PgBouncer (the API connects straight to PostgreSQL), no Nginx (Vite serves the SPA and proxies `/api`), and the Mailpit UI is replaced by `.local-stack/mail/*.eml` — one-time codes are also printed to the SMTP log. The demo staff still must change their password at first login.
+
 ## CI/CD
 
 Every pull request and push runs `.github/workflows/ci.yml`, which has six jobs:

@@ -212,6 +212,25 @@ jobs:
           docker compose up -d --wait postgres pgbouncer redis
       - name: Apply the real PostgreSQL migrations
         run: docker compose run --rm migrate
+      - name: Both restricted roles must authenticate with the generated secrets
+        run: |
+          set -a
+          . ./.env
+          set +a
+          python - <<'PY'
+          import os
+          import psycopg
+          for role, secret in (
+              ("app_runtime", os.environ["APP_DB_PASSWORD"]),
+              ("app_worker", os.environ["APP_WORKER_DB_PASSWORD"]),
+          ):
+              url = (
+                  f"postgresql://{role}:{secret}@127.0.0.1:5432/{os.environ['POSTGRES_DB']}"
+              )
+              with psycopg.connect(url) as conn:
+                  assert conn.execute("SELECT current_user").fetchone()[0] == role
+              print(f"{role} authenticates with the generated secret")
+          PY
       - name: Prove RLS through direct PostgreSQL AND PgBouncer transaction pooling
         run: |
           set -a
@@ -266,7 +285,15 @@ jobs:
           import psycopg
           url = f"postgresql://postgres:{os.environ['POSTGRES_PASSWORD']}@127.0.0.1:5432/{os.environ['POSTGRES_DB']}"
           with psycopg.connect(url) as conn:
-              assert conn.execute('SELECT count(*) FROM complaints').fetchone()[0] == 5000
+              # Count only the demo insurers: the integration suite above keeps
+              # its own "live-*" complaints in the same database.
+              seeded = conn.execute(
+                  "SELECT count(*) FROM complaints c "
+                  "JOIN insurance_companies ic ON ic.id = c.company_id "
+                  "WHERE ic.slug IN ('nile-assurance', 'pyramid-insurance', "
+                  "'delta-care', 'cairo-shield')"
+              ).fetchone()[0]
+              assert seeded == 5000, f"expected 5000 seeded complaints, found {seeded}"
               assert conn.execute('SELECT count(*) FROM permissions').fetchone()[0] >= 34
           PY
       - name: Load smoke (k6) against the real API, PgBouncer and RLS

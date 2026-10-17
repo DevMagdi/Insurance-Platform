@@ -34,6 +34,13 @@ dependencies = [
 [project.optional-dependencies]
 loadtest = ["locust>=2.30,<3"]
 seed = ["argon2-cffi>=23,<27", "Faker>=33,<40"]
+# Server binaries for the Docker-free local stack (scripts/local_stack.py).
+# pgserver ships a PostgreSQL server, redislite ships a Redis server, so the
+# app can run on machines without a container runtime.
+localstack = [
+  "pgserver>=0.1.4",
+  "redislite>=6.2",
+]
 dev = [
   "argon2-cffi>=23,<27",
   "Faker>=33,<40",
