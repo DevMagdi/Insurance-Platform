@@ -37,7 +37,7 @@ def reopen_eligible(record: Complaint, *, now: datetime | None = None) -> bool:
 
 def csat_eligible(record: Complaint, *, now: datetime | None = None) -> bool:
     """Mirror ``app_security.submit_csat`` (a duplicate submission still returns 409)."""
-    if record.resolved_at is None:
+    if record.resolved_at is None or record.csat_score is not None:
         return False
     moment = now or datetime.now(UTC)
     return record.resolved_at >= moment - timedelta(days=30)

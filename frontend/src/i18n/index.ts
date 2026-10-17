@@ -23,6 +23,23 @@ function mergeDeep(base: TranslationTree, override: TranslationTree): Translatio
   return merged;
 }
 
+/**
+ * The extra bundles are grouped as ``commonExtra``/``ticketsExtra``. Page code
+ * legitimately reads both those names and their base namespaces
+ * (``common.refresh``, ``tickets.lastUpdate``), so expose each bundle under both
+ * keys. Later entries win, which lets the extra copy refine the foundation.
+ */
+function aliasExtraNamespaces(tree: TranslationTree): TranslationTree {
+  const expanded: TranslationTree = { ...tree };
+  for (const [key, value] of Object.entries(tree)) {
+    if (!key.endsWith('Extra') || !isTree(value)) continue;
+    const base = key.slice(0, -'Extra'.length);
+    const current = expanded[base];
+    expanded[base] = isTree(current) ? mergeDeep(current, value) : value;
+  }
+  return expanded;
+}
+
 export function applyLanguage(lng: AppLanguage): void {
   document.documentElement.lang = lng;
   document.documentElement.dir = lng === 'ar' ? 'rtl' : 'ltr';
@@ -54,8 +71,8 @@ const initial = initialLanguage();
 
 void i18n.use(initReactI18next).init({
   resources: {
-    ar: { translation: mergeDeep(mergeDeep(arFoundation as TranslationTree, ar as TranslationTree), arExtra as TranslationTree) },
-    en: { translation: mergeDeep(mergeDeep(enFoundation as TranslationTree, en as TranslationTree), enExtra as TranslationTree) },
+    ar: { translation: aliasExtraNamespaces(mergeDeep(mergeDeep(arFoundation as TranslationTree, ar as TranslationTree), arExtra as TranslationTree)) },
+    en: { translation: aliasExtraNamespaces(mergeDeep(mergeDeep(enFoundation as TranslationTree, en as TranslationTree), enExtra as TranslationTree)) },
   },
   lng: initial,
   fallbackLng: 'ar',

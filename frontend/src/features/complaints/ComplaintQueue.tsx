@@ -133,9 +133,10 @@ export function ComplaintQueue({ access, range, options, companyNames, onOpenTic
     setLoading(true);
     try {
       const data = await api<ComplaintListResponse>(`/api/staff/complaints${params}`);
-      setResult(data);
+      const items = Array.isArray(data.items) ? data.items : [];
+      setResult({ ...data, items });
       setError('');
-      setSelected((current) => current.filter((id) => data.items.some((item) => item.id === id)));
+      setSelected((current) => current.filter((id) => items.some((item) => item.id === id)));
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'تعذر تحميل الشكاوى.');
       setResult(null);
@@ -152,7 +153,7 @@ export function ComplaintQueue({ access, range, options, companyNames, onOpenTic
 
   useEffect(() => {
     if (!hasPermission(access, 'complaints.view')) return;
-    void api<SavedView[]>('/api/staff/views').then(setSavedViews).catch(() => setSavedViews([]));
+    void api<SavedView[]>('/api/staff/views').then((views) => setSavedViews(Array.isArray(views) ? views : [])).catch(() => setSavedViews([]));
   }, [access]);
 
   if (!hasPermission(access, 'complaints.view')) return <AccessDenied title="قائمة الشكاوى غير متاحة" />;

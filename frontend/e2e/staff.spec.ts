@@ -59,11 +59,11 @@ async function mockStaffApi(page: Page) {
     if (path === '/api/auth/refresh') return json({ detail: 'expired' }, 401);
     if (path === '/api/auth/staff/login') return json({ next_step: 'totp_verify', challenge: 'challenge' });
     if (path === '/api/staff/complaints/filter-options') {
-      return json({ companies: [], statuses: ['new', 'assigned', 'in_review', 'resolved', 'reopened', 'transferred'], priorities: ['low', 'normal', 'high', 'urgent'], channels: ['portal'], insurance_types: ['health'] });
+      return json({ companies: [], agents: [], statuses: ['new', 'assigned', 'in_review', 'resolved', 'reopened', 'transferred'], priorities: ['low', 'normal', 'high', 'urgent'], channels: ['portal'], insurance_types: ['health'] });
     }
     if (path === '/api/staff/complaints/counters') return json({ total: 1, open: 1, closed: 0, new: 0, assigned: 0, in_review: 1, resolved: 0, reopened: 0, transferred: 0 });
     if (path === '/api/staff/complaints') return json({ items: [summary], total: 1, page: 1, page_size: 20 });
-    if (path === '/api/staff/views' || path === '/api/staff/notifications') return json([]);
+    if (path === '/api/staff/views' || path === '/api/staff/notifications' || path === '/api/me/notifications') return json([]);
     if (path === `/api/staff/complaints/${TICKET_ID}`) {
       return json({ ...summary, description: 'The claim payment is delayed.', policy_number: 'POL-000123', customer_name: 'Mona Ali', national_id_masked: '**********2345', company_name: 'Nile Insurance', assigned_agent_name: null, csat_score: null, can_reopen: false, can_csat: false, resolved_at: null, reopened_count: 0 });
     }
@@ -96,14 +96,16 @@ test('staff login exposes the TOTP challenge step', async ({ page }) => {
   await expect(page.getByLabel(/6-digit authenticator code/)).toBeVisible();
 });
 
-test('staff queue opens a ticket and generates human-reviewed AI', async ({ page }) => {
+test('staff queue opens a ticket and renders the workspace actions', async ({ page }) => {
   await mockStaffApi(page);
-  await page.goto('/staff');
+  await page.goto('/staff/complaints');
   await expect(page.getByText('CMP-2026-000123')).toBeVisible();
   await page.getByText('CMP-2026-000123').click();
-  await expect(page).toHaveURL(new RegExp(`/staff/tickets/${TICKET_ID}`));
+  await expect(page).toHaveURL(new RegExp(`/staff/complaints/${TICKET_ID}`));
   await expect(page.getByText('Delayed claim payment')).toBeVisible();
-  await page.getByRole('button', { name: /Generate classification/ }).click();
-  await expect(page.getByText('claims')).toBeVisible();
-  await expect(page.getByText('mock-llm-v1')).toBeVisible();
+  await expect(page.getByText('Mona Ali')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'إدارة الحالة' })).toBeVisible();
+  await expect(page.getByRole('button', { name: /تحديث الحالة/ })).toBeVisible();
+  await expect(page.getByText('رد مقترح بالذكاء الاصطناعي')).toBeVisible();
+  await expect(page.getByText('غير مفعّل')).toBeVisible();
 });

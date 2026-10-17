@@ -67,18 +67,19 @@ export function Layout({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
   const language = (i18n.language === 'en' ? 'en' : 'ar') as AppLanguage;
   const [dark, setDark] = useState(() => document.documentElement.classList.contains('dark'));
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [mobileOpen, setMobileOpen] = useState(false);
-  const menuRef = useClickOutside(() => setMenuOpen(false), menuOpen);
+  // Menu state remembers the route it was opened on, so any navigation closes
+  // it without an effect that would cascade a second render.
+  const [menuState, setMenuState] = useState({ open: false, path });
+  const [mobileState, setMobileState] = useState({ open: false, path });
+  const menuOpen = menuState.open && menuState.path === path;
+  const mobileOpen = mobileState.open && mobileState.path === path;
+  const closeMenu = () => setMenuState({ open: false, path });
+  const closeMobile = () => setMobileState({ open: false, path });
+  const menuRef = useClickOutside(closeMenu, menuOpen);
 
   useEffect(() => {
     applyLanguage(language);
   }, [language]);
-
-  useEffect(() => {
-    setMenuOpen(false);
-    setMobileOpen(false);
-  }, [path]);
 
   const toggleLanguage = () => {
     const next: AppLanguage = language === 'ar' ? 'en' : 'ar';
@@ -100,7 +101,8 @@ export function Layout({ children }: { children: ReactNode }) {
   const go = (next: string) => (event: React.MouseEvent) => {
     event.preventDefault();
     navigate(next);
-    setMobileOpen(false);
+    setMobileState({ open: false, path });
+    setMenuState({ open: false, path });
   };
 
   const logout = async () => {
@@ -113,6 +115,13 @@ export function Layout({ children }: { children: ReactNode }) {
     navigate('/');
     window.location.reload();
   };
+
+  // Console screens ship their own full-bleed shell (sidebar, topbar, theme).
+  // Wrapping them in the customer `max-w-6xl` column squeezed the console into a
+  // 1120px island with 160px gutters on a 1440px screen.
+  if ((path.startsWith('/staff') || path.startsWith('/dashboard')) && path !== '/staff/login') {
+    return <>{children}</>;
+  }
 
   if (path.startsWith('/staff') || path.startsWith('/dashboard') || path === '/auth/staff' || path === '/auth') {
     return (
@@ -178,7 +187,7 @@ export function Layout({ children }: { children: ReactNode }) {
             <button
               type="button"
               className="icon-btn mobile-menu-btn"
-              onClick={() => setMobileOpen(true)}
+              onClick={() => setMobileState({ open: true, path })}
               aria-label="menu"
             >
               <Menu size={18} />
@@ -188,7 +197,7 @@ export function Layout({ children }: { children: ReactNode }) {
                 <button
                   type="button"
                   className="account-trigger"
-                  onClick={() => setMenuOpen((value) => !value)}
+                  onClick={() => setMenuState({ open: !menuOpen, path })}
                   aria-expanded={menuOpen}
                   aria-haspopup="menu"
                 >
@@ -307,7 +316,7 @@ export function Layout({ children }: { children: ReactNode }) {
       </nav>
 
       {mobileOpen && (
-        <div className="mobile-sheet" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && setMobileOpen(false)}>
+        <div className="mobile-sheet" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && closeMobile()}>
           <div className="mobile-sheet-panel" role="dialog" aria-modal="true" aria-label={t('brand')}>
             <div className="mobile-sheet-grabber" />
             <div className="row" style={{ justifyContent: 'space-between', marginBottom: 10 }}>
@@ -315,7 +324,7 @@ export function Layout({ children }: { children: ReactNode }) {
                 <BrandMark size={32} />
                 <span className="brand-copy"><strong>{t('brand')}</strong><small>{t('tagline')}</small></span>
               </span>
-              <button type="button" className="icon-btn" aria-label={t('common.cancel')} onClick={() => setMobileOpen(false)}>
+              <button type="button" className="icon-btn" aria-label={t('common.cancel')} onClick={closeMobile}>
                 <X size={18} />
               </button>
             </div>

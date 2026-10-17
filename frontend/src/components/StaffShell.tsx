@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/api';
@@ -9,6 +9,29 @@ import { EmptyState } from './ui';
 import { Icon, type IconName } from './Icon';
 import '../staff-console.css';
 import '../styles/staff.css';
+
+type Theme = 'light' | 'dark';
+
+/**
+ * The legacy staff pages share the console chrome. They must follow the same
+ * persisted theme as the newer console (`wasiq-theme`) instead of forcing dark
+ * and leaving a dark page behind a light shell.
+ */
+function useConsoleTheme(): Theme {
+  const [theme, setTheme] = useState<Theme>(() => (window.localStorage.getItem('wasiq-theme') === 'light' ? 'light' : 'dark'));
+  useEffect(() => {
+    const sync = () => setTheme(window.localStorage.getItem('wasiq-theme') === 'light' ? 'light' : 'dark');
+    window.addEventListener('storage', sync);
+    window.addEventListener('wasiq:theme', sync);
+    return () => { window.removeEventListener('storage', sync); window.removeEventListener('wasiq:theme', sync); };
+  }, []);
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', theme === 'dark');
+    // The portal pages read this key on boot; keep both surfaces in agreement.
+    try { window.localStorage.setItem('insurance-portal:theme', theme); } catch { /* storage blocked */ }
+  }, [theme]);
+  return theme;
+}
 
 const LINKS: Array<{ path: string; label: string; icon: IconName; permission?: string }> = [
   { path: '/staff', label: 'لوحة المؤشرات', icon: 'overview' },
@@ -25,10 +48,11 @@ export function StaffShell({ children }: { children: ReactNode }) {
   const path = usePathname();
   const queryClient = useQueryClient();
   const { access, isLoading } = useStaffMe();
+  const theme = useConsoleTheme();
 
   if (isLoading) {
     return (
-      <div className="staff-console theme-dark">
+      <div className={`staff-console theme-${theme}`}>
         <main className="session-loading"><span className="loading-spinner" /><strong>{t('common.loading')}</strong></main>
       </div>
     );
@@ -36,7 +60,7 @@ export function StaffShell({ children }: { children: ReactNode }) {
 
   if (!access) {
     return (
-      <div className="staff-console theme-dark">
+      <div className={`staff-console theme-${theme}`}>
         <main className="session-loading">
           <div className="access-denied">
             <span className="auth-brand-mark"><Icon name="shield" size={20} /></span>
@@ -63,7 +87,7 @@ export function StaffShell({ children }: { children: ReactNode }) {
   };
 
   return (
-    <div className="staff-console theme-dark staff-standalone" dir="rtl">
+    <div className={`staff-console theme-${theme} staff-standalone`} dir="rtl">
       <div className="app-shell">
         <div className="main-shell" style={{ marginInlineStart: 0 }}>
           <header className="topbar">

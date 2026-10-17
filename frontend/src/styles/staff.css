@@ -4640,255 +4640,6 @@ html[dir='rtl'] .staff-console .admin-shortcuts button > svg {
   font-size: 11px;
 }
 
-.staff-console .auth-page {
-  min-height: 100vh;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  background: var(--bg);
-}
-
-.staff-console .auth-layout {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  padding: 48px;
-  overflow: hidden;
-}
-
-.staff-console .auth-card {
-  width: min(100%, 392px);
-  margin: 0 auto;
-  padding: 28px;
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  background: var(--surface);
-  box-shadow: var(--shadow);
-}
-
-.staff-console .auth-card-logo {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  margin-bottom: 22px;
-}
-
-.staff-console .auth-brand-mark {
-  display: grid;
-  place-items: center;
-  width: 34px;
-  height: 34px;
-  border-radius: 10px;
-  background: linear-gradient(150deg, #14304f, #081726);
-  color: var(--gold-strong);
-  font-weight: 800;
-}
-
-.staff-console .auth-card-top h1,
-.staff-console .auth-card h1 {
-  margin: 0;
-  color: var(--text);
-  font-size: 20px;
-  font-weight: 750;
-}
-
-.staff-console .auth-subtitle {
-  margin-top: 5px;
-  color: var(--text-muted);
-  font-size: 10.5px;
-  line-height: 1.8;
-}
-
-.staff-console .auth-form {
-  display: flex;
-  flex-direction: column;
-  gap: 11px;
-  margin-top: 18px;
-}
-
-.staff-console .auth-submit {
-  width: 100%;
-  min-height: 37px;
-  margin-top: 4px;
-}
-
-.staff-console .auth-footer {
-  margin-top: 18px;
-  padding-top: 14px;
-  border-top: 1px solid var(--border);
-  color: var(--text-faint);
-  font-size: 9px;
-  line-height: 1.7;
-  text-align: center;
-}
-
-.staff-console .auth-copyright {
-  color: var(--text-faint);
-  font-size: 8.5px;
-  text-align: center;
-}
-
-.staff-console .auth-story {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  padding: 48px;
-  background:
-    radial-gradient(80% 70% at 80% 0%, rgba(201, 162, 39, 0.18), transparent 55%),
-    linear-gradient(150deg, #0b1f3a, #07111f);
-  color: #e9eef4;
-  overflow: hidden;
-}
-
-.staff-console .auth-story::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background-image:
-    linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
-  background-size: 34px 34px;
-  mask-image: radial-gradient(ellipse at 70% 30%, #000, transparent 76%);
-}
-
-.staff-console .auth-brand-mark.large {
-  width: 44px;
-  height: 44px;
-  border-radius: 13px;
-  font-size: 19px;
-}
-
-.staff-console .auth-story-copy {
-  position: relative;
-  max-width: 430px;
-}
-
-.staff-console .auth-kicker {
-  color: var(--gold-400);
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-}
-
-.staff-console .auth-story-copy h2 {
-  margin: 14px 0 0;
-  color: #f5f7fa;
-  font-size: clamp(26px, 3vw, 38px);
-  font-weight: 750;
-  line-height: 1.4;
-  letter-spacing: -0.02em;
-}
-
-html[lang='ar'] .staff-console .auth-story-copy h2 {
-  letter-spacing: 0;
-}
-
-.staff-console .auth-story-copy p {
-  margin: 12px 0 0;
-  color: rgba(233, 238, 244, 0.6);
-  font-size: 11.5px;
-  line-height: 1.9;
-}
-
-.staff-console .auth-trust-row {
-  position: relative;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 16px;
-  margin-top: 24px;
-}
-
-.staff-console .auth-trust-row span {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  color: rgba(233, 238, 244, 0.65);
-  font-size: 10px;
-}
-
-.staff-console .auth-trust-row svg {
-  color: var(--gold-400);
-}
-
-.staff-console .auth-atmosphere {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 220px;
-}
-
-.staff-console .auth-orbit {
-  position: absolute;
-  width: 280px;
-  height: 280px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 50%;
-}
-
-.staff-console .auth-orbit::before,
-.staff-console .auth-orbit::after {
-  content: '';
-  position: absolute;
-  border-radius: 50%;
-  border: 1px solid rgba(255, 255, 255, 0.06);
-}
-
-.staff-console .auth-orbit::before {
-  inset: 34px;
-}
-
-.staff-console .auth-orbit::after {
-  inset: 74px;
-}
-
-.staff-console .auth-secure {
-  position: relative;
-  z-index: 1;
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  padding: 9px 14px;
-  border-radius: 99px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(255, 255, 255, 0.05);
-  color: rgba(233, 238, 244, 0.72);
-  font-size: 10px;
-}
-
-.staff-console .auth-atmosphere-one,
-.staff-console .auth-atmosphere-two {
-  position: absolute;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--gold-400);
-  box-shadow: 0 0 14px 3px rgba(214, 174, 88, 0.3);
-}
-
-.staff-console .auth-atmosphere-one { top: 22%; inset-inline-start: 27%; }
-.staff-console .auth-atmosphere-two { bottom: 27%; inset-inline-end: 24%; background: #4fb8a2; box-shadow: 0 0 14px 3px rgba(79, 184, 162, 0.3); }
-
-.staff-console .auth-secure {
-  margin-bottom: 18px;
-}
-
-@media (max-width: 900px) {
-  .staff-console .auth-page {
-    grid-template-columns: 1fr;
-  }
-
-  .staff-console .auth-story {
-    display: none;
-  }
-
-  .staff-console .auth-layout {
-    padding: 22px;
-  }
-}
-
 /* --------------------------------------------------------------------------
    Misc refinements
    -------------------------------------------------------------------------- */
@@ -5148,4 +4899,53 @@ html[lang='ar'] .staff-console .auth-story-copy h2 {
 
 .staff-console .attention-row.urgent .attention-time {
   color: var(--red);
+}
+
+/* --------------------------------------------------------------------------
+   Shared button primitives inside the staff console
+   The console reset (`button { color: inherit }`) used to out-specify `.btn`,
+   which left filled buttons with an unreadable label on both themes.
+   -------------------------------------------------------------------------- */
+
+.staff-console .btn.btn {
+  color: var(--btn-fg);
+}
+
+.staff-console .btn.btn-primary {
+  --btn-bg: #0b1f3a;
+  --btn-fg: #f6f8fa;
+  --btn-border: transparent;
+}
+
+.staff-console .btn.btn-primary:hover:not(:disabled) {
+  --btn-bg: #14304f;
+}
+
+.staff-console.theme-dark .btn.btn-primary {
+  --btn-bg: #eef2f7;
+  --btn-fg: #0b1f3a;
+}
+
+.staff-console.theme-dark .btn.btn-primary:hover:not(:disabled) {
+  --btn-bg: #ffffff;
+}
+
+.staff-console .btn.btn-secondary {
+  --btn-bg: var(--surface);
+  --btn-fg: var(--text);
+  --btn-border: var(--border-strong);
+}
+
+.staff-console .btn.btn-secondary:hover:not(:disabled) {
+  --btn-bg: var(--surface-hover);
+}
+
+.staff-console .btn.btn-ghost {
+  --btn-bg: transparent;
+  --btn-fg: var(--text-muted);
+}
+
+.staff-console .btn.btn-ghost:hover:not(:disabled) {
+  --btn-bg: var(--surface-hover);
+  --btn-fg: var(--text);
 }

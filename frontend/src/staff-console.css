@@ -65,7 +65,7 @@
 .staff-console { min-width: 320px; min-height: 100%; background: var(--bg); }
 .staff-console { min-width: 320px; min-height: 100vh; margin: 0; background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.6; }
 .staff-console button, .staff-console input, .staff-console select, .staff-console textarea { font: inherit; }
-.staff-console button { color: inherit; }
+.staff-console button:not(.btn):not(.button) { color: inherit; }
 .staff-console button:disabled { opacity: .56; cursor: not-allowed !important; }
 .staff-console :focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
 .staff-console ::selection { color: #fff; background: #347f74; }
@@ -791,8 +791,22 @@
   .staff-console .auth-card h2 { font-size: 20px; }
   .staff-console .auth-copyright { margin-top: 10px; }
 }
+@media (max-width: 760px) {
+  /* The mobile bar has no room to negotiate: without this the menu button and
+     the current-page label were squeezed to ~10px and clipped at the edge. */
+  .staff-console .topbar-leading,
+  .staff-console .topbar-actions { min-width: 0; flex-wrap: nowrap; }
+  .staff-console .topbar-leading > *,
+  .staff-console .topbar-actions > * { flex: 0 0 auto; }
+  .staff-console .mobile-menu-button { min-width: 35px; }
+}
+
 @media (max-width: 420px) {
-  .staff-console .topbar-breadcrumb > span, .staff-console .topbar-breadcrumb > svg { display: none; }
+  /* Only the current page name is useful here; the brand crumb costs width.
+     `styles/staff.css` re-declares the topbar later in the cascade, so this
+     needs one extra class to win. */
+  .staff-console .topbar .topbar-breadcrumb { display: none; }
+  .staff-console .topbar .topbar-breadcrumb > span, .staff-console .topbar .topbar-breadcrumb > svg { display: none; }
   .staff-console .date-picker-copy strong { max-width: 65px; }
   .staff-console .notification-popover { position: fixed; top: 62px; inset-inline: 8px; width: auto; }
   .staff-console .workspace-side-column { grid-template-columns: 1fr; }
