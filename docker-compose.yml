@@ -7,9 +7,10 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:?run make init}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?run make init}
       APP_DB_PASSWORD: ${APP_DB_PASSWORD:?run make init}
+      APP_WORKER_DB_PASSWORD: ${APP_WORKER_DB_PASSWORD:?run make init}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./infra/postgres/init/01_app_runtime.sh:/docker-entrypoint-initdb.d/01_app_runtime.sh:ro
+      - ./infra/postgres/init/01_app_roles.sh:/docker-entrypoint-initdb.d/01_app_roles.sh:ro
     ports:
       - '127.0.0.1:5432:5432'
     healthcheck:

@@ -218,8 +218,9 @@ def start_postgres(env: dict[str, str]) -> None:
 
 
 def create_database(env: dict[str, str]) -> None:
-    """Create the dev database and the ``app_runtime`` role (see infra/postgres/init)."""
+    """Create the dev database and the restricted roles (see infra/postgres/init)."""
     import psycopg
+    from psycopg import sql
 
     admin = (
         f"host=127.0.0.1 port={POSTGRES_PORT} user={env['POSTGRES_USER']} "
@@ -234,8 +235,6 @@ def create_database(env: dict[str, str]) -> None:
             log(f"created database {env['POSTGRES_DB']}")
         cur.execute("SELECT 1 FROM pg_roles WHERE rolname = 'app_runtime'")
         if cur.fetchone() is None:
-            from psycopg import sql
-
             cur.execute(
                 sql.SQL("CREATE ROLE app_runtime LOGIN NOBYPASSRLS PASSWORD {}").format(
                     sql.Literal(env["APP_DB_PASSWORD"])
@@ -246,6 +245,16 @@ def create_database(env: dict[str, str]) -> None:
             "ALTER ROLE app_runtime NOSUPERUSER NOBYPASSRLS NOCREATEROLE NOCREATEDB"
         )
         cur.execute(f'GRANT CONNECT ON DATABASE "{env["POSTGRES_DB"]}" TO app_runtime')
+        # The worker login is provisioned next to app_runtime so its password
+        # never depends on the environment of the migrating process.
+        cur.execute("SELECT 1 FROM pg_roles WHERE rolname = 'app_worker'")
+        if cur.fetchone() is None:
+            cur.execute(
+                sql.SQL("CREATE ROLE app_worker LOGIN PASSWORD {}").format(
+                    sql.Literal(env["APP_WORKER_DB_PASSWORD"])
+                )
+            )
+            log("created role app_worker")
 
 
 def run_migrations(env: dict[str, str]) -> None:
@@ -262,12 +271,14 @@ def run_migrations(env: dict[str, str]) -> None:
 
 
 def ensure_worker_role(env: dict[str, str]) -> None:
-    """Let the worker role log in.
+    """Make sure the restricted worker role can log in.
 
-    Revision 006 creates ``app_worker`` as NOLOGIN and only promotes it when
-    ``APP_WORKER_DB_PASSWORD`` is present in the migrating process. A cluster
-    that was migrated without that variable keeps the role unusable, and
-    Alembic will not replay the revision, so the promotion is repeated here.
+    A fresh cluster gets ``app_worker`` from ``create_database`` and the init
+    script in the Compose stack, but revision 006 creates the role as NOLOGIN
+    and only promotes it when ``APP_WORKER_DB_PASSWORD`` is present in the
+    migrating process. A cluster that was migrated without that variable keeps
+    the role unusable, and Alembic will not replay the revision, so the
+    promotion is repeated here.
     """
     import psycopg
     from psycopg import sql

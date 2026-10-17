@@ -11,6 +11,7 @@ x-postgres-credentials: &postgres-credentials
   POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER in .env.production}
   POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env.production}
   APP_DB_PASSWORD: ${APP_DB_PASSWORD:?set APP_DB_PASSWORD in .env.production}
+  APP_WORKER_DB_PASSWORD: ${APP_WORKER_DB_PASSWORD:?set APP_WORKER_DB_PASSWORD in .env.production}
 
 x-logging: &logging
   driver: json-file
@@ -25,7 +26,7 @@ services:
     environment: *postgres-credentials
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./infra/postgres/init/01_app_runtime.sh:/docker-entrypoint-initdb.d/01_app_runtime.sh:ro
+      - ./infra/postgres/init/01_app_roles.sh:/docker-entrypoint-initdb.d/01_app_roles.sh:ro
     ports:
       - '127.0.0.1:5432:5432' # SSH-tunnel maintenance only; never a public port.
     logging: *logging

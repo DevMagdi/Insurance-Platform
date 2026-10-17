@@ -212,6 +212,25 @@ jobs:
           docker compose up -d --wait postgres pgbouncer redis
       - name: Apply the real PostgreSQL migrations
         run: docker compose run --rm migrate
+      - name: Both restricted roles must authenticate with the generated secrets
+        run: |
+          set -a
+          . ./.env
+          set +a
+          python - <<'PY'
+          import os
+          import psycopg
+          for role, secret in (
+              ("app_runtime", os.environ["APP_DB_PASSWORD"]),
+              ("app_worker", os.environ["APP_WORKER_DB_PASSWORD"]),
+          ):
+              url = (
+                  f"postgresql://{role}:{secret}@127.0.0.1:5432/{os.environ['POSTGRES_DB']}"
+              )
+              with psycopg.connect(url) as conn:
+                  assert conn.execute("SELECT current_user").fetchone()[0] == role
+              print(f"{role} authenticates with the generated secret")
+          PY
       - name: Prove RLS through direct PostgreSQL AND PgBouncer transaction pooling
         run: |
           set -a
