@@ -4,6 +4,7 @@ import { ar } from '../locales/ar';
 import { en } from '../locales/en';
 import arFoundation from './ar.json';
 import enFoundation from './en.json';
+import { arExtra, enExtra } from './extra';
 
 export type AppLanguage = 'ar' | 'en';
 
@@ -53,8 +54,8 @@ const initial = initialLanguage();
 
 void i18n.use(initReactI18next).init({
   resources: {
-    ar: { translation: mergeDeep(arFoundation as TranslationTree, ar as TranslationTree) },
-    en: { translation: mergeDeep(enFoundation as TranslationTree, en as TranslationTree) },
+    ar: { translation: mergeDeep(mergeDeep(arFoundation as TranslationTree, ar as TranslationTree), arExtra as TranslationTree) },
+    en: { translation: mergeDeep(mergeDeep(enFoundation as TranslationTree, en as TranslationTree), enExtra as TranslationTree) },
   },
   lng: initial,
   fallbackLng: 'ar',

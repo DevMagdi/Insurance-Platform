@@ -11,12 +11,12 @@ export interface StatusMeta {
 }
 
 export const STATUS_META: Record<ComplaintStatus, StatusMeta> = {
-  new: { labelKey: 'status.new', chipClass: 'bg-sky-500/15 text-sky-300 ring-sky-400/30', dotClass: 'bg-sky-400' },
-  assigned: { labelKey: 'status.assigned', chipClass: 'bg-indigo-500/15 text-indigo-300 ring-indigo-400/30', dotClass: 'bg-indigo-400' },
-  in_review: { labelKey: 'status.in_review', chipClass: 'bg-amber-500/15 text-amber-300 ring-amber-400/30', dotClass: 'bg-amber-400' },
-  resolved: { labelKey: 'status.resolved', chipClass: 'bg-emerald-500/15 text-emerald-300 ring-emerald-400/30', dotClass: 'bg-emerald-400' },
-  reopened: { labelKey: 'status.reopened', chipClass: 'bg-orange-500/15 text-orange-300 ring-orange-400/30', dotClass: 'bg-orange-400' },
-  transferred: { labelKey: 'status.transferred', chipClass: 'bg-fuchsia-500/15 text-fuchsia-300 ring-fuchsia-400/30', dotClass: 'bg-fuchsia-400' },
+  new: { labelKey: 'status.new', chipClass: 'status-chip status-chip--new', dotClass: 'status-dot status-dot--new' },
+  assigned: { labelKey: 'status.assigned', chipClass: 'status-chip status-chip--assigned', dotClass: 'status-dot status-dot--assigned' },
+  in_review: { labelKey: 'status.in_review', chipClass: 'status-chip status-chip--in_review', dotClass: 'status-dot status-dot--in_review' },
+  resolved: { labelKey: 'status.resolved', chipClass: 'status-chip status-chip--resolved', dotClass: 'status-dot status-dot--resolved' },
+  reopened: { labelKey: 'status.reopened', chipClass: 'status-chip status-chip--reopened', dotClass: 'status-dot status-dot--reopened' },
+  transferred: { labelKey: 'status.transferred', chipClass: 'status-chip status-chip--transferred', dotClass: 'status-dot status-dot--transferred' },
 };
 
 /**

@@ -10,6 +10,7 @@ import { canViewAdminDashboard } from './features/admin/adminAccess';
 import { formatDateTime, presetRange } from './utils/date';
 import type { AppRoute, ComplaintFilterOptions, CompanyOption, DateRange, InsuranceType, MeResponse, NotificationItem, Permission, StaffAccess } from './types';
 import './staff-console.css';
+import './styles/staff.css';
 
 const AuthPage = lazy(async () => ({ default: (await import('./features/auth/AuthPage')).AuthPage }));
 const OverviewPage = lazy(async () => ({ default: (await import('./features/dashboard/OverviewPage')).OverviewPage }));
@@ -147,6 +148,8 @@ function App() {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(() => window.localStorage.getItem('wasiq-sidebar') === 'collapsed');
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [notificationsLoading, setNotificationsLoading] = useState(false);
   const [notice, setNotice] = useState('');
@@ -199,6 +202,20 @@ function App() {
     return () => { window.removeEventListener('insurance:auth-expired', expired); window.removeEventListener('insurance:permission-denied', denied); };
   }, [refreshAccess]);
   useEffect(() => { window.localStorage.setItem('wasiq-theme', theme); }, [theme]);
+  useEffect(() => {
+    window.localStorage.setItem('wasiq-sidebar', collapsed ? 'collapsed' : 'expanded');
+  }, [collapsed]);
+  useEffect(() => {
+    if (!userMenuOpen) return;
+    const close = (event: MouseEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (!target?.closest('.user-menu-anchor')) setUserMenuOpen(false);
+    };
+    const escape = (event: KeyboardEvent) => { if (event.key === 'Escape') setUserMenuOpen(false); };
+    document.addEventListener('mousedown', close);
+    document.addEventListener('keydown', escape);
+    return () => { document.removeEventListener('mousedown', close); document.removeEventListener('keydown', escape); };
+  }, [userMenuOpen]);
   useEffect(() => {
     const onPopState = () => setRoute(routeFromPath(window.location.pathname));
     window.addEventListener('popstate', onPopState);
@@ -261,8 +278,8 @@ function App() {
   }), [access]);
   const unread = notifications.filter((item) => !item.read_at).length;
 
-  if (sessionState === 'loading') return <div className={`staff-console${theme === 'light' ? ' theme-light' : ''}`}><main className="session-loading"><span className="loading-spinner" /><strong>جارٍ التحقق من جلسة العمل…</strong></main></div>;
-  if (!access) return <div className={`staff-console${theme === 'light' ? ' theme-light' : ''}`}><div className="session-entry">{sessionError && <p className="session-entry-notice" role="status">{sessionError}</p>}<Suspense fallback={<main className="session-loading"><span className="loading-spinner" /><strong>جارٍ تحميل تسجيل الدخول…</strong></main>}><AuthPage onAuthenticated={onAuthenticated} /></Suspense></div></div>;
+  if (sessionState === 'loading') return <div className={`staff-console theme-${theme}`}><main className="session-loading"><span className="loading-spinner" /><strong>جارٍ التحقق من جلسة العمل…</strong></main></div>;
+  if (!access) return <div className={`staff-console theme-${theme}`}><div className="session-entry">{sessionError && <p className="session-entry-notice" role="status">{sessionError}</p>}<Suspense fallback={<main className="session-loading"><span className="loading-spinner" /><strong>جارٍ تحميل تسجيل الدخول…</strong></main>}><AuthPage onAuthenticated={onAuthenticated} /></Suspense></div></div>;
 
   const scopeCompanies: CompanyOption[] = filterOptions.companies;
   const effectiveCompanyId = filterOptions.companies.some((company) => company.id === companyId) ? companyId : '';
@@ -288,10 +305,20 @@ function App() {
                 : <AuditPage access={access} range={range} />;
   const navSections: Array<{ id: 'workspace' | 'admin'; title: string }> = [{ id: 'workspace', title: 'مساحة العمل' }, { id: 'admin', title: 'الإدارة والحوكمة' }];
 
-  return <div className={`staff-console${theme === 'light' ? ' theme-light' : ''}`}><div className="app-shell" dir="rtl">
+  return <div className={`staff-console theme-${theme}`}><div className="app-shell" dir="rtl">
     {mobileNav && <button className="mobile-scrim" type="button" aria-label="إغلاق القائمة" onClick={() => setMobileNav(false)} />}
-    <aside className={`sidebar${mobileNav ? ' sidebar-open' : ''}`}>
+    <aside className={`sidebar${mobileNav ? ' sidebar-open' : ''}${collapsed ? ' is-collapsed' : ''}`}>
       <div className="sidebar-brand"><span className="brand-mark">و</span><span><strong>وَثيق</strong><small>عمليات التأمين</small></span><span className="brand-dot" /></div>
+      <button
+        className="sidebar-collapse"
+        type="button"
+        aria-label={collapsed ? 'توسيع الشريط الجانبي' : 'طي الشريط الجانبي'}
+        aria-expanded={!collapsed}
+        title={collapsed ? 'توسيع الشريط الجانبي' : 'طي الشريط الجانبي'}
+        onClick={() => setCollapsed((value) => !value)}
+      >
+        <Icon name="chevron" size={13} />
+      </button>
       <div className="sidebar-user"><span className="avatar-circle avatar-active">{initials(access.full_name)}</span><span><strong>{access.full_name}</strong><small>عضو فريق</small></span><button type="button" className="icon-button small sidebar-user-menu" aria-label="تسجيل الخروج" title="تسجيل الخروج" onClick={() => { void logout(); }}><Icon name="logout" size={14} /></button></div>
       <div className="sidebar-nav-scroll">{navSections.map((section) => {
         const links = visibleNavigation.filter((item) => item.section === section.id);
@@ -303,7 +330,20 @@ function App() {
 
     <div className="main-shell">
       <header className="topbar"><div className="topbar-leading"><button className="icon-button mobile-menu-button" type="button" aria-label="فتح القائمة" onClick={() => setMobileNav(true)}><Icon name="menu" size={20} /></button><div className="topbar-breadcrumb"><span>وَثيق</span><Icon name="chevron" size={13} /><strong>{NAVIGATION.find((item) => item.page === currentNav)?.label ?? (route.page === 'ticket' ? 'مساحة الشكوى' : 'الإدارة')}</strong></div></div>
-        <div className="topbar-actions">{showDatePicker && <DateRangePicker value={range} onChange={setRange} />}<button className="command-trigger" type="button" onClick={() => setPaletteOpen(true)} aria-label="فتح مركز الأوامر"><Icon name="search" size={16} /><span>ابحث أو انتقل إلى…</span><kbd>⌘ K</kbd></button><div className="popover-anchor"><button className={`icon-button notification-trigger${notificationsOpen ? ' is-active' : ''}`} type="button" aria-label={`الإشعارات، ${unread} غير مقروءة`} onClick={() => setNotificationsOpen((value) => !value)}><Icon name="bell" size={18} />{unread > 0 && <i className="notification-count">{unread > 9 ? '9+' : unread}</i>}</button>{notificationsOpen && <NotificationPopover items={notifications} loading={notificationsLoading} onRead={(item) => { void onReadNotification(item); }} onClose={() => setNotificationsOpen(false)} />}</div><button className="icon-button theme-toggle" type="button" aria-label={theme === 'dark' ? 'تفعيل الوضع الفاتح' : 'تفعيل الوضع الداكن'} title="تبديل المظهر" onClick={() => setTheme((value) => value === 'dark' ? 'light' : 'dark')}><Icon name={theme === 'dark' ? 'sun' : 'moon'} size={17} /></button><button className="topbar-avatar avatar-circle avatar-active" type="button" onClick={() => { void logout(); }} title="تسجيل الخروج" aria-label="تسجيل الخروج">{initials(access.full_name)}</button></div>
+        <div className="topbar-actions">{showDatePicker && <DateRangePicker value={range} onChange={setRange} />}<button className="command-trigger" type="button" onClick={() => setPaletteOpen(true)} aria-label="فتح مركز الأوامر"><Icon name="search" size={16} /><span>ابحث أو انتقل إلى…</span><kbd>⌘ K</kbd></button><div className="popover-anchor"><button className={`icon-button notification-trigger${notificationsOpen ? ' is-active' : ''}`} type="button" aria-label={`الإشعارات، ${unread} غير مقروءة`} onClick={() => setNotificationsOpen((value) => !value)}><Icon name="bell" size={18} />{unread > 0 && <i className="notification-count">{unread > 9 ? '9+' : unread}</i>}</button>{notificationsOpen && <NotificationPopover items={notifications} loading={notificationsLoading} onRead={(item) => { void onReadNotification(item); }} onClose={() => setNotificationsOpen(false)} />}</div><button className="icon-button theme-toggle" type="button" aria-label={theme === 'dark' ? 'تفعيل الوضع الفاتح' : 'تفعيل الوضع الداكن'} title="تبديل المظهر" onClick={() => setTheme((value) => value === 'dark' ? 'light' : 'dark')}><Icon name={theme === 'dark' ? 'sun' : 'moon'} size={17} /></button>
+          <div className="popover-anchor user-menu-anchor">
+            <button className="topbar-avatar avatar-circle avatar-active" type="button" aria-haspopup="menu" aria-expanded={userMenuOpen} aria-label="قائمة الحساب" title={access.full_name} onClick={() => setUserMenuOpen((value) => !value)}>{initials(access.full_name)}</button>
+            {userMenuOpen && (
+              <div className="user-menu" role="menu">
+                <div className="user-menu-head"><strong>{access.full_name}</strong><span>{access.email}</span></div>
+                {canViewAdminDashboard(access) && <button type="button" role="menuitem" onClick={() => { setUserMenuOpen(false); navigate({ page: 'admin' }); }}><Icon name="overview" size={14} /> لوحة الإدارة</button>}
+                <button type="button" role="menuitem" onClick={() => { setTheme((value) => value === 'dark' ? 'light' : 'dark'); }}><Icon name={theme === 'dark' ? 'sun' : 'moon'} size={14} /> {theme === 'dark' ? 'الوضع الفاتح' : 'الوضع الداكن'}</button>
+                <button type="button" role="menuitem" onClick={() => { setUserMenuOpen(false); setShortcutsOpen(true); }}><Icon name="keyboard" size={14} /> اختصارات لوحة المفاتيح</button>
+                <button type="button" role="menuitem" onClick={() => { void logout(); }}><Icon name="logout" size={14} /> تسجيل الخروج</button>
+              </div>
+            )}
+          </div>
+        </div>
       </header>
       <main className="main-content"><div className="main-content-inner">
         {notice && <div className="inline-alert info global-notice" role="status">{notice}<button className="notice-close" type="button" aria-label="إخفاء" onClick={() => setNotice('')}><Icon name="close" size={14} /></button></div>}

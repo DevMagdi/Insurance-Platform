@@ -1,18 +1,64 @@
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQueryClient } from '@tanstack/react-query';
+import {
+  ArrowUpRight,
+  ChevronRight,
+  FilePlus2,
+  HelpCircle,
+  LayoutGrid,
+  LogOut,
+  Menu,
+  Moon,
+  Plus,
+  Search,
+  ShieldCheck,
+  Sun,
+  UserRound,
+  X,
+} from 'lucide-react';
 import { applyLanguage, type AppLanguage } from '../i18n';
 import { api } from '../lib/api';
 import { navigate, usePathname } from '../lib/router';
 import { useMe } from '../hooks/useMe';
 
-const NAV = [
-  { path: '/', key: 'nav.home', icon: '⌂' },
-  { path: '/complaints/new', key: 'nav.new', icon: '＋' },
-  { path: '/tickets', key: 'nav.tickets', icon: '▤' },
-  { path: '/track', key: 'nav.track', icon: '◎' },
-  { path: '/profile', key: 'nav.profile', icon: '◉' },
+const PRIMARY_NAV = [
+  { path: '/', key: 'nav.home', icon: LayoutGrid },
+  { path: '/complaints/new', key: 'nav.new', icon: FilePlus2 },
+  { path: '/tickets', key: 'nav.tickets', icon: Search },
+  { path: '/track', key: 'nav.track', icon: ChevronRight },
 ] as const;
+
+function BrandMark({ size = 36 }: { size?: number }) {
+  return (
+    <span className="brand-mark" style={{ width: size, height: size }} aria-hidden="true">
+      <svg width={size * 0.52} height={size * 0.52} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M12 2.6 20 6v6.1c0 4.8-3.4 8-8 9.3-4.6-1.3-8-4.5-8-9.3V6l8-3.4Z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+        <path d="m8.6 12 2.3 2.3 4.6-4.7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    </span>
+  );
+}
+
+function useClickOutside(onOutside: () => void, active: boolean) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!active) return;
+    const handler = (event: MouseEvent) => {
+      if (ref.current && !ref.current.contains(event.target as Node)) onOutside();
+    };
+    const escape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onOutside();
+    };
+    document.addEventListener('mousedown', handler);
+    document.addEventListener('keydown', escape);
+    return () => {
+      document.removeEventListener('mousedown', handler);
+      document.removeEventListener('keydown', escape);
+    };
+  }, [active, onOutside]);
+  return ref;
+}
 
 export function Layout({ children }: { children: ReactNode }) {
   const { t, i18n } = useTranslation();
@@ -20,11 +66,19 @@ export function Layout({ children }: { children: ReactNode }) {
   const { me } = useMe();
   const queryClient = useQueryClient();
   const language = (i18n.language === 'en' ? 'en' : 'ar') as AppLanguage;
-  const dark = document.documentElement.classList.contains('dark');
+  const [dark, setDark] = useState(() => document.documentElement.classList.contains('dark'));
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const menuRef = useClickOutside(() => setMenuOpen(false), menuOpen);
 
   useEffect(() => {
     applyLanguage(language);
   }, [language]);
+
+  useEffect(() => {
+    setMenuOpen(false);
+    setMobileOpen(false);
+  }, [path]);
 
   const toggleLanguage = () => {
     const next: AppLanguage = language === 'ar' ? 'en' : 'ar';
@@ -35,14 +89,25 @@ export function Layout({ children }: { children: ReactNode }) {
   const toggleTheme = () => {
     const next = !document.documentElement.classList.contains('dark');
     document.documentElement.classList.toggle('dark', next);
-    localStorage.setItem('insurance-portal:theme', next ? 'dark' : 'light');
+    try {
+      localStorage.setItem('insurance-portal:theme', next ? 'dark' : 'light');
+    } catch {
+      // Storage may be blocked; the class still applies for this session.
+    }
+    setDark(next);
+  };
+
+  const go = (next: string) => (event: React.MouseEvent) => {
+    event.preventDefault();
+    navigate(next);
+    setMobileOpen(false);
   };
 
   const logout = async () => {
     try {
       await api.logout();
     } catch {
-      // Session may already be gone; clear local state regardless.
+      // Clear local state even if the server session already expired.
     }
     queryClient.clear();
     navigate('/');
@@ -51,104 +116,236 @@ export function Layout({ children }: { children: ReactNode }) {
 
   if (path.startsWith('/staff') || path.startsWith('/dashboard') || path === '/auth/staff' || path === '/auth') {
     return (
-      <div className="min-h-screen bg-[#f3f5f9] text-slate-900 dark:bg-[#081a2f] dark:text-slate-100">
-        <div className="pointer-events-none fixed inset-x-0 top-0 h-72 bg-[radial-gradient(60%_100%_at_50%_0%,rgba(245,197,66,0.16),transparent),radial-gradient(40%_80%_at_85%_0%,rgba(16,185,129,0.14),transparent)]" />
-        <header className="sticky top-0 z-40 border-b border-white/40 bg-white/70 backdrop-blur-xl dark:border-white/10 dark:bg-[#081a2f]/80">
-          <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3">
-            <button type="button" onClick={() => navigate('/staff')} className="flex items-center gap-2.5 text-start">
-              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-amber-300 to-emerald-400 font-black text-slate-950 shadow">W</span>
-              <span>
-                <span className="block font-bold leading-tight">{t('brand')}</span>
-                <span className="block text-[11px] text-slate-500 dark:text-slate-400">{t('staff.workspace')}</span>
-              </span>
-            </button>
-            <div className="flex items-center gap-2">
-              <button type="button" onClick={toggleLanguage} className="rounded-lg border border-slate-300/60 px-2.5 py-1.5 text-sm dark:border-white/15">
-                {t('common.language')}
-              </button>
-              <button type="button" onClick={toggleTheme} aria-label={dark ? t('common.light') : t('common.dark')} className="rounded-lg border border-slate-300/60 px-2.5 py-1.5 text-sm dark:border-white/15">
-                {dark ? '☀' : '☾'}
-              </button>
-              <button type="button" onClick={() => navigate('/')} className="hidden rounded-lg px-2.5 py-1.5 text-sm font-medium sm:block">
-                {t('nav.home')}
-              </button>
-            </div>
-          </div>
-        </header>
-        <main className="relative mx-auto w-full max-w-7xl px-4 pb-12 pt-6">{children}</main>
+      <div className="portal-shell">
+        <div className="pointer-events-none fixed inset-x-0 top-0 h-72 bg-[radial-gradient(60%_100%_at_50%_0%,rgba(201,162,39,0.1),transparent)]" />
+        <main className="relative mx-auto w-full max-w-6xl px-4 pb-12 pt-10">{children}</main>
       </div>
     );
   }
 
+  const initials = (me?.full_name ?? '')
+    .split(/\s+/)
+    .map((part) => part[0] ?? '')
+    .slice(0, 2)
+    .join('');
+
   return (
-    <div className="min-h-screen bg-[#f3f5f9] text-slate-900 dark:bg-[#081a2f] dark:text-slate-100">
-      <div className="pointer-events-none fixed inset-x-0 top-0 h-72 bg-[radial-gradient(60%_100%_at_50%_0%,rgba(245,197,66,0.16),transparent),radial-gradient(40%_80%_at_85%_0%,rgba(16,185,129,0.14),transparent)]" />
-      <header className="sticky top-0 z-40 border-b border-white/40 bg-white/70 backdrop-blur-xl dark:border-white/10 dark:bg-[#081a2f]/80">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3">
-          <button type="button" onClick={() => navigate('/')} className="flex items-center gap-2.5 text-start">
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-amber-300 to-emerald-400 font-black text-slate-950 shadow">
-              W
+    <div className="portal-shell">
+      <a href="#main" className="skip-link">
+        {language === 'ar' ? 'تخطَّ إلى المحتوى' : 'Skip to content'}
+      </a>
+
+      <header className="site-header">
+        <div className="site-header-inner">
+          <a href="/" className="brand" onClick={go('/')} aria-label={t('brand')}>
+            <BrandMark />
+            <span className="brand-copy">
+              <strong>{t('brand')}</strong>
+              <small>{t('tagline')}</small>
             </span>
-            <span>
-              <span className="block font-bold leading-tight">{t('brand')}</span>
-              <span className="block text-[11px] text-slate-500 dark:text-slate-400">{t('tagline')}</span>
-            </span>
-          </button>
-          <nav className="hidden items-center gap-1 md:flex" aria-label="primary">
-            {NAV.map((item) => (
-              <button
-                key={item.path}
-                type="button"
-                onClick={() => navigate(item.path)}
-                className={`rounded-lg px-3 py-2 text-sm font-medium transition ${
-                  path === item.path
-                    ? 'bg-amber-400/20 text-amber-600 dark:text-amber-300'
-                    : 'hover:bg-slate-900/5 dark:hover:bg-white/10'
-                }`}
-              >
-                {t(item.key)}
-              </button>
-            ))}
+          </a>
+
+          <nav className="site-nav" aria-label="primary">
+            {PRIMARY_NAV.map((item) => {
+              const active = item.path === '/' ? path === '/' : path.startsWith(item.path);
+              return (
+                <a
+                  key={item.path}
+                  href={item.path}
+                  onClick={go(item.path)}
+                  className={active ? 'is-active' : undefined}
+                  aria-current={active ? 'page' : undefined}
+                >
+                  {t(item.key)}
+                </a>
+              );
+            })}
           </nav>
-          <div className="flex items-center gap-2">
-            <button type="button" onClick={toggleLanguage} className="rounded-lg border border-slate-300/60 px-2.5 py-1.5 text-sm dark:border-white/15">
+
+          <div className="site-actions">
+            <button type="button" className="lang-switch" onClick={toggleLanguage} aria-label={t('common.language')}>
               {t('common.language')}
             </button>
-            <button type="button" onClick={toggleTheme} aria-label={dark ? t('common.light') : t('common.dark')} className="rounded-lg border border-slate-300/60 px-2.5 py-1.5 text-sm dark:border-white/15">
-              {dark ? '☀' : '☾'}
+            <button
+              type="button"
+              className="icon-btn"
+              onClick={toggleTheme}
+              aria-label={dark ? t('common.light') : t('common.dark')}
+              title={dark ? t('common.light') : t('common.dark')}
+            >
+              {dark ? <Sun size={16} /> : <Moon size={16} />}
+            </button>
+            <button
+              type="button"
+              className="icon-btn mobile-menu-btn"
+              onClick={() => setMobileOpen(true)}
+              aria-label="menu"
+            >
+              <Menu size={18} />
             </button>
             {me ? (
-              <button type="button" onClick={() => void logout()} className="hidden rounded-lg px-2.5 py-1.5 text-sm font-medium text-rose-500 sm:block">
-                {t('nav.logout')}
-              </button>
+              <div className="site-account" ref={menuRef}>
+                <button
+                  type="button"
+                  className="account-trigger"
+                  onClick={() => setMenuOpen((value) => !value)}
+                  aria-expanded={menuOpen}
+                  aria-haspopup="menu"
+                >
+                  <span className="avatar" aria-hidden="true">{initials || <UserRound size={12} />}</span>
+                  <span>{me.full_name.split(' ')[0]}</span>
+                </button>
+                {menuOpen && (
+                  <div className="account-menu" role="menu">
+                    <div className="account-menu-head">
+                      <strong>{me.full_name}</strong>
+                      <span dir="ltr">{me.mobile}</span>
+                    </div>
+                    {[
+                      { path: '/tickets', label: t('nav.tickets'), icon: LayoutGrid },
+                      { path: '/profile', label: t('nav.profile'), icon: UserRound },
+                      { path: '/complaints/new', label: t('nav.new'), icon: FilePlus2 },
+                    ].map((item) => {
+                      const Icon = item.icon;
+                      return (
+                        <a key={item.path} href={item.path} role="menuitem" onClick={go(item.path)}>
+                          <Icon size={14} />
+                          {item.label}
+                        </a>
+                      );
+                    })}
+                    <button type="button" role="menuitem" className="danger" onClick={() => void logout()}>
+                      <LogOut size={14} />
+                      {t('nav.logout')}
+                    </button>
+                  </div>
+                )}
+              </div>
             ) : (
-              <button type="button" onClick={() => navigate('/login')} className="hidden rounded-lg bg-slate-900 px-3 py-1.5 text-sm font-semibold text-white dark:bg-white dark:text-slate-900 sm:block">
+              <button type="button" className="btn btn-secondary btn-sm site-signin" onClick={() => navigate('/login')}>
                 {t('nav.login')}
+                <ArrowUpRight size={13} />
               </button>
             )}
           </div>
         </div>
       </header>
 
-      <main className="relative mx-auto w-full max-w-6xl px-4 pb-28 pt-6 md:pb-12">{children}</main>
+      <main id="main" className="portal-main">
+        <div className="portal-main-inner">{children}</div>
+      </main>
 
-      <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-white/40 bg-white/85 backdrop-blur-xl md:hidden dark:border-white/10 dark:bg-[#081a2f]/90" aria-label="mobile">
-        <div className="grid grid-cols-5">
-          {NAV.map((item) => (
-            <button
-              key={item.path}
-              type="button"
-              onClick={() => navigate(item.path)}
-              className={`flex flex-col items-center gap-0.5 py-2 text-[10px] font-medium ${
-                path === item.path ? 'text-amber-500' : 'text-slate-500 dark:text-slate-400'
-              }`}
-            >
-              <span className="text-base leading-none">{item.icon}</span>
-              {t(item.key)}
-            </button>
-          ))}
+      <footer className="site-footer">
+        <div className="container">
+          <div className="footer-grid">
+            <div className="footer-brand">
+              <a href="/" className="brand" onClick={go('/')}>
+                <BrandMark size={32} />
+                <span className="brand-copy">
+                  <strong>{t('brand')}</strong>
+                  <small>{t('tagline')}</small>
+                </span>
+              </a>
+              <p>{t('footer.about')}</p>
+            </div>
+            <div className="footer-col">
+              <h4>{t('footer.platform')}</h4>
+              <ul>
+                <li><a href="/complaints/new" onClick={go('/complaints/new')}>{t('nav.new')}</a></li>
+                <li><a href="/track" onClick={go('/track')}>{t('nav.track')}</a></li>
+                <li><a href="/tickets" onClick={go('/tickets')}>{t('nav.tickets')}</a></li>
+              </ul>
+            </div>
+            <div className="footer-col">
+              <h4>{t('footer.account')}</h4>
+              <ul>
+                <li><a href="/login" onClick={go('/login')}>{t('nav.login')}</a></li>
+                <li><a href="/profile" onClick={go('/profile')}>{t('nav.profile')}</a></li>
+                <li><button type="button" onClick={() => navigate('/track')}>{t('nav.track')}</button></li>
+              </ul>
+            </div>
+            <div className="footer-col">
+              <h4>{t('footer.support')}</h4>
+              <ul>
+                <li><span>{t('footer.hours')}</span></li>
+                <li><span dir="ltr">care@wathiq.example</span></li>
+                <li><span className="footer-compliance"><ShieldCheck size={13} /> {t('footer.compliance')}</span></li>
+              </ul>
+            </div>
+          </div>
+          <div className="footer-bottom">
+            <span>© {new Date().getFullYear()} {t('brand')} — {t('footer.rights')}</span>
+            <span className="row">
+              <span>{t('footer.privacy')}</span>
+              <span>{t('footer.terms')}</span>
+              <span className="footer-compliance"><ShieldCheck size={12} /> {t('footer.encrypted')}</span>
+            </span>
+          </div>
         </div>
+      </footer>
+
+      <nav className="mobile-bottom-nav" aria-label="mobile">
+        <a href="/" onClick={go('/')} className={path === '/' ? 'is-active' : undefined}>
+          <LayoutGrid size={18} />
+          <span>{t('nav.home')}</span>
+        </a>
+        <a href="/tickets" onClick={go('/tickets')} className={path.startsWith('/tickets') ? 'is-active' : undefined}>
+          <Search size={18} />
+          <span>{t('nav.tickets')}</span>
+        </a>
+        <a href="/complaints/new" onClick={go('/complaints/new')} className="fab" aria-label={t('nav.new')}>
+          <Plus size={22} />
+        </a>
+        <a href="/track" onClick={go('/track')} className={path === '/track' ? 'is-active' : undefined}>
+          <ChevronRight size={18} />
+          <span>{t('nav.track')}</span>
+        </a>
+        <a href={me ? '/profile' : '/login'} onClick={go(me ? '/profile' : '/login')} className={path === '/profile' || path === '/login' ? 'is-active' : undefined}>
+          <UserRound size={18} />
+          <span>{me ? t('nav.profile') : t('nav.login')}</span>
+        </a>
       </nav>
+
+      {mobileOpen && (
+        <div className="mobile-sheet" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && setMobileOpen(false)}>
+          <div className="mobile-sheet-panel" role="dialog" aria-modal="true" aria-label={t('brand')}>
+            <div className="mobile-sheet-grabber" />
+            <div className="row" style={{ justifyContent: 'space-between', marginBottom: 10 }}>
+              <span className="brand">
+                <BrandMark size={32} />
+                <span className="brand-copy"><strong>{t('brand')}</strong><small>{t('tagline')}</small></span>
+              </span>
+              <button type="button" className="icon-btn" aria-label={t('common.cancel')} onClick={() => setMobileOpen(false)}>
+                <X size={18} />
+              </button>
+            </div>
+            {PRIMARY_NAV.map((item) => {
+              const Icon = item.icon;
+              return (
+                <a key={item.path} href={item.path} onClick={go(item.path)}>
+                  <Icon size={17} />
+                  {t(item.key)}
+                </a>
+              );
+            })}
+            <a href="/profile" onClick={go('/profile')}>
+              <UserRound size={17} />
+              {t('nav.profile')}
+            </a>
+            <a href="/track" onClick={go('/track')}>
+              <HelpCircle size={17} />
+              {t('footer.support')}
+            </a>
+            <div className="row" style={{ marginTop: 12, paddingTop: 14, borderTop: '1px solid var(--line)' }}>
+              <button type="button" className="lang-switch" onClick={toggleLanguage}>{t('common.language')}</button>
+              <button type="button" className="lang-switch" onClick={toggleTheme}>
+                {dark ? <Sun size={13} /> : <Moon size={13} />}
+                {dark ? t('common.light') : t('common.dark')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

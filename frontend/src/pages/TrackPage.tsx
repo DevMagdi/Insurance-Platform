@@ -1,12 +1,14 @@
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
+import { ArrowLeft, ArrowRight, CheckCircle2, Clock3, HelpCircle, LockKeyhole, Search, ShieldCheck } from 'lucide-react';
 import { api, ApiError } from '../lib/api';
 import { formatDate } from '../lib/status';
 import { isValidNationalId, isValidTicketNo, maskNationalId } from '../lib/validation';
-import { Field, StatusChip, TextInput, primaryButton } from '../components/ui';
+import { Button, Field, StatusChip, TextInput } from '../components/ui';
 import type { GuestTrackResult } from '../lib/types';
 import { useCaptcha } from '../lib/captcha';
+import { navigate } from '../lib/router';
 
 export function TrackForm() {
   const { t, i18n } = useTranslation();
@@ -37,19 +39,28 @@ export function TrackForm() {
   };
 
   const result: GuestTrackResult | undefined = track.data;
+  const errorMessage = track.isError
+    ? track.error instanceof ApiError && track.error.status === 404
+      ? t('track.notFound')
+      : track.error instanceof ApiError && track.error.status === 429
+        ? t('security.tooMany')
+        : t('errors.generic')
+    : '';
 
   return (
-    <form onSubmit={submit} className="space-y-4" noValidate>
-      <Field label={t('track.ticketNo')} error={errors.ticket}>
+    <form onSubmit={submit} className="stack" style={{ gap: 15 }} noValidate>
+      <Field label={t('track.ticketNo')} error={errors.ticket} hint="CMP-YYYY-NNNNNN">
         <TextInput
           value={ticketNo}
           onChange={(e) => setTicketNo(e.target.value.toUpperCase())}
           placeholder="CMP-2026-000123"
           dir="ltr"
           autoComplete="off"
+          className="font-mono"
+          aria-invalid={Boolean(errors.ticket) || undefined}
         />
       </Field>
-      <Field label={t('track.nationalId')} error={errors.national} hint={maskNationalId(nationalId)}>
+      <Field label={t('track.nationalId')} error={errors.national} hint={nationalId ? maskNationalId(nationalId) : undefined}>
         <TextInput
           value={nationalId}
           onChange={(e) => setNationalId(e.target.value.replace(/[^\d\s-]/g, ''))}
@@ -57,36 +68,50 @@ export function TrackForm() {
           dir="ltr"
           autoComplete="off"
           placeholder="•••• •••• •••• ••"
+          className="font-mono"
+          aria-invalid={Boolean(errors.national) || undefined}
         />
       </Field>
       {captcha.widget}
-      {captchaError && <p role="alert" className="text-sm text-rose-500">{t(captchaError)}</p>}
-      <button type="submit" className={`${primaryButton} w-full sm:w-auto`} disabled={track.isPending}>
+      {captchaError && <p role="alert" className="field-error">{t(captchaError)}</p>}
+      <Button type="submit" size="lg" loading={track.isPending} leadingIcon={<Search size={15} />} style={{ width: '100%' }}>
         {t('track.action')}
-      </button>
+      </Button>
       {track.isError && (
-        <p role="alert" className="rounded-xl bg-rose-500/10 px-3 py-2 text-sm text-rose-500">
-          {track.error instanceof ApiError && track.error.status === 404
-            ? t('track.notFound')
-            : track.error instanceof ApiError && track.error.status === 429
-              ? t('security.tooMany')
-              : t('errors.generic')}
-        </p>
+        <div role="alert" className="alert alert-error">
+          {errorMessage}
+        </div>
       )}
       {result && (
-        <div className="rounded-2xl border border-emerald-300/40 bg-emerald-500/10 p-4" role="status">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <span className="font-mono font-bold" dir="ltr">{result.public_ticket}</span>
+        <div className="track-result" role="status">
+          <div className="track-result-head">
+            <div className="row" style={{ gap: 8 }}>
+              <span style={{ display: 'grid', placeItems: 'center', width: 26, height: 26, borderRadius: 8, background: 'var(--surface-1)', color: 'var(--emerald-600)' }}>
+                <CheckCircle2 size={15} />
+              </span>
+              <div>
+                <strong style={{ display: 'block', fontFamily: 'inherit', fontSize: 11.5 }}>{t('trackExtra.resultTitle')}</strong>
+                <span className="font-mono" dir="ltr" style={{ fontSize: 10.5, color: 'var(--ink-400)' }}>{result.public_ticket}</span>
+              </div>
+            </div>
             <StatusChip status={result.public_status} />
           </div>
-          <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
+          <dl className="track-result-body">
             <div>
-              <dt className="text-slate-500">{t('track.company')}</dt>
-              <dd className="font-medium">{result.public_company}</dd>
+              <dt>{t('trackExtra.statusLabel')}</dt>
+              <dd>{result.public_status ? t(`status.${result.public_status}`) : '—'}</dd>
             </div>
             <div>
-              <dt className="text-slate-500">{t('track.created')}</dt>
-              <dd className="font-medium">{formatDate(result.created, i18n.language)}</dd>
+              <dt>{t('trackExtra.companyLabel')}</dt>
+              <dd>{result.public_company}</dd>
+            </div>
+            <div>
+              <dt>{t('trackExtra.createdLabel')}</dt>
+              <dd>{formatDate(result.created, i18n.language)}</dd>
+            </div>
+            <div>
+              <dt>{t('trackExtra.ticketLabel')}</dt>
+              <dd className="font-mono" dir="ltr">{result.public_ticket}</dd>
             </div>
           </dl>
         </div>
@@ -97,11 +122,65 @@ export function TrackForm() {
 
 export function TrackPage() {
   const { t } = useTranslation();
+  const Arrow = useLeftArrow();
+
   return (
-    <section className="mx-auto max-w-2xl rounded-3xl border border-slate-200/80 bg-white/70 p-5 shadow-sm backdrop-blur dark:border-white/10 dark:bg-white/5">
-      <h1 className="text-2xl font-bold">{t('track.title')}</h1>
-      <p className="mb-5 mt-1 text-slate-500 dark:text-slate-400">{t('track.subtitle')}</p>
-      <TrackForm />
-    </section>
+    <div>
+      <div className="page-intro">
+        <div>
+          <span className="eyebrow">{t('home.trackEyebrow')}</span>
+          <h1>{t('track.title')}</h1>
+          <p>{t('track.subtitle')}</p>
+        </div>
+        <div className="page-intro-actions">
+          <Button variant="secondary" size="sm" onClick={() => navigate('/tickets')} trailingIcon={<Arrow size={14} />}>
+            {t('nav.tickets')}
+          </Button>
+        </div>
+      </div>
+
+      <div className="track-layout">
+        <section className="track-form-card card" aria-labelledby="track-form-title">
+          <header>
+            <h2 id="track-form-title">{t('trackExtra.formTitle')}</h2>
+            <p>{t('trackExtra.formDesc')}</p>
+          </header>
+          <TrackForm />
+        </section>
+
+        <aside className="track-help">
+          <section className="track-help-card card">
+            <h3><HelpCircle size={15} /> {t('trackExtra.helpTitle')}</h3>
+            <ol>
+              {[t('trackExtra.helpStep1'), t('trackExtra.helpStep2'), t('trackExtra.helpStep3')].map((step) => (
+                <li key={step}>{step}</li>
+              ))}
+            </ol>
+          </section>
+          <div className="track-security-note">
+            <ShieldCheck size={16} />
+            <span>{t('trackExtra.securityNote')}</span>
+          </div>
+          <section className="track-help-card card">
+            <h3><Clock3 size={15} /> {t('footer.support')}</h3>
+            <dl className="side-list" style={{ marginTop: 8 }}>
+              <div className="side-row" style={{ paddingInline: 0 }}>
+                <dt>{t('footer.hours')}</dt>
+                <dd dir="ltr">9:00–18:00</dd>
+              </div>
+              <div className="side-row" style={{ paddingInline: 0 }}>
+                <dt>{t('footer.encrypted')}</dt>
+                <dd><LockKeyhole size={13} aria-hidden="true" /></dd>
+              </div>
+            </dl>
+          </section>
+        </aside>
+      </div>
+    </div>
   );
+}
+
+function useLeftArrow() {
+  const { i18n } = useTranslation();
+  return i18n.language === 'ar' ? ArrowLeft : ArrowRight;
 }

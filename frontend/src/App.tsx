@@ -24,7 +24,7 @@ function App() {
   const staffTicketMatch = path.match(/^\/staff\/tickets\/([0-9a-fA-F-]{36})$/);
   const consoleTicketMatch = path.match(/^\/staff\/complaints\/([0-9a-fA-F-]{36})$/);
   const dashboardTicketMatch = path.match(/^\/dashboard\/complaints\/([0-9a-fA-F-]{36})$/);
-  const staffConsoleRoute = /^\/staff\/(?:overview|admin|complaints|users|roles|operations|audit|storage)$/.test(path);
+  const staffConsoleRoute = /^\/staff(?:\/(?:overview|admin|complaints|users|roles|operations|audit|storage))?$/.test(path);
 
   if (consoleTicketMatch) {
     return <Layout><StaffTicketPage complaintId={consoleTicketMatch[1]} /></Layout>;
@@ -33,7 +33,7 @@ function App() {
 
   let page: React.ReactNode;
   if (path === '/staff/login' || path === '/auth/staff' || path === '/auth') page = <StaffLoginPage />;
-  else if (path === '/staff' || path === '/dashboard') page = <StaffDashboardPage />;
+  else if (path === '/dashboard') page = <StaffDashboardPage />;
   else if (staffTicketMatch) page = <StaffTicketPage complaintId={staffTicketMatch[1]} />;
   else if (dashboardTicketMatch) page = <StaffTicketPage complaintId={dashboardTicketMatch[1]} />;
   else if (path === '/staff/analytics') page = <StaffAnalyticsPage />;

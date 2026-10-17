@@ -1,15 +1,16 @@
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
+import { ArrowLeft, ArrowRight, KeyRound, LockKeyhole, ShieldCheck, Smartphone, UserRound } from 'lucide-react';
 import { api, ApiError } from '../lib/api';
 import { navigate } from '../lib/router';
 import { isValidNationalId, isValidMobile, normalizeMobile } from '../lib/validation';
-import { Field, TextInput, Toggle, primaryButton } from '../components/ui';
+import { Button, Field, TextInput, Toggle } from '../components/ui';
 import { useCaptcha } from '../lib/captcha';
 
 /** Mobile OTP sign-in; first-time customers register with name + national ID. */
 export function LoginPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const queryClient = useQueryClient();
   const [mobile, setMobile] = useState('');
   const [code, setCode] = useState('');
@@ -19,6 +20,7 @@ export function LoginPage() {
   const [needsRegister, setNeedsRegister] = useState(false);
   const [registrationPrompt, setRegistrationPrompt] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const Back = i18n.language === 'ar' ? ArrowRight : ArrowLeft;
 
   const captcha = useCaptcha('otp_start');
   const start = useMutation({
@@ -81,82 +83,115 @@ export function LoginPage() {
     if (Object.keys(next).length === 0) verify.mutate();
   };
 
+  const step = needsRegister ? 3 : start.isSuccess ? 2 : 1;
+
   return (
-    <section className="mx-auto max-w-md rounded-3xl border border-slate-200/80 bg-white/70 p-6 shadow-sm backdrop-blur dark:border-white/10 dark:bg-white/5">
-      <h1 className="text-2xl font-bold">{t('auth.title')}</h1>
-      <p className="mb-5 mt-1 text-sm text-slate-500 dark:text-slate-400">{t('auth.subtitle')}</p>
-      <form onSubmit={submit} className="space-y-4" noValidate>
-        <Field label={t('wizard.mobile')} error={errors.mobile}>
-          <div className="flex gap-2">
-            <TextInput
-              value={mobile}
-              onChange={(e) => {
-                setMobile(e.target.value);
-                setCode('');
-                start.reset();
-                verify.reset();
-                setErrors({});
-                setNeedsRegister(false);
-                setRegistrationPrompt(false);
-                setFullName('');
-                setNationalId('');
-              }}
-              inputMode="tel"
-              dir="ltr"
-              placeholder="01xxxxxxxxx"
-              autoComplete="tel"
-            />
-            <button type="button" className={primaryButton} onClick={sendCode} disabled={start.isPending}>
-              {t('auth.sendCode')}
-            </button>
-          </div>
-        </Field>
-        {captcha.widget}
-        {start.isError && (
-          <p role="alert" className="text-sm text-rose-500">
-            {start.error instanceof ApiError && start.error.status === 429 ? t('security.tooMany') : t('errors.generic')}
-          </p>
-        )}
-        {start.isSuccess && (
-          <p role="status" className="rounded-xl bg-emerald-500/10 px-3 py-2 text-sm text-emerald-600 dark:text-emerald-300">
-            {t('auth.codeSent')}
-          </p>
-        )}
-        <Field label={t('auth.code')} error={errors.code}>
-          <TextInput
-            value={code}
-            onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-            inputMode="numeric"
-            dir="ltr"
-            placeholder="••••••"
-            autoComplete="one-time-code"
-          />
-        </Field>
-        {needsRegister && (
-          <>
-            <p className="text-sm text-amber-600 dark:text-amber-300">{t('auth.needRegister')}</p>
-            <Field label={t('wizard.fullName')} error={errors.fullName}>
-              <TextInput value={fullName} onChange={(e) => setFullName(e.target.value)} autoComplete="name" />
-            </Field>
-            <Field label={t('wizard.nationalId')} error={errors.nationalId}>
+    <div className="auth-wrap">
+      <div className="auth-card">
+        <div className="auth-card-head">
+          <span className="eyebrow"><LockKeyhole size={11} /> {t('home.trust1')}</span>
+          <h1>{t('auth.title')}</h1>
+          <p className="auth-lead">{t('auth.subtitle')}</p>
+        </div>
+
+        <div className="auth-steps" aria-hidden="true">
+          {[Smartphone, KeyRound, UserRound].map((Icon, index) => (
+            <span key={index} className={`auth-step${step > index ? ' is-done' : ''}${step === index + 1 ? ' is-active' : ''}`}>
+              <Icon size={12} />
+              <span>0{index + 1}</span>
+            </span>
+          ))}
+        </div>
+
+        <form onSubmit={submit} noValidate>
+          <Field label={t('wizard.mobile')} error={errors.mobile}>
+            <div className="auth-mobile-row">
               <TextInput
-                value={nationalId}
-                onChange={(e) => setNationalId(e.target.value.replace(/[^\d\s-]/g, ''))}
-                inputMode="numeric"
+                value={mobile}
+                onChange={(e) => {
+                  setMobile(e.target.value);
+                  setCode('');
+                  start.reset();
+                  verify.reset();
+                  setErrors({});
+                  setNeedsRegister(false);
+                  setRegistrationPrompt(false);
+                  setFullName('');
+                  setNationalId('');
+                }}
+                inputMode="tel"
                 dir="ltr"
-                autoComplete="off"
+                placeholder="01xxxxxxxxx"
+                autoComplete="tel"
               />
-            </Field>
-            <Toggle checked={whatsapp} onChange={setWhatsapp} label={t('wizard.whatsapp')} />
-          </>
-        )}
-        {verify.isError && !registrationPrompt && (
-          <p role="alert" className="text-sm text-rose-500">{t('errors.generic')}</p>
-        )}
-        <button type="submit" className={`${primaryButton} w-full`} disabled={verify.isPending}>
-          {t('auth.verify')}
-        </button>
-      </form>
-    </section>
+              <Button type="button" variant="secondary" onClick={sendCode} loading={start.isPending} style={{ flex: 'none' }}>
+                {t('auth.sendCode')}
+              </Button>
+            </div>
+          </Field>
+
+          {captcha.widget}
+
+          {start.isError && (
+            <p role="alert" className="alert alert-error">
+              {start.error instanceof ApiError && start.error.status === 429 ? t('security.tooMany') : t('errors.generic')}
+            </p>
+          )}
+          {start.isSuccess && (
+            <p role="status" className="alert alert-success">{t('auth.codeSent')}</p>
+          )}
+
+          <Field label={t('auth.code')} error={errors.code}>
+            <TextInput
+              value={code}
+              onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+              inputMode="numeric"
+              dir="ltr"
+              placeholder="••••••"
+              autoComplete="one-time-code"
+              style={{ letterSpacing: '0.45em', fontFamily: 'var(--font-mono)' }}
+            />
+          </Field>
+
+          {needsRegister && (
+            <>
+              <p className="alert alert-info">{t('auth.needRegister')}</p>
+              <Field label={t('wizard.fullName')} error={errors.fullName}>
+                <TextInput value={fullName} onChange={(e) => setFullName(e.target.value)} autoComplete="name" />
+              </Field>
+              <Field label={t('wizard.nationalId')} error={errors.nationalId}>
+                <TextInput
+                  value={nationalId}
+                  onChange={(e) => setNationalId(e.target.value.replace(/[^\d\s-]/g, ''))}
+                  inputMode="numeric"
+                  dir="ltr"
+                  autoComplete="off"
+                  placeholder="2990 1010 1123 45"
+                  style={{ fontFamily: 'var(--font-mono)' }}
+                />
+              </Field>
+              <Toggle checked={whatsapp} onChange={setWhatsapp} label={t('wizard.whatsapp')} />
+            </>
+          )}
+
+          {verify.isError && !registrationPrompt && (
+            <p role="alert" className="alert alert-error">{t('errors.generic')}</p>
+          )}
+
+          <Button type="submit" size="lg" loading={verify.isPending} trailingIcon={<Back size={15} />}>
+            {t('auth.verify')}
+          </Button>
+        </form>
+
+        <p className="auth-trust">
+          <ShieldCheck size={12} /> {t('trackExtra.securityNote')}
+        </p>
+        <p className="auth-alt">
+          <button type="button" onClick={() => navigate('/track')}>{t('track.title')}</button>
+          <span>·</span>
+          <button type="button" onClick={() => navigate('/complaints/new')}>{t('hero.ctaFile')}</button>
+        </p>
+      </div>
+    </div>
   );
 }
