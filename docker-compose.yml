@@ -8,6 +8,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?run make init}
       APP_DB_PASSWORD: ${APP_DB_PASSWORD:?run make init}
       APP_WORKER_DB_PASSWORD: ${APP_WORKER_DB_PASSWORD:?run make init}
+    restart: unless-stopped
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./infra/postgres/init/01_app_roles.sh:/docker-entrypoint-initdb.d/01_app_roles.sh:ro
@@ -21,6 +22,7 @@ services:
 
   pgbouncer:
     image: edoburu/pgbouncer:v1.24.1-p1
+    restart: unless-stopped
     environment:
       DB_HOST: postgres
       DB_PORT: '5432'
@@ -45,11 +47,13 @@ services:
 
   mailpit:
     image: axllent/mailpit:v1.31.5 # Local development mailbox, not a production provider.
+    restart: unless-stopped
     ports:
       - '127.0.0.1:8025:8025'
 
   redis:
     image: redis:7.4-alpine
+    restart: unless-stopped
     command: ['redis-server', '--appendonly', 'yes']
     volumes:
       - redis_data:/data
@@ -89,6 +93,10 @@ services:
       REDIS_URL: redis://redis:6379/0
       # Load tests only; production refuses any value other than 1.
       RATE_LIMIT_MULTIPLIER: ${RATE_LIMIT_MULTIPLIER:-1}
+      # The development host may expose many CPUs while Docker has a small
+      # memory limit; cap worker processes to avoid an OOM/reverse-proxy 502.
+      WEB_CONCURRENCY: ${WEB_CONCURRENCY:-2}
+    restart: unless-stopped
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -99,10 +107,11 @@ services:
       mailpit:
         condition: service_started
     healthcheck:
-      test: ['CMD', 'python', '-c', 'import urllib.request; urllib.request.urlopen("http://127.0.0.1:8000/api/health/live", timeout=2)']
+      test: ['CMD', 'python', '-c', 'import urllib.request; urllib.request.urlopen("http://127.0.0.1:8000/api/health/ready", timeout=2)']
       interval: 10s
       timeout: 3s
       retries: 10
+      start_period: 30s
 
   worker:
     build:
@@ -117,6 +126,7 @@ services:
       DEV_SMS_MAILBOX: 'true'
       ENVIRONMENT: development
     command: ['arq', 'app.worker.WorkerSettings']
+    restart: unless-stopped
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -159,12 +169,14 @@ services:
       dockerfile: infra/Dockerfile.frontend
     environment:
       API_PROXY_TARGET: http://api:8000
+    restart: unless-stopped
     depends_on:
       api:
         condition: service_healthy
 
   nginx:
     image: nginx:1.28-alpine
+    restart: unless-stopped
     ports:
       - '8080:80'
     volumes:

@@ -86,9 +86,22 @@ The old `/api/v1/*` roadmap paths are **not** live routes.
 ## Local development (Docker Compose v2)
 
 1. `make init` creates a git-ignored mode-0600 `.env` with random development secrets (refuses to overwrite). For demo accounts set a **local-only**, 12+ character `DEMO_STAFF_PASSWORD` in `.env`; never commit the file.
-2. `make up` starts PostgreSQL, PgBouncer, Redis, Mailpit, migrations, API, worker, Vite and Nginx — the only stateful service is PostgreSQL, because attachments, export artifacts and call recordings are stored encrypted in the database. Open `http://localhost:8080/`; the first-party storage inventory lives at `/staff/storage` for authorized global administrators. API liveness `/api/health/live`, readiness `/api/health/ready`, browser API docs `/docs` via the API server. Mailpit UI: `http://localhost:8025/`. Direct PostgreSQL: `localhost:5432`; PgBouncer: `localhost:6432` (bound only to localhost).
+2. `make up` builds and starts PostgreSQL, PgBouncer, Redis, Mailpit, migrations, API, worker, Vite and Nginx, then waits up to 180 seconds for the services to be ready. The only stateful service is PostgreSQL, because attachments, export artifacts and call recordings are stored encrypted in the database. Open `http://localhost:8080/`; the first-party storage inventory lives at `/staff/storage` for authorized global administrators. API liveness `/api/health/live`, readiness `/api/health/ready`, browser API docs `/docs` via the API server. Mailpit UI: `http://localhost:8025/`. Direct PostgreSQL: `localhost:5432`; PgBouncer: `localhost:6432` (bound only to localhost).
 3. `make seed` optionally inserts four insurers, roles and scoped demo staff, and ~5,000 tickets. It is idempotent. Demo staff must change their password at first login; the password-change challenge does **not** give access to protected staff endpoints. Never seed a production database.
 4. `make partitions` prepares current/upcoming UTC monthly partitions. `make down` retains data; `docker compose down -v` **destroys local data**. Changing `POSTGRES_DB` after the first boot requires a new *development* data volume (init scripts only run on an empty volume).
+
+### Troubleshooting a `502 Bad Gateway`
+
+A 502 on `/api/me` or `/api/public/config` means the web edge could not connect to the API; it is not a React/DevTools error. `make up` now waits for API readiness before returning, and the development Nginx proxy re-resolves Docker service names after containers are recreated. If the error remains, run these commands from the repository root:
+
+```bash
+docker compose ps -a
+curl -i http://localhost:8080/api/health/live
+curl -i http://localhost:8080/api/health/ready
+docker compose logs --tail=150 api migrate pgbouncer postgres nginx
+```
+
+`/api/health/live` should return `200` with `{"status":"ok"}`. `/api/health/ready` should also return `200`; `503` there points to PostgreSQL/PgBouncer or Redis. If the API cannot start, inspect migration logs as well. Check the first failed service in `docker compose ps -a` and its logs. If you recreated `.env` after the database volume was initialized, PostgreSQL still has the previous role passwords; changing `APP_ENCRYPTION_KEY` also makes existing encrypted data unreadable. Restore the original `.env` if available. Do not run `docker compose down -v` unless you intentionally want to erase the local database and all its data.
 
 `make init` creates the 32-byte `APP_ENCRYPTION_KEY`; keep it private and stable across API and worker containers because integration credentials, queued PII payloads, AI insights, transcripts and call recordings depend on it. Rotating it requires an explicit decrypt/re-encrypt procedure; simply replacing it makes existing ciphertext unreadable.
 

@@ -38,7 +38,7 @@ install:
 	$(PYTHON) -m pip install -e './backend[dev,seed]'
 	cd frontend && npm ci
 up:
-	$(COMPOSE) up --build -d
+	$(COMPOSE) up --build --detach --wait --wait-timeout 180
 down:
 	$(COMPOSE) down
 logs:
