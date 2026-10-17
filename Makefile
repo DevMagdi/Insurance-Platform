@@ -8,11 +8,15 @@ IMAGE_TAG ?= $(shell git rev-parse HEAD)
 
 .PHONY: help init install up down logs migrate partitions seed test test-integration lint format ci \
 	images prod-config deploy release backup restore-drill loadtest-sessions loadtest-smoke helm-lint \
-	rotate-keys lint-migrations
+	rotate-keys lint-migrations local-install local-up local-down local-status local-seed
 help:
 	@echo 'init                Generate ignored .env with unique local credentials'
 	@echo 'install             Create .venv; install backend dev and frontend dependencies'
 	@echo 'up/down/logs        Manage the development Docker Compose stack'
+	@echo 'local-install       Install the Docker-free stack extras (pgserver + redislite)'
+	@echo 'local-up/down       Run the stack without Docker (postgres, redis, api, worker, vite)'
+	@echo 'local-status        Show which local-stack services are running'
+	@echo 'local-seed          Apply migrations and load the demo dataset (no Docker)'
 	@echo 'migrate/partitions  Apply Alembic revisions / pre-create monthly partitions'
 	@echo 'seed                Create demo data (set DEMO_STAFF_PASSWORD in .env first)'
 	@echo 'test/test-integration/lint/format/ci'
@@ -45,6 +49,16 @@ partitions:
 	$(COMPOSE) run --rm partitions
 seed:
 	$(COMPOSE) run --rm seed
+local-install:
+	$(PYTHON) -m pip install -e './backend[dev,seed,localstack]'
+local-up:
+	$(PYTHON) scripts/local_stack.py up
+local-down:
+	$(PYTHON) scripts/local_stack.py down
+local-status:
+	$(PYTHON) scripts/local_stack.py status
+local-seed:
+	$(PYTHON) scripts/local_stack.py seed
 test:
 	cd backend && ../$(PYTHON) -m pytest -m 'not integration' --cov=app --cov-report=term-missing --cov-fail-under=80
 test-integration:
