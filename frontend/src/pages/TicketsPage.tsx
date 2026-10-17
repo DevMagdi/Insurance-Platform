@@ -1,12 +1,13 @@
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
+import { ArrowDownUp, ArrowLeft, ArrowRight, ChevronLeft, ChevronRight, Filter, Plus, SearchX, SlidersHorizontal } from 'lucide-react';
 import { api } from '../lib/api';
 import { navigate } from '../lib/router';
 import { formatDate, STATUS_META } from '../lib/status';
 import type { ComplaintFilters, ComplaintStatus } from '../lib/types';
 import { useMe } from '../hooks/useMe';
-import { EmptyState, ErrorState, LoadingState, SelectInput, StatusChip, TextInput, primaryButton } from '../components/ui';
+import { Button, EmptyState, ErrorState, LoadingState, SearchInput, SelectInput, StatusChip } from '../components/ui';
 import { LoginPage } from './LoginPage';
 
 const PAGE_SIZE = 10;
@@ -21,6 +22,7 @@ export function TicketsPage() {
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [page, setPage] = useState(1);
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   const filters: ComplaintFilters = useMemo(() => {
     const base: ComplaintFilters = {
@@ -59,122 +61,237 @@ export function TicketsPage() {
     const company = companiesQuery.data?.find((c) => c.id === id);
     return company ? (i18n.language === 'ar' ? company.name_ar : company.name_en) : '';
   };
+  const Arrow = i18n.language === 'ar' ? ArrowLeft : ArrowRight;
+  const Prev = i18n.language === 'ar' ? ChevronRight : ChevronLeft;
+  const Next = i18n.language === 'ar' ? ChevronLeft : ChevronRight;
 
   const counterCards = counters
     ? [
-        { label: t('tickets.total'), value: counters.total, testId: 'counter-total' },
-        { label: t('tickets.open'), value: counters.open, testId: 'counter-open' },
-        { label: t('tickets.inReview'), value: counters.in_review, testId: 'counter-in-review' },
-        { label: t('tickets.resolved'), value: counters.closed, testId: 'counter-resolved' },
-        { label: t('tickets.transferred'), value: counters.transferred, testId: 'counter-transferred' },
+        { label: t('tickets.total'), value: counters.total, testId: 'counter-total', tone: 'neutral' as const },
+        { label: t('tickets.open'), value: counters.open, testId: 'counter-open', tone: 'gold' as const },
+        { label: t('tickets.inReview'), value: counters.in_review, testId: 'counter-in-review', tone: 'info' as const },
+        { label: t('tickets.resolved'), value: counters.closed, testId: 'counter-resolved', tone: 'success' as const },
+        { label: t('tickets.transferred'), value: counters.transferred, testId: 'counter-transferred', tone: 'neutral' as const },
       ]
     : [];
+  const activeFilterCount = [status, companyId, dateFrom, dateTo].filter(Boolean).length;
+  const resetFilters = () => {
+    setStatus('');
+    setCompanyId('');
+    setDateFrom('');
+    setDateTo('');
+    setSearch('');
+    setPage(1);
+  };
 
   return (
-    <section>
-      <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
+    <div>
+      <div className="page-intro">
         <div>
-          <h1 className="text-2xl font-bold">{t('tickets.title')}</h1>
-          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{t('tickets.subtitle')}</p>
+          <span className="eyebrow">{t('home.badge')}</span>
+          <h1>{t('tickets.title')}</h1>
+          <p>{t('tickets.subtitle')}</p>
         </div>
-        <button type="button" className={primaryButton} onClick={() => navigate('/complaints/new')}>
-          {t('tickets.newComplaint')}
-        </button>
+        <div className="page-intro-actions">
+          <Button onClick={() => navigate('/complaints/new')} leadingIcon={<Plus size={15} />}>
+            {t('tickets.newComplaint')}
+          </Button>
+        </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5" aria-label="counters">
-        {counterCards.map((card) => (
-          <div key={card.testId} className="rounded-2xl border border-slate-200/80 bg-white/70 p-4 backdrop-blur dark:border-white/10 dark:bg-white/5">
-            <p className="text-2xl font-black" data-testid={card.testId}>{card.value}</p>
-            <p className="text-xs text-slate-500 dark:text-slate-400">{card.label}</p>
-          </div>
-        ))}
-      </div>
-
-      <div className="mt-5 rounded-3xl border border-slate-200/80 bg-white/70 p-4 backdrop-blur dark:border-white/10 dark:bg-white/5">
-        <div className="grid gap-3 md:grid-cols-[1fr_auto_auto_auto]">
-          <TextInput
-            value={search}
-            onChange={(e) => {
-              setSearch(e.target.value);
-              setPage(1);
-            }}
-            placeholder={t('tickets.searchPlaceholder')}
-            aria-label={t('common.search')}
-          />
-          <SelectInput
-            value={companyId}
-            onChange={(e) => {
-              setCompanyId(e.target.value);
-              setPage(1);
-            }}
-            aria-label={t('wizard.company')}
-          >
-            <option value="">{t('wizard.company')}</option>
-            {(companiesQuery.data ?? []).map((company) => (
-              <option key={company.id} value={company.id}>
-                {i18n.language === 'ar' ? company.name_ar : company.name_en}
-              </option>
+      <div className="counter-grid" aria-label="counters">
+        {counters
+          ? counterCards.map((card) => (
+              <div key={card.testId} className={`counter-card counter-card-${card.tone}`}>
+                <span className="counter-label">
+                  <span className={`dot dot-${card.tone}`} aria-hidden="true" />
+                  {card.label}
+                </span>
+                <p className="counter-value" data-testid={card.testId}>
+                  {card.value.toLocaleString(i18n.language)}
+                </p>
+              </div>
+            ))
+          : [1, 2, 3, 4, 5].map((key) => (
+              <div key={key} className="counter-card">
+                <span className="skeleton" style={{ width: 70, height: 9 }} />
+                <span className="skeleton" style={{ width: 42, height: 20, marginTop: 8 }} />
+              </div>
             ))}
-          </SelectInput>
-          <TextInput type="date" value={dateFrom} onChange={(e) => { setDateFrom(e.target.value); setPage(1); }} aria-label={t('tickets.from')} />
-          <TextInput type="date" value={dateTo} onChange={(e) => { setDateTo(e.target.value); setPage(1); }} aria-label={t('tickets.to')} />
-        </div>
-        <div className="mt-3 flex flex-wrap gap-2" role="group" aria-label={t('track.status')}>
-          {STATUS_FILTERS.map((value) => (
-            <button
-              key={value || 'all'}
-              type="button"
-              onClick={() => {
-                setStatus(value);
+      </div>
+
+      <div className="list-toolbar">
+        <SearchInput
+          value={search}
+          onChange={(e) => {
+            setSearch(e.target.value);
+            setPage(1);
+          }}
+          placeholder={t('tickets.searchPlaceholder')}
+          aria-label={t('common.search')}
+        />
+        <SelectInput
+          value={companyId}
+          onChange={(e) => {
+            setCompanyId(e.target.value);
+            setPage(1);
+          }}
+          aria-label={t('wizard.company')}
+        >
+          <option value="">{t('wizard.company')}</option>
+          {(companiesQuery.data ?? []).map((company) => (
+            <option key={company.id} value={company.id}>
+              {i18n.language === 'ar' ? company.name_ar : company.name_en}
+            </option>
+          ))}
+        </SelectInput>
+        <button
+          type="button"
+          className={`btn btn-secondary btn-sm filters-toggle${filtersOpen ? ' is-open' : ''}`}
+          onClick={() => setFiltersOpen((open) => !open)}
+          aria-expanded={filtersOpen}
+        >
+          <SlidersHorizontal size={14} />
+          {t('commonExtra.filters')}
+          {activeFilterCount > 0 && <span className="filter-count">{activeFilterCount}</span>}
+        </button>
+        <span className="list-toolbar-meta">
+          <ArrowDownUp size={12} />
+          {t('tickets.page', { page, pages: totalPages })}
+        </span>
+      </div>
+
+      <div className="status-filter-row" role="group" aria-label={t('track.status')}>
+        {STATUS_FILTERS.map((value) => (
+          <button
+            key={value || 'all'}
+            type="button"
+            onClick={() => {
+              setStatus(value);
+              setPage(1);
+            }}
+            className={`filter-chip${status === value ? ' is-active' : ''}`}
+            aria-pressed={status === value}
+          >
+            {value && <span className={`status-dot status-dot--${value}`} aria-hidden="true" />}
+            {value ? t(STATUS_META[value].labelKey) : t('status.all')}
+          </button>
+        ))}
+        {activeFilterCount > 0 && (
+          <button type="button" className="filter-chip" onClick={resetFilters}>
+            {t('commonExtra.clear')}
+          </button>
+        )}
+      </div>
+
+      {filtersOpen && (
+        <div className="filter-panel">
+          <label className="filter-field">
+            <span>{t('tickets.from')}</span>
+            <input
+              type="date"
+              className="input"
+              value={dateFrom}
+              onChange={(e) => {
+                setDateFrom(e.target.value);
                 setPage(1);
               }}
-              className={`rounded-full px-3 py-1.5 text-xs font-semibold ring-1 transition ${
-                status === value
-                  ? 'bg-amber-400 text-slate-950 ring-amber-400'
-                  : 'bg-transparent ring-slate-300/70 hover:bg-slate-900/5 dark:ring-white/15 dark:hover:bg-white/10'
-              }`}
-            >
-              {value ? t(STATUS_META[value].labelKey) : t('status.all')}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="mt-5 space-y-3">
-        {listQuery.isLoading && <LoadingState />}
-        {listQuery.isError && <ErrorState message={t('errors.generic')} onRetry={() => void listQuery.refetch()} />}
-        {listQuery.data?.items.map((ticket) => (
-          <button
-            key={ticket.id}
-            type="button"
-            onClick={() => navigate(`/tickets/${ticket.id}`)}
-            className="block w-full rounded-3xl border border-slate-200/80 bg-white/70 p-4 text-start shadow-sm backdrop-blur transition hover:border-amber-300 dark:border-white/10 dark:bg-white/5"
-          >
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <span className="font-mono text-sm font-bold" dir="ltr">{ticket.ticket_no}</span>
-              <StatusChip status={ticket.status} />
-            </div>
-            <p className="mt-1.5 font-medium">{ticket.subject}</p>
-            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-              {companyName(ticket.company_id)} · {t(`types.${ticket.insurance_type}`)} · {formatDate(ticket.created_at, i18n.language)}
-            </p>
-          </button>
-        ))}
-        {listQuery.data && listQuery.data.items.length === 0 && <EmptyState message={t('tickets.empty')} />}
-      </div>
-
-      {totalPages > 1 && (
-        <div className="mt-5 flex items-center justify-center gap-3">
-          <button type="button" className="rounded-lg border px-3 py-1.5 text-sm disabled:opacity-40 dark:border-white/15" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
-            {t('tickets.prev')}
-          </button>
-          <span className="text-sm text-slate-500">{t('tickets.page', { page, pages: totalPages })}</span>
-          <button type="button" className="rounded-lg border px-3 py-1.5 text-sm disabled:opacity-40 dark:border-white/15" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>
-            {t('tickets.nextPage')}
-          </button>
+            />
+          </label>
+          <label className="filter-field">
+            <span>{t('tickets.to')}</span>
+            <input
+              type="date"
+              className="input"
+              value={dateTo}
+              onChange={(e) => {
+                setDateTo(e.target.value);
+                setPage(1);
+              }}
+            />
+          </label>
+          <p className="filter-note">
+            <Filter size={12} /> {t('dashboardExtra.filterNote')}
+          </p>
         </div>
       )}
-    </section>
+
+      <div style={{ marginTop: 18 }}>
+        {listQuery.isLoading && <LoadingState />}
+        {listQuery.isError && <ErrorState message={t('errors.generic')} onRetry={() => void listQuery.refetch()} />}
+        {listQuery.data && (
+          <div className="ticket-list-card">
+            <div className="ticket-list">
+              {listQuery.data.items.map((ticket) => (
+                <button
+                  key={ticket.id}
+                  type="button"
+                  onClick={() => navigate(`/tickets/${ticket.id}`)}
+                  className="ticket-row"
+                >
+                  <span style={{ minWidth: 0 }}>
+                    <span className="ticket-row-min">
+                      <span className="ticket-no" dir="ltr">{ticket.ticket_no}</span>
+                      <span className="dot" aria-hidden="true" />
+                      <span>{companyName(ticket.company_id)}</span>
+                      <span className="dot" aria-hidden="true" />
+                      <span>{t(`types.${ticket.insurance_type}`)}</span>
+                    </span>
+                    <span className="ticket-subject" style={{ display: 'block' }}>{ticket.subject}</span>
+                    <span className="ticket-company">
+                      {t('ticketsExtra.lastUpdate')} · {formatDate(ticket.updated_at, i18n.language)}
+                    </span>
+                  </span>
+                  <span className="ticket-row-end">
+                    <span className="ticket-date">
+                      <strong>{formatDate(ticket.created_at, i18n.language)}</strong>
+                      <span>{t('tickets.lastUpdate')}</span>
+                    </span>
+                    <StatusChip status={ticket.status} />
+                    <span className="row-chevron" aria-hidden="true">
+                      <Arrow size={14} />
+                    </span>
+                  </span>
+                </button>
+              ))}
+            </div>
+            {listQuery.data.items.length === 0 && (
+              <EmptyState
+                title={t('tickets.empty')}
+                detail={t('tickets.emptyHint')}
+                icon={<SearchX size={22} />}
+                action={
+                  activeFilterCount > 0 ? (
+                    <Button size="sm" variant="secondary" onClick={resetFilters}>
+                      {t('commonExtra.clearFilters')}
+                    </Button>
+                  ) : (
+                    <Button size="sm" onClick={() => navigate('/complaints/new')}>
+                      {t('tickets.newComplaint')}
+                    </Button>
+                  )
+                }
+              />
+            )}
+            {listQuery.data.items.length > 0 && (
+              <div className="ticket-list-foot">
+                <span>{t('tickets.showing', { from: (page - 1) * PAGE_SIZE + 1, to: Math.min(page * PAGE_SIZE, listQuery.data.total), total: listQuery.data.total })}</span>
+                {totalPages > 1 && (
+                  <div className="pager">
+                    <button type="button" disabled={page <= 1} onClick={() => setPage((p) => p - 1)} aria-label={t('tickets.prev')}>
+                      <Prev size={14} />
+                    </button>
+                    <span>{page} / {totalPages}</span>
+                    <button type="button" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)} aria-label={t('tickets.nextPage')}>
+                      <Next size={14} />
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
   );
 }

@@ -1,6 +1,22 @@
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
+import {
+  ArrowLeft,
+  ArrowRight,
+  Building2,
+  CalendarDays,
+  CircleDot,
+  Download,
+  FileText,
+  LockKeyhole,
+  MessageSquareText,
+  Paperclip,
+  RefreshCcw,
+  RotateCcw,
+  Send,
+  ShieldCheck,
+} from 'lucide-react';
 import { api } from '../lib/api';
 import { uploadFiles } from '../lib/api';
 import { toQueuedFile, type QueuedFile } from '../lib/files';
@@ -8,7 +24,7 @@ import { formatDate } from '../lib/status';
 import { navigate } from '../lib/router';
 import { FileUploader } from '../components/FileUploader';
 import { StatusTimeline } from '../components/StatusTimeline';
-import { EmptyState, ErrorState, LoadingState, StatusChip, TextArea, ghostButton, primaryButton } from '../components/ui';
+import { Button, EmptyState, ErrorState, LoadingState, StatusChip, TextArea } from '../components/ui';
 import { LoginPage } from './LoginPage';
 import { useMe } from '../hooks/useMe';
 
@@ -27,12 +43,17 @@ function CsatBox({ complaintId, alreadyRated }: { complaintId: string; alreadyRa
     onError: () => setDone(true), // 409 = already submitted on the server.
   });
   if (done) {
-    return <p className="rounded-2xl bg-emerald-500/10 px-4 py-3 text-sm text-emerald-600 dark:text-emerald-300" role="status">{t(alreadyRated ? 'detail.csatAlready' : 'detail.csatThanks')}</p>;
+    return (
+      <p className="alert alert-success" role="status">
+        {t(alreadyRated ? 'detail.csatAlready' : 'detail.csatThanks')}
+      </p>
+    );
   }
   return (
-    <section className="rounded-3xl border border-slate-200/80 bg-white/70 p-5 backdrop-blur dark:border-white/10 dark:bg-white/5">
-      <h2 className="font-semibold">{t('detail.csatTitle')}</h2>
-      <div className="mt-3 flex gap-1" role="radiogroup" aria-label={t('detail.csatTitle')}>
+    <section className="card csat-card">
+      <h2>{t('detail.csatTitle')}</h2>
+      <p>{t('detailExtra.csatDesc')}</p>
+      <div className="star-row" role="radiogroup" aria-label={t('detail.csatTitle')}>
         {[1, 2, 3, 4, 5].map((value) => (
           <button
             key={value}
@@ -41,16 +62,27 @@ function CsatBox({ complaintId, alreadyRated }: { complaintId: string; alreadyRa
             aria-checked={score === value}
             aria-label={`${value} / 5`}
             onClick={() => setScore(value)}
-            className={`text-3xl transition ${value <= score ? 'text-amber-400' : 'text-slate-300 dark:text-slate-600'}`}
+            className={`star-btn${value <= score ? ' is-active' : ''}`}
           >
             ★
           </button>
         ))}
       </div>
-      <TextArea value={comment} onChange={(e) => setComment(e.target.value)} placeholder={t('detail.csatComment')} className="mt-3" maxLength={1000} />
-      <button type="button" className={`${primaryButton} mt-3`} disabled={score === 0 || csat.isPending} onClick={() => csat.mutate()}>
+      <TextArea
+        value={comment}
+        onChange={(e) => setComment(e.target.value)}
+        placeholder={t('detail.csatComment')}
+        style={{ marginTop: 12 }}
+        maxLength={1000}
+      />
+      <Button
+        style={{ marginTop: 12 }}
+        disabled={score === 0 || csat.isPending}
+        loading={csat.isPending}
+        onClick={() => csat.mutate()}
+      >
         {t('detail.csatSend')}
-      </button>
+      </Button>
     </section>
   );
 }
@@ -63,6 +95,7 @@ export function TicketDetailPage({ complaintId }: { complaintId: string }) {
   const [queue, setQueue] = useState<QueuedFile[]>([]);
   const [live, setLive] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  const Back = i18n.language === 'ar' ? ArrowRight : ArrowLeft;
 
   const detailQuery = useQuery({
     queryKey: ['complaint', complaintId],
@@ -151,120 +184,189 @@ export function TicketDetailPage({ complaintId }: { complaintId: string }) {
   const timeline = timelineQuery.data;
   const messages = (timeline?.messages ?? []).filter((m) => m.visibility === 'public');
   const showCsat = detail.can_csat && (detail.status === 'resolved' || detail.csat_score !== null);
+  const attachments = attachmentsQuery.data ?? [];
 
   return (
-    <section className="space-y-5">
-      <button type="button" className={ghostButton} onClick={() => navigate('/tickets')}>
-        ← {t('nav.tickets')}
-      </button>
-
-      <div className="rounded-3xl border border-slate-200/80 bg-white/70 p-5 backdrop-blur dark:border-white/10 dark:bg-white/5">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <span className="font-mono font-bold" dir="ltr">{detail.ticket_no}</span>
-          <span className={`inline-flex items-center gap-1.5 text-xs font-medium ${live ? 'text-emerald-500' : 'text-slate-400'}`} role="status">
-            <span className={`h-1.5 w-1.5 rounded-full ${live ? 'animate-pulse bg-emerald-400' : 'bg-slate-400'}`} />
-            {live ? t('common.live') : t('common.offline')}
-          </span>
-        </div>
-        <h1 className="mt-2 text-xl font-bold">{detail.subject}</h1>
-        <p className="mt-2 whitespace-pre-wrap leading-7 text-slate-600 dark:text-slate-300">{detail.description}</p>
-        <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-3">
-          <div>
-            <dt className="text-slate-500">{t('detail.company')}</dt>
-            <dd className="font-medium">{detail.company_name}</dd>
-          </div>
-          <div>
-            <dt className="text-slate-500">{t('detail.policy')}</dt>
-            <dd className="font-medium" dir="ltr">{detail.policy_number}</dd>
-          </div>
-          <div>
-            <dt className="text-slate-500">{t('timeline.agent')}</dt>
-            <dd className="font-medium">{detail.assigned_agent_name ?? t('timeline.noAgent')}</dd>
-          </div>
-        </dl>
-        <div className="mt-3"><StatusChip status={detail.status} /></div>
-        {notice && <p className="mt-3 rounded-xl bg-emerald-500/10 px-3 py-2 text-sm text-emerald-600 dark:text-emerald-300" role="status">{notice}</p>}
-        {detail.can_reopen && (
-          <button type="button" className={`${ghostButton} mt-4`} disabled={reopen.isPending} onClick={() => reopen.mutate()}>
-            {t('detail.reopen')}
-          </button>
-        )}
+    <div>
+      <div className="detail-top">
+        <button type="button" className="back-link" onClick={() => navigate('/tickets')}>
+          <Back size={14} />
+          {t('commonExtra.backToTickets')}
+        </button>
+        <span className={`live-badge${live ? ' is-live' : ''}`} role="status">
+          <span className={`dot${live ? ' dot-live' : ''}`} aria-hidden="true" />
+          {live ? t('detailExtra.liveUpdates') : t('detailExtra.polling')}
+        </span>
       </div>
 
-      <StatusTimeline status={detail.status} events={timeline?.events ?? []} />
+      <section className="detail-hero">
+        <span className="detail-hero-band" aria-hidden="true" />
+        <div className="detail-hero-body">
+          <div className="detail-hero-top">
+            <span className="detail-ticket-no" dir="ltr">
+              <CircleDot size={12} aria-hidden="true" />
+              {detail.ticket_no}
+            </span>
+            <StatusChip status={detail.status} />
+          </div>
+          <h1>{detail.subject}</h1>
+          <div className="detail-hero-meta">
+            <span><Building2 size={12} /> {detail.company_name}</span>
+            <span><FileText size={12} /> {t('detail.policy')} <b dir="ltr">{detail.policy_number}</b></span>
+            <span><ShieldCheck size={12} /> {detail.assigned_agent_name ?? t('timeline.noAgent')}</span>
+            <span><CalendarDays size={12} /> {formatDate(detail.created_at, i18n.language)}</span>
+          </div>
+          <p className="detail-hero-desc">{detail.description}</p>
+          {notice && <p className="alert alert-success" role="status" style={{ marginTop: 14 }}>{notice}</p>}
+          <div className="detail-hero-actions">
+            {detail.can_reopen && (
+              <Button variant="secondary" loading={reopen.isPending} onClick={() => reopen.mutate()} leadingIcon={<RotateCcw size={14} />}>
+                {t('detail.reopen')}
+              </Button>
+            )}
+            <Button
+              variant="ghost"
+              onClick={() => {
+                void detailQuery.refetch();
+                void timelineQuery.refetch();
+                void attachmentsQuery.refetch();
+              }}
+              leadingIcon={<RefreshCcw size={14} />}
+            >
+              {t('common.refresh')}
+            </Button>
+          </div>
+        </div>
+      </section>
 
-      {showCsat && <CsatBox complaintId={complaintId} alreadyRated={detail.csat_score !== null} />}
+      <div className="detail-grid">
+        <div className="detail-col">
+          <StatusTimeline status={detail.status} events={timeline?.events ?? []} />
 
-      <section className="rounded-3xl border border-slate-200/80 bg-white/70 p-5 backdrop-blur dark:border-white/10 dark:bg-white/5">
-        <h2 className="mb-4 font-semibold">{t('timeline.events')} · {t('detail.reply')}</h2>
-        <div className="space-y-3">
-          {messages.length === 0 && <EmptyState message={t('detail.noMessages')} />}
-          {messages.map((message) => {
-            const mine = message.direction === 'inbound';
-            return (
-              <div key={message.id} className={`flex ${mine ? 'justify-start' : 'justify-end'}`}>
-                <div className={`max-w-[85%] rounded-2xl px-4 py-3 ${mine ? 'bg-amber-400/15' : 'bg-emerald-500/10'}`}>
-                  <p className="text-xs font-semibold text-slate-500">{mine ? t('detail.you') : t('detail.team')}</p>
-                  <p className="mt-1 whitespace-pre-wrap leading-6">{message.body}</p>
-                  <time className="mt-1 block text-[11px] text-slate-400">{formatDate(message.created_at, i18n.language)}</time>
-                </div>
+          {showCsat && <CsatBox complaintId={complaintId} alreadyRated={detail.csat_score !== null} />}
+
+          <section className="card" aria-labelledby="conversation-title">
+            <div className="panel-head">
+              <h2 id="conversation-title"><MessageSquareText size={14} /> {t('detailExtra.conversationTitle')}</h2>
+              <span className="chip">{messages.length}</span>
+            </div>
+            <div className="conversation">
+              <div className="message-list">
+                {messages.length === 0 && <EmptyState message={t('detail.noMessages')} />}
+                {messages.map((message) => {
+                  const mine = message.direction === 'inbound';
+                  return (
+                    <div key={message.id} className={`message ${mine ? 'inbound' : 'outbound'}`}>
+                      <span className="message-avatar" aria-hidden="true">{mine ? t('detail.you').slice(0, 2) : 'W'}</span>
+                      <div>
+                        <div className="message-author">
+                          <span>{mine ? t('detail.you') : t('detail.team')}</span>
+                          <time>{formatDate(message.created_at, i18n.language)}</time>
+                        </div>
+                        <div className="message-bubble">
+                          <p>{message.body}</p>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-            );
-          })}
-        </div>
-        <div className="mt-4 flex gap-2">
-          <TextArea
-            value={replyBody}
-            onChange={(e) => setReplyBody(e.target.value)}
-            placeholder={t('detail.reply')}
-            aria-label={t('detail.reply')}
-            className="min-h-12"
-            maxLength={5000}
-          />
-          <button
-            type="button"
-            className={primaryButton}
-            disabled={replyBody.trim().length === 0 || reply.isPending || detail.status === 'resolved'}
-            onClick={() => reply.mutate()}
-          >
-            {t('detail.sendReply')}
-          </button>
-        </div>
-        {reply.isError && <p className="mt-2 text-sm text-rose-500" role="alert">{t('errors.generic')}</p>}
-      </section>
-
-      <section className="rounded-3xl border border-slate-200/80 bg-white/70 p-5 backdrop-blur dark:border-white/10 dark:bg-white/5">
-        <h2 className="mb-3 font-semibold">{t('files.title')}</h2>
-        {(attachmentsQuery.data ?? []).length > 0 && (
-          <ul className="mb-4 space-y-2">
-            {attachmentsQuery.data?.map((file) => (
-              <li key={file.id} className="flex items-center justify-between gap-3 rounded-xl bg-slate-900/[0.03] px-3 py-2 text-sm dark:bg-white/5">
-                <span className="min-w-0">
-                  <span className="block truncate font-medium">{file.filename}</span>
-                  <span className="text-xs text-slate-500">
-                    {file.scan_status === 'clean' ? t('files.clean') : t('files.pending')}
+              <div className="composer">
+                <TextArea
+                  value={replyBody}
+                  onChange={(e) => setReplyBody(e.target.value)}
+                  placeholder={t('detailExtra.replyPlaceholder')}
+                  aria-label={t('detail.reply')}
+                  maxLength={5000}
+                />
+                <div className="composer-foot">
+                  <span>
+                    {detail.status === 'resolved' ? t('detailExtra.replyLocked') : t('detailExtra.replyHint')}
                   </span>
-                </span>
-                <button
-                  type="button"
-                  className={ghostButton}
-                  disabled={file.scan_status !== 'clean'}
-                  title={file.scan_status !== 'clean' ? t('files.blocked') : undefined}
-                  onClick={() => void api.downloadAttachment(file.id, file.filename)}
-                >
-                  {t('common.download')}
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-        <FileUploader
-          files={queue}
-          onAdd={(incoming) => void uploadImmediate(incoming)}
-          onRemove={(id) => setQueue((current) => current.filter((q) => q.id !== id))}
-          onRetry={(id) => void retryQueued(id)}
-        />
-      </section>
-    </section>
+                  <Button
+                    size="sm"
+                    disabled={replyBody.trim().length === 0 || detail.status === 'resolved'}
+                    loading={reply.isPending}
+                    onClick={() => reply.mutate()}
+                    trailingIcon={<Send size={13} />}
+                  >
+                    {t('detailExtra.sendReply')}
+                  </Button>
+                </div>
+                {reply.isError && <p className="field-error" role="alert">{t('errors.generic')}</p>}
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <aside className="detail-side">
+          <section className="card" aria-labelledby="attachments-title">
+            <div className="panel-head">
+              <h2 id="attachments-title"><Paperclip size={14} /> {t('detailExtra.attachmentsTitle')}</h2>
+              <span className="chip">{attachments.length}</span>
+            </div>
+            {attachments.length > 0 ? (
+              <div className="attachment-list">
+                {attachments.map((file) => (
+                  <div key={file.id} className="attachment-row">
+                    <span className="attachment-icon" aria-hidden="true"><FileText size={14} /></span>
+                    <span className="attachment-copy">
+                      <strong title={file.filename}>{file.filename}</strong>
+                      <span>{file.scan_status === 'clean' ? t('files.clean') : t('files.pending')}</span>
+                    </span>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      disabled={file.scan_status !== 'clean'}
+                      title={file.scan_status !== 'clean' ? t('files.blocked') : undefined}
+                      onClick={() => void api.downloadAttachment(file.id, file.filename)}
+                      aria-label={`${t('common.download')} ${file.filename}`}
+                    >
+                      <Download size={14} />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="panel-body" style={{ color: 'var(--ink-400)', fontSize: 11.5 }}>{t('detailExtra.noAttachments')}</p>
+            )}
+            <div className="panel-body">
+              <FileUploader
+                files={queue}
+                onAdd={(incoming) => void uploadImmediate(incoming)}
+                onRemove={(id) => setQueue((current) => current.filter((q) => q.id !== id))}
+                onRetry={(id) => void retryQueued(id)}
+              />
+            </div>
+          </section>
+
+          <section className="card">
+            <div className="panel-head"><h2>{t('detailExtra.overview')}</h2></div>
+            <dl className="side-list">
+              <div className="side-row">
+                <dt>{t('detailExtra.company')}</dt>
+                <dd>{detail.company_name}</dd>
+              </div>
+              <div className="side-row">
+                <dt>{t('detailExtra.policy')}</dt>
+                <dd dir="ltr">{detail.policy_number}</dd>
+              </div>
+              <div className="side-row">
+                <dt>{t('detailExtra.assignedAgent')}</dt>
+                <dd>{detail.assigned_agent_name ?? t('detailExtra.noAgent')}</dd>
+              </div>
+              <div className="side-row">
+                <dt>{t('detailExtra.opened')}</dt>
+                <dd>{formatDate(detail.created_at, i18n.language)}</dd>
+              </div>
+            </dl>
+          </section>
+
+          <p className="detail-security-note">
+            <LockKeyhole size={13} /> {t('trackExtra.securityNote')}
+          </p>
+        </aside>
+      </div>
+    </div>
   );
 }

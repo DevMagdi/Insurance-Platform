@@ -1,9 +1,62 @@
-import type { ButtonHTMLAttributes, ReactNode } from 'react';
+import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from 'react';
 import { cn } from '../../lib/utils';
 
-type Props = ButtonHTMLAttributes<HTMLButtonElement> & { variant?: 'primary' | 'secondary' | 'ghost' | 'danger'; size?: 'sm' | 'md' | 'lg'; children: ReactNode };
-export function Button({ variant = 'primary', size = 'md', className, children, ...props }: Props) {
-  const variants = { primary: 'bg-gold text-navy hover:bg-amber-300 shadow-lg shadow-gold/15', secondary: 'border border-white/15 bg-white/5 text-white hover:bg-white/10', ghost: 'text-slate-300 hover:bg-white/10 hover:text-white', danger: 'bg-rose-600 text-white hover:bg-rose-500' };
-  const sizes = { sm: 'px-3 py-2 text-sm', md: 'px-5 py-3 text-sm', lg: 'px-7 py-4 text-base' };
-  return <button className={cn('inline-flex items-center justify-center gap-2 rounded-xl font-semibold transition duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold disabled:cursor-not-allowed disabled:opacity-50', variants[variant], sizes[size], className)} {...props}>{children}</button>;
+export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'destructive' | 'danger' | 'soft' | 'gold' | 'light';
+export type ButtonSize = 'sm' | 'md' | 'lg' | 'xl' | 'icon';
+
+export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+  variant?: ButtonVariant;
+  size?: ButtonSize;
+  loading?: boolean;
+  leadingIcon?: ReactNode;
+  trailingIcon?: ReactNode;
+  children?: ReactNode;
 }
+
+const VARIANTS: Record<ButtonVariant, string> = {
+  primary: 'btn-primary',
+  secondary: 'btn-secondary',
+  ghost: 'btn-ghost',
+  destructive: 'btn-destructive',
+  danger: 'btn-destructive',
+  soft: 'btn-soft',
+  gold: 'btn-gold',
+  light: 'btn-light',
+};
+
+const SIZES: Record<ButtonSize, string> = {
+  sm: 'btn-sm',
+  md: '',
+  lg: 'btn-lg',
+  xl: 'btn-xl',
+  icon: 'btn-icon',
+};
+
+/**
+ * Design-system button. Variants share the same geometry and focus ring;
+ * loading keeps the label's width stable while a spinner replaces the content.
+ */
+export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
+  { variant = 'primary', size = 'md', loading = false, className, children, leadingIcon, trailingIcon, disabled, type = 'button', ...props },
+  ref,
+) {
+  return (
+    <button
+      ref={ref}
+      type={type}
+      disabled={disabled || loading}
+      aria-busy={loading || undefined}
+      className={cn('btn', VARIANTS[variant], SIZES[size], loading && 'is-loading', className)}
+      {...props}
+    >
+      {leadingIcon}
+      {children}
+      {trailingIcon}
+      {loading && (
+        <span className="btn-spinner" aria-hidden="true">
+          <span className="spinner" />
+        </span>
+      )}
+    </button>
+  );
+});

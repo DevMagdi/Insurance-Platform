@@ -6,7 +6,6 @@ import { hasPermission } from '../../utils/access';
 import { displayRange, formatNumber, rangeBounds } from '../../utils/date';
 import type { AnalyticsOverview, AppRoute, DateRange, StaffAccess, StaffDirectoryEntry } from '../../types';
 import { canViewAdminDashboard } from './adminAccess';
-import './admin-dashboard.css';
 
 const STATUS: Record<string, string> = {
   new: 'جديدة', assigned: 'مُسندة', in_review: 'قيد المراجعة', resolved: 'تم الحل',

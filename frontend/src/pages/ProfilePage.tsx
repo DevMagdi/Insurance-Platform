@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
+import { Bell, BellRing, CheckCheck, Mail, MessageCircle, ShieldCheck, Smartphone, UserRound } from 'lucide-react';
 import { api } from '../lib/api';
 import { formatDate } from '../lib/status';
-import { Field, LoadingState, TextInput, Toggle, primaryButton } from '../components/ui';
+import { Field, LoadingState, TextInput, Toggle, Button } from '../components/ui';
 import { LoginPage } from './LoginPage';
 import { useMe } from '../hooks/useMe';
 
@@ -62,76 +63,123 @@ export function ProfilePage() {
   if (meLoading) return <LoadingState />;
   if (!me) return <LoginPage />;
 
+  const notifications = notificationsQuery.data ?? [];
+  const unread = notifications.filter((note) => !note.read_at).length;
+
   return (
-    <section className="mx-auto max-w-2xl space-y-5">
-      <div>
-        <h1 className="text-2xl font-bold">{t('profile.title')}</h1>
-        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{t('profile.subtitle')}</p>
+    <div>
+      <div className="page-intro">
+        <div>
+          <span className="eyebrow">{t('profileExtra.eyebrow')}</span>
+          <h1>{t('profile.title')}</h1>
+          <p>{t('profile.subtitle')}</p>
+        </div>
       </div>
 
-      <form
-        className="space-y-4 rounded-3xl border border-slate-200/80 bg-white/70 p-5 backdrop-blur dark:border-white/10 dark:bg-white/5"
-        onSubmit={(e) => {
-          e.preventDefault();
-          setSaved(false);
-          save.mutate();
-        }}
-      >
-        <Field label={t('wizard.fullName')}>
-          <TextInput value={fullName} onChange={(e) => setFullName(e.target.value)} autoComplete="name" />
-        </Field>
-        <Field label={t('wizard.email')}>
-          <TextInput value={email} onChange={(e) => setEmail(e.target.value)} inputMode="email" dir="ltr" autoComplete="email" />
-        </Field>
-        <div className="grid gap-3 text-sm sm:grid-cols-2">
-          <p className="rounded-xl bg-slate-900/[0.03] px-3 py-2 dark:bg-white/5">
-            <span className="block text-slate-500">{t('profile.mobile')}</span>
-            <span className="font-medium" dir="ltr">{profile?.mobile ?? me.mobile}</span>
-          </p>
-          <p className="rounded-xl bg-slate-900/[0.03] px-3 py-2 dark:bg-white/5">
-            <span className="block text-slate-500">{t('profile.nationalId')}</span>
-            <span className="font-medium" dir="ltr">{profile?.national_id_masked ?? me.national_id_masked}</span>
-          </p>
-        </div>
-        <Toggle checked={whatsapp} onChange={setWhatsapp} label={t('wizard.whatsapp')} />
+      <div className="profile-grid">
+        <section className="card profile-card">
+          <h2>{t('profileExtra.personal')}</h2>
+          <p>{t('profileExtra.personalDesc')}</p>
 
-        <fieldset className="space-y-2.5 rounded-2xl border border-slate-200/80 p-4 dark:border-white/10">
-          <legend className="px-1 font-semibold">{t('profile.prefsTitle')}</legend>
-          <Toggle checked={notifyEmail} onChange={setNotifyEmail} label={t('profile.email')} />
-          <Toggle checked={notifyWhatsapp} onChange={setNotifyWhatsapp} label={t('profile.whatsappChannel')} />
-          <Toggle checked={notifySms} onChange={setNotifySms} label={t('profile.sms')} />
-        </fieldset>
+          <form
+            className="profile-form"
+            onSubmit={(e) => {
+              e.preventDefault();
+              setSaved(false);
+              save.mutate();
+            }}
+          >
+            <Field label={t('wizard.fullName')}>
+              <TextInput value={fullName} onChange={(e) => setFullName(e.target.value)} autoComplete="name" />
+            </Field>
+            <Field label={t('wizard.email')} hint={t('wizardExtra.emailHint')}>
+              <TextInput value={email} onChange={(e) => setEmail(e.target.value)} inputMode="email" dir="ltr" autoComplete="email" />
+            </Field>
 
-        {saved && <p className="text-sm text-emerald-500" role="status">{t('profile.saved')}</p>}
-        {save.isError && <p className="text-sm text-rose-500" role="alert">{t('errors.generic')}</p>}
-        <button type="submit" className={primaryButton} disabled={save.isPending || fullName.trim().length < 2}>
-          {t('common.save')}
-        </button>
-      </form>
+            <div className="readonly-pair">
+              <div className="readonly-field">
+                <span>{t('profile.mobile')}</span>
+                <strong dir="ltr">{profile?.mobile ?? me.mobile}</strong>
+              </div>
+              <div className="readonly-field">
+                <span>{t('profile.nationalId')}</span>
+                <strong dir="ltr">{profile?.national_id_masked ?? me.national_id_masked}</strong>
+              </div>
+            </div>
 
-      <section className="rounded-3xl border border-slate-200/80 bg-white/70 p-5 backdrop-blur dark:border-white/10 dark:bg-white/5">
-        <h2 className="mb-3 font-semibold">{t('profile.notifications')}</h2>
-        {(notificationsQuery.data ?? []).length === 0 && (
-          <p className="text-sm text-slate-500">{t('profile.noNotifications')}</p>
-        )}
-        <ul className="space-y-2.5">
-          {notificationsQuery.data?.map((note) => (
-            <li key={note.id} className={`flex items-center justify-between gap-3 rounded-xl px-3 py-2 text-sm ${note.read_at ? 'bg-slate-900/[0.02] dark:bg-white/[0.03]' : 'bg-amber-400/10'}`}>
-              <span>
-                <span className="font-medium" dir="ltr">
-                  {typeof note.payload.ticket_no === 'string' ? note.payload.ticket_no : note.kind}
-                </span>
-                <span className="block text-xs text-slate-500">{formatDate(note.created_at, i18n.language)}</span>
+            <Toggle checked={whatsapp} onChange={setWhatsapp} label={t('wizard.whatsapp')} />
+
+            <fieldset className="pref-group" style={{ border: 0, padding: 0, margin: 0 }}>
+              <legend className="pref-group-title">{t('profileExtra.preferences')}</legend>
+              <p className="field-hint" style={{ marginTop: -4, marginBottom: 4 }}>{t('profileExtra.preferencesDesc')}</p>
+              <Toggle checked={notifyEmail} onChange={setNotifyEmail} label={t('profile.email')} />
+              <Toggle checked={notifyWhatsapp} onChange={setNotifyWhatsapp} label={t('profile.whatsappChannel')} />
+              <Toggle checked={notifySms} onChange={setNotifySms} label={t('profile.sms')} />
+            </fieldset>
+
+            {saved && <p className="alert alert-success" role="status">{t('profileExtra.savedAt')}</p>}
+            {save.isError && <p className="alert alert-error" role="alert">{t('errors.generic')}</p>}
+
+            <div className="row" style={{ justifyContent: 'flex-end', gap: 8 }}>
+              <Button type="submit" loading={save.isPending} disabled={fullName.trim().length < 2}>
+                {t('profileExtra.save')}
+              </Button>
+            </div>
+          </form>
+        </section>
+
+        <aside className="card notifications-card">
+          <div className="panel-head">
+            <h2><Bell size={14} /> {t('profileExtra.notificationsTitle')}</h2>
+            {unread > 0 ? <span className="chip chip-gold">{unread}</span> : <span className="chip"><CheckCheck size={11} /> {t('profileExtra.allRead')}</span>}
+          </div>
+          <p className="panel-body" style={{ color: 'var(--ink-400)', fontSize: 11, paddingBottom: 12 }}>{t('profileExtra.notificationsDesc')}</p>
+          {notifications.length === 0 && (
+            <div className="empty-state" style={{ padding: '26px 18px' }}>
+              <span className="empty-state-icon" aria-hidden="true"><BellRing size={18} /></span>
+              <p>{t('profile.noNotifications')}</p>
+            </div>
+          )}
+          {notifications.map((note) => (
+            <div key={note.id} className={`notification-row${note.read_at ? '' : ' is-unread'}`}>
+              <span className="notification-icon" aria-hidden="true">
+                {note.kind.includes('status') ? <MessageCircle size={13} /> : <Bell size={13} />}
               </span>
+              <div className="notification-copy">
+                <strong>
+                  {typeof note.payload.ticket_no === 'string' ? (
+                    <span dir="ltr">{note.payload.ticket_no}</span>
+                  ) : (
+                    note.kind
+                  )}
+                  {typeof note.payload.subject === 'string' ? ` · ${note.payload.subject}` : ''}
+                </strong>
+                <span>{formatDate(note.created_at, i18n.language)}</span>
+              </div>
               {!note.read_at && (
-                <button type="button" className="shrink-0 text-xs font-semibold text-amber-600 dark:text-amber-300" onClick={() => markRead.mutate(note.id)}>
+                <button type="button" className="notification-mark" onClick={() => markRead.mutate(note.id)}>
                   {t('profile.markRead')}
                 </button>
               )}
-            </li>
+            </div>
           ))}
-        </ul>
+        </aside>
+      </div>
+
+      <section className="card" style={{ marginTop: 18, padding: 20 }}>
+        <div className="row" style={{ justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+          <div className="row" style={{ gap: 10 }}>
+            <span className="notification-icon" aria-hidden="true"><ShieldCheck size={14} /></span>
+            <div>
+              <strong style={{ display: 'block', fontSize: 12 }}>{t('profileExtra.accountSecurity')}</strong>
+              <span style={{ color: 'var(--ink-400)', fontSize: 10.5 }}>{t('profileExtra.accountSecurityDesc')}</span>
+            </div>
+          </div>
+          <span className="chip"><Smartphone size={11} /> {me.mobile}</span>
+          <span className="chip"><Mail size={11} /> {me.email ?? '—'}</span>
+          <span className="chip"><UserRound size={11} /> {t('profileExtra.verifiedAccount')}</span>
+        </div>
       </section>
-    </section>
+    </div>
   );
 }
