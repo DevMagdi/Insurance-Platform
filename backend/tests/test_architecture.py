@@ -42,6 +42,50 @@ async def test_liveness_and_legacy_v1_contract_is_not_implemented() -> None:
         assert "/api/staff/complaints" in app.openapi()["paths"]
 
 
+async def test_readiness_checks_postgres_and_redis(monkeypatch: pytest.MonkeyPatch) -> None:
+    class Connection:
+        async def __aenter__(self) -> Connection:
+            return self
+
+        async def __aexit__(self, *_: object) -> None:
+            return None
+
+        async def execute(self, _statement: object) -> None:
+            return None
+
+    class Engine:
+        def connect(self) -> Connection:
+            return Connection()
+
+    class Redis:
+        async def ping(self) -> bool:
+            return True
+
+    monkeypatch.setattr(app.state, "draining", False, raising=False)
+    monkeypatch.setattr(app.state, "engine", Engine(), raising=False)
+    monkeypatch.setattr(app.state, "redis", Redis(), raising=False)
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        assert (await client.get("/api/health/ready")).json() == {"status": "ready"}
+
+        class UnavailableRedis:
+            async def ping(self) -> bool:
+                raise ConnectionError("Redis is down")
+
+        monkeypatch.setattr(app.state, "redis", UnavailableRedis())
+        response = await client.get("/api/health/ready")
+        assert response.status_code == 503
+        assert response.json() == {"detail": "Dependencies unavailable"}
+        assert (await client.get("/api/health/live")).status_code == 200
+
+        class UnavailableEngine:
+            def connect(self) -> Connection:
+                raise ConnectionError("PostgreSQL is down")
+
+        monkeypatch.setattr(app.state, "engine", UnavailableEngine())
+        monkeypatch.setattr(app.state, "redis", Redis())
+        assert (await client.get("/api/health/ready")).status_code == 503
+
+
 def test_catalog_has_every_required_resource_action_and_frozen_migration() -> None:
     required = {
         "complaints.view",
@@ -370,6 +414,28 @@ def test_dev_compose_is_transaction_pooled_without_admin_secrets_in_api() -> Non
         assert "env_file" not in compose[process]
         assert "DATABASE_ADMIN_URL" not in compose[process]["environment"]
         assert "POSTGRES_PASSWORD" not in compose[process]["environment"]
+
+
+def test_dev_stack_waits_for_backend_readiness_and_re_resolves_restarted_services() -> None:
+    compose = yaml.safe_load((ROOT / "docker-compose.yml").read_text())["services"]
+    production = yaml.safe_load((ROOT / "docker-compose.prod.yml").read_text())["services"]
+    api_check = " ".join(compose["api"]["healthcheck"]["test"])
+    prod_api_check = " ".join(production["api"]["healthcheck"]["test"])
+    assert "/api/health/ready" in api_check
+    assert "/api/health/ready" in prod_api_check
+    assert compose["api"]["environment"]["WEB_CONCURRENCY"] == "${WEB_CONCURRENCY:-2}"
+    assert compose["api"]["restart"] == "unless-stopped"
+    assert compose["nginx"]["restart"] == "unless-stopped"
+    assert "--wait" in (ROOT / "Makefile").read_text().split("up:\n", 1)[1].split("\n", 1)[0]
+
+    nginx = (ROOT / "infra/nginx/dev.conf").read_text()
+    assert "resolver 127.0.0.11 valid=5s ipv6=off;" in nginx
+    assert "set $api_upstream api:8000;" in nginx
+    assert "set $frontend_upstream frontend:5173;" in nginx
+    assert "proxy_pass http://$api_upstream;" in nginx
+    assert "proxy_pass http://$frontend_upstream;" in nginx
+    assert "proxy_pass http://api:8000;" not in nginx
+    assert "proxy_pass http://frontend:5173;" not in nginx
 
 
 # Object-storage SDKs, gateways and credentials were removed in revision 24. The

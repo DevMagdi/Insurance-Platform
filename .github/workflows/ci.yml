@@ -38,6 +38,8 @@ jobs:
           docker build -f infra/Dockerfile.web -t ci-web .
       - name: Validate the production Nginx configuration inside the image
         run: scripts/ci/annotate.sh "nginx -t" docker run --rm --add-host api:127.0.0.1 ci-web nginx -t
+      - name: Validate the Docker Compose development Nginx configuration
+        run: docker run --rm -v "$GITHUB_WORKSPACE/infra/nginx/dev.conf:/etc/nginx/conf.d/default.conf:ro" nginx:1.28-alpine nginx -t
       - name: Install Trivy (pinned release, checksum verified)
         run: |
           set -euo pipefail
@@ -81,6 +83,34 @@ jobs:
           done
           curl -fsS http://127.0.0.1:18080/api/health/live
           curl -fsS http://127.0.0.1:18080/ | grep -qi '<div id="root"'
+          # The staff console and CAPTCHA bootstrap both rely on the same-origin API proxy.
+          test "$(curl -sS -o /dev/null -w '%{http_code}' http://127.0.0.1:18080/api/me)" = 401
+          curl -fsS http://127.0.0.1:18080/api/public/config | grep -q 'privacy_policy_version'
+          # Exercise the dev edge too: it uses Docker DNS at request time and must
+          # recover after the API container is replaced with a new container/IP.
+          docker run -d --name ci-dev-proxy --network ci-smoke -p 18081:80 \
+            -v "$GITHUB_WORKSPACE/infra/nginx/dev.conf:/etc/nginx/conf.d/default.conf:ro" \
+            nginx:1.28-alpine
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:18081/api/health/live >/dev/null; then break; fi
+            sleep 2
+          done
+          curl -fsS http://127.0.0.1:18081/api/public/config | grep -q 'privacy_policy_version'
+          # Keep both containers allocated briefly so Docker assigns the replacement
+          # a different IP, then remove the old target and let the resolver TTL expire.
+          docker run -d --name ci-api-next --network ci-smoke --network-alias api \
+            --env-file /tmp/smoke.env \
+            -e ENVIRONMENT=production -e COOKIE_SECURE=true \
+            -e DATABASE_URL=postgresql+asyncpg://app_runtime:unused@postgres:5432/insurance \
+            -e REDIS_URL=redis://redis:6379/0 ci-api
+          docker rm -f ci-api
+          sleep 6
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:18081/api/health/live >/dev/null; then break; fi
+            sleep 2
+          done
+          curl -fsS http://127.0.0.1:18081/api/public/config | grep -q 'privacy_policy_version'
+          test "$(curl -sS -o /dev/null -w '%{http_code}' http://127.0.0.1:18081/api/me)" = 401
       - name: Fail if the image contract drifted from docs/openapi.yaml
         run: |
           set -euo pipefail
@@ -97,7 +127,10 @@ jobs:
       - if: always()
         run: |
           docker logs ci-api || true
-          docker rm -f ci-api ci-web || true
+          docker logs ci-api-next || true
+          docker logs ci-web || true
+          docker logs ci-dev-proxy || true
+          docker rm -f ci-api ci-api-next ci-web ci-dev-proxy || true
           docker network rm ci-smoke || true
       - name: Prove the production compose file renders
         run: |
