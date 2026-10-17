@@ -10,7 +10,7 @@ import re
 import secrets
 from datetime import UTC, datetime, timedelta
 from typing import Any, Literal
-from urllib.parse import parse_qs
+from urllib.parse import parse_qs, urlencode
 from uuid import NAMESPACE_URL, UUID, uuid4, uuid5
 
 from fastapi import HTTPException
@@ -21,7 +21,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.domain.access import AccessScope
 from app.domain.enums import CommunicationChannel, MessageDirection, MessageVisibility
 from app.domain.schemas import (
+    COMPANY_ONLY_PROVIDERS,
+    GLOBAL_ONLY_PROVIDERS,
     AIAnalysisRequest,
+    OAuthStartRequest,
+    SandboxSendRequest,
     SendComplaintEmailRequest,
     VoiceFollowupRequest,
 )
@@ -42,6 +46,17 @@ from app.repositories.complaints import ComplaintRepository
 from app.repositories.integrations import IntegrationRepository
 from app.security.integration_crypto import SecretCipher
 from app.services.email_templates import render_customer_reply, render_insurer_forward
+from app.services.integration_providers import (
+    PROVIDER_REQUIRED_FIELDS as _PROVIDER_REQUIRED_FIELDS,
+)
+from app.services.integration_providers import (
+    EmailSendRequest,
+    IntegrationProviderError,
+    OAuthTokenBroker,
+    SMSProviderRequest,
+    build_provider,
+    probe_provider,
+)
 
 _TICKET_RE = re.compile(r"\bCMP-\d{4}-\d{6,}\b", re.IGNORECASE)
 _NATIONAL_ID_RE = re.compile(r"(?<!\d)\d{14}(?!\d)")
@@ -70,6 +85,36 @@ def call_transcript_aad(call_id: UUID) -> str:
 
 def webhook_secret_aad(webhook_id: UUID) -> str:
     return f"webhook-secret:v1:{webhook_id}"
+
+
+_CONNECTION_MESSAGES: dict[str, str] = {
+    "smtp_connection_failed": "SMTP server rejected the connection or the credentials.",
+    "sendgrid_auth_failed": "SendGrid rejected the API key.",
+    "ses_connection_failed": "Amazon SES rejected the SMTP credentials.",
+    "gmail_auth_failed": "Google rejected the OAuth tokens or their scopes.",
+    "outlook_auth_failed": "Microsoft rejected the OAuth tokens or their scopes.",
+    "imap_connection_failed": "IMAP server rejected the connection or the credentials.",
+    "imap_mailbox_unavailable": "The IMAP mailbox does not exist or is not selectable.",
+    "whatsapp_auth_failed": "Meta rejected the WhatsApp access token or phone number id.",
+    "twilio_auth_failed": "Twilio rejected the account SID or auth token.",
+    "twilio_account_inactive": "The Twilio account is not active.",
+    "twilio_unreachable": "Twilio could not be reached; try again.",
+    "llm_auth_failed": "The AI provider rejected the API key.",
+    "llm_unreachable": "The AI provider could not be reached; try again.",
+    "vonage_auth_failed": "Vonage rejected the application credentials.",
+    "speech_auth_failed": "The speech provider rejected the API key.",
+    "oauth_token_request_rejected": "The OAuth token endpoint rejected the request.",
+    "oauth_refresh_token_missing": "Reconnect the account; the refresh token is missing.",
+}
+
+
+def _mask_recipient(value: str) -> str:
+    """Mask a recipient for display: never echo the full address/number back."""
+    if "@" in value:
+        local, _, domain = value.partition("@")
+        return (local[:1] or "*") + "***@" + domain
+    digits = re.sub(r"\D", "", value)
+    return ("*" * max(0, len(digits) - 4)) + digits[-4:]
 
 
 def minimize_pii(text: str, *, max_chars: int = 6000, known_names: tuple[str, ...] = ()) -> str:
@@ -146,6 +191,7 @@ class IntegrationService:
         repository: IntegrationRepository | None = None,
         complaints: ComplaintRepository | None = None,
         attachments: AttachmentRepository | None = None,
+        oauth_redirect_base: str | None = None,
     ) -> None:
         if len(idempotency_secret) < 32:
             raise ValueError("Integration idempotency secret must be at least 32 bytes")
@@ -154,6 +200,7 @@ class IntegrationService:
         self.repository = repository or IntegrationRepository()
         self.complaints = complaints or ComplaintRepository()
         self.attachments = attachments or AttachmentRepository()
+        self.oauth_redirect_base = oauth_redirect_base.rstrip("/") if oauth_redirect_base else None
 
     @staticmethod
     def _require_staff(scope: AccessScope) -> None:
@@ -203,7 +250,7 @@ class IntegrationService:
         *,
         channel: CommunicationChannel,
         body: str,
-        job_kind: Literal["send_email", "send_whatsapp"],
+        job_kind: Literal["send_email", "send_whatsapp", "send_sms"],
         key: str,
         payload: dict[str, Any],
     ) -> dict[str, Any]:
@@ -396,6 +443,26 @@ class IntegrationService:
             payload=payload,
         )
 
+    async def _enforce_ai_budget(self, db: AsyncSession, company_id: UUID) -> None:
+        """Bound per-day AI usage with the limit stored in the provider config."""
+        limit = 500
+        for provider in ("openai", "mock_llm"):
+            loaded = await self._load_credentials(db, company_id, provider, fallback=True)
+            if loaded is None:
+                continue
+            raw = loaded[2].get("daily_request_limit")
+            if str(raw).isdigit():
+                limit = max(1, min(int(str(raw)), 100_000))
+            break
+        used = await self.repository.integration_job_counts(
+            db, company_id, "ai_analyze", window_seconds=86_400
+        )
+        if used >= limit:
+            raise HTTPException(
+                status_code=429,
+                detail="The AI daily request limit for this company has been reached",
+            )
+
     async def request_ai_analysis(
         self,
         db: AsyncSession,
@@ -408,6 +475,7 @@ class IntegrationService:
         complaint = await self.complaints.get(db, scope, complaint_id)
         if complaint is None:
             raise HTTPException(status_code=404, detail="Complaint not found")
+        await self._enforce_ai_budget(db, complaint.company_id)
         customer_name = await db.scalar(
             select(Customer.full_name).where(Customer.id == complaint.customer_id)
         )
@@ -930,6 +998,34 @@ class IntegrationService:
     async def list_configs(self, db: AsyncSession) -> list[dict[str, Any]]:
         return await self.repository.list_configs(db)
 
+    async def _load_credentials(
+        self, db: AsyncSession, company_id: UUID | None, provider: str, *, fallback: bool
+    ) -> tuple[UUID, UUID | None, dict[str, Any]] | None:
+        """Return (config_id, config_company_id, credentials) or None. Values never leave here."""
+        row = await self.repository.integration_credentials(
+            db, company_id, provider, fallback=fallback
+        )
+        if row is None:
+            return None
+        try:
+            config = self.cipher.decrypt_json(
+                bytes(row["config_ciphertext"]),
+                associated_data=config_aad(row["config_company_id"], provider),
+            )
+        except (ValueError, TypeError) as exc:
+            raise HTTPException(
+                status_code=503, detail="Integration configuration is invalid"
+            ) from exc
+        return row["config_id"], row["config_company_id"], config
+
+    @staticmethod
+    def _require_complete(provider: str, merged: dict[str, Any]) -> None:
+        required = _PROVIDER_REQUIRED_FIELDS.get(provider, frozenset())
+        if not required <= merged.keys():
+            raise HTTPException(
+                status_code=422, detail="Required credentials are missing for this provider"
+            )
+
     async def save_config(
         self,
         db: AsyncSession,
@@ -944,9 +1040,25 @@ class IntegrationService:
             raise HTTPException(
                 status_code=422, detail="Credential removal must disconnect the provider"
             )
+        if provider in COMPANY_ONLY_PROVIDERS and company_id is None:
+            raise HTTPException(
+                status_code=422, detail="This integration must be configured for one company"
+            )
+        if provider in GLOBAL_ONLY_PROVIDERS and company_id is not None:
+            raise HTTPException(status_code=422, detail="File scanning is a platform-wide setting")
+        merged: dict[str, Any] | None = None
+        if credentials is not None and not clear_credentials:
+            existing = await self._load_credentials(db, company_id, provider, fallback=False)
+            merged = {**(existing[2] if existing else {}), **credentials}
+            if enabled:
+                self._require_complete(provider, merged)
+        elif enabled and not clear_credentials:
+            existing = await self._load_credentials(db, company_id, provider, fallback=False)
+            if existing is not None:
+                self._require_complete(provider, existing[2])
         ciphertext = (
-            self.cipher.encrypt_json(credentials, associated_data=config_aad(company_id, provider))
-            if credentials is not None and not clear_credentials
+            self.cipher.encrypt_json(merged, associated_data=config_aad(company_id, provider))
+            if merged is not None and not clear_credentials
             else None
         )
         try:
@@ -960,8 +1072,297 @@ class IntegrationService:
             "company_id": company_id,
             "provider": provider,
             "enabled": enabled,
-            "credentials_saved": credentials is not None and not clear_credentials,
+            "credentials_saved": merged is not None and not clear_credentials,
+            "connection_status": "unconfigured" if clear_credentials else "configured",
         }
+
+    async def test_connection(
+        self,
+        db: AsyncSession,
+        *,
+        scope: AccessScope,
+        company_id: UUID | None,
+        provider: str,
+    ) -> dict[str, Any]:
+        """Probe credentials without sending mail, messages or placing calls."""
+        self._require_staff(scope)
+        if provider not in _PROVIDER_REQUIRED_FIELDS:
+            raise HTTPException(status_code=422, detail="Unknown integration provider")
+        loaded = await self._load_credentials(db, company_id, provider, fallback=True)
+        if loaded is None:
+            return {
+                "provider": provider,
+                "company_id": company_id,
+                "connection_status": "unconfigured",
+                "tested_at": None,
+                "error_code": None,
+                "message": "No credentials are stored for this provider yet.",
+            }
+        config_id, config_company_id, config = loaded
+        status: str
+        error_code: str | None
+        try:
+            await probe_provider(provider, config)
+            status, error_code = "connected", None
+        except IntegrationProviderError as exc:
+            status, error_code = "failed", exc.code
+        except Exception:
+            status, error_code = "failed", "provider_probe_failed"
+        try:
+            await self.repository.record_connection_test(db, config_id, status, error_code)
+        except Exception as exc:
+            raise self._job_error(exc) from exc
+        return {
+            "provider": provider,
+            "company_id": config_company_id,
+            "connection_status": status,
+            "tested_at": datetime.now(UTC),
+            "error_code": error_code,
+            "message": _CONNECTION_MESSAGES.get(
+                error_code or "", "Connection verified; the provider accepted the credentials."
+            )
+            if status == "connected"
+            else _CONNECTION_MESSAGES.get(
+                error_code or "provider_probe_failed",
+                "The connection test failed. Check the stored credentials.",
+            ),
+        }
+
+    async def sandbox_send(
+        self,
+        db: AsyncSession,
+        *,
+        scope: AccessScope,
+        request: SandboxSendRequest,
+    ) -> dict[str, Any]:
+        """Send a fixed template to the stored sandbox address after explicit consent."""
+        self._require_staff(scope)
+        if not request.confirm:
+            raise HTTPException(
+                status_code=422,
+                detail="Sandbox sends require an explicit confirmation",
+            )
+        loaded = await self._load_credentials(
+            db, request.company_id, request.provider, fallback=True
+        )
+        if loaded is None:
+            raise HTTPException(status_code=409, detail="Integration is not configured")
+        config_id, config_company_id, config = loaded
+        sandbox = str(config.get("sandbox_recipient", "")).strip()
+        if not sandbox:
+            raise HTTPException(
+                status_code=422,
+                detail="Configure sandbox_recipient for this provider before testing sends",
+            )
+        subject = "Insurance Platform sandbox integration test"
+        body = (
+            "This is an automated sandbox test of the configured provider. "
+            "It contains no customer data. Reply STOP to opt out of further tests."
+        )
+        key = "sandbox-" + secrets.token_urlsafe(12)
+        try:
+            if request.provider == "twilio_sms":
+                result = await build_provider(request.provider, config).send(
+                    SMSProviderRequest(recipient=sandbox, body=body), idempotency_key=key
+                )
+            else:
+                result = await build_provider(request.provider, config).send(
+                    EmailSendRequest(
+                        recipients=(sandbox,), subject=subject, text_body=body, locale="en"
+                    ),
+                    idempotency_key=key,
+                )
+        except IntegrationProviderError as exc:
+            status = "failed"
+            await self.repository.record_connection_test(db, config_id, status, exc.code)
+            raise HTTPException(
+                status_code=502,
+                detail={
+                    "message": "Sandbox send failed",
+                    "error_code": exc.code,
+                },
+            ) from exc
+        await self.repository.record_connection_test(db, config_id, "connected", None)
+        return {
+            "provider": request.provider,
+            "queued": True,
+            "recipient_masked": _mask_recipient(sandbox),
+            "message": "Sandbox message accepted by the provider.",
+            "provider_id": result.provider_id,
+            "company_id": config_company_id,
+        }
+
+    def oauth_redirect_uri(self, provider: str) -> str:
+        if not self.oauth_redirect_base:
+            raise HTTPException(
+                status_code=503,
+                detail="OAuth redirect base URL is not configured (PUBLIC_APP_URL)",
+            )
+        return (
+            f"{self.oauth_redirect_base}/api/staff/admin/integration-connections"
+            f"/oauth/{provider}/callback"
+        )
+
+    def _sign_oauth_state(
+        self, actor_id: UUID, company_id: UUID | None, provider: str, redirect_path: str
+    ) -> str:
+        expires = int(datetime.now(UTC).timestamp()) + 600
+        nonce = secrets.token_urlsafe(18)
+        payload = json.dumps(
+            {
+                "actor": str(actor_id),
+                "company": str(company_id) if company_id else None,
+                "provider": provider,
+                "nonce": nonce,
+                "redirect": redirect_path,
+                "exp": expires,
+            },
+            separators=(",", ":"),
+            sort_keys=True,
+        )
+        signature = hmac.new(
+            self.idempotency_secret, payload.encode("utf-8"), hashlib.sha256
+        ).hexdigest()
+        return base64.urlsafe_b64encode(payload.encode("utf-8")).decode("ascii") + "." + signature
+
+    def _verify_oauth_state(
+        self, state: str, *, actor_id: UUID, provider: str
+    ) -> tuple[UUID | None, str]:
+        try:
+            encoded, signature = state.split(".", 1)
+            payload = base64.urlsafe_b64decode(encoded.encode("ascii")).decode("utf-8")
+        except (ValueError, UnicodeDecodeError) as exc:
+            raise HTTPException(status_code=400, detail="OAuth state is invalid") from exc
+        expected = hmac.new(
+            self.idempotency_secret, payload.encode("utf-8"), hashlib.sha256
+        ).hexdigest()
+        if not hmac.compare_digest(expected, signature):
+            raise HTTPException(status_code=400, detail="OAuth state is invalid")
+        try:
+            value = json.loads(payload)
+        except json.JSONDecodeError as exc:
+            raise HTTPException(status_code=400, detail="OAuth state is invalid") from exc
+        if (
+            value.get("actor") != str(actor_id)
+            or value.get("provider") != provider
+            or int(value.get("exp", 0)) < int(datetime.now(UTC).timestamp())
+        ):
+            raise HTTPException(status_code=400, detail="OAuth state expired or mismatched")
+        redirect = str(value.get("redirect") or "/staff/operations")
+        if not redirect.startswith("/") or redirect.startswith("//"):
+            redirect = "/staff/operations"
+        company = value.get("company")
+        try:
+            company_id = UUID(str(company)) if company else None
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail="OAuth state is invalid") from exc
+        return company_id, redirect
+
+    async def oauth_start(
+        self,
+        db: AsyncSession,
+        *,
+        scope: AccessScope,
+        request: OAuthStartRequest,
+    ) -> dict[str, Any]:
+        self._require_staff(scope)
+        if request.provider not in ("gmail_oauth", "outlook_oauth"):
+            raise HTTPException(status_code=422, detail="Unsupported OAuth provider")
+        loaded = await self._load_credentials(
+            db, request.company_id, request.provider, fallback=False
+        )
+        config = loaded[2] if loaded else {}
+        if not config.get("client_id") or not config.get("client_secret"):
+            raise HTTPException(
+                status_code=422,
+                detail="Save the OAuth client_id and client_secret before connecting",
+            )
+        redirect_uri = self.oauth_redirect_uri(request.provider)
+        state = self._sign_oauth_state(
+            scope.actor.id, request.company_id, request.provider, request.redirect_path
+        )
+        url = OAuthTokenBroker.authorize_url(request.provider, config, redirect_uri, state)
+        return {
+            "authorization_url": url,
+            "expires_at": datetime.now(UTC) + timedelta(minutes=10),
+        }
+
+    async def oauth_callback(
+        self,
+        db: AsyncSession,
+        *,
+        scope: AccessScope,
+        provider: str,
+        code: str,
+        state: str,
+    ) -> tuple[str, dict[str, Any]]:
+        """Exchange the code, store the refresh token and redirect back to the console.
+
+        Returns the browser redirect target with sanitized query parameters; the
+        access token is used in-process and never persisted.
+        """
+        self._require_staff(scope)
+        if provider not in ("gmail_oauth", "outlook_oauth"):
+            raise HTTPException(status_code=422, detail="Unsupported OAuth provider")
+        company_id, redirect = self._verify_oauth_state(
+            state, actor_id=scope.actor.id, provider=provider
+        )
+        loaded = await self._load_credentials(db, company_id, provider, fallback=False)
+        if loaded is None:
+            raise HTTPException(
+                status_code=422,
+                detail="Save the OAuth client credentials before connecting",
+            )
+        config_id, _config_company, config = loaded
+        broker = OAuthTokenBroker(dict(config), provider=provider)
+        try:
+            value = await broker.exchange_code(code, self.oauth_redirect_uri(provider))
+        except IntegrationProviderError as exc:
+            await self.repository.record_connection_test(db, config_id, "failed", exc.code)
+            query = urlencode({"integration_oauth": "failed", "provider": provider})
+            return f"{redirect}?{query}", {"provider": provider, "status": "failed"}
+        merged = {**config}
+        if value.get("refresh_token"):
+            merged["refresh_token"] = str(value["refresh_token"])
+        self._require_complete(provider, merged)
+        ciphertext = self.cipher.encrypt_json(
+            merged, associated_data=config_aad(company_id, provider)
+        )
+        await self.repository.save_config(db, company_id, provider, ciphertext, True, False)
+        await self.repository.record_connection_test(db, config_id, "configured", None)
+        query = urlencode({"integration_oauth": "connected", "provider": provider})
+        return f"{redirect}?{query}", {"provider": provider, "status": "configured"}
+
+    async def send_customer_sms(
+        self,
+        db: AsyncSession,
+        scope: AccessScope,
+        complaint_id: UUID,
+        body: str,
+        idempotency_key: str,
+    ) -> dict[str, Any]:
+        self._require_staff(scope)
+        complaint = await self.complaints.get(db, scope, complaint_id)
+        if complaint is None:
+            raise HTTPException(status_code=404, detail="Complaint not found")
+        customer = await db.execute(
+            select(Customer.mobile).where(Customer.id == complaint.customer_id)
+        )
+        mobile = customer.one_or_none()
+        contact = mobile[0] if mobile else None
+        if not contact:
+            raise HTTPException(status_code=409, detail="Customer mobile number is unavailable")
+        payload = {"recipient": contact, "body": body[:480]}
+        return await self._queue_message(
+            db,
+            scope,
+            complaint,
+            channel=CommunicationChannel.SMS,
+            body=body[:480],
+            job_kind="send_sms",
+            key=idempotency_key,
+            payload=payload,
+        )
 
     async def create_api_key(
         self,
@@ -1030,7 +1431,9 @@ class IntegrationService:
             raise HTTPException(
                 status_code=503, detail="Webhook integration configuration is invalid"
             ) from exc
-        twilio_signature = headers.get("x-twilio-signature") if provider == "twilio" else None
+        twilio_signature = (
+            headers.get("x-twilio-signature") if provider in {"twilio", "twilio_sms"} else None
+        )
         twilio_fields: dict[str, list[str]] | None = None
         if twilio_signature:
             try:
@@ -1039,11 +1442,16 @@ class IntegrationService:
                 raise HTTPException(
                     status_code=422, detail="Twilio body must be form encoded"
                 ) from exc
-            valid = verify_twilio_signature(
-                str(config.get("status_callback_url", "")),
-                twilio_fields,
-                twilio_signature,
-                str(config.get("auth_token", "")),
+            callback_urls = [
+                str(config.get(key, ""))
+                for key in ("status_callback_url", "sms_status_callback_url", "incoming_url")
+                if config.get(key)
+            ]
+            valid = any(
+                verify_twilio_signature(
+                    candidate, twilio_fields, twilio_signature, str(config.get("auth_token", ""))
+                )
+                for candidate in callback_urls
             )
         else:
             secret_field = "app_secret" if provider == "whatsapp_cloud" else "webhook_secret"
@@ -1214,6 +1622,47 @@ class IntegrationService:
                     status_code=422, detail="No supported WhatsApp messages or statuses found"
                 )
             return whatsapp_events
+        if provider == "twilio_sms":
+            if not isinstance(document, dict):
+                raise HTTPException(status_code=422, detail="SMS event must be an object")
+            provider_message_id = str(document.get("MessageSid") or document.get("sid") or "")[:256]
+            status_name = str(
+                document.get("MessageStatus") or document.get("SmsStatus") or ""
+            ).lower()
+            known = {"queued", "sending", "sent", "delivered", "undelivered", "failed", "read"}
+            if status_name in known:
+                if not provider_message_id:
+                    raise HTTPException(status_code=422, detail="SMS status event id is missing")
+                stamp = str(document.get("timestamp") or "")
+                status_event = f"{provider_message_id}:{status_name}:{stamp}"
+                return [
+                    (
+                        "sms_status",
+                        status_event[:256],
+                        {"provider_message_id": provider_message_id, "status": status_name},
+                    )
+                ]
+            body = str(document.get("Body") or "")[:5000]
+            sender = str(document.get("From") or "")
+            ticket_no = extract_ticket_no(body) or ""
+            event_id = provider_message_id or str(document.get("event_id") or "")[:256]
+            if not event_id or not ticket_no or not body or not sender:
+                raise HTTPException(
+                    status_code=422,
+                    detail="SMS webhook requires message id, ticket number and body",
+                )
+            return [
+                (
+                    "inbound_sms",
+                    event_id,
+                    {
+                        "ticket_no": ticket_no.upper(),
+                        "external_message_id": event_id,
+                        "sender": sender[:32],
+                        "body": body,
+                    },
+                )
+            ]
         if provider in {"mock_voice", "twilio", "vonage"}:
             if not isinstance(document, dict):
                 raise HTTPException(status_code=422, detail="Voice event must be an object")

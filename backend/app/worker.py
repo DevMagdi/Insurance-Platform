@@ -13,7 +13,7 @@ import re
 from collections.abc import Awaitable, Callable
 from contextlib import suppress
 from datetime import UTC, datetime
-from typing import Any, ClassVar
+from typing import Any, ClassVar, cast
 from uuid import NAMESPACE_URL, UUID, uuid5
 
 from arq import cron
@@ -34,24 +34,23 @@ from app.security.integration_crypto import SecretCipher, derive_idempotency_key
 from app.services.backpressure import DEPTH_KEY
 from app.services.exports import MAX_EXPORT_BYTES, render_export
 from app.services.integration_providers import (
+    EMAIL_PROVIDER_CLASSES,
+    INBOUND_EMAIL_PROVIDER_CLASSES,
+    LLM_PROVIDER_CLASSES,
+    MOCK_PROVIDERS,
+    SMS_PROVIDER_CLASSES,
+    VOICE_PROVIDER_CLASSES,
     EmailProvider,
     EmailSendRequest,
-    IMAPMailProvider,
     IntegrationProviderError,
-    MockLLMProvider,
-    MockVoiceProvider,
-    OpenAICompatibleProvider,
     OutboundAttachment,
-    SendGridEmailProvider,
-    SESEmailProvider,
     SignedWebhookProvider,
-    SMTPEmailProvider,
-    TwilioVoiceProvider,
+    SMSProviderRequest,
     VoiceCallRequest,
     VoiceProvider,
-    VonageVoiceProvider,
     WhatsAppCloudProvider,
     WhatsAppSendRequest,
+    normalize_inbound_voice_event,
 )
 from app.services.integrations import (
     ai_insight_aad,
@@ -62,6 +61,7 @@ from app.services.integrations import (
     webhook_secret_aad,
 )
 from app.services.providers import (
+    ClamAVScanner,
     Delivery,
     ScanTarget,
     SMTPDelivery,
@@ -159,24 +159,39 @@ def enabled_notification_channels(preferences: Any) -> tuple[str, ...]:
     )
 
 
-def _email_provider(provider: str, config: dict[str, Any]) -> EmailProvider:
-    if provider == "smtp":
-        return SMTPEmailProvider(config)
-    if provider == "sendgrid":
-        return SendGridEmailProvider(config)
-    if provider == "ses":
-        return SESEmailProvider(config)
-    raise IntegrationProviderError("email_provider_unsupported", retryable=False)
+def _environment(ctx: dict[str, Any]) -> str:
+    """The deployment environment; absent only in focused unit tests."""
+    return str(getattr(ctx.get("config"), "environment", "test"))
 
 
-def _voice_provider(provider: str, config: dict[str, Any]) -> VoiceProvider:
-    if provider == "mock_voice":
-        return MockVoiceProvider()
-    if provider == "twilio":
-        return TwilioVoiceProvider(config)
-    if provider == "vonage":
-        return VonageVoiceProvider(config)
-    raise IntegrationProviderError("voice_provider_unsupported", retryable=False)
+def _refuse_mock(provider: str, environment: str) -> None:
+    """Mock adapters exist for tests/development only and fail closed in production."""
+    if provider in MOCK_PROVIDERS and environment == "production":
+        raise IntegrationProviderError("mock_provider_forbidden_in_production", retryable=False)
+
+
+def _email_provider(provider: str, config: dict[str, Any], environment: str) -> EmailProvider:
+    _refuse_mock(provider, environment)
+    provider_class = EMAIL_PROVIDER_CLASSES.get(provider)
+    if provider_class is None:
+        raise IntegrationProviderError("email_provider_unsupported", retryable=False)
+    return cast(EmailProvider, provider_class(config))
+
+
+def _sms_provider(provider: str, config: dict[str, Any], environment: str) -> Any:
+    _refuse_mock(provider, environment)
+    provider_class = SMS_PROVIDER_CLASSES.get(provider)
+    if provider_class is None:
+        raise IntegrationProviderError("sms_provider_unsupported", retryable=False)
+    return provider_class(config)
+
+
+def _voice_provider(provider: str, config: dict[str, Any], environment: str) -> VoiceProvider:
+    _refuse_mock(provider, environment)
+    provider_class = VOICE_PROVIDER_CLASSES.get(provider)
+    if provider_class is None:
+        raise IntegrationProviderError("voice_provider_unsupported", retryable=False)
+    return cast(VoiceProvider, provider_class(config))
 
 
 def _minimize_ai_value(value: Any) -> Any:
@@ -310,7 +325,8 @@ async def _process_integration_job(ctx: dict[str, Any], row: Any) -> None:
                 locale=str(payload.get("locale", "en")),
                 attachments=tuple(outbound_attachments),
             )
-            email_result = await _email_provider(row.provider, config).send(
+            environment = _environment(ctx)
+            email_result = await _email_provider(row.provider, config, environment).send(
                 email_request, idempotency_key=digest.hex()
             )
             await _complete_integration_job(
@@ -340,13 +356,26 @@ async def _process_integration_job(ctx: dict[str, Any], row: Any) -> None:
                 ctx, row, state="sent", provider_id=whatsapp_result.provider_id
             )
             return
+        if kind == "send_sms":
+            sms_request = SMSProviderRequest(
+                recipient=str(row.recipient_mobile or payload.get("recipient", "")),
+                body=str(payload.get("body", ""))[:1600],
+            )
+            environment = _environment(ctx)
+            sms_result = await _sms_provider(row.provider, config, environment).send(
+                sms_request, idempotency_key=digest.hex()
+            )
+            await _complete_integration_job(
+                ctx, row, state="sent", provider_id=sms_result.provider_id
+            )
+            return
         if kind == "ai_analyze":
-            if row.provider == "mock_llm":
-                llm: Any = MockLLMProvider()
-            elif row.provider == "openai":
-                llm = OpenAICompatibleProvider(config)
-            else:
+            environment = _environment(ctx)
+            _refuse_mock(row.provider, environment)
+            llm_class = LLM_PROVIDER_CLASSES.get(row.provider)
+            if llm_class is None:
                 raise IntegrationProviderError("llm_provider_unsupported", retryable=False)
+            llm: Any = llm_class(config)
             analysis = await llm.analyze(
                 str(payload.get("text", ""))[:6000], locale=str(payload.get("locale", "en"))
             )
@@ -380,7 +409,8 @@ async def _process_integration_job(ctx: dict[str, Any], row: Any) -> None:
             )
             return
         if kind == "voice_followup":
-            voice = _voice_provider(row.provider, config)
+            environment = _environment(ctx)
+            voice = _voice_provider(row.provider, config, environment)
             call_request = VoiceCallRequest(
                 mobile=str(row.recipient_mobile or payload.get("mobile", "")),
                 ticket_no=str(payload.get("ticket_no", "")),
@@ -437,7 +467,7 @@ async def _process_integration_job(ctx: dict[str, Any], row: Any) -> None:
             )
             return
         if kind == "inbound_voice":
-            inbound_result = await MockVoiceProvider().answer_inbound(payload)
+            inbound_result = normalize_inbound_voice_event(payload)
             provider_call_id = str(
                 inbound_result.provider_call_id or payload.get("provider_call_id", "")
             )[:256]
@@ -453,8 +483,15 @@ async def _process_integration_job(ctx: dict[str, Any], row: Any) -> None:
                 if inbound_result.transcript
                 else None
             )
+            inline_recording: bytes | None = None
+            raw_recording = payload.get("recording_b64")
+            if isinstance(raw_recording, str) and len(raw_recording) <= 40_000_000:
+                try:
+                    inline_recording = base64.b64decode(raw_recording)
+                except (ValueError, TypeError):
+                    inline_recording = None
             try:
-                recording = _encrypt_call_recording(ctx, call_id, inbound_result.recording)
+                recording = _encrypt_call_recording(ctx, call_id, inline_recording)
             except IntegrationProviderError as exc:
                 logger.warning(
                     "Inbound call recording was not stored call_id=%s error=%s",
@@ -526,6 +563,7 @@ async def process_integration_jobs(ctx: dict[str, Any]) -> str:
 
 
 async def poll_imap_inboxes(ctx: dict[str, Any]) -> str:
+    """Poll IMAP and OAuth mailboxes; messages are queued before being marked seen."""
     cipher: SecretCipher = ctx["integration_cipher"]
     idempotency_key: bytes = ctx["integration_idempotency_key"]
     rows = await _worker_query(
@@ -536,17 +574,30 @@ async def poll_imap_inboxes(ctx: dict[str, Any]) -> str:
     queued = 0
     for row in rows:
         company_id = row.company_id
+        provider = str(row.provider)
         try:
             config = cipher.decrypt_json(
-                row.config_ciphertext, associated_data=config_aad(company_id, "imap")
+                row.config_ciphertext, associated_data=config_aad(company_id, provider)
             )
-            mailbox = IMAPMailProvider(config)
+            mailbox_class = INBOUND_EMAIL_PROVIDER_CLASSES.get(provider)
+            if mailbox_class is None:
+                continue
+            mailbox = mailbox_class(config)
             messages = await mailbox.fetch_unseen(limit=20)
         except IntegrationProviderError as exc:
-            logger.warning("IMAP poll failed company_id=%s error=%s", company_id, exc.code)
+            logger.warning(
+                "Inbound mailbox poll failed company_id=%s provider=%s error=%s",
+                company_id,
+                provider,
+                exc.code,
+            )
             continue
         except Exception:
-            logger.warning("IMAP configuration invalid company_id=%s", company_id)
+            logger.warning(
+                "Inbound mailbox configuration invalid company_id=%s provider=%s",
+                company_id,
+                provider,
+            )
             continue
         for message in messages:
             ticket_no_match = re.search(
@@ -568,7 +619,7 @@ async def poll_imap_inboxes(ctx: dict[str, Any]) -> str:
             ).encode("utf-8")
             idem = hmac.new(
                 idempotency_key,
-                f"inbound:{company_id}:imap:{message.external_message_id}".encode(),
+                f"inbound:{company_id}:{provider}:{message.external_message_id}".encode(),
                 hashlib.sha256,
             ).digest()
             payload_digest = hmac.new(idempotency_key, raw_payload, hashlib.sha256).digest()
@@ -577,10 +628,11 @@ async def poll_imap_inboxes(ctx: dict[str, Any]) -> str:
                 await _worker_query(
                     ctx["engine"],
                     "SELECT * FROM app_security.enqueue_worker_inbound("
-                    ":company,:kind,:cipher,:idem,:digest)",
+                    ":company,:kind,:provider,:cipher,:idem,:digest)",
                     {
                         "company": company_id,
                         "kind": "inbound_email",
+                        "provider": provider,
                         "cipher": encrypted,
                         "idem": idem,
                         "digest": payload_digest,
@@ -589,7 +641,11 @@ async def poll_imap_inboxes(ctx: dict[str, Any]) -> str:
                 await mailbox.mark_seen(message.sequence_id)
                 queued += 1
             except Exception:
-                logger.warning("IMAP message queue failed company_id=%s", company_id)
+                logger.warning(
+                    "Inbound mailbox message queue failed company_id=%s provider=%s",
+                    company_id,
+                    provider,
+                )
     return f"queued {queued} inbound email message(s)"
 
 
@@ -685,15 +741,47 @@ async def deliver_insurer(ctx: dict[str, Any]) -> str:
     return f"processed {len(rows)} insurer notice(s)"
 
 
+async def _resolve_scanner(ctx: dict[str, Any]) -> VirusScanner:
+    """Build the ClamAV scanner from the encrypted global ``clamav`` config.
+
+    Without a configured, enabled scanner the fail-closed placeholder (or an
+    injected ``ctx["scanner"]`` in tests) is used: verdicts stay ``None`` and
+    attachments remain untrusted (never "clean").
+    """
+    fallback: VirusScanner = ctx.get("scanner") or UnconfiguredVirusScanner()
+    cipher: SecretCipher | None = ctx.get("integration_cipher")
+    if cipher is None:
+        return fallback
+    try:
+        rows = await _worker_query(
+            ctx["engine"],
+            "SELECT * FROM app_security.integration_credentials(NULL, 'clamav', false)",
+            {},
+        )
+    except Exception:
+        return fallback
+    if not rows:
+        return fallback
+    try:
+        config = cipher.decrypt_json(
+            bytes(rows[0].config_ciphertext),
+            associated_data=config_aad(rows[0].config_company_id, "clamav"),
+        )
+    except (ValueError, TypeError):
+        return fallback
+    return ClamAVScanner(config)
+
+
 async def scan_pending(ctx: dict[str, Any]) -> str:
     """Decrypt one pending attachment at a time and hand it to the scanner.
 
     Content is fetched row by row so a large queue cannot pull the whole table into
     memory, and a payload that cannot be decrypted is recorded as ``error`` instead
-    of being silently left pending.
+    of being silently left pending. An unreachable ClamAV daemon returns ``None``
+    (no verdict) so the upload stays pending and untrusted - never clean.
     """
     engine: AsyncEngine = ctx["engine"]
-    scanner: VirusScanner = ctx["scanner"]
+    scanner: VirusScanner = await _resolve_scanner(ctx)
     blobs: BlobCipher = ctx["blobs"]
     rows = await _worker_query(
         engine, "SELECT * FROM app_security.pending_scans(:limit)", {"limit": 20}

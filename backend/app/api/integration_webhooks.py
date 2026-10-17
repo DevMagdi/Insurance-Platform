@@ -12,7 +12,9 @@ from app.api.deps import client_ip, integration_service
 from app.db import purpose_transaction
 
 router = APIRouter(prefix="/api/webhooks", tags=["public-webhooks"])
-Provider = Literal["email_webhook", "whatsapp_cloud", "mock_voice", "twilio", "vonage"]
+Provider = Literal[
+    "email_webhook", "whatsapp_cloud", "mock_voice", "twilio", "twilio_sms", "vonage"
+]
 _MAX_BODY_BYTES = 1_048_576
 
 

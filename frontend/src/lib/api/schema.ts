@@ -1750,6 +1750,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/staff/complaints/{complaint_id}/sms": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Send Customer Sms Message */
+        post: operations["send_customer_sms_message_api_staff_complaints__complaint_id__sms_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/staff/complaints/{complaint_id}/whatsapp": {
         parameters: {
             query?: never;
@@ -1927,10 +1944,92 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Integrations */
+        /**
+         * Integrations
+         * @description Stored configurations: provider, scope, enablement and connection status.
+         *
+         *     Credential values are never included; only ``has_credentials`` is returned.
+         */
         get: operations["integrations_api_staff_admin_integration_connections_get"];
         /** Configure Integration */
         put: operations["configure_integration_api_staff_admin_integration_connections_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/staff/admin/integration-connections/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Test Integration Connection
+         * @description Non-mutating credential probe; records the status and last test time.
+         */
+        post: operations["test_integration_connection_api_staff_admin_integration_connections_test_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/staff/admin/integration-connections/sandbox-test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Sandbox Integration Send
+         * @description Send the fixed sandbox template to the stored sandbox address only.
+         */
+        post: operations["sandbox_integration_send_api_staff_admin_integration_connections_sandbox_test_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/staff/admin/integration-connections/oauth/{provider}/authorize": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Oauth Authorize */
+        post: operations["oauth_authorize_api_staff_admin_integration_connections_oauth__provider__authorize_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/staff/admin/integration-connections/oauth/{provider}/callback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Oauth Callback
+         * @description Browser return leg: validates the signed state, stores tokens and redirects.
+         */
+        get: operations["oauth_callback_api_staff_admin_integration_connections_oauth__provider__callback_get"];
+        put?: never;
         post?: never;
         delete?: never;
         options?: never;
@@ -2227,42 +2326,6 @@ export interface paths {
         put?: never;
         post?: never;
         delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/staff/admin/integrations": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Integrations */
-        get: operations["integrations_api_staff_admin_integrations_get"];
-        put?: never;
-        /** Save Integration */
-        post: operations["save_integration_api_staff_admin_integrations_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/staff/admin/integrations/{item_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        /** Update Integration */
-        put: operations["update_integration_api_staff_admin_integrations__item_id__put"];
-        post?: never;
-        /** Delete Integration */
-        delete: operations["delete_integration_api_staff_admin_integrations__item_id__delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -2712,7 +2775,7 @@ export interface components {
          * CommunicationChannel
          * @enum {string}
          */
-        CommunicationChannel: "portal" | "email" | "whatsapp" | "phone" | "ai_voice";
+        CommunicationChannel: "portal" | "email" | "whatsapp" | "phone" | "ai_voice" | "sms";
         /** CompanySpec */
         CompanySpec: {
             /** Slug */
@@ -2803,6 +2866,16 @@ export interface components {
          * @enum {string}
          */
         ComplaintStatus: "new" | "assigned" | "in_review" | "resolved" | "reopened" | "transferred";
+        /** ConnectionTestRequest */
+        ConnectionTestRequest: {
+            /** Company Id */
+            company_id?: string | null;
+            /**
+             * Provider
+             * @enum {string}
+             */
+            provider: "smtp" | "sendgrid" | "ses" | "gmail_oauth" | "outlook_oauth" | "whatsapp_cloud" | "email_webhook" | "imap" | "twilio_sms" | "mock_llm" | "openai" | "mock_voice" | "twilio" | "vonage" | "openai_speech" | "clamav";
+        };
         /**
          * ConsentPurpose
          * @enum {string}
@@ -2836,6 +2909,11 @@ export interface components {
              */
             whatsapp_available: boolean;
             notification_preferences?: components["schemas"]["NotificationPreferences"];
+        };
+        /** CustomerSmsRequest */
+        CustomerSmsRequest: {
+            /** Body */
+            body: string;
         };
         /** CustomerVerifyRequest */
         CustomerVerifyRequest: {
@@ -2892,7 +2970,14 @@ export interface components {
          * @enum {string}
          */
         InsuranceType: "health" | "general" | "both";
-        /** IntegrationConfigSpec */
+        /**
+         * IntegrationConfigSpec
+         * @description One encrypted provider configuration.
+         *
+         *     ``credentials`` is a partial update: absent keys keep their stored value, so
+         *     an operator can change a hostname without re-entering every secret. Stored
+         *     values are never echoed back to the client.
+         */
         IntegrationConfigSpec: {
             /** Company Id */
             company_id?: string | null;
@@ -2900,7 +2985,7 @@ export interface components {
              * Provider
              * @enum {string}
              */
-            provider: "smtp" | "sendgrid" | "ses" | "whatsapp_cloud" | "email_webhook" | "imap" | "mock_llm" | "openai" | "mock_voice" | "twilio" | "vonage";
+            provider: "smtp" | "sendgrid" | "ses" | "gmail_oauth" | "outlook_oauth" | "whatsapp_cloud" | "email_webhook" | "imap" | "twilio_sms" | "mock_llm" | "openai" | "mock_voice" | "twilio" | "vonage" | "openai_speech" | "clamav";
             /**
              * Enabled
              * @default true
@@ -2915,30 +3000,6 @@ export interface components {
             credentials?: {
                 [key: string]: string;
             } | null;
-        };
-        /**
-         * IntegrationSpec
-         * @description Provider settings; secrets are referenced by vault name, never inlined.
-         */
-        IntegrationSpec: {
-            /** Company Id */
-            company_id?: string | null;
-            /**
-             * Provider
-             * @enum {string}
-             */
-            provider: "email" | "whatsapp" | "sms" | "ai_voice" | "virus_scan";
-            /** Config */
-            config?: {
-                [key: string]: string | number | boolean;
-            };
-            /** Secret Ref */
-            secret_ref?: string | null;
-            /**
-             * Is Enabled
-             * @default false
-             */
-            is_enabled: boolean;
         };
         /** InviteAcceptRequest */
         InviteAcceptRequest: {
@@ -2980,6 +3041,21 @@ export interface components {
              * @default true
              */
             sms: boolean;
+        };
+        /** OAuthStartRequest */
+        OAuthStartRequest: {
+            /** Company Id */
+            company_id?: string | null;
+            /**
+             * Provider
+             * @enum {string}
+             */
+            provider: "gmail_oauth" | "outlook_oauth";
+            /**
+             * Redirect Path
+             * @default /staff/operations
+             */
+            redirect_path: string;
         };
         /**
          * OwnershipLevel
@@ -3151,6 +3227,24 @@ export interface components {
             description: string;
             /** Permissions */
             permissions?: string[];
+        };
+        /**
+         * SandboxSendRequest
+         * @description Deliberate, confirmed send to the stored sandbox address only.
+         */
+        SandboxSendRequest: {
+            /** Company Id */
+            company_id?: string | null;
+            /**
+             * Provider
+             * @enum {string}
+             */
+            provider: "smtp" | "gmail_oauth" | "outlook_oauth" | "twilio_sms";
+            /**
+             * Confirm
+             * @default false
+             */
+            confirm: boolean;
         };
         /** SavedViewCreate */
         SavedViewCreate: {
@@ -7289,6 +7383,47 @@ export interface operations {
             };
         };
     };
+    send_customer_sms_message_api_staff_complaints__complaint_id__sms_post: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+                /** @description Must equal the csrf_token cookie (double-submit). */
+                "X-CSRF-Token": string;
+            };
+            path: {
+                complaint_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CustomerSmsRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     send_whatsapp_message_api_staff_complaints__complaint_id__whatsapp_post: {
         parameters: {
             query?: never;
@@ -7719,6 +7854,156 @@ export interface operations {
             };
         };
     };
+    test_integration_connection_api_staff_admin_integration_connections_test_post: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Must equal the csrf_token cookie (double-submit). */
+                "X-CSRF-Token": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConnectionTestRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    sandbox_integration_send_api_staff_admin_integration_connections_sandbox_test_post: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Must equal the csrf_token cookie (double-submit). */
+                "X-CSRF-Token": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SandboxSendRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    oauth_authorize_api_staff_admin_integration_connections_oauth__provider__authorize_post: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Must equal the csrf_token cookie (double-submit). */
+                "X-CSRF-Token": string;
+            };
+            path: {
+                provider: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OAuthStartRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    oauth_callback_api_staff_admin_integration_connections_oauth__provider__callback_get: {
+        parameters: {
+            query?: {
+                code?: string | null;
+                state?: string | null;
+            };
+            header?: never;
+            path: {
+                provider: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     webhooks_api_staff_admin_webhooks_get: {
         parameters: {
             query?: never;
@@ -7977,7 +8262,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                provider: "email_webhook" | "whatsapp_cloud" | "mock_voice" | "twilio" | "vonage";
+                provider: "email_webhook" | "whatsapp_cloud" | "mock_voice" | "twilio" | "twilio_sms" | "vonage";
                 company_id: string;
             };
             cookie?: never;
@@ -8418,138 +8703,6 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
-                };
-            };
-        };
-    };
-    integrations_api_staff_admin_integrations_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    }[];
-                };
-            };
-        };
-    };
-    save_integration_api_staff_admin_integrations_post: {
-        parameters: {
-            query?: never;
-            header: {
-                /** @description Must equal the csrf_token cookie (double-submit). */
-                "X-CSRF-Token": string;
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["IntegrationSpec"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: string;
-                    };
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    update_integration_api_staff_admin_integrations__item_id__put: {
-        parameters: {
-            query?: never;
-            header: {
-                /** @description Must equal the csrf_token cookie (double-submit). */
-                "X-CSRF-Token": string;
-            };
-            path: {
-                item_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["IntegrationSpec"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: string;
-                    };
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    delete_integration_api_staff_admin_integrations__item_id__delete: {
-        parameters: {
-            query?: never;
-            header: {
-                /** @description Must equal the csrf_token cookie (double-submit). */
-                "X-CSRF-Token": string;
-            };
-            path: {
-                item_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

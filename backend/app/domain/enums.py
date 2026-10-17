@@ -53,6 +53,7 @@ class CommunicationChannel(StrEnum):
     WHATSAPP = "whatsapp"
     PHONE = "phone"
     AI_VOICE = "ai_voice"
+    SMS = "sms"
 
 
 class MessageDirection(StrEnum):

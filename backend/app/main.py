@@ -140,7 +140,9 @@ async def install_state(
     # with this keyring and stored in PostgreSQL; no object storage is involved.
     app.state.blobs = BlobCipher(keyring)
     integrations_service = IntegrationService(
-        SecretCipher(keyring), derive_idempotency_key(settings.idempotency_master_key())
+        SecretCipher(keyring),
+        derive_idempotency_key(settings.idempotency_master_key()),
+        oauth_redirect_base=settings.public_app_url,
     )
     app.state.integrations = integrations_service
     protector = NationalIdProtector(keyring, decode_key(settings.app_blind_index_key))
