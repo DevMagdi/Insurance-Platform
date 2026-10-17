@@ -26,9 +26,11 @@ from app.domain.enums import OwnershipLevel
 from app.domain.schemas import (
     AssignmentRuleSpec,
     ComplaintFilter,
+    ConnectionTestRequest,
     ExportRequest,
-    IntegrationSpec,
+    IntegrationConfigSpec,
     ReportScheduleSpec,
+    SandboxSendRequest,
     SlaRuleSpec,
 )
 from app.main import app
@@ -93,7 +95,6 @@ async def api(monkeypatch: pytest.MonkeyPatch):
     )
     monkeypatch.setattr(reports_api, "ReportScheduleRepository", lambda: reports)
     monkeypatch.setattr(catalog_api, "CatalogRepository", lambda: catalog_repo)
-    monkeypatch.setattr(operations_api, "IntegrationRepository", lambda: ops)
     monkeypatch.setattr(operations_api, "AssignmentRuleRepository", lambda: ops)
     monkeypatch.setattr(operations_api, "DuplicateCandidateRepository", lambda: ops)
 
@@ -174,24 +175,59 @@ def test_report_integration_and_assignment_schemas_fail_closed() -> None:
     with pytest.raises(ValidationError):  # a partial-day window is not a scheduled window
         report_spec(filters={"window_days": 0})
 
-    with pytest.raises(ValidationError):
-        IntegrationSpec.model_validate(
+    # The vault-name secret_ref path is gone; credentials are an encrypted patch.
+    assert not hasattr(IntegrationConfigSpec, "secret_ref")
+    partial = IntegrationConfigSpec.model_validate(
+        {"provider": "smtp", "enabled": False, "credentials": {"from_email": "ops@example.test"}}
+    )
+    assert partial.credentials == {"from_email": "ops@example.test"}
+    with pytest.raises(ValidationError):  # unknown credential keys are rejected
+        IntegrationConfigSpec.model_validate(
+            {"provider": "smtp", "credentials": {"vault_path": "vault/smtp"}}
+        )
+    with pytest.raises(ValidationError):  # clearing must also disable
+        IntegrationConfigSpec.model_validate(
+            {"provider": "smtp", "enabled": True, "clear_credentials": True}
+        )
+    with pytest.raises(ValidationError):  # inbound-only providers need a company
+        IntegrationConfigSpec.model_validate({"provider": "imap", "enabled": False})
+    with pytest.raises(ValidationError):  # scanning is platform-wide only
+        IntegrationConfigSpec.model_validate(
+            {"provider": "clamav", "company_id": str(uuid4()), "enabled": False}
+        )
+    with pytest.raises(ValidationError):  # app-password IMAP is not a Gmail/Outlook path
+        IntegrationConfigSpec.model_validate(
             {
-                "provider": "email",
-                "config": {"smtp_password": "hunter2"},
+                "provider": "imap",
+                "company_id": str(uuid4()),
+                "enabled": False,
+                "credentials": {
+                    "host": "imap.example.test",
+                    "username": "user@gmail.com",
+                    "password": "app-password",
+                },
             }
         )
-    with pytest.raises(ValidationError):
-        IntegrationSpec.model_validate({"provider": "email", "is_enabled": True})
-    enabled = IntegrationSpec.model_validate(
-        {
-            "provider": "email",
-            "config": {"reply_to": "ops@example.test", "max_batch": 50},
-            "secret_ref": "vault/smtp/insurance",
-            "is_enabled": True,
-        }
-    )
-    assert enabled.is_enabled and enabled.config["max_batch"] == 50
+    with pytest.raises(ValidationError):  # sandbox recipients are addresses or E.164 numbers
+        IntegrationConfigSpec.model_validate(
+            {
+                "provider": "twilio_sms",
+                "enabled": False,
+                "credentials": {"sandbox_recipient": "not-a-number"},
+            }
+        )
+    with pytest.raises(ValidationError):  # SMS country allowlist format
+        IntegrationConfigSpec.model_validate(
+            {
+                "provider": "twilio_sms",
+                "enabled": False,
+                "credentials": {"allowed_country_codes": "Egypt"},
+            }
+        )
+    probe = ConnectionTestRequest.model_validate({"provider": "gmail_oauth"})
+    assert probe.company_id is None
+    sandbox = SandboxSendRequest.model_validate({"provider": "twilio_sms", "confirm": True})
+    assert sandbox.confirm
 
     with pytest.raises(ValidationError):
         AssignmentRuleSpec.model_validate({"strategy": "round_robin"})
@@ -316,29 +352,17 @@ async def test_sla_simulation_and_calendar_preview_are_permission_bound(api: tup
 
 async def test_integration_assignment_and_duplicate_routes(api: tuple) -> None:
     client, ctx, _, _, repo = api
-    integration = {
-        "provider": "email",
-        "config": {"reply_to": "ops@example.test"},
-        "secret_ref": "vault/smtp",
-        "is_enabled": True,
-    }
-    assert (await client.get("/api/staff/admin/integrations")).status_code == 403
-    ctx.permissions = frozenset({"integrations.manage"})
-    assert (await client.get("/api/staff/admin/integrations")).json() == []
+    # The vault-name secret_ref route is retired: real credentials live only in
+    # the encrypted integration-connections store.
+    assert (await client.get("/api/staff/admin/integrations")).status_code == 404
     assert (
         await client.post(
             "/api/staff/admin/integrations",
-            json={**integration, "config": {"api_key": "leak"}},
+            json={"provider": "email", "secret_ref": "vault/smtp", "is_enabled": True},
             headers={"X-CSRF-Token": "known"},
         )
-    ).status_code == 422
-    created = await client.post(
-        "/api/staff/admin/integrations", json=integration, headers={"X-CSRF-Token": "known"}
-    )
-    assert created.status_code == 201
-    assert '"secret_ref":"vault/smtp"' in repo.save.call_args.args[2].model_dump_json()
-    repo.settings.return_value = None
-    assert (await client.get("/api/staff/admin/integrations")).status_code == 403
+    ).status_code == 404
+    assert (await client.get("/api/staff/admin/integration-connections")).status_code == 403
 
     ctx.permissions = frozenset({"complaints.assign"})
     rule = {

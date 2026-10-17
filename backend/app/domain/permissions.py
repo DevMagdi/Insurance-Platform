@@ -36,6 +36,7 @@ PERMISSIONS: Final[frozenset[str]] = frozenset(
         "integrations.manage",
         "integrations.send_email",
         "integrations.send_whatsapp",
+        "integrations.send_sms",
         "integrations.ai_call",
         "reports.manage",
         "audit.view",

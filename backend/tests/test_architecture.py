@@ -117,6 +117,7 @@ def test_catalog_has_every_required_resource_action_and_frozen_migration() -> No
         "integrations.manage",
         "integrations.send_email",
         "integrations.send_whatsapp",
+        "integrations.send_sms",
         "integrations.ai_call",
         "reports.manage",
         "audit.view",
@@ -131,10 +132,21 @@ def test_catalog_has_every_required_resource_action_and_frozen_migration() -> No
     seeded_permissions = set(re.findall(r"\('([^']+)',", sql))
     phase7 = (ROOT / "backend/alembic/sql/020_staff_console.sql").read_text()
     phase9 = (ROOT / "backend/alembic/sql/023_storage_console.sql").read_text()
-    assert seeded_permissions | {"teams.manage", "storage.manage"} == PERMISSIONS
+    phase10 = (ROOT / "backend/alembic/sql/028_integration_connections.sql").read_text()
+    assert (
+        seeded_permissions
+        | {
+            "teams.manage",
+            "storage.manage",
+            "integrations.send_sms",
+        }
+        == PERMISSIONS
+    )
     assert "VALUES ('teams.manage', 'teams', 'manage'" in phase7
     assert "VALUES ('storage.manage', 'storage', 'manage'" in phase9
+    assert "VALUES ('integrations.send_sms', 'integrations', 'send_sms'" in phase10
     assert "WHERE name = 'administrator' AND is_system" in phase9
+    assert "WHERE name = 'administrator' AND is_system" in phase10
 
 
 def test_phase7_keeps_the_phase3_escalation_permission_contract() -> None:

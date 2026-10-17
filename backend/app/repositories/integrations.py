@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from datetime import datetime
 from typing import Any, cast
 from uuid import UUID
@@ -14,7 +13,6 @@ from app.domain.access import AccessScope
 from app.domain.schemas import (
     AssignmentPreview,
     AssignmentRuleSpec,
-    IntegrationSpec,
 )
 from app.models.operations import AssignmentRule
 from app.models.tickets import DuplicateCandidate
@@ -372,26 +370,38 @@ class IntegrationRepository:
         ).one()
         return dict(row._mapping)
 
-    async def save(
-        self, db: AsyncSession, item_id: UUID | None, item: IntegrationSpec
-    ) -> UUID | None:
-        value: UUID | None = await db.scalar(
-            text("SELECT app_security.save_integration(:id, CAST(:data AS jsonb))"),
-            {"id": item_id, "data": item.model_dump_json(exclude_none=True)},
+    async def record_connection_test(
+        self, db: AsyncSession, config_id: UUID, status: str, error_code: str | None
+    ) -> bool:
+        return bool(
+            await db.scalar(
+                text("SELECT app_security.record_integration_connection_test(:id,:status,:error)"),
+                {"id": config_id, "status": status, "error": error_code},
+            )
         )
-        return value
 
-    async def settings(self, db: AsyncSession) -> list[dict[str, Any]] | None:
-        value = await db.scalar(text("SELECT app_security.admin_integrations()"))
-        if isinstance(value, str):
-            return cast("list[dict[str, Any]]", json.loads(value))
-        return cast("list[dict[str, Any]] | None", value)
+    async def integration_credentials(
+        self, db: AsyncSession, company_id: UUID | None, provider: str, *, fallback: bool
+    ) -> dict[str, Any] | None:
+        row = (
+            await db.execute(
+                text(
+                    "SELECT * FROM app_security.integration_credentials("
+                    ":company,:provider,:fallback)"
+                ),
+                {"company": company_id, "provider": provider, "fallback": fallback},
+            )
+        ).one_or_none()
+        return dict(row._mapping) if row else None
 
-    async def delete(self, db: AsyncSession, item_id: UUID) -> bool:
-        value: bool | None = await db.scalar(
-            text("SELECT app_security.delete_integration(:id)"), {"id": item_id}
+    async def integration_job_counts(
+        self, db: AsyncSession, company_id: UUID | None, kind: str, window_seconds: int = 86400
+    ) -> int:
+        value = await db.scalar(
+            text("SELECT app_security.integration_job_counts(:company,:kind,:window)"),
+            {"company": company_id, "kind": kind, "window": window_seconds},
         )
-        return bool(value)
+        return int(value or 0)
 
 
 class AssignmentRuleRepository:

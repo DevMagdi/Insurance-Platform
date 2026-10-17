@@ -11,12 +11,11 @@ from sqlalchemy.exc import DBAPIError
 from app.api.deps import RequestContext, require_permission, require_staff
 from app.api.staff import access_error
 from app.domain.enums import OwnershipLevel
-from app.domain.schemas import AssignmentPreview, AssignmentRuleSpec, IntegrationSpec, TeamSpec
+from app.domain.schemas import AssignmentPreview, AssignmentRuleSpec, TeamSpec
 from app.repositories.admin import AdminRepository
 from app.repositories.integrations import (
     AssignmentRuleRepository,
     DuplicateCandidateRepository,
-    IntegrationRepository,
 )
 from app.security.tokens import csrf_required
 
@@ -106,61 +105,6 @@ async def automation_options(
     if result is None:
         raise HTTPException(status_code=403, detail="Global automation management required")
     return result
-
-
-@router.get("/integrations")
-async def integrations(
-    ctx: RequestContext = Depends(require_permission("integrations.manage")),
-) -> list[dict[str, Any]]:
-    settings = await IntegrationRepository().settings(ctx.db)
-    if settings is None:
-        raise HTTPException(status_code=403, detail="Integration management required")
-    return settings
-
-
-@router.post("/integrations", status_code=201)
-async def save_integration(
-    item: IntegrationSpec,
-    ctx: RequestContext = Depends(require_permission("integrations.manage")),
-    _: None = Depends(csrf_required),
-) -> dict[str, UUID]:
-    try:
-        item_id = await IntegrationRepository().save(ctx.db, None, item)
-    except DBAPIError as exc:
-        raise access_error(exc) from exc
-    if item_id is None:
-        raise HTTPException(status_code=404, detail="Integration unavailable")
-    return {"id": item_id}
-
-
-@router.put("/integrations/{item_id}")
-async def update_integration(
-    item_id: UUID,
-    item: IntegrationSpec,
-    ctx: RequestContext = Depends(require_permission("integrations.manage")),
-    _: None = Depends(csrf_required),
-) -> dict[str, UUID]:
-    try:
-        saved = await IntegrationRepository().save(ctx.db, item_id, item)
-    except DBAPIError as exc:
-        raise access_error(exc) from exc
-    if saved is None:
-        raise HTTPException(status_code=404, detail="Integration unavailable")
-    return {"id": saved}
-
-
-@router.delete("/integrations/{item_id}", status_code=204)
-async def delete_integration(
-    item_id: UUID,
-    ctx: RequestContext = Depends(require_permission("integrations.manage")),
-    _: None = Depends(csrf_required),
-) -> None:
-    try:
-        removed = await IntegrationRepository().delete(ctx.db, item_id)
-    except DBAPIError as exc:
-        raise access_error(exc) from exc
-    if not removed:
-        raise HTTPException(status_code=404, detail="Integration unavailable")
 
 
 @router.get("/assignment-rules")

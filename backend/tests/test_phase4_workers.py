@@ -117,6 +117,7 @@ async def test_worker_persists_minimized_inbound_voice_transcript_and_encrypted_
             "consent_confirmed": True,
             "request_human": True,
             "text": "Customer 29876543210987 asked for a human agent.",
+            "recording_b64": base64.b64encode(b"mock-audio-recording").decode("ascii"),
         },
         provider="twilio",
     )
@@ -188,7 +189,12 @@ async def test_imap_poll_queues_only_ticket_matched_mail_and_acknowledges_messag
     company_id = uuid4()
     config = {"host": "imap.example.test", "username": "support", "password": "private"}
     config_ciphertext = cipher.encrypt_json(config, associated_data=config_aad(company_id, "imap"))
-    config_row = SimpleNamespace(company_id=company_id, config_ciphertext=config_ciphertext)
+    config_row = SimpleNamespace(
+        config_id=uuid4(),
+        company_id=company_id,
+        provider="imap",
+        config_ciphertext=config_ciphertext,
+    )
     queued: list[dict[str, Any]] = []
     calls = 0
 
@@ -221,7 +227,7 @@ async def test_imap_poll_queues_only_ticket_matched_mail_and_acknowledges_messag
 
     mailbox = IMAP(config)
     monkeypatch.setattr(worker, "_worker_query", query)
-    monkeypatch.setattr(worker, "IMAPMailProvider", lambda _config: mailbox)
+    monkeypatch.setattr(worker, "INBOUND_EMAIL_PROVIDER_CLASSES", {"imap": lambda _config: mailbox})
     result = await poll_imap_inboxes(
         {
             "engine": object(),
@@ -233,6 +239,7 @@ async def test_imap_poll_queues_only_ticket_matched_mail_and_acknowledges_messag
     assert mailbox.marked == ["1", "2"]
     assert len(queued) == 1
     assert queued[0]["kind"] == "inbound_email"
+    assert queued[0]["provider"] == "imap"
     payload = cipher.decrypt_json(queued[0]["cipher"], associated_data=job_aad(queued[0]["idem"]))
     assert payload["ticket_no"] == "CMP-2026-000003"
     assert calls == 2
