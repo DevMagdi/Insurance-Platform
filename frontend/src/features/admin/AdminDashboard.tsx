@@ -131,6 +131,21 @@ export function AdminDashboard({ access, range, onNavigate }: Props) {
         {canSeeUsers && <button type="button" className="admin-text-link" onClick={() => onNavigate({ page: 'users' })}>إدارة المستخدمين ←</button>}
       </section>
     </div>
+    <section className="admin-panel"><div className="admin-panel-head"><div><span className="admin-eyebrow">أولوية اليوم</span><h2>يحتاج انتباه</h2></div><button type="button" className="admin-text-link" onClick={() => onNavigate({ page: 'complaints' } as AppRoute)}>فتح قائمة الشكاوى ←</button></div>
+      <div className="attention-list">
+        {[
+          { tone: 'urgent', label: 'تجاوزات مستوى الخدمة', note: 'تجاوزت الموعد المستهدف وتحتاج تدخلاً', value: kpis?.sla_breaches ?? 0 },
+          { tone: 'high', label: 'شكاوى جديدة بانتظار الإسناد', note: 'لم تُسند إلى مختص بعد', value: kpis?.new ?? 0 },
+          { tone: 'normal', label: 'شكاوى أُعيد فتحها', note: 'تحتاج مراجعة سبب إعادة الفتح', value: kpis?.reopened ?? 0 },
+        ].map((row) => (
+          <button key={row.label} type="button" className={`attention-row ${row.tone}`} onClick={() => onNavigate({ page: 'complaints' } as AppRoute)}>
+            <span className="attention-flag" aria-hidden="true" />
+            <span className="attention-main"><strong>{row.label}</strong><small>{row.note}</small></span>
+            <span className="attention-time">{formatNumber(row.value)}</span>
+          </button>
+        ))}
+      </div>
+    </section>
     <section className="admin-panel"><div className="admin-panel-head"><div><span className="admin-eyebrow">اختصارات العمل</span><h2>انتقل إلى الإدارة</h2></div></div>
       <div className="admin-shortcuts">{shortcuts.filter((item) => item.visible).map((item) => <button key={item.page} type="button" onClick={() => onNavigate({ page: item.page } as AppRoute)}>
         <span className="admin-shortcut-icon"><Icon name={item.icon} size={19} /></span><span><strong>{item.label}</strong><small>{item.description}</small></span><Icon name="arrow" size={16} />
