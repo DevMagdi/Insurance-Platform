@@ -7,9 +7,7 @@ import { NewComplaintPage } from './pages/NewComplaintPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { StaffAnalyticsPage } from './pages/StaffAnalyticsPage';
 import { StaffAuditPage, StaffExportsPage } from './pages/StaffAuditExportsPage';
-import { StaffDashboardPage } from './pages/StaffDashboardPage';
 import { StaffLoginPage } from './pages/StaffLoginPage';
-import { StaffTicketPage } from './pages/StaffTicketPage';
 import { TicketDetailPage } from './pages/TicketDetailPage';
 import { TicketsPage } from './pages/TicketsPage';
 import { TrackPage } from './pages/TrackPage';
@@ -23,19 +21,25 @@ function App() {
   const portalTicketMatch = path.match(/^\/portal\/complaints\/([0-9a-fA-F-]{36})$/);
   const staffTicketMatch = path.match(/^\/staff\/tickets\/([0-9a-fA-F-]{36})$/);
   const consoleTicketMatch = path.match(/^\/staff\/complaints\/([0-9a-fA-F-]{36})$/);
-  const dashboardTicketMatch = path.match(/^\/dashboard\/complaints\/([0-9a-fA-F-]{36})$/);
-  const staffConsoleRoute = /^\/staff(?:\/(?:overview|admin|complaints|users|roles|operations|audit|storage))?$/.test(path);
+  // `/dashboard*` is the legacy staff console URL. It has always been bookmarked
+  // and linked from older emails, so route it to the same console and rewrite the
+  // address bar once, instead of rendering a leftover page outside the shell.
+  const legacyConsole = /^\/dashboard(?:\/|$)/.test(path);
+  const staffConsoleRoute = legacyConsole || /^\/staff(?:\/(?:overview|admin|complaints|users|roles|operations|audit|storage))?$/.test(path);
 
-  if (consoleTicketMatch) {
-    return <Layout><StaffTicketPage complaintId={consoleTicketMatch[1]} /></Layout>;
+  // A staff ticket belongs to the staff console, not the customer layout:
+  // rendering it through <Layout> dropped the console chrome, its dark theme
+  // and its ticket workspace whenever the URL was opened directly or reloaded.
+  if (consoleTicketMatch || staffTicketMatch) {
+    return <Suspense fallback={<div className="min-h-screen p-6 text-center">جارٍ تحميل مساحة الإدارة…</div>}><StaffConsole /></Suspense>;
   }
-  if (staffConsoleRoute) return <Suspense fallback={<div className="min-h-screen p-6 text-center">جارٍ تحميل مساحة الإدارة…</div>}><StaffConsole /></Suspense>;
+  if (staffConsoleRoute) {
+    if (legacyConsole) window.history.replaceState({}, '', path.replace(/^\/dashboard/, '/staff'));
+    return <Suspense fallback={<div className="min-h-screen p-6 text-center">جارٍ تحميل مساحة الإدارة…</div>}><StaffConsole /></Suspense>;
+  }
 
   let page: React.ReactNode;
   if (path === '/staff/login' || path === '/auth/staff' || path === '/auth') page = <StaffLoginPage />;
-  else if (path === '/dashboard') page = <StaffDashboardPage />;
-  else if (staffTicketMatch) page = <StaffTicketPage complaintId={staffTicketMatch[1]} />;
-  else if (dashboardTicketMatch) page = <StaffTicketPage complaintId={dashboardTicketMatch[1]} />;
   else if (path === '/staff/analytics') page = <StaffAnalyticsPage />;
   else if (path === '/staff/audit') page = <StaffAuditPage />;
   else if (path === '/staff/exports') page = <StaffExportsPage />;

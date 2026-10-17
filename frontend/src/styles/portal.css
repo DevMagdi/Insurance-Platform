@@ -2450,6 +2450,12 @@ html[lang='ar'] .track-result-body dt {
 }
 
 @media (max-width: 640px) {
+  /* `hidden` would turn the card into a scroll container and break the sticky
+     action bar below; `clip` still rounds the corners but leaves sticky alone. */
+  .wizard-card {
+    overflow: clip;
+  }
+
   .wizard-card-head {
     padding: 20px 20px 0;
   }
@@ -2458,8 +2464,21 @@ html[lang='ar'] .track-result-body dt {
     padding: 18px 20px 22px;
   }
 
+  /* Keep “next / submit” reachable with the thumb: it parks just above the
+     fixed bottom navigation instead of sliding underneath it. */
   .wizard-card-foot {
-    padding: 14px 20px;
+    position: sticky;
+    bottom: calc(82px + env(safe-area-inset-bottom));
+    z-index: 5;
+    padding: 12px 20px;
+    background: var(--surface-1);
+    box-shadow: 0 -10px 24px -18px rgba(8, 26, 47, 0.35);
+    flex-wrap: wrap;
+    row-gap: 10px;
+  }
+
+  .wizard-card-foot .draft-note {
+    display: none;
   }
 
   .form-grid-2 {

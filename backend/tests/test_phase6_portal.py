@@ -91,6 +91,7 @@ def test_reopen_and_csat_windows_mirror_sql_functions() -> None:
     assert csat_eligible(make_complaint(resolved_at=now)) is True
     assert csat_eligible(make_complaint(resolved_at=now - timedelta(days=31))) is False
     assert csat_eligible(make_complaint(resolved_at=None)) is False
+    assert csat_eligible(make_complaint(resolved_at=now, csat_score=4)) is False
 
 
 def test_sse_signature_changes_with_status_and_messages() -> None:

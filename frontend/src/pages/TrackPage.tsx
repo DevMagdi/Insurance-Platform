@@ -121,8 +121,8 @@ export function TrackForm() {
 }
 
 export function TrackPage() {
-  const { t } = useTranslation();
-  const Arrow = useLeftArrow();
+  const { t, i18n } = useTranslation();
+  const Arrow = i18n.language === 'ar' ? ArrowLeft : ArrowRight;
 
   return (
     <div>
@@ -178,9 +178,4 @@ export function TrackPage() {
       </div>
     </div>
   );
-}
-
-function useLeftArrow() {
-  const { i18n } = useTranslation();
-  return i18n.language === 'ar' ? ArrowLeft : ArrowRight;
 }

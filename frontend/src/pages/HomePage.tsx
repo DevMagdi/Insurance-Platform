@@ -23,14 +23,9 @@ import { Button } from '../components/ui';
 import { StatusChip } from '../components/ui/Badge';
 import { TrackForm } from './TrackPage';
 
-function useArrow() {
-  const { i18n } = useTranslation();
-  return i18n.language === 'ar' ? ArrowLeft : ArrowRight;
-}
-
 function HeroCard() {
-  const { t } = useTranslation();
-  const Arrow = useArrow();
+  const { t, i18n } = useTranslation();
+  const Arrow = i18n.language === 'ar' ? ArrowLeft : ArrowRight;
   const steps = [
     { label: t('home.mockStep1'), time: '09:12', state: 'done' as const, icon: Check },
     { label: t('home.mockStep2'), time: '09:40', state: 'done' as const, icon: UserRound },
@@ -104,9 +99,9 @@ function HeroCard() {
 }
 
 export function HomePage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const reduced = useReducedMotion();
-  const Arrow = useArrow();
+  const Arrow = i18n.language === 'ar' ? ArrowLeft : ArrowRight;
   const fade = reduced
     ? {}
     : { initial: { opacity: 0, y: 14 }, animate: { opacity: 1, y: 0 } };

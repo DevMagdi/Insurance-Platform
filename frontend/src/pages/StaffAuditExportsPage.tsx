@@ -69,6 +69,15 @@ export function StaffAuditPage() {
   );
 }
 
+const EXPORT_KIND: Record<string, string> = { complaints: 'الشكاوى', analytics: 'التحليلات' };
+const EXPORT_STATUS: Record<string, string> = {
+  queued: 'في الانتظار',
+  running: 'قيد التجهيز',
+  completed: 'جاهز للتنزيل',
+  failed: 'فشل',
+  expired: 'منتهي',
+};
+
 export function StaffExportsPage() {
   const { t } = useTranslation();
   const { access } = useStaffMe();
@@ -98,15 +107,18 @@ export function StaffExportsPage() {
           <Field label={t('staff.to')}><TextInput type="datetime-local" value={window.date_to?.slice(0, 16)} onChange={(e) => setWindow((w) => ({ ...w, date_to: new Date(e.target.value).toISOString() }))} /></Field>
         </div>
         <div className="mt-4 flex flex-wrap gap-2">
-          <button type="button" className={primaryButton} disabled={create.isPending} onClick={() => create.mutate('complaints')}>Complaints CSV</button>
-          <button type="button" className={ghostButton} disabled={create.isPending} onClick={() => create.mutate('analytics')}>Analytics CSV</button>
+          <button type="button" className={primaryButton} disabled={create.isPending} onClick={() => create.mutate('complaints')}>تصدير الشكاوى (CSV)</button>
+          <button type="button" className={ghostButton} disabled={create.isPending} onClick={() => create.mutate('analytics')}>تصدير التحليلات (CSV)</button>
           <button type="button" className={ghostButton} onClick={() => void jobs.refetch()}>{t('common.retry')}</button>
         </div>
-        {jobs.isLoading ? <LoadingState /> : jobs.isError ? <ErrorState message={t('staff.loadError')} /> : (
-          <ul className="mt-5 space-y-2">
+        <h3 className="mt-7 font-black">أحدث عمليات التصدير</h3>
+        {jobs.isLoading ? <LoadingState /> : jobs.isError ? <ErrorState message={t('staff.loadError')} /> : (jobs.data ?? []).length === 0 ? (
+          <p className="mt-3 text-sm text-slate-500 dark:text-slate-300">لا توجد عمليات تصدير بعد. اختر الفترة ثم ابدأ تصديراً جديداً.</p>
+        ) : (
+          <ul className="mt-3 space-y-2">
             {(jobs.data ?? []).map((job) => (
               <li key={job.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-slate-950/5 px-3 py-2 text-sm dark:bg-white/10">
-                <span>{job.kind} · {job.status} · {new Date(job.created_at).toLocaleString()}</span>
+                <span>{EXPORT_KIND[job.kind] ?? job.kind} · {EXPORT_STATUS[job.status] ?? job.status} · {new Date(job.created_at).toLocaleString('ar-EG')}</span>
                 {job.status === 'completed' && (
                   <button type="button" className="font-bold text-amber-600 dark:text-amber-300" onClick={() => void staffApi.downloadExport(job.id)}>{t('common.download')}</button>
                 )}

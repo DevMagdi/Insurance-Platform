@@ -57,15 +57,18 @@ const NOTIFICATION_LABELS: Record<string, string> = {
 };
 
 function routeFromPath(pathname: string): AppRoute {
-  const ticket = pathname.match(/^\/staff\/complaints\/([^/]+)$/);
+  // Legacy `/dashboard*` URLs are still bookmarked; map them onto the console so
+  // they never fall back to the "overview" page with the wrong ticket.
+  const path = pathname.replace(/^\/dashboard(?=\/|$)/, '/staff');
+  const ticket = path.match(/^\/staff\/(?:complaints|tickets)\/([^/]+)$/);
   if (ticket?.[1]) return { page: 'ticket', id: decodeURIComponent(ticket[1]) };
-  if (pathname === '/staff/complaints') return { page: 'complaints' };
-  if (pathname === '/staff/admin') return { page: 'admin' };
-  if (pathname === '/staff/users') return { page: 'users' };
-  if (pathname === '/staff/roles') return { page: 'roles' };
-  if (pathname === '/staff/operations') return { page: 'operations' };
-  if (pathname === '/staff/audit') return { page: 'audit' };
-  if (pathname === '/staff/storage') return { page: 'storage' };
+  if (path === '/staff/complaints') return { page: 'complaints' };
+  if (path === '/staff/admin') return { page: 'admin' };
+  if (path === '/staff/users') return { page: 'users' };
+  if (path === '/staff/roles') return { page: 'roles' };
+  if (path === '/staff/operations') return { page: 'operations' };
+  if (path === '/staff/audit') return { page: 'audit' };
+  if (path === '/staff/storage') return { page: 'storage' };
   return { page: 'overview' };
 }
 function pathForRoute(route: AppRoute): string {

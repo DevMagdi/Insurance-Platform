@@ -113,6 +113,14 @@ export function TicketDetailPage({ complaintId }: { complaintId: string }) {
     queryFn: () => api.attachments(complaintId),
     enabled: Boolean(me),
   });
+  // The complaint payload only carries the English insurer name. The portal is
+  // Arabic-first, so resolve the localised name from the shared company list.
+  const companiesQuery = useQuery({
+    queryKey: ['companies'],
+    queryFn: api.companies,
+    staleTime: 300_000,
+    enabled: Boolean(me),
+  });
 
   // Real-time updates via SSE (cookie-authenticated). Any event simply
   // invalidates the scoped queries; polling stays as a quiet fallback.
@@ -179,6 +187,11 @@ export function TicketDetailPage({ complaintId }: { complaintId: string }) {
   if (detailQuery.isError || !detailQuery.data) {
     return <ErrorState message={t('errors.generic')} onRetry={() => void detailQuery.refetch()} />;
   }
+  const companyLabel = (() => {
+    const company = companiesQuery.data?.find((item) => item.id === detailQuery.data.company_id);
+    if (!company) return detailQuery.data.company_name;
+    return i18n.language === 'ar' ? company.name_ar || company.name_en : company.name_en || company.name_ar;
+  })();
 
   const detail = detailQuery.data;
   const timeline = timelineQuery.data;
@@ -211,7 +224,7 @@ export function TicketDetailPage({ complaintId }: { complaintId: string }) {
           </div>
           <h1>{detail.subject}</h1>
           <div className="detail-hero-meta">
-            <span><Building2 size={12} /> {detail.company_name}</span>
+            <span><Building2 size={12} /> {companyLabel}</span>
             <span><FileText size={12} /> {t('detail.policy')} <b dir="ltr">{detail.policy_number}</b></span>
             <span><ShieldCheck size={12} /> {detail.assigned_agent_name ?? t('timeline.noAgent')}</span>
             <span><CalendarDays size={12} /> {formatDate(detail.created_at, i18n.language)}</span>
@@ -345,7 +358,7 @@ export function TicketDetailPage({ complaintId }: { complaintId: string }) {
             <dl className="side-list">
               <div className="side-row">
                 <dt>{t('detailExtra.company')}</dt>
-                <dd>{detail.company_name}</dd>
+                <dd>{companyLabel}</dd>
               </div>
               <div className="side-row">
                 <dt>{t('detailExtra.policy')}</dt>

@@ -373,6 +373,10 @@ async def test_api_ownership_guest_audit_status_and_refresh(test_app: SimpleName
             headers=csrf(ctx.customer),
         )
     ).status_code == 200
+    # The score must land on the complaint itself: analytics, exports and the
+    # staff workspace all read complaints.csat_score rather than the raw table.
+    rated = await ctx.customer.get(f"/api/customer/complaints/{complaint_id}")
+    assert rated.status_code == 200 and rated.json()["csat_score"] == 5
     reopened = await ctx.customer.post(
         f"/api/customer/complaints/{complaint_id}/reopen", headers=csrf(ctx.customer)
     )
@@ -485,7 +489,13 @@ def test_phase4_migration_rls_grants_and_permission_codes(stack: dict, identitie
     """Validate the Phase 4 schema and role boundaries on real PostgreSQL 16."""
     with psycopg.connect(stack["admin"]) as db:
         revision = db.execute("SELECT version_num FROM alembic_version").fetchone()[0]
-        assert revision == "20261016_24"
+        # Derive the expected head from the migration graph instead of hard-coding
+        # a revision: the suite always runs `alembic upgrade head`.
+        from alembic.config import Config
+        from alembic.script import ScriptDirectory
+
+        config = Config(str(Path(__file__).resolve().parents[1] / "alembic.ini"))
+        assert revision == ScriptDirectory.from_config(config).get_current_head()
         guarded = db.execute(
             """SELECT relname, relrowsecurity, relforcerowsecurity
                FROM pg_class
