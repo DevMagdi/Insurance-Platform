@@ -95,6 +95,33 @@ port, and the API sets `Secure` cookies in production.
 5. The job polls `http://127.0.0.1:$HTTP_PORT/api/health/ready` for up to 150 seconds. Readiness checks PostgreSQL through PgBouncer *and* Redis; a failure fails the job and prints `docker compose ps` for triage.
 6. Old layers are pruned on the host (`docker image prune --filter until=168h`).
 
+## First administrator (empty database)
+
+Migrations and `up` never create staff accounts or demo data, so a fresh
+production database has nobody who can sign in. Create exactly one
+administrator with the opt-in `tools` service (it is **not** started by
+`up -d`):
+
+```bash
+cd /srv/insurance-platform
+docker compose --env-file .env.production -f docker-compose.prod.yml \
+  run --rm bootstrap_admin
+```
+
+The command prompts for a name, e-mail and a 12+ character password (letters
+and digits), stores an Argon2id hash, creates the `administrator` role with the
+full permission catalog and grants global all-companies/all-ownership scope.
+It creates **no** insurers, customers, complaints, teams or demo rows, and it
+refuses to run when any staff account already exists (exit code `1`), so it
+cannot silently add a second privileged identity. For automation, set
+`BOOTSTRAP_ADMIN_NAME`, `BOOTSTRAP_ADMIN_EMAIL` and `BOOTSTRAP_ADMIN_PASSWORD`
+in the invocation environment and add `--non-interactive` plus `-T`; never put a
+real password in the compose file or a workflow log. Afterwards sign in at
+`/staff/login`; sessions and the login timestamp are recorded on first use.
+
+`seed` is a development-only alternative and must never run against this
+database (it adds demo accounts and closes the bootstrap path).
+
 ## Rollback
 
 Images are immutable and tagged by commit SHA, so a rollback is a tag change —

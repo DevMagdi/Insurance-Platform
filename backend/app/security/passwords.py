@@ -31,6 +31,11 @@ class StaffPasswords:
         ):
             raise ValueError("Password must be 12-128 characters and include letters and digits")
 
+    def hash_sync(self, password: str) -> str:
+        """Blocking variant for one-shot management commands (seed/bootstrap)."""
+        self.validate(password)
+        return self._hasher.hash(password)
+
     async def hash(self, password: str) -> str:
         self.validate(password)
         return await asyncio.to_thread(self._hasher.hash, password)

@@ -435,7 +435,8 @@ def command_up() -> int:
     log(f"app      -> http://localhost:{VITE_PORT}/")
     log(f"api      -> http://127.0.0.1:{API_PORT}/api/health/ready")
     log(f"mailbox  -> {MAILDIR}")
-    log("run `make local-seed` to load the demo dataset")
+    log("run `make local-bootstrap-admin` for the first admin (no demo data)")
+    log("or `make local-seed` to load the demo dataset")
     return 0
 
 
@@ -460,6 +461,26 @@ def command_status() -> int:
         else:
             running = read_pid(name) is not None
         print(f"{name:9s} {'running' if running else 'stopped'}")
+    return 0
+
+
+def command_bootstrap_admin() -> int:
+    """Create the first administrator only; the command prompts on stdin."""
+    env = read_env()
+    if not port_open(POSTGRES_PORT):
+        raise SystemExit("PostgreSQL is not running - start it with `make local-up`.")
+    run_migrations(env)
+    ensure_worker_role(env)
+    database_admin_url = (
+        f"postgresql+psycopg://{env['POSTGRES_USER']}:{env['POSTGRES_PASSWORD']}"
+        f"@127.0.0.1:{POSTGRES_PORT}/{env['POSTGRES_DB']}"
+    )
+    subprocess.run(
+        [sys.executable, "-m", "app.scripts.bootstrap_admin"],
+        cwd=str(ROOT / "backend"),
+        env={**os.environ, **env, "DATABASE_ADMIN_URL": database_admin_url},
+        check=True,
+    )
     return 0
 
 
@@ -488,12 +509,15 @@ def command_seed() -> int:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("command", choices=("up", "down", "status", "seed"))
+    parser.add_argument(
+        "command", choices=("up", "down", "status", "bootstrap-admin", "seed")
+    )
     args = parser.parse_args()
     handlers = {
         "up": command_up,
         "down": command_down,
         "status": command_status,
+        "bootstrap-admin": command_bootstrap_admin,
         "seed": command_seed,
     }
     return handlers[args.command]()

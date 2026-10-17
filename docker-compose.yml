@@ -137,6 +137,24 @@ services:
       mailpit:
         condition: service_started
 
+  bootstrap_admin:
+    build:
+      context: .
+      dockerfile: infra/Dockerfile.backend
+    # Opt-in only: `docker compose up` must never create staff accounts. It
+    # prompts for the name, e-mail and password; set BOOTSTRAP_ADMIN_* and pass
+    # --non-interactive for automation. Creates one admin and no demo data.
+    profiles: ['tools']
+    environment:
+      DATABASE_ADMIN_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      BOOTSTRAP_ADMIN_NAME: ${BOOTSTRAP_ADMIN_NAME:-}
+      BOOTSTRAP_ADMIN_EMAIL: ${BOOTSTRAP_ADMIN_EMAIL:-}
+      BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:-}
+    command: ['python', '-m', 'app.scripts.bootstrap_admin']
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
   seed:
     build:
       context: .
