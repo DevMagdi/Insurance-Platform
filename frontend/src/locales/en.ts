@@ -231,6 +231,8 @@ export const en = {
     "generateAi": "Generate classification, sentiment, summary and reply suggestion",
     "aiQueued": "AI analysis queued…",
     "sendAi": "Send approved reply",
+    "sendAiEmail": "Send approved reply by email",
+    "sendAiWhatsapp": "Send approved reply via WhatsApp",
     "accept": "Accept",
     "reject": "Reject",
     "duplicates": "Possible duplicates",

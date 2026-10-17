@@ -375,12 +375,14 @@ export const staffApi = {
       body: { accept },
     }),
 
-  sendAi: (complaintId: string, insightId: string) =>
-    request<IntegrationJobQueued>(`/api/staff/complaints/${complaintId}/ai/insights/${insightId}/send`, {
-      method: 'POST',
-      headers: { 'Idempotency-Key': crypto.randomUUID() },
-      body: {},
-    }),
+  sendAi: (complaintId: string, insightId: string, channel: 'email' | 'whatsapp') =>
+    request<IntegrationJobQueued>(
+      `/api/staff/complaints/${complaintId}/ai/insights/${insightId}/send?channel=${channel}`,
+      {
+        method: 'POST',
+        headers: { 'Idempotency-Key': crypto.randomUUID() },
+      },
+    ),
 
   analytics: (filters: StaffComplaintFilters) =>
     request<AnalyticsOverview>(`/api/staff/analytics/overview${staffComplaintsQuery(filters)}`),

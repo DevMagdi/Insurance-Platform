@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { api as rootApi } from '../api';
-import { ApiError, api } from './api';
+import { ApiError, api, staffApi } from './api';
 import { apiFetch } from './api/client';
 
 function setCsrfCookie(): void {
@@ -141,5 +141,50 @@ describe('browser API authentication', () => {
     const refreshCalls = fetchMock.mock.calls.filter(([input]) => String(input) === '/api/auth/refresh');
     expect(refreshCalls).toHaveLength(1);
     expect(new Headers(refreshCalls[0][1]?.headers).get('X-CSRF-Token')).toBe('unit-test-csrf');
+  });
+});
+
+describe('phase-4 integration channel contract', () => {
+  it('sends an approved AI reply with the channel the backend requires', async () => {
+    setCsrfCookie();
+    const calls: Array<{ path: string; init?: RequestInit }> = [];
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      calls.push({ path: String(input), init });
+      return Response.json({ job_id: 'job-1', state: 'queued', created: true, message_id: 'm-1' });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await staffApi.sendAi('complaint-1', 'insight-1', 'email');
+    await staffApi.sendAi('complaint-1', 'insight-1', 'whatsapp');
+
+    expect(calls.map((call) => call.path)).toEqual([
+      '/api/staff/complaints/complaint-1/ai/insights/insight-1/send?channel=email',
+      '/api/staff/complaints/complaint-1/ai/insights/insight-1/send?channel=whatsapp',
+    ]);
+    for (const call of calls) {
+      const headers = new Headers(call.init?.headers);
+      expect(headers.get('Idempotency-Key')).toBeTruthy();
+      expect(headers.get('X-CSRF-Token')).toBe('unit-test-csrf');
+      expect(call.init?.method).toBe('POST');
+    }
+  });
+
+  it('queues AI analysis and reviews an insight through the canonical endpoints', async () => {
+    setCsrfCookie();
+    const calls: Array<{ path: string; init?: RequestInit }> = [];
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      calls.push({ path: String(input), init });
+      return Response.json({ job_id: 'job-2', state: 'queued', created: true });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await staffApi.generateAi('complaint-1', 'ar');
+    await staffApi.reviewAi('complaint-1', 'insight-1', true);
+
+    expect(calls[0].path).toBe('/api/staff/complaints/complaint-1/ai/analyze');
+    expect(new Headers(calls[0].init?.headers).get('Idempotency-Key')).toBeTruthy();
+    expect(JSON.parse(String(calls[0].init?.body))).toEqual({ locale: 'ar' });
+    expect(calls[1].path).toBe('/api/staff/complaints/complaint-1/ai/insights/insight-1/review');
+    expect(JSON.parse(String(calls[1].init?.body))).toEqual({ accept: true });
   });
 });

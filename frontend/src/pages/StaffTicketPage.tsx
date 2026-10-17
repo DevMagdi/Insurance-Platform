@@ -239,9 +239,14 @@ export function StaffTicketPage({ complaintId }: { complaintId: string }) {
                     </div>
                   )}
                   {insight.kind === 'reply' && insight.review_status === 'accepted' && (
-                    <button type="button" className="mt-2 font-bold text-emerald-600" onClick={() => void staffApi.sendAi(complaintId, insight.id).then(() => ai.refetch()).catch((caught: unknown) => setError(caught instanceof ApiError ? caught.detail : t('errors.generic')))}>
-                      {t('staff.sendAi')}
-                    </button>
+                    <div className="mt-2 flex flex-wrap gap-3">
+                      <button type="button" className="font-bold text-emerald-600" onClick={() => void staffApi.sendAi(complaintId, insight.id, 'email').then(() => ai.refetch()).catch((caught: unknown) => setError(caught instanceof ApiError ? caught.detail : t('errors.generic')))}>
+                        {t('staff.sendAiEmail')}
+                      </button>
+                      <button type="button" className="font-bold text-emerald-600" onClick={() => void staffApi.sendAi(complaintId, insight.id, 'whatsapp').then(() => ai.refetch()).catch((caught: unknown) => setError(caught instanceof ApiError ? caught.detail : t('errors.generic')))}>
+                        {t('staff.sendAiWhatsapp')}
+                      </button>
+                    </div>
                   )}
                 </article>
               ))}
