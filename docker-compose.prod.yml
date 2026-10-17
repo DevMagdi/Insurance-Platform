@@ -85,6 +85,27 @@ services:
     command: ['alembic', 'upgrade', 'head']
     logging: *logging
 
+  # Opt-in one-shot: creates the first administrator on an empty database
+  # without seeding demo data. Never started by `up` (tools profile).
+  #   docker compose --env-file .env.production -f docker-compose.prod.yml \
+  #     run --rm bootstrap_admin
+  bootstrap_admin:
+    image: ghcr.io/${IMAGE_OWNER:?set IMAGE_OWNER}/insurance-platform-api:${IMAGE_TAG:?set IMAGE_TAG}
+    restart: 'no'
+    profiles: ['tools']
+    environment:
+      DATABASE_ADMIN_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      BOOTSTRAP_ADMIN_NAME: ${BOOTSTRAP_ADMIN_NAME:-}
+      BOOTSTRAP_ADMIN_EMAIL: ${BOOTSTRAP_ADMIN_EMAIL:-}
+      BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    command: ['python', '-m', 'app.scripts.bootstrap_admin']
+    logging: *logging
+
   api:
     image: ghcr.io/${IMAGE_OWNER:?set IMAGE_OWNER}/insurance-platform-api:${IMAGE_TAG:?set IMAGE_TAG}
     restart: unless-stopped

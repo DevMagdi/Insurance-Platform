@@ -87,8 +87,9 @@ The old `/api/v1/*` roadmap paths are **not** live routes.
 
 1. `make init` creates a git-ignored mode-0600 `.env` with random development secrets (refuses to overwrite). For demo accounts set a **local-only**, 12+ character `DEMO_STAFF_PASSWORD` in `.env`; never commit the file.
 2. `make up` builds and starts PostgreSQL, PgBouncer, Redis, Mailpit, migrations, API, worker, Vite and Nginx, then waits up to 180 seconds for the services to be ready. The only stateful service is PostgreSQL, because attachments, export artifacts and call recordings are stored encrypted in the database. Open `http://localhost:8080/`; the first-party storage inventory lives at `/staff/storage` for authorized global administrators. API liveness `/api/health/live`, readiness `/api/health/ready`, browser API docs `/docs` via the API server. Mailpit UI: `http://localhost:8025/`. Direct PostgreSQL: `localhost:5432`; PgBouncer: `localhost:6432` (bound only to localhost).
-3. `make seed` optionally inserts four insurers, roles and scoped demo staff, and ~5,000 tickets. It is idempotent. Demo staff must change their password at first login; the password-change challenge does **not** give access to protected staff endpoints. Never seed a production database.
-4. `make partitions` prepares current/upcoming UTC monthly partitions. `make down` retains data; `docker compose down -v` **destroys local data**. Changing `POSTGRES_DB` after the first boot requires a new *development* data volume (init scripts only run on an empty volume).
+3. `make bootstrap-admin` optionally creates the **first administrator only** and is never started by `docker compose up`. It prompts for a name, e-mail and a 12+ character password (letters and digits), stores an Argon2id hash, grants the `administrator` role the full permission catalog and global all-companies/all-ownership scope, and inserts **no** companies, customers, complaints, teams or other demo data. It refuses to run if **any** staff account already exists, so it cannot add a second privileged identity by accident. Sign in at `/staff/login`; the API records the session and the login timestamp on first use. For automation set `BOOTSTRAP_ADMIN_NAME`, `BOOTSTRAP_ADMIN_EMAIL` and `BOOTSTRAP_ADMIN_PASSWORD` and run `docker compose run --rm -T bootstrap_admin --non-interactive` (never commit or log a real password).
+4. `make seed` is the alternative for demo environments: it inserts four insurers, roles and scoped demo staff, and ~5,000 tickets. It is idempotent. Demo staff must change their password at first login; the password-change challenge does **not** give access to protected staff endpoints. Never seed a production database, and do not mix `seed` with `bootstrap-admin` in the same database.
+5. `make partitions` prepares current/upcoming UTC monthly partitions. `make down` retains data; `docker compose down -v` **destroys local data**. Changing `POSTGRES_DB` after the first boot requires a new *development* data volume (init scripts only run on an empty volume).
 
 ### Troubleshooting a `502 Bad Gateway`
 
@@ -129,8 +130,9 @@ Sandboxes, CI images and locked-down desktops often have no container runtime, w
 make init            # once: creates the git-ignored .env with local-only secrets
 make local-install   # installs the 'localstack' extra (pgserver + redislite)
 cd frontend && npm ci && cd ..
-make local-up        # postgres + redis + smtp + api + worker + vite
-make local-seed      # migrations + demo dataset (needs DEMO_STAFF_PASSWORD in .env)
+make local-up                  # postgres + redis + smtp + api + worker + vite
+make local-bootstrap-admin     # migrations + the first administrator only (prompts)
+# or: make local-seed          # migrations + demo dataset (needs DEMO_STAFF_PASSWORD in .env)
 ```
 
 Open `http://localhost:5173/`; the API listens on `http://127.0.0.1:8000/` (`/api/health/ready` proves the database and Redis are reachable) and Vite proxies the browser's relative `/api` calls to it. `make local-status` lists the running services, `make local-down` stops them again, and logs, the database cluster and the captured emails live in the git-ignored `.local-stack/`.

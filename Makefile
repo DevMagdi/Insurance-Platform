@@ -6,9 +6,9 @@ PROD_COMPOSE ?= $(COMPOSE) --env-file .env.production -f docker-compose.prod.yml
 IMAGE_OWNER ?= $(shell git config --get remote.origin.url | sed -E 's#.+[:/]([^/]+)/[^/]+(\.git)?$$#\1#' | tr 'A-Z' 'a-z')
 IMAGE_TAG ?= $(shell git rev-parse HEAD)
 
-.PHONY: help init install up down logs migrate partitions seed test test-integration lint format ci \
+.PHONY: help init install up down logs migrate partitions bootstrap-admin seed test test-integration lint format ci \
 	images prod-config deploy release backup restore-drill loadtest-sessions loadtest-smoke helm-lint \
-	rotate-keys lint-migrations local-install local-up local-down local-status local-seed
+	rotate-keys lint-migrations local-install local-up local-down local-status local-bootstrap-admin local-seed
 help:
 	@echo 'init                Generate ignored .env with unique local credentials'
 	@echo 'install             Create .venv; install backend dev and frontend dependencies'
@@ -16,8 +16,10 @@ help:
 	@echo 'local-install       Install the Docker-free stack extras (pgserver + redislite)'
 	@echo 'local-up/down       Run the stack without Docker (postgres, redis, api, worker, vite)'
 	@echo 'local-status        Show which local-stack services are running'
+	@echo 'local-bootstrap-admin  Create the first administrator only (no Docker)'
 	@echo 'local-seed          Apply migrations and load the demo dataset (no Docker)'
 	@echo 'migrate/partitions  Apply Alembic revisions / pre-create monthly partitions'
+	@echo 'bootstrap-admin     Create the first administrator only (no demo data; prompts)'
 	@echo 'seed                Create demo data (set DEMO_STAFF_PASSWORD in .env first)'
 	@echo 'test/test-integration/lint/format/ci'
 	@echo 'images              Build the deployable api and web images locally'
@@ -47,6 +49,8 @@ migrate:
 	$(COMPOSE) run --rm migrate
 partitions:
 	$(COMPOSE) run --rm partitions
+bootstrap-admin:
+	$(COMPOSE) run --rm bootstrap_admin
 seed:
 	$(COMPOSE) run --rm seed
 local-install:
@@ -57,6 +61,8 @@ local-down:
 	$(PYTHON) scripts/local_stack.py down
 local-status:
 	$(PYTHON) scripts/local_stack.py status
+local-bootstrap-admin:
+	$(PYTHON) scripts/local_stack.py bootstrap-admin
 local-seed:
 	$(PYTHON) scripts/local_stack.py seed
 test:

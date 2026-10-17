@@ -22,6 +22,24 @@ General first steps for any page:
 4. Check whether a deploy happened in the last hour (`gh run list -w CD`).
    Roll back by image tag if it lines up.
 
+## First administrator
+
+There is no default login and migrations never create one. On an empty
+database, create the first administrator with the opt-in `bootstrap_admin`
+service (never started by `docker compose up`):
+
+```bash
+docker compose run --rm bootstrap_admin          # development stack
+# production: docker compose --env-file .env.production -f docker-compose.prod.yml run --rm bootstrap_admin
+```
+
+It prompts for a name, e-mail and a 12+ character password, creates exactly one
+active `administrator` with the full permission catalog and global scope, and
+inserts no business or demo data. Sign in at `/staff/login`. The command exits
+with `1` and changes nothing when **any** staff account already exists; use the
+staff administration console to invite or fix accounts from then on. Do not run
+`seed` to obtain an admin on a real deployment.
+
 ## API errors
 
 Alert: `ApiHighErrorRate` (5xx ratio > 2% for 5 min).
