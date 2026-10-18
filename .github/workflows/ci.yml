@@ -63,7 +63,7 @@ jobs:
         run: |
           set -euo pipefail
           smoke_stage='create test network'
-          trap 'status=$?; echo "::error title=container smoke failed::stage=${smoke_stage:-unknown}; exit=${status}"; docker ps -a --no-trunc || true; for service in ci-api ci-api-next ci-redis ci-web ci-dev-proxy; do docker logs "$service" || true; done; exit "$status"' ERR
+          trap 'status=$?; if [ "$status" -ne 0 ]; then echo "::error title=container smoke failed::stage=${smoke_stage:-unknown}; exit=${status}"; docker ps -a --no-trunc || true; for service in ci-api ci-api-next ci-redis ci-web ci-dev-proxy; do docker logs "$service" || true; done; fi; exit "$status"' EXIT
           docker network create ci-smoke
           python - <<'PY' > /tmp/smoke.env
           import base64, secrets
@@ -104,14 +104,14 @@ jobs:
             sleep 2
           done
           smoke_stage='verify production API health through edge'
-          curl --retry 10 --retry-connrefused --retry-delay 1 -fsS http://127.0.0.1:18080/api/health/live
+          scripts/ci/annotate.sh "container smoke: production API health" curl --retry 10 --retry-connrefused --retry-delay 1 -fsS -o /tmp/ci-production-health.json http://127.0.0.1:18080/api/health/live
           smoke_stage='verify production SPA shell'
-          curl --retry 10 --retry-connrefused --retry-delay 1 -fsS -o /tmp/ci-production-index.html http://127.0.0.1:18080/
+          scripts/ci/annotate.sh "container smoke: production SPA shell" curl --retry 10 --retry-connrefused --retry-delay 1 -fsS -o /tmp/ci-production-index.html http://127.0.0.1:18080/
           grep -qi '<div id="root"' /tmp/ci-production-index.html
           # The staff console and CAPTCHA bootstrap both rely on the same-origin API proxy.
           smoke_stage='check /api/me and CAPTCHA config through production edge'
           test "$(curl -sS -o /dev/null -w '%{http_code}' http://127.0.0.1:18080/api/me)" = 401
-          curl -fsS -o /tmp/ci-production-config.json http://127.0.0.1:18080/api/public/config
+          scripts/ci/annotate.sh "container smoke: production public config" curl -fsS -o /tmp/ci-production-config.json http://127.0.0.1:18080/api/public/config
           grep -q 'privacy_policy_version' /tmp/ci-production-config.json
           # Exercise the dev edge too: it uses Docker DNS at request time and must
           # recover after the API container is replaced with a new container/IP.
@@ -123,7 +123,7 @@ jobs:
             if curl -fsS http://127.0.0.1:18081/api/health/live >/dev/null; then break; fi
             sleep 2
           done
-          curl -fsS -o /tmp/ci-dev-config.json http://127.0.0.1:18081/api/public/config
+          scripts/ci/annotate.sh "container smoke: dev public config" curl -fsS -o /tmp/ci-dev-config.json http://127.0.0.1:18081/api/public/config
           grep -q 'privacy_policy_version' /tmp/ci-dev-config.json
           # Keep both containers allocated briefly so Docker assigns the replacement
           # a different IP, then remove the old target and let the resolver TTL expire.
@@ -139,7 +139,7 @@ jobs:
             if curl -fsS http://127.0.0.1:18081/api/health/live >/dev/null; then break; fi
             sleep 2
           done
-          curl -fsS -o /tmp/ci-dev-config.json http://127.0.0.1:18081/api/public/config
+          scripts/ci/annotate.sh "container smoke: dev public config" curl -fsS -o /tmp/ci-dev-config.json http://127.0.0.1:18081/api/public/config
           grep -q 'privacy_policy_version' /tmp/ci-dev-config.json
           test "$(curl -sS -o /dev/null -w '%{http_code}' http://127.0.0.1:18081/api/me)" = 401
       - name: Fail if the image contract drifted from docs/openapi.yaml
