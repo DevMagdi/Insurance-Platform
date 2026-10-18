@@ -63,6 +63,15 @@ class AuthRepository:
         ).one_or_none()
         return StaffCredentials.from_row(row) if row else None
 
+    async def customer_email_matches(
+        self, db: AsyncSession, mobile: str, email: str, blind: bytes | None
+    ) -> bool:
+        result = await db.scalar(
+            text("SELECT app_security.customer_email_matches(:mobile, :email, :blind)"),
+            {"mobile": mobile, "email": email.lower().strip(), "blind": blind},
+        )
+        return bool(result)
+
     async def customers_by_mobile(
         self, db: AsyncSession, mobile: str, blind: bytes | None
     ) -> list[tuple[UUID, int]]:

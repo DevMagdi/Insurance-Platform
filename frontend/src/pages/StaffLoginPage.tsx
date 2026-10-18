@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ApiError, staffApi } from '../lib/api';
 import { navigate } from '../lib/router';
+import { usePlatformBrand } from '../components/Branding';
 import { ErrorState, Field, TextInput, primaryButton } from '../components/ui';
 import { useCaptcha } from '../lib/captcha';
 
@@ -9,6 +10,7 @@ type Step = 'credentials' | 'password_change' | 'totp_verify' | 'totp_setup';
 
 export function StaffLoginPage() {
   const { t } = useTranslation();
+  const brand = usePlatformBrand();
   const [step, setStep] = useState<Step>('credentials');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -84,7 +86,7 @@ export function StaffLoginPage() {
 
   return (
     <section className="mx-auto max-w-xl rounded-3xl border border-white/40 bg-white/70 p-6 shadow-xl backdrop-blur dark:border-white/10 dark:bg-white/5">
-      <p className="text-xs font-bold uppercase tracking-widest text-amber-600 dark:text-amber-300">{t('brand')}</p>
+      <p className="text-xs font-bold uppercase tracking-widest text-amber-600 dark:text-amber-300">{brand.platform_name}</p>
       <h1 className="mt-2 text-3xl font-black">{t('staff.loginTitle')}</h1>
       <p className="mt-2 text-slate-500 dark:text-slate-300">{t('staff.loginSubtitle')}</p>
       {error && <div className="mt-4"><ErrorState message={error} /></div>}

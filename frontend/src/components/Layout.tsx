@@ -21,6 +21,7 @@ import { applyLanguage, type AppLanguage } from '../i18n';
 import { api } from '../lib/api';
 import { navigate, usePathname } from '../lib/router';
 import { useMe } from '../hooks/useMe';
+import { usePlatformBrand } from './Branding';
 
 const PRIMARY_NAV = [
   { path: '/', key: 'nav.home', icon: LayoutGrid },
@@ -29,15 +30,8 @@ const PRIMARY_NAV = [
   { path: '/track', key: 'nav.track', icon: ChevronRight },
 ] as const;
 
-function BrandMark({ size = 36 }: { size?: number }) {
-  return (
-    <span className="brand-mark" style={{ width: size, height: size }} aria-hidden="true">
-      <svg width={size * 0.52} height={size * 0.52} viewBox="0 0 24 24" fill="none" aria-hidden="true">
-        <path d="M12 2.6 20 6v6.1c0 4.8-3.4 8-8 9.3-4.6-1.3-8-4.5-8-9.3V6l8-3.4Z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
-        <path d="m8.6 12 2.3 2.3 4.6-4.7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-    </span>
-  );
+function BrandMark({ size = 36, logoUrl }: { size?: number; logoUrl: string }) {
+  return <img src={logoUrl} width={size} height={size} className="brand-mark" alt="" aria-hidden="true" />;
 }
 
 function useClickOutside(onOutside: () => void, active: boolean) {
@@ -64,6 +58,7 @@ export function Layout({ children }: { children: ReactNode }) {
   const { t, i18n } = useTranslation();
   const path = usePathname();
   const { me } = useMe();
+  const brand = usePlatformBrand();
   const queryClient = useQueryClient();
   const language = (i18n.language === 'en' ? 'en' : 'ar') as AppLanguage;
   const [dark, setDark] = useState(() => document.documentElement.classList.contains('dark'));
@@ -146,10 +141,10 @@ export function Layout({ children }: { children: ReactNode }) {
 
       <header className="site-header">
         <div className="site-header-inner">
-          <a href="/" className="brand" onClick={go('/')} aria-label={t('brand')}>
-            <BrandMark />
+          <a href="/" className="brand" onClick={go('/')} aria-label={brand.platform_name}>
+            <BrandMark logoUrl={brand.logo_url} />
             <span className="brand-copy">
-              <strong>{t('brand')}</strong>
+              <strong>{brand.platform_name}</strong>
               <small>{t('tagline')}</small>
             </span>
           </a>
@@ -249,9 +244,9 @@ export function Layout({ children }: { children: ReactNode }) {
           <div className="footer-grid">
             <div className="footer-brand">
               <a href="/" className="brand" onClick={go('/')}>
-                <BrandMark size={32} />
+                <BrandMark size={32} logoUrl={brand.logo_url} />
                 <span className="brand-copy">
-                  <strong>{t('brand')}</strong>
+                  <strong>{brand.platform_name}</strong>
                   <small>{t('tagline')}</small>
                 </span>
               </a>
@@ -283,7 +278,7 @@ export function Layout({ children }: { children: ReactNode }) {
             </div>
           </div>
           <div className="footer-bottom">
-            <span>© {new Date().getFullYear()} {t('brand')} — {t('footer.rights')}</span>
+            <span>© {new Date().getFullYear()} {brand.platform_name} — {t('footer.rights')}</span>
             <span className="row">
               <span>{t('footer.privacy')}</span>
               <span>{t('footer.terms')}</span>
@@ -317,12 +312,12 @@ export function Layout({ children }: { children: ReactNode }) {
 
       {mobileOpen && (
         <div className="mobile-sheet" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && closeMobile()}>
-          <div className="mobile-sheet-panel" role="dialog" aria-modal="true" aria-label={t('brand')}>
+          <div className="mobile-sheet-panel" role="dialog" aria-modal="true" aria-label={brand.platform_name}>
             <div className="mobile-sheet-grabber" />
             <div className="row" style={{ justifyContent: 'space-between', marginBottom: 10 }}>
               <span className="brand">
-                <BrandMark size={32} />
-                <span className="brand-copy"><strong>{t('brand')}</strong><small>{t('tagline')}</small></span>
+                <BrandMark size={32} logoUrl={brand.logo_url} />
+                <span className="brand-copy"><strong>{brand.platform_name}</strong><small>{t('tagline')}</small></span>
               </span>
               <button type="button" className="icon-btn" aria-label={t('common.cancel')} onClick={closeMobile}>
                 <X size={18} />

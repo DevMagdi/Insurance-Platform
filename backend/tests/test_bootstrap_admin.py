@@ -104,6 +104,9 @@ class FakeCursor:
         elif statement.startswith("INSERT INTO user_company_scope"):
             self.company_scopes.append((values[0], True))
             self._result = []
+        elif statement.startswith("INSERT INTO platform_super_admin"):
+            self.platform_super_admin = values[0]
+            self._result = []
         elif statement.startswith("INSERT INTO user_ownership_level"):
             self.ownership.append((values[0], "all"))
             self._result = []

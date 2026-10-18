@@ -216,7 +216,7 @@ compares them.
 
 ## Staff invitations and employee profiles
 
-1. Apply Alembic through `20261018_30` before deploying the new UI. Existing staff
+1. Apply Alembic through `20261018_31` before deploying the new UI. Existing staff
    (and bootstrap/seed accounts) belong to **الإدارة العامة** until an administrator
    assigns their actual department under **Users → employee photo → department**.
    Legacy accounts are explicitly shown as incomplete; no invented identity/photo
@@ -231,15 +231,23 @@ compares them.
    `SMTP_*` environment settings. Production refuses local/Mailpit/Mailtrap/sandbox
    SMTP hosts, test senders and unencrypted SMTP for account mail. For port 587 use
    `SMTP_START_TLS=true`, `SMTP_USE_TLS=false`; for implicit TLS on 465 use
-   `SMTP_START_TLS=false`, `SMTP_USE_TLS=true`. `DEV_SMS_MAILBOX` must be false in
-   production. Keep provider credentials outside Git/chat; use the existing secret
-   store or the encrypted integrations form.
+   `SMTP_START_TLS=false`, `SMTP_USE_TLS=true`. There is no local/sandbox mailbox fallback; authentication email uses the configured provider. Keep provider credentials outside Git/chat; use the existing secret store or the encrypted integrations form.
 4. Set `PUBLIC_APP_URL` to the real **HTTPS origin** serving the SPA, not localhost,
    the API-only host or a test URL. A one-time `/invite#token=...` link expires in
    48 hours; the fragment avoids access-log/referrer leakage. Existing `?token=`
    links remain supported. Expired/pending invites can be re-sent in Users; the
    previous token is invalidated atomically. A provider rejection rolls back the
    new user/invitation (or reset/resend) rather than reporting success.
+5. **Platform identity:** the bootstrap administrator is the platform super admin.
+   Only this account can persist the platform name and logo under **Settings →
+   Platform identity**. PNG/JPEG/WebP uploads are decoded, limited to 2 MiB and
+   stored in PostgreSQL; text logos may instead reference a safe same-origin static
+   path. The public browser title, favicon, PWA manifest and transactional mail read
+   the active name/logo from the platform configuration. Apply migration
+   `20261018_31` before using this screen.
+6. **Customer directory:** global staff with `users.view` can search the full
+   customer profile, policies and complaint history under **Users → Customers**;
+   the API and database function independently require global scope.
 5. Use a verified sender/domain (SPF, DKIM and DMARC). SES accounts must be out of
    the SES sandbox to reach arbitrary addresses. Gmail/Outlook OAuth requires the
    actual mail-send scopes. A successful API response means **provider acceptance**,

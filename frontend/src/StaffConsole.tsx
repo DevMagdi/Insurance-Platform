@@ -4,6 +4,7 @@ import { ensureCsrfCookie } from './lib/session';
 import { AccessDenied, ScopeBadge } from './components/Access';
 import { DateRangePicker } from './components/DateRangePicker';
 import { Icon, type IconName } from './components/Icon';
+import { usePlatformBrand } from './components/Branding';
 import { Modal } from './components/Modal';
 import { hasPermission } from './utils/access';
 import { canViewAdminDashboard } from './features/admin/adminAccess';
@@ -21,6 +22,7 @@ const AuditPage = lazy(async () => ({ default: (await import('./features/admin/A
 const OperationsPage = lazy(async () => ({ default: (await import('./features/admin/OperationsPage')).OperationsPage }));
 const RolesPage = lazy(async () => ({ default: (await import('./features/admin/RolesPage')).RolesPage }));
 const UsersPage = lazy(async () => ({ default: (await import('./features/admin/UsersPage')).UsersPage }));
+const CustomersPage = lazy(async () => ({ default: (await import('./features/admin/CustomersPage')).CustomersPage }));
 const AdminDashboard = lazy(async () => ({ default: (await import('./features/admin/AdminDashboard')).AdminDashboard }));
 const StoragePage = lazy(async () => ({ default: (await import('./features/admin/StoragePage')).StoragePage }));
 
@@ -53,6 +55,7 @@ const NAVIGATION: NavigationItem[] = [
   { page: 'complaints', label: 'قائمة الشكاوى', icon: 'inbox', section: 'workspace', permission: 'complaints.view' },
   { page: 'admin', label: 'لوحة الإدارة', icon: 'overview', section: 'admin', permission: 'analytics.view', extraPermission: 'complaints.view' },
   { page: 'users', label: 'المستخدمون', icon: 'users', section: 'admin', permission: 'users.view' },
+  { page: 'customers', label: 'العملاء', icon: 'users', section: 'admin', permission: 'users.view' },
   { page: 'roles', label: 'الأدوار والصلاحيات', icon: 'roles', section: 'admin', permission: 'roles.manage' },
   { page: 'operations', label: 'العمليات والكتالوج', icon: 'settings', section: 'admin' },
   { page: 'audit', label: 'سجل التدقيق', icon: 'audit', section: 'admin', permission: 'audit.view' },
@@ -79,6 +82,7 @@ function routeFromPath(pathname: string): AppRoute {
   if (path === '/staff/complaints') return { page: 'complaints' };
   if (path === '/staff/admin') return { page: 'admin' };
   if (path === '/staff/users') return { page: 'users' };
+  if (path === '/staff/customers') return { page: 'customers' };
   if (path === '/staff/roles') return { page: 'roles' };
   if (path === '/staff/operations') return { page: 'operations' };
   if (path === '/staff/audit') return { page: 'audit' };
@@ -153,6 +157,7 @@ function NotificationPopover({ items, loading, onRead, onClose }: { items: Notif
 }
 
 function App() {
+  const brand = usePlatformBrand();
   const [access, setAccess] = useState<StaffAccess | null>(null);
   const [sessionState, setSessionState] = useState<SessionState>('loading');
   const [sessionError, setSessionError] = useState('');
@@ -313,7 +318,9 @@ function App() {
         ? <TicketWorkspace id={route.id} access={access} options={filterOptions} onBack={() => navigate({ page: 'complaints' })} onOpenTicket={(id) => navigate({ page: 'ticket', id })} onRefreshAccess={refreshAccess} />
         : route.page === 'users'
           ? <UsersPage access={access} onAccessChanged={refreshAccess} />
-          : route.page === 'roles'
+          : route.page === 'customers'
+            ? <CustomersPage access={access} />
+            : route.page === 'roles'
             ? <RolesPage access={access} />
             : route.page === 'operations'
               ? <OperationsPage access={access} range={range} inScopeCompanies={scopeCompanies} />
@@ -325,7 +332,7 @@ function App() {
   return <div className={`staff-console theme-${theme}`}><div className="app-shell" dir="rtl">
     {mobileNav && <button className="mobile-scrim" type="button" aria-label="إغلاق القائمة" onClick={() => setMobileNav(false)} />}
     <aside className={`sidebar${mobileNav ? ' sidebar-open' : ''}${collapsed ? ' is-collapsed' : ''}`}>
-      <div className="sidebar-brand"><span className="brand-mark">و</span><span><strong>وَثيق</strong><small>عمليات التأمين</small></span><span className="brand-dot" /></div>
+      <div className="sidebar-brand"><img className="brand-mark" src={brand.logo_url} alt="" /><span><strong>{brand.platform_name}</strong><small>عمليات التأمين</small></span><span className="brand-dot" /></div>
       <button
         className="sidebar-collapse"
         type="button"
@@ -346,7 +353,7 @@ function App() {
     </aside>
 
     <div className="main-shell">
-      <header className="topbar"><div className="topbar-leading"><button className="icon-button mobile-menu-button" type="button" aria-label="فتح القائمة" onClick={() => setMobileNav(true)}><Icon name="menu" size={20} /></button><div className="topbar-breadcrumb"><span>وَثيق</span><Icon name="chevron" size={13} /><strong>{NAVIGATION.find((item) => item.page === currentNav)?.label ?? (route.page === 'ticket' ? 'مساحة الشكوى' : 'الإدارة')}</strong></div></div>
+      <header className="topbar"><div className="topbar-leading"><button className="icon-button mobile-menu-button" type="button" aria-label="فتح القائمة" onClick={() => setMobileNav(true)}><Icon name="menu" size={20} /></button><div className="topbar-breadcrumb"><span>{brand.platform_name}</span><Icon name="chevron" size={13} /><strong>{NAVIGATION.find((item) => item.page === currentNav)?.label ?? (route.page === 'ticket' ? 'مساحة الشكوى' : 'الإدارة')}</strong></div></div>
         <div className="topbar-actions">{showDatePicker && <DateRangePicker value={range} onChange={setRange} />}<button className="command-trigger" type="button" onClick={() => setPaletteOpen(true)} aria-label="فتح مركز الأوامر"><Icon name="search" size={16} /><span>ابحث أو انتقل إلى…</span><kbd>⌘ K</kbd></button><div className="popover-anchor"><button className={`icon-button notification-trigger${notificationsOpen ? ' is-active' : ''}`} type="button" aria-label={`الإشعارات، ${unread} غير مقروءة`} onClick={() => setNotificationsOpen((value) => !value)}><Icon name="bell" size={18} />{unread > 0 && <i className="notification-count">{unread > 9 ? '9+' : unread}</i>}</button>{notificationsOpen && <NotificationPopover items={notifications} loading={notificationsLoading} onRead={(item) => { void onReadNotification(item); }} onClose={() => setNotificationsOpen(false)} />}</div><button className="icon-button theme-toggle" type="button" aria-label={theme === 'dark' ? 'تفعيل الوضع الفاتح' : 'تفعيل الوضع الداكن'} title="تبديل المظهر" onClick={() => setTheme((value) => value === 'dark' ? 'light' : 'dark')}><Icon name={theme === 'dark' ? 'sun' : 'moon'} size={17} /></button>
           <div className="popover-anchor user-menu-anchor">
             <button className="topbar-avatar avatar-circle avatar-active" type="button" aria-haspopup="menu" aria-expanded={userMenuOpen} aria-label="قائمة الحساب" title={access.full_name} onClick={() => setUserMenuOpen((value) => !value)}>{initials(access.full_name)}</button>
@@ -368,7 +375,7 @@ function App() {
           {route.page === 'admin' && !canViewAdminDashboard(access) ? <AccessDenied title="لوحة الإدارة غير متاحة" /> : route.page === 'overview' && !(hasPermission(access, 'analytics.view') && hasPermission(access, 'complaints.view')) ? <AccessDenied title="لوحة المؤشرات غير متاحة" /> : route.page === 'complaints' || route.page === 'ticket' ? pageContent : route.page === 'users' && !hasPermission(access, 'users.view') ? <AccessDenied title="إدارة المستخدمين غير متاحة" /> : route.page === 'roles' && !hasPermission(access, 'roles.manage') ? <AccessDenied title="إدارة الأدوار غير متاحة" /> : route.page === 'operations' && !operationsAllowed(access) ? <AccessDenied title="إعدادات الإدارة غير متاحة" /> : route.page === 'storage' && !storageAllowed(access) ? <AccessDenied title="مركز التخزين غير متاح" /> : route.page === 'audit' && !hasPermission(access, 'audit.view') ? <AccessDenied title="سجل التدقيق غير متاح" /> : pageContent}
         </Suspense>
       </div></main>
-      <footer className="app-footer"><span>وَثيق · منصة تشغيل وساطة التأمين</span><span><Icon name="shield" size={13} /> كل إجراء محمي بنطاق الوصول الفعّال</span><button type="button" onClick={() => setShortcutsOpen(true)}><Icon name="keyboard" size={13} /> اختصارات لوحة المفاتيح</button></footer>
+      <footer className="app-footer"><span>{brand.platform_name}</span><span><Icon name="shield" size={13} /> كل إجراء محمي بنطاق الوصول الفعّال</span><button type="button" onClick={() => setShortcutsOpen(true)}><Icon name="keyboard" size={13} /> اختصارات لوحة المفاتيح</button></footer>
     </div>
     {paletteOpen && <CommandPalette access={access} onNavigate={navigate} onClose={() => setPaletteOpen(false)} />}
     {shortcutsOpen && <Modal title="اختصارات لوحة المفاتيح" eyebrow="تنقّل أسرع" onClose={() => setShortcutsOpen(false)}><div className="shortcut-list"><div><span>فتح مركز الأوامر</span><kbd>⌘ K</kbd></div><div><span>قائمة الشكاوى</span><kbd>⌘ ⇧ Q</kbd></div><div><span>الصفحة الرئيسية</span><kbd>⌘ ⇧ D</kbd></div><div><span>هذه القائمة</span><kbd>?</kbd></div><div><span>إغلاق النوافذ</span><kbd>Esc</kbd></div></div></Modal>}

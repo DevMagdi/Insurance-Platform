@@ -1,8 +1,8 @@
 """Request body ceilings enforced before parsing (DoS / memory exhaustion).
 
 ``Content-Length`` is checked up front; chunked or lying clients are cut off
-while streaming. Attachment uploads get the per-file ceiling; everything else
-is JSON and is capped at ``MAX_JSON_BODY_BYTES``.
+while streaming. Binary uploads get the upload ceiling; everything else is JSON
+and is capped at ``MAX_JSON_BODY_BYTES``.
 """
 
 from __future__ import annotations
@@ -16,7 +16,9 @@ from starlette.types import ASGIApp, Message, Receive, Scope, Send
 from app.middleware.policy import policy_for
 from app.observability import metrics
 
-_UPLOAD = re.compile(r"^/api/(customer|staff)/attachments/uploads/[^/]+/content$")
+_UPLOAD = re.compile(
+    r"^(?:/api/(?:customer|staff)/attachments/uploads/[^/]+/content|/api/platform/brand/logo)$"
+)
 _BODY_METHODS = frozenset({"POST", "PUT", "PATCH", "DELETE"})
 
 

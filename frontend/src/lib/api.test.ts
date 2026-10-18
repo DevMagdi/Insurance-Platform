@@ -21,7 +21,7 @@ describe('browser API authentication', () => {
     });
     vi.stubGlobal('fetch', fetchMock);
 
-    await expect(api.otpVerify({ mobile: '+201123456789', code: '123456' })).rejects.toMatchObject({
+    await expect(api.otpVerify({ mobile: '+201123456789', email: 'customer@example.com', code: '123456' })).rejects.toMatchObject({
       status: 401,
       detail: 'Invalid or expired code',
     } satisfies Partial<ApiError>);

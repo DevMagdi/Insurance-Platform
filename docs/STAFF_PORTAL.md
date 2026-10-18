@@ -59,7 +59,7 @@ Customer email/WhatsApp/SMS preferences now reach delivery. Migration
 `20261016_19` returns preferences from `claim_notices`, the worker suppresses
 notices when every channel is disabled, and `SMTPDelivery` honors the enabled
 channels. A real production SMS/WhatsApp provider still has to be configured
-and verified; development keeps the explicit Mailpit mailbox behavior and never
+and verified; account email always uses a real configured provider and never
 pretends an unconfigured provider delivered a message.
 
 ## Remaining production blockers

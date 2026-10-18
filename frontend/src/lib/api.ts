@@ -145,10 +145,10 @@ export const api = {
       headers: captchaHeaders(captcha),
     }),
 
-  otpStart: (mobile: string, captcha?: string | null) =>
+  otpStart: (mobile: string, email: string, captcha?: string | null) =>
     request<{ message: string }>('/api/auth/customer/otp/start', {
       method: 'POST',
-      body: { mobile },
+      body: { mobile, email },
       headers: captchaHeaders(captcha),
     }),
 
@@ -164,7 +164,7 @@ export const api = {
     code: string;
     national_id?: string;
     full_name?: string;
-    email?: string;
+    email: string;
     whatsapp_available?: boolean;
   }) => request<{ authenticated_as: string }>('/api/auth/customer/otp/verify', { method: 'POST', body }),
 

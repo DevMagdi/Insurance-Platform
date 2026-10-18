@@ -183,6 +183,11 @@ def seed(
         [(admin, "all"), (supervisor, "team"), (agent, "own"), (analyst, "all")],
     )
     cursor.execute(
+        "INSERT INTO platform_super_admin(singleton, staff_user_id) VALUES (true, %s) "
+        "ON CONFLICT (singleton) DO NOTHING",
+        (admin,),
+    )
+    cursor.execute(
         "INSERT INTO user_permission_overrides(user_id, permission_code, effect) "
         "VALUES (%s, 'analytics.export', 'deny')",
         (supervisor,),

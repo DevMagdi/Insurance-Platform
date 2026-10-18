@@ -44,6 +44,7 @@ PUBLIC = {
     "/api/auth/staff/invitation/inspect",
     "/api/auth/staff/password/change",
     "/api/auth/staff/2fa/verify",
+    "/api/auth/staff/email-otp/verify",
     "/api/auth/staff/2fa/enroll/start",
     "/api/auth/staff/2fa/enroll/confirm",
     "/api/public/config",
@@ -115,6 +116,14 @@ def decorate_spec(app: FastAPI, spec: dict[str, Any]) -> dict[str, Any]:
         calls = tuple(dependencies(route.dependant))
         for method in route.methods or ():
             operation = spec["paths"][route.path][method.lower()]
+            if route.path == "/api/platform/brand/logo" and method == "POST":
+                operation["requestBody"] = {
+                    "required": True,
+                    "content": {
+                        mime: {"schema": {"type": "string", "format": "binary"}}
+                        for mime in ("image/png", "image/jpeg", "image/webp")
+                    },
+                }
             if route.path == "/api/auth/refresh":
                 operation["security"] = [{"RefreshCookie": []}]
             else:

@@ -311,6 +311,7 @@ export type AppRoute =
   | { page: 'complaints' }
   | { page: 'ticket'; id: string }
   | { page: 'users' }
+  | { page: 'customers' }
   | { page: 'roles' }
   | { page: 'operations' }
   | { page: 'audit' }

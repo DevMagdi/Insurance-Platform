@@ -210,6 +210,11 @@ def create_initial_administrator(
         (staff_id,),
     )
     cursor.execute(
+        "INSERT INTO platform_super_admin(singleton, staff_user_id) VALUES (true, %s) "
+        "ON CONFLICT (singleton) DO NOTHING",
+        (staff_id,),
+    )
+    cursor.execute(
         "INSERT INTO access_change_log(actor_staff_id, target_user_id, change_type, "
         "before_state, after_state) VALUES (%s, %s, 'bootstrap_admin', '{}'::jsonb, %s)",
         (

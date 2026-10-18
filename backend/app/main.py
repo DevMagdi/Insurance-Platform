@@ -38,7 +38,7 @@ from app.api import (
     websocket,
     workflow,
 )
-from app.db import make_engine
+from app.db import make_engine, purpose_transaction
 from app.middleware.body_limit import BodySizeLimitMiddleware
 from app.middleware.origin import OriginGuardMiddleware
 from app.middleware.policy import HttpPolicy
@@ -131,7 +131,15 @@ async def install_state(
         settings.turnstile_secret_key, settings.turnstile_site_key, settings.public_app_url
     )
     app.state.backpressure = QueueBackpressure(redis, settings.queue_backpressure_threshold)
-    delivery = SMTPDelivery(settings)
+
+    async def platform_name() -> str:
+        async with purpose_transaction(app.state.factory, "guest") as db:
+            name = await db.scalar(
+                text("SELECT platform_name FROM app_security.public_platform_brand()")
+            )
+        return str(name or "Insurance")
+
+    delivery = SMTPDelivery(settings, brand_loader=platform_name)
     app.state.auth = AuthService(app.state.factory, redis, settings, delivery)
     keyring = settings.encryption_keyring()
     # Private binaries (attachments, export artifacts, call recordings) are encrypted

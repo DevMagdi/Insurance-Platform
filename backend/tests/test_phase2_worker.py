@@ -37,32 +37,35 @@ def settings() -> Settings:
         APP_BLIND_INDEX_KEY=base64.urlsafe_b64encode(b"b" * 32).decode(),
         JWT_SIGNING_KEY="s" * 64,
         ENVIRONMENT="development",
-        SMTP_HOST="localhost",
-        DEV_SMS_MAILBOX=True,
+        SMTP_HOST="smtp.example.com",
+        SMTP_FROM="notifications@example.com",
+        SMTP_START_TLS=True,
     )
 
 
-async def test_mail_adapter_dev_otp_invite_and_notices(
+async def test_mail_adapter_real_email_otp_invite_and_notices(
     settings: Settings, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     sent = AsyncMock()
     monkeypatch.setattr("app.services.providers.aiosmtplib.send", sent)
-    provider = SMTPDelivery(settings)
-    await provider.send_otp("+201123456789", "123456")
+    brand_loader = AsyncMock(return_value="Acme Insurance")
+    provider = SMTPDelivery(settings, brand_loader=brand_loader)
+    await provider.send_otp("customer@example.com", "123456")
     message = sent.call_args.args[0]
-    assert "sms-201123456789@sms.local.test" in message["To"]
+    assert "customer@example.com" in message["To"]
     assert "123456" in message.get_content()
+    assert "Acme Insurance" in message["Subject"]
+    assert "Acme Insurance" in message.get_content()
     await provider.send_invitation("staff@example.test", "https://example.test/invite?token=secret")
     assert sent.call_args.args[0]["To"] == "staff@example.test"
-    assert await provider.send_notice(
+    assert not await provider.send_notice(
         "+201123456789",
         None,
         "status_changed",
         {"ticket_no": "CMP-2026-000001", "status": "resolved"},
     )
-    settings.dev_sms_mailbox = False
-    with pytest.raises(ProviderUnavailable):
-        await provider.send_otp("+201123456789", "123456")
+    await provider.send_otp("another@example.com", "123456")
+    assert sent.call_args.args[0]["To"] == "another@example.com"
     assert not await provider.send_notice(
         "+201123456789", None, "created", {"ticket_no": "CMP-2026-000001", "status": "new"}
     )

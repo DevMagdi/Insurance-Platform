@@ -219,6 +219,36 @@ paths:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
       security: []
+  /api/auth/staff/email-otp/verify:
+    post:
+      tags:
+      - auth
+      summary: Verify Staff Email Otp
+      operationId: verify_staff_email_otp_api_auth_staff_email_otp_verify_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TotpVerifyRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+                title: Response Verify Staff Email Otp Api Auth Staff Email Otp Verify
+                  Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security: []
   /api/auth/staff/2fa/verify:
     post:
       tags:
@@ -7489,6 +7519,105 @@ paths:
                 type: object
                 title: Response Public Config Api Public Config Get
       security: []
+  /api/platform/brand:
+    put:
+      tags:
+      - platform
+      summary: Update Brand
+      operationId: update_brand_api_platform_brand_put
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PlatformBrandRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+                title: Response Update Brand Api Platform Brand Put
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: settings.manage
+      parameters:
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
+  /api/platform/brand/logo:
+    post:
+      tags:
+      - platform
+      summary: Upload Platform Logo
+      operationId: upload_platform_logo_api_platform_brand_logo_post
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+                title: Response Upload Platform Logo Api Platform Brand Logo Post
+      requestBody:
+        required: true
+        content:
+          image/png:
+            schema:
+              type: string
+              format: binary
+          image/jpeg:
+            schema:
+              type: string
+              format: binary
+          image/webp:
+            schema:
+              type: string
+              format: binary
+      security:
+      - AccessCookie: []
+      x-required-permission: settings.manage
+      parameters:
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
+  /api/staff/customers:
+    get:
+      tags:
+      - platform
+      summary: Customer Directory
+      operationId: customer_directory_api_staff_customers_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                items:
+                  additionalProperties: true
+                  type: object
+                type: array
+                title: Response Customer Directory Api Staff Customers Get
+      security:
+      - AccessCookie: []
+      x-required-permission: users.view
   /api/health/live:
     get:
       tags:
@@ -8224,6 +8353,12 @@ components:
           type: string
           pattern: ^\+201[0-9]{9}$
           title: Mobile
+        email:
+          type: string
+          maxLength: 254
+          minLength: 5
+          pattern: ^[^@\s]+@[^@\s]+\.[^@\s]+$
+          title: Email
         code:
           type: string
           pattern: ^[0-9]{6}$
@@ -8240,12 +8375,6 @@ components:
             minLength: 2
           - type: 'null'
           title: Full Name
-        email:
-          anyOf:
-          - type: string
-            maxLength: 254
-          - type: 'null'
-          title: Email
         whatsapp_available:
           type: boolean
           title: Whatsapp Available
@@ -8254,6 +8383,7 @@ components:
       type: object
       required:
       - mobile
+      - email
       - code
       title: CustomerVerifyRequest
     DepartmentAssignment:
@@ -8470,10 +8600,17 @@ components:
           type: string
           pattern: ^\+201[0-9]{9}$
           title: Mobile
+        email:
+          type: string
+          maxLength: 254
+          minLength: 5
+          pattern: ^[^@\s]+@[^@\s]+\.[^@\s]+$
+          title: Email
       additionalProperties: false
       type: object
       required:
       - mobile
+      - email
       title: MobileOTPRequest
     NotificationPreferences:
       properties:
@@ -8525,6 +8662,24 @@ components:
       - team
       - all
       title: OwnershipLevel
+    PlatformBrandRequest:
+      properties:
+        platform_name:
+          type: string
+          maxLength: 80
+          minLength: 2
+          title: Platform Name
+        logo_url:
+          type: string
+          maxLength: 2048
+          minLength: 1
+          title: Logo Url
+      additionalProperties: false
+      type: object
+      required:
+      - platform_name
+      - logo_url
+      title: PlatformBrandRequest
     PrivacyDecision:
       type: string
       enum:

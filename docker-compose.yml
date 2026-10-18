@@ -45,12 +45,6 @@ services:
       timeout: 3s
       retries: 15
 
-  mailpit:
-    image: axllent/mailpit:v1.31.5 # Local development mailbox, not a production provider.
-    restart: unless-stopped
-    ports:
-      - '127.0.0.1:8025:8025'
-
   redis:
     image: redis:7.4-alpine
     restart: unless-stopped
@@ -88,10 +82,14 @@ services:
       JWT_PUBLIC_KEY_B64: ${JWT_PUBLIC_KEY_B64:-}
       JWT_PREVIOUS_PUBLIC_KEYS: ${JWT_PREVIOUS_PUBLIC_KEYS:-}
       METRICS_TOKEN: ${METRICS_TOKEN:-}
-      SMTP_HOST: mailpit
-      SMTP_PORT: '1025'
+      SMTP_HOST: ${SMTP_HOST:?Set SMTP_HOST to your real mail provider}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_FROM: ${SMTP_FROM:?Set SMTP_FROM to a verified sender address}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_START_TLS: ${SMTP_START_TLS:-true}
+      SMTP_USE_TLS: ${SMTP_USE_TLS:-false}
       ENVIRONMENT: development
-      DEV_SMS_MAILBOX: 'true'
       PUBLIC_APP_URL: ${PUBLIC_APP_URL:-http://localhost:8080}
       COOKIE_SECURE: 'true'
       DATABASE_URL: postgresql+asyncpg://app_runtime:${APP_DB_PASSWORD}@pgbouncer:5432/${POSTGRES_DB}
@@ -109,8 +107,6 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-      mailpit:
-        condition: service_started
     healthcheck:
       test: ['CMD', 'python', '-c', 'import urllib.request; urllib.request.urlopen("http://127.0.0.1:8000/api/health/ready", timeout=2)']
       interval: 10s
@@ -126,9 +122,13 @@ services:
       WORKER_DATABASE_URL: postgresql+asyncpg://app_worker:${APP_WORKER_DB_PASSWORD}@postgres:5432/${POSTGRES_DB}
       APP_ENCRYPTION_KEY: ${APP_ENCRYPTION_KEY:?run make init}
       REDIS_URL: redis://redis:6379/0
-      SMTP_HOST: mailpit
-      SMTP_PORT: '1025'
-      DEV_SMS_MAILBOX: 'true'
+      SMTP_HOST: ${SMTP_HOST:?Set SMTP_HOST to your real mail provider}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_FROM: ${SMTP_FROM:?Set SMTP_FROM to a verified sender address}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_START_TLS: ${SMTP_START_TLS:-true}
+      SMTP_USE_TLS: ${SMTP_USE_TLS:-false}
       ENVIRONMENT: development
     command: ['arq', 'app.worker.WorkerSettings']
     restart: unless-stopped
@@ -139,8 +139,6 @@ services:
         condition: service_healthy
       postgres:
         condition: service_healthy
-      mailpit:
-        condition: service_started
 
   bootstrap_admin:
     build:
@@ -210,8 +208,8 @@ services:
       frontend:
         condition: service_started
 
-# PostgreSQL, Redis and Mailpit only: private binaries (attachments, exports and
-# call recordings) live encrypted inside PostgreSQL, so no object store is started.
+# PostgreSQL and Redis only: all outgoing email uses the configured real SMTP provider;
+# private binaries live encrypted inside PostgreSQL, so no object store is started.
 volumes:
   postgres_data:
   redis_data:

@@ -6,12 +6,8 @@ import pytest
 
 from app.settings import Settings
 
-# The unit tests must not inherit the developer's local `.env`. `make init`
-# writes ENVIRONMENT=development and DEV_SMS_MAILBOX=true there, and the
-# production settings validator rejects that combination for a test
-# environment - so `make test` failed for everyone who ran `make init` first.
-# The dotenv file is read whenever a Settings instance is built, so disabling
-# it here keeps the suite hermetic for developers and for CI alike.
+# Unit tests must not inherit the developer's local `.env`; disabling it keeps
+# the suite hermetic for developers and CI alike.
 Settings.model_config["env_file"] = None
 
 

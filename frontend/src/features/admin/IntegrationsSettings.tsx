@@ -54,7 +54,7 @@ const PROVIDERS: ProviderSpec[] = [
     label: 'بريد SMTP عام',
     icon: 'mail',
     family: 'email',
-    summary: 'إرسال عبر أي خادم SMTP (بما فيه Mailpit محلياً). الاستقبال عبر IMAP منفصل.',
+    summary: 'إرسال عبر خادم SMTP حقيقي مع TLS وعنوان مرسل موثّق. الاستقبال عبر IMAP منفصل.',
     scope: 'both',
     fields: [
       { key: 'host', label: 'خادم SMTP', placeholder: 'smtp.example.com' },

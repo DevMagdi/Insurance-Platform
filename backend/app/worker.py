@@ -91,13 +91,12 @@ class WorkerConfig(BaseSettings):
     retention_outbox_days: int = Field(default=180, validation_alias="RETENTION_OUTBOX_DAYS")
     redis_url: str = "redis://redis:6379/0"
     smtp_host: str | None = None
-    smtp_port: int = 1025
-    smtp_from: str = "no-reply@insurance.local"
+    smtp_port: int = 587
+    smtp_from: str = ""
     smtp_username: str | None = None
     smtp_password: str | None = None
-    smtp_start_tls: bool = False
+    smtp_start_tls: bool = True
     smtp_use_tls: bool = False
-    dev_sms_mailbox: bool = False
     environment: str = "production"
 
 
@@ -116,7 +115,17 @@ async def startup(ctx: dict[str, Any]) -> None:
         start_http_server(config.worker_metrics_port)
     ctx["config"] = config
     ctx["engine"] = make_worker_engine(config.worker_database_url)
-    ctx["delivery"] = SMTPDelivery(config)
+
+    async def platform_name() -> str:
+        rows = await _worker_query(
+            ctx["engine"],
+            "SELECT platform_name FROM app_security.public_platform_brand()",
+            {},
+        )
+        return str(rows[0][0]) if rows else "Insurance"
+
+    ctx["platform_name"] = platform_name
+    ctx["delivery"] = SMTPDelivery(config, brand_loader=platform_name)
     ctx["scanner"] = UnconfiguredVirusScanner()
     keyring = build_keyring(
         config.app_encryption_key,
@@ -319,10 +328,13 @@ async def _process_integration_job(ctx: dict[str, Any], row: Any) -> None:
                 outbound_attachments.append(
                     OutboundAttachment(filename, attachment.mime_type, content)
                 )
+            brand_loader = ctx.get("platform_name")
+            brand = (await brand_loader()) if brand_loader is not None else "Insurance"
+            brand = brand.strip()[:80] or "Insurance"
             email_request = EmailSendRequest(
                 recipients=tuple(str(value) for value in payload.get("recipients", [])),
-                subject=str(payload.get("subject", ""))[:300],
-                text_body=str(payload.get("body", ""))[:20_000],
+                subject=f"{str(payload.get('subject', ''))[:210]} · {brand}",
+                text_body=f"{str(payload.get('body', '')).rstrip()[:19_900]}\n\n— {brand}",
                 locale=str(payload.get("locale", "en")),
                 attachments=tuple(outbound_attachments),
             )

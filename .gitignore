@@ -27,5 +27,5 @@ frontend/playwright-report/
 loadtest/sessions.json
 loadtest/results/
 backups/
-# Docker-free local stack: database cluster, logs and the local mailbox.
+# Docker-free local stack: database cluster and logs.
 .local-stack/

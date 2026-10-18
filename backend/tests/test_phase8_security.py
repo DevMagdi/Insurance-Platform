@@ -177,6 +177,9 @@ def test_phase8_settings_validation() -> None:
         "JWT_PRIVATE_KEY_B64": _TEST_JWT_PRIVATE_KEY_B64,
         "JWT_PUBLIC_KEY_B64": _TEST_JWT_PUBLIC_KEY_B64,
         "METRICS_TOKEN": "test-only-metrics-token-32-characters",
+        "SMTP_HOST": "smtp.example.com",
+        "SMTP_FROM": "notifications@example.com",
+        "SMTP_START_TLS": True,
     }
     assert settings(**production).is_production
     with pytest.raises(ValidationError, match="METRICS_TOKEN"):
@@ -492,6 +495,7 @@ async def test_metrics_endpoint_requires_token_and_production_docs_are_never_exp
     saved = dict(app.state._state)
     monkeypatch.setenv("EXPOSE_API_DOCS", "true")  # there is no production override
     app.state.settings = SimpleNamespace(metrics_token=None, is_production=True)
+    app.state.factory = None
     try:
         private_edge = ASGITransport(app=app, client=("10.2.3.4", 54321))
         async with AsyncClient(transport=private_edge, base_url="https://t") as c:
@@ -512,6 +516,11 @@ async def test_metrics_endpoint_requires_token_and_production_docs_are_never_exp
                 assert (await c.get(path)).status_code == 404
             config = await c.get("/api/public/config")
             assert config.json()["captcha"] is None
+            assert config.headers["Cache-Control"] == "no-store"
+            manifest = await c.get("/api/public/manifest.webmanifest")
+            assert manifest.json()["name"] == "Insurance"
+            assert manifest.json()["icons"][0]["src"] == "/insurance-logo.svg"
+            assert manifest.headers["Cache-Control"] == "no-store"
     finally:
         app.state._state.clear()
         app.state._state.update(saved)
