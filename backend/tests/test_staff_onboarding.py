@@ -23,7 +23,12 @@ from app.api.deps import RequestContext, authenticated_context
 from app.db import Actor
 from app.domain.access import AccessScope
 from app.domain.enums import OwnershipLevel
-from app.domain.schemas import IntegrationConfigSpec, InviteAcceptRequest, StaffPersonalData
+from app.domain.schemas import (
+    DepartmentSpec,
+    IntegrationConfigSpec,
+    InviteAcceptRequest,
+    StaffPersonalData,
+)
 from app.middleware.body_limit import BodySizeLimitMiddleware
 from app.middleware.security_headers import SecurityHeadersMiddleware
 from app.security.blobs import AVATAR, STAFF_PROFILE, BlobCipher
@@ -64,6 +69,29 @@ def settings(**overrides: object) -> Settings:
         ENVIRONMENT="test",
         **overrides,
     )
+
+
+def test_department_name_description_and_state_are_validated() -> None:
+    assert DepartmentSpec(name="  Claims  ").model_dump() == {
+        "name": "Claims",
+        "description": "",
+        "is_active": True,
+    }
+    assert DepartmentSpec(
+        name=" Claims ", description="  Follow-up ", is_active=False
+    ).model_dump() == {
+        "name": "Claims",
+        "description": "Follow-up",
+        "is_active": False,
+    }
+    for invalid in (
+        {"name": "   "},
+        {"name": "A"},
+        {"name": "Claims", "description": "x" * 501},
+        {"name": "Claims", "unknown": True},
+    ):
+        with pytest.raises(ValidationError):
+            DepartmentSpec.model_validate(invalid)
 
 
 @pytest.mark.parametrize("format", ["PNG", "JPEG", "WEBP"])
@@ -372,6 +400,7 @@ async def test_api_permissions_csrf_validation_and_private_photo(
     repo = SimpleNamespace(
         departments=AsyncMock(return_value=[]),
         create_department=AsyncMock(return_value=uuid4()),
+        update_department=AsyncMock(return_value=True),
         assign_department=AsyncMock(return_value=True),
     )
     monkeypatch.setattr(staff_api, "StaffProfileRepository", lambda: repo)
@@ -401,9 +430,39 @@ async def test_api_permissions_csrf_validation_and_private_photo(
         assert (
             await client.post("/api/staff/departments", json={"name": "Claims"})
         ).status_code == 403
+        created = await client.post(
+            "/api/staff/departments",
+            json={"name": "  Claims  ", "description": "  Claims team  ", "is_active": False},
+            headers=headers,
+        )
+        assert created.status_code == 201
+        assert created.json()["name"] == "Claims" and created.json()["is_active"] is False
+        repo.create_department.assert_awaited_once_with(ctx.db, "Claims", "Claims team", False)
+        for body in ({"name": "  "}, {"name": "Claims", "description": "x" * 501}):
+            assert (
+                await client.post("/api/staff/departments", json=body, headers=headers)
+            ).status_code == 422
+        department_id = uuid4()
+        path = f"/api/staff/departments/{department_id}"
+        assert (await client.put(path, json={"name": "Claims"})).status_code == 403
+        edited = await client.put(
+            path,
+            json={"name": "Support", "description": "Team", "is_active": True},
+            headers=headers,
+        )
+        assert edited.status_code == 200 and edited.json()["description"] == "Team"
+        repo.update_department.assert_awaited_once_with(
+            ctx.db, department_id, "Support", "Team", True
+        )
+        repo.update_department.return_value = False
         assert (
-            await client.post("/api/staff/departments", json={"name": "Claims"}, headers=headers)
-        ).status_code == 201
+            await client.put(path, json={"name": "Support"}, headers=headers)
+        ).status_code == 404
+        ctx.permissions = frozenset({"users.view", "users.create"})
+        assert (
+            await client.put(path, json={"name": "Support"}, headers=headers)
+        ).status_code == 403
+        ctx.permissions = frozenset({"users.view", "users.create", "users.edit"})
         assert (
             await client.patch(
                 f"/api/staff/users/{target}/department",

@@ -21,10 +21,30 @@ class StaffProfileRepository:
             json_value(await db.scalar(text("SELECT app_security.staff_departments()"))),
         )
 
-    async def create_department(self, db: AsyncSession, name: str) -> UUID | None:
+    async def create_department(
+        self, db: AsyncSession, name: str, description: str, is_active: bool
+    ) -> UUID | None:
         return cast(
             UUID | None,
-            await db.scalar(text("SELECT app_security.create_department(:name)"), {"name": name}),
+            await db.scalar(
+                text("SELECT app_security.create_department(:name, :description, :active)"),
+                {"name": name, "description": description, "active": is_active},
+            ),
+        )
+
+    async def update_department(
+        self, db: AsyncSession, department_id: UUID, name: str, description: str, is_active: bool
+    ) -> bool:
+        return bool(
+            await db.scalar(
+                text("SELECT app_security.update_department(:id, :name, :description, :active)"),
+                {
+                    "id": department_id,
+                    "name": name,
+                    "description": description,
+                    "active": is_active,
+                },
+            )
         )
 
     async def assign_department(self, db: AsyncSession, user_id: UUID, department_id: UUID) -> bool:

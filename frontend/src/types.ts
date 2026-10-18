@@ -195,7 +195,14 @@ export interface AnalyticsOverview {
   window: { date_from: string; date_to: string };
 }
 
-export interface StaffDepartment { id: string; name: string }
+export interface StaffDepartment {
+  id: string;
+  name: string;
+  description: string;
+  is_active: boolean;
+  employee_count: number;
+  created_at?: string;
+}
 
 export interface StaffEmployeeProfile {
   id: string;
@@ -204,7 +211,15 @@ export interface StaffEmployeeProfile {
   status: string;
   department_id: string;
   department_name: string;
+  department_description?: string;
+  department_is_active?: boolean;
   avatar_url: string | null;
+  created_at?: string;
+  last_login_at?: string | null;
+  two_factor_enabled?: boolean;
+  two_factor_required?: boolean;
+  roles?: Array<{ id: string; name: string; description: string; is_system: boolean }>;
+  permissions?: string[];
   profile_completed_at: string | null;
   national_id_masked: string | null;
   personal: null | {

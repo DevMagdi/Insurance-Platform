@@ -9,6 +9,7 @@ import type { StaffAccess, StaffDepartment, StaffDirectoryEntry } from '../../ty
 import { AccessEditor } from './AccessEditor';
 import { StaffAvatar } from '../../components/StaffAvatar';
 import { StaffProfileModal } from './StaffProfileModal';
+import { DepartmentsPanel } from './DepartmentsPanel';
 
 interface UsersPageProps {
   access: StaffAccess;
@@ -21,13 +22,13 @@ export function UsersPage({ access, onAccessChanged }: UsersPageProps) {
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [departmentFilter, setDepartmentFilter] = useState('');
   const [showInvite, setShowInvite] = useState(false);
   const [inviteName, setInviteName] = useState('');
   const [inviteEmail, setInviteEmail] = useState('');
   const [busy, setBusy] = useState(false);
   const [departments, setDepartments] = useState<StaffDepartment[]>([]);
   const [inviteDepartment, setInviteDepartment] = useState('');
-  const [departmentName, setDepartmentName] = useState('');
   const [profileId, setProfileId] = useState<string | null>(null);
   const [selectedUser, setSelectedUser] = useState<StaffDirectoryEntry | null>(null);
   const [toast, setToast] = useState('');
@@ -53,8 +54,9 @@ export function UsersPage({ access, onAccessChanged }: UsersPageProps) {
 
   const filteredUsers = useMemo(() => users.filter((user) => {
     const matchesSearch = `${user.full_name} ${user.email} ${user.department_name ?? ''}`.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase());
-    return matchesSearch && (!statusFilter || user.status === statusFilter);
-  }), [users, search, statusFilter]);
+    return matchesSearch && (!statusFilter || user.status === statusFilter)
+      && (!departmentFilter || user.department_id === departmentFilter);
+  }), [users, search, statusFilter, departmentFilter]);
 
   if (!hasPermission(access, 'users.view')) return <AccessDenied title="إدارة المستخدمين غير متاحة" />;
 
@@ -93,19 +95,8 @@ export function UsersPage({ access, onAccessChanged }: UsersPageProps) {
     } finally { setBusy(false); }
   };
 
-  const createDepartment = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setBusy(true);
-    try {
-      await api('/api/staff/departments', { method: 'POST', body: jsonBody({ name: departmentName.trim() }) });
-      setDepartmentName('');
-      setToast('تم إنشاء القسم.');
-      await load();
-    } catch (cause) { setError(cause instanceof Error ? cause.message : 'تعذر إنشاء القسم.'); }
-    finally { setBusy(false); }
-  };
-
   const canInvite = hasPermission(access, 'users.create');
+  const activeDepartments = departments.filter((department) => department.is_active !== false);
   const canManageAccess = hasPermission(access, 'users.manage_access');
 
   return (
@@ -129,10 +120,9 @@ export function UsersPage({ access, onAccessChanged }: UsersPageProps) {
       <div className="user-toolbar surface-card">
         <div className="queue-search-wrap"><Icon name="search" size={17} /><input aria-label="البحث عن مستخدم" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="ابحث بالاسم أو البريد الإلكتروني…" /></div>
         <label className="compact-field"><span>حالة الحساب</span><select aria-label="تصفية المستخدمين حسب الحالة" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}><option value="">كل الحسابات</option><option value="active">مفعّل</option><option value="invited">بانتظار الدعوة</option><option value="disabled">معطّل</option></select></label>
+        <label className="compact-field"><span>القسم</span><select aria-label="تصفية المستخدمين حسب القسم" value={departmentFilter} onChange={(event) => setDepartmentFilter(event.target.value)}><option value="">كل الأقسام</option>{departments.map((department) => <option key={department.id} value={department.id}>{department.name}{department.is_active === false ? ' (غير مفعّل)' : ''}</option>)}</select></label>
         <button className="button button-light" type="button" onClick={() => { void load(); }} disabled={loading}><Icon name="refresh" size={15} /> تحديث</button>
       </div>
-
-      {hasPermission(access, 'users.edit') && <form className="surface-card user-toolbar" onSubmit={(event) => { void createDepartment(event); }}><label className="compact-field">قسم جديد<input aria-label="اسم القسم الجديد" required minLength={2} maxLength={120} value={departmentName} onChange={(event) => setDepartmentName(event.target.value)} /></label><button className="button button-light" type="submit" disabled={busy || departmentName.trim().length < 2}>إضافة قسم</button></form>}
 
       <section className="surface-card admin-table-card">
         <div className="table-topline"><div><strong>{formatNumber(filteredUsers.length)} مستخدم</strong><span>حسب نطاق الإدارة المصرّح</span></div><span className="last-login-note"><Icon name="clock" size={14} /> آخر تسجيل دخول</span></div>
@@ -162,7 +152,9 @@ export function UsersPage({ access, onAccessChanged }: UsersPageProps) {
         </tbody></table></div>
       </section>
 
-      {showInvite && <Modal title="دعوة عضو جديد" eyebrow="إضافة إلى فريق الوساطة" onClose={() => setShowInvite(false)}><p className="modal-intro">ستُرسل دعوة آمنة بالبريد الإلكتروني. تعيين الدور ونطاق الشركات يتم بعد إنشاء الحساب.</p><form onSubmit={(event) => { void invite(event); }}><label className="field-label">الاسم الكامل<input autoFocus required minLength={2} maxLength={120} value={inviteName} onChange={(event) => setInviteName(event.target.value)} placeholder="الاسم كما سيظهر في مساحة العمل" /></label><label className="field-label">البريد الإلكتروني<input required type="email" maxLength={254} value={inviteEmail} onChange={(event) => setInviteEmail(event.target.value)} placeholder="name@company.com" dir="ltr" /></label><label className="field-label">القسم<select aria-label="قسم المستخدم الجديد" required value={inviteDepartment} onChange={(event) => setInviteDepartment(event.target.value)}><option value="">اختر القسم</option>{departments.map((department) => <option key={department.id} value={department.id}>{department.name}</option>)}</select></label><div className="modal-actions"><button className="button button-light" type="button" onClick={() => setShowInvite(false)}>إلغاء</button><button className="button button-dark" type="submit" disabled={busy || inviteName.trim().length < 2 || !inviteEmail.includes('@') || !inviteDepartment}>{busy ? 'جارٍ الإرسال…' : 'إرسال الدعوة'}</button></div></form></Modal>}
+      <DepartmentsPanel departments={departments} canManage={hasPermission(access, 'users.edit')} loading={loading} onRefresh={load} />
+
+      {showInvite && <Modal title="دعوة عضو جديد" eyebrow="إضافة إلى فريق الوساطة" onClose={() => setShowInvite(false)}><p className="modal-intro">ستُرسل دعوة آمنة بالبريد الإلكتروني. تعيين الدور ونطاق الشركات يتم بعد إنشاء الحساب.</p><form onSubmit={(event) => { void invite(event); }}><label className="field-label">الاسم الكامل<input autoFocus required minLength={2} maxLength={120} value={inviteName} onChange={(event) => setInviteName(event.target.value)} placeholder="الاسم كما سيظهر في مساحة العمل" /></label><label className="field-label">البريد الإلكتروني<input required type="email" maxLength={254} value={inviteEmail} onChange={(event) => setInviteEmail(event.target.value)} placeholder="name@company.com" dir="ltr" /></label><label className="field-label">القسم<select aria-label="قسم المستخدم الجديد" required value={inviteDepartment} onChange={(event) => setInviteDepartment(event.target.value)}><option value="">اختر القسم</option>{activeDepartments.map((department) => <option key={department.id} value={department.id}>{department.name}</option>)}</select></label>{activeDepartments.length === 0 && <p className="inline-alert warning">أنشئ قسماً مفعّلاً قبل دعوة الموظفين.</p>}<div className="modal-actions"><button className="button button-light" type="button" onClick={() => setShowInvite(false)}>إلغاء</button><button className="button button-dark" type="submit" disabled={busy || inviteName.trim().length < 2 || !inviteEmail.includes('@') || !inviteDepartment}>{busy ? 'جارٍ الإرسال…' : 'إرسال الدعوة'}</button></div></form></Modal>}
       {profileId && <StaffProfileModal key={profileId} userId={profileId} canEdit={hasPermission(access, 'users.edit')} onClose={() => setProfileId(null)} onUpdated={load} />}
       {selectedUser && <AccessEditor user={selectedUser} onClose={() => setSelectedUser(null)} onSaved={async () => { setSelectedUser(null); setToast('تم تحديث وصول المستخدم وإبطال جلساته السابقة.'); await load(); await onAccessChanged(); }} />}
     </div>

@@ -1072,6 +1072,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/staff/departments/{department_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Update Department */
+        put: operations["update_department_api_staff_departments__department_id__put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/staff/users/{user_id}/department": {
         parameters: {
             query?: never;
@@ -3048,6 +3065,16 @@ export interface components {
         DepartmentSpec: {
             /** Name */
             name: string;
+            /**
+             * Description
+             * @default
+             */
+            description: string;
+            /**
+             * Is Active
+             * @default true
+             */
+            is_active: boolean;
         };
         /** EscalationRequest */
         EscalationRequest: {
@@ -5885,6 +5912,46 @@ export interface operations {
         responses: {
             /** @description Successful Response */
             201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_department_api_staff_departments__department_id__put: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Must equal the csrf_token cookie (double-submit). */
+                "X-CSRF-Token": string;
+            };
+            path: {
+                department_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DepartmentSpec"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };

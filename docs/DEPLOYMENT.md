@@ -216,7 +216,7 @@ compares them.
 
 ## Staff invitations and employee profiles
 
-1. Apply Alembic through `20261018_29` before deploying the new UI. Existing staff
+1. Apply Alembic through `20261018_30` before deploying the new UI. Existing staff
    (and bootstrap/seed accounts) belong to **الإدارة العامة** until an administrator
    assigns their actual department under **Users → employee photo → department**.
    Legacy accounts are explicitly shown as incomplete; no invented identity/photo
@@ -256,8 +256,14 @@ are decoded, bounded, resized to 512×512 and re-encoded as metadata-free JPEG;
 SVG/animation/corrupt images are refused. Both identity JSON and photo are
 row-bound AES-GCM encrypted inside PostgreSQL and included in key rotation.
 Directory lists expose no national ID/address/phone. Profile/photo reads require
-`users.view` **and global scope**; department writes require `users.edit` and CSRF.
-Departments never grant role/team/complaint access. Do not cache these private APIs.
+`users.view` **and global scope**; department writes require `users.edit`, global
+scope and CSRF. Global staff administrators can create/edit departments (name,
+optional description, active state) on `/staff/admin` or `/staff/users`. Inactive
+departments remain visible and retain existing employees, but cannot receive new
+invitations or assignments. The directory can be filtered by department; the
+profile shows personal data, department, roles, effective permissions and account
+security. Departments never grant role/team/complaint access. Do not cache these
+private APIs.
 
 Automated evidence: `backend/tests/test_staff_onboarding*.py` covers provider
 routing, SMTP recipient envelopes, transaction rollback, invitation replay/expiry,

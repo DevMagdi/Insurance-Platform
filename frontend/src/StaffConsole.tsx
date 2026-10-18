@@ -11,6 +11,7 @@ import { formatDateTime, presetRange } from './utils/date';
 import type { AppRoute, ComplaintFilterOptions, CompanyOption, DateRange, InsuranceType, MeResponse, NotificationItem, Permission, StaffAccess } from './types';
 import './staff-console.css';
 import './styles/staff.css';
+import './styles/admin-identity.css';
 
 const AuthPage = lazy(async () => ({ default: (await import('./features/auth/AuthPage')).AuthPage }));
 const OverviewPage = lazy(async () => ({ default: (await import('./features/dashboard/OverviewPage')).OverviewPage }));

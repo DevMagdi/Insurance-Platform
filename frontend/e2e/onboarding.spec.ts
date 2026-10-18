@@ -96,7 +96,7 @@ test('department invitation → full profile/photo → clickable dashboard profi
   const profile = page.getByRole('dialog');
   await expect(profile.getByText('29901010112345')).toBeVisible();
   await expect(profile.getByText('12 Nile Street, Dokki')).toBeVisible();
-  await expect(profile.getByText('Claims specialist')).toBeVisible();
+  await expect(profile.getByText('Claims specialist', { exact: true })).toBeVisible();
   await expect(profile.getByText('+201123456789')).toBeVisible();
   await profile.getByRole('button', { name: 'إغلاق', exact: true }).click();
   await page.goto('/staff/users');

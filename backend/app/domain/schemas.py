@@ -340,6 +340,8 @@ class InviteAcceptRequest(InvitationTokenRequest):
 
 class DepartmentSpec(StrictModel):
     name: str = Field(min_length=2, max_length=120)
+    description: str = Field(default="", max_length=500)
+    is_active: bool = True
 
 
 class DepartmentAssignment(StrictModel):

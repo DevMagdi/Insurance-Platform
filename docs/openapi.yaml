@@ -2927,6 +2927,51 @@ paths:
         description: Must equal the csrf_token cookie (double-submit).
         schema:
           type: string
+  /api/staff/departments/{department_id}:
+    put:
+      tags:
+      - staff
+      summary: Update Department
+      operationId: update_department_api_staff_departments__department_id__put
+      parameters:
+      - name: department_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Department Id
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DepartmentSpec'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Update Department Api Staff Departments  Department
+                  Id  Put
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: users.edit
   /api/staff/users/{user_id}/department:
     patch:
       tags:
@@ -8229,6 +8274,15 @@ components:
           maxLength: 120
           minLength: 2
           title: Name
+        description:
+          type: string
+          maxLength: 500
+          title: Description
+          default: ''
+        is_active:
+          type: boolean
+          title: Is Active
+          default: true
       additionalProperties: false
       type: object
       required:
