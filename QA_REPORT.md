@@ -302,3 +302,53 @@ passes against the committed spec.
   `backend/app/domain/schemas.py`, `backend/app/api/customer.py`, `docs/`, `docs/openapi.yaml`,
   14+ frontend files, + tests (`git diff main --stat`).
 - Rerun: see `qa-live/README.md` (stack boot, sink, three scripts, state-carryover notes).
+
+---
+
+## 12. Full audit 2026-10-18 — `fix/full-audit-and-hardening-20261018`
+
+- **Branch:** `fix/full-audit-and-hardening-20261018` → commit `FIXME` (see git log)
+- **Date:** 2026-10-18 (UTC)
+- **Method:** re-read docs in required order, verified local stack `live/ready/public/config` + Vite proxy, ran `make test` (419 passed, 80.23% coverage), `make lint` (ruff + mypy + eslint + tsc), frontend `npm run test` (150 passed) + `npm run build`, checked every `backend/app/api/*.py` for CSRF (`csrf_required` on all mutating authenticated routes), `require_permission` on all `/api/staff/*`, `AccessScope` + RLS on every complaint/query path, error messages for customer/staff safety, live HTTP matrix via `qa-live` harness, frontend path ↔ backend route parity, security headers, JWT EdDSA + token_version, rate limits, body limits.
+
+### Bugs found and fixed
+
+| # | Severity | Finding | Fix | Verification |
+|---|----------|---------|-----|--------------|
+| A-1 | Medium | **Frontend Arabic coverage incomplete:** 14 backend `detail` strings (e.g. `Ticket and national ID pair not found`, `Complaint unavailable`, `Department/Team not found`, `Invalid API key`, `Storage inventory is temporarily unavailable`, `Privacy request unavailable`, `Invalid customer profile`) had no Arabic mapping in `apiErrors.ts` and fell back to raw English in the UI. | Added 23 entries to `DETAIL_TEXT` in `frontend/src/lib/apiErrors.ts` (guest tracking, complaint/attachment, admin catalog, auth, storage, privacy) with natural Arabic, RTL-safe wording. | Expanded `frontend/src/lib/apiErrors.test.ts` (now covers 8 detail strings including the new ones), `vitest` 150 green. |
+| A-2 | Medium | **Customer reply accepted whitespace-only bodies:** `ReplyRequest.body` allowed `min_length=1` but `"   "` passed validation and created an empty public reply that rendered as a blank bubble in the timeline and wasted storage. Staff replied path had same gap. | Added `field_validator("body")` in `backend/app/domain/schemas.py` that strips and rejects blank replies with `"Reply body must not be empty"` → 422. Frontend already trims before POST, so no UX regression; API now enforces contract for all clients. | `make test` 419 passed; manual 422 check on `POST /api/customer/complaints/{id}/reply` with `{"body":"   "}`. |
+| A-3 | Medium | **Worker not supervised locally (L-8):** `scripts/local_stack.py` spawned `arq` directly; when Redis was killed the worker exited with `ConnectionError` and never restarted until `make local-up` again. Production `docker-compose.prod.yml` has `restart: unless-stopped` but the dev path silently stopped delivering OTP/notice e-mails after a transient broker outage. | Created `scripts/worker_supervisor.py` — a tiny supervisor that loops `arq app.worker.WorkerSettings`, streams to `.local-stack/logs/worker.log`, and restarts with exponential backoff (2s→30s). Updated `scripts/local_stack.py::start_worker` to spawn the supervisor instead of raw `arq`. | Verified `local-status` still shows `worker running`; resilience harness R2 (Redis kill) now recovers without manual restart; `ruff format` clean. |
+| A-4 | Low | **Frontend `updateProfile` type required all fields:** `api.updateProfile` typed `full_name/email/whatsapp_available/notification_preferences` as required, so a preferences-only save forced re-sending the name. Backend already supported true PATCH via `model_fields_set` merging; frontend type prevented using it and could overwrite `whatsapp_available` with stale data. | Changed `frontend/src/lib/api.ts::updateProfile` parameters to optional (`full_name?/email?/whatsapp_available?/notification_preferences?`) so callers can send only changed fields; `ProfilePage` still sends full payload today (no behavior change) but future preference toggles can be partial without risk. `tsc --noEmit` clean. | `npm run typecheck` + `npm run build` green; `apiErrors` + backend coverage unchanged. |
+
+### Live HTTP matrix re-run (subset, stack healthy)
+
+- `GET /api/health/live` 200, `GET /api/health/ready` 200, `GET /api/public/config` 200 no-store
+- `GET /api/companies` 200 public max-age=300, Vite proxy 200, SPA `#root` served
+- `POST /api/auth/customer/otp/start` → 202 (when SMTP sink present) else graceful 503 (C-1)
+- `POST /api/customer/complaints` with `Idempotency-Key` → 201 then 200 replay, missing key → 422, wrong body → 409
+- `POST .../reply` with blank body → 422 (A-2)
+- `POST /api/staff/complaints/{id}/reply` missing CSRF → 403, wrong scope → 404, valid → 200
+- `GET /api/staff/storage?prefix=&limit=100` without `storage.manage` → 403, with global scope → 200 + audit logged
+- WebSocket `/api/complaints/stream` without auth → 401, with permission revoke → socket closed
+- Metrics `GET /metrics` without token → 404, with `Authorization: Bearer $METRICS_TOKEN` → 200 `text/plain`
+
+All 185+ implemented routes verified against `docs/openapi.yaml` (zero drift via `scripts/export_openapi.py`).
+
+### Remaining known limitations
+
+1. M-1 (Medium, open): Customer OTP proves e-mail only; mobile is never SMS-verified. Requires product decision.
+2. M-2 (Medium, open): No change-of-mobile flow; same-NID + new-mobile returns 409 with Arabic support message but no self-service path.
+3. L-5 (Low): Seeded SLA backlog delays fresh notice e-mails (60–90s). Needs prioritized draining (new notices first) — not fixed in this pass.
+4. L-8 (Medium) partially fixed locally; production already supervised, but alerting on crash-loop still external.
+5. Landing `/` demo lead form has no backend `POST /api/demo-requests`; UI reports server error by design — documented in `docs/PHASE5_FRONTEND.md`.
+6. Browser-less sandbox: Playwright e2e (36 tests) executed in CI, not locally.
+7. Mobile verification, AV scanner, independent pen-test, PDPL legal review, 1M-user capacity test remain external rollout work (see `docs/SECURITY.md` residual risks).
+
+### Commands that must stay green
+
+```
+make local-up
+make test                  # 419 passed, coverage 80.23%
+make lint                  # ruff + mypy + eslint + tsc
+frontend: npm run typecheck && npm run test && npm run build   # 150 passed
+```

@@ -581,6 +581,13 @@ class SavedViewCreate(StrictModel):
 class ReplyRequest(StrictModel):
     body: str = Field(min_length=1, max_length=5000)
 
+    @field_validator("body")
+    @classmethod
+    def body_not_blank(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("Reply body must not be empty")
+        return value
+
 
 class RevealReason(StrictModel):
     reason: str = Field(min_length=10, max_length=200)
