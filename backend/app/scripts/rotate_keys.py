@@ -30,7 +30,7 @@ from typing import Any
 
 import psycopg
 
-from app.security.blobs import ATTACHMENT, EXPORT, RECORDING, BlobCipher
+from app.security.blobs import ATTACHMENT, AVATAR, EXPORT, RECORDING, STAFF_PROFILE, BlobCipher
 from app.security.crypto import _AAD as NATIONAL_ID_AAD
 from app.security.crypto import build_keyring
 from app.security.keyring import Keyring
@@ -58,6 +58,20 @@ def _text(value: str) -> bytes:
 
 
 COLUMNS: tuple[Column, ...] = (
+    Column(
+        "staff_profiles",
+        "staff_user_id",
+        "personal_ciphertext",
+        (),
+        lambda r: BlobCipher.associated_data(STAFF_PROFILE, r["staff_user_id"]),
+    ),
+    Column(
+        "staff_profiles",
+        "staff_user_id",
+        "avatar_content",
+        (),
+        lambda r: BlobCipher.associated_data(AVATAR, r["staff_user_id"]),
+    ),
     Column("customers", "id", "national_id_ciphertext", (), lambda _r: NATIONAL_ID_AAD),
     Column("staff_users", "id", "totp_secret_ciphertext", (), lambda _r: _TOTP_AAD),
     Column(

@@ -96,6 +96,7 @@ class WorkerConfig(BaseSettings):
     smtp_username: str | None = None
     smtp_password: str | None = None
     smtp_start_tls: bool = False
+    smtp_use_tls: bool = False
     dev_sms_mailbox: bool = False
     environment: str = "production"
 

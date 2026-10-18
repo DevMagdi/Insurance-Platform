@@ -47,6 +47,7 @@ SMTP_FROM=no-reply@example.com
 SMTP_USERNAME=...
 SMTP_PASSWORD=...
 SMTP_START_TLS=true
+SMTP_USE_TLS=false
 HTTP_PORT=8080
 APP_WORKER_DB_PASSWORD=...
 # Phase 8: required in production (the API refuses to boot without them)
@@ -211,3 +212,56 @@ compares them.
 * The pipeline is production-shaped. Phase 8 adds key rotation, backups with restore drills, monitoring, load tests and PDPL tooling, but TLS certificates, an external penetration test, the PDPL legal review and a capacity test on production-sized hardware are still required before go-live.
 * `postgres-rls` and the container smoke tests run on GitHub runners; a green pipeline here does not replace a staged rehearsal on the real host.
 * Deployment uses SSH from the runner. When nobody has supplied `DEPLOY_SSH_KNOWN_HOSTS`, the first connection accepts a new host key; pin the key before treating the path as trusted.
+
+
+## Staff invitations and employee profiles
+
+1. Apply Alembic through `20261018_29` before deploying the new UI. Existing staff
+   (and bootstrap/seed accounts) belong to **الإدارة العامة** until an administrator
+   assigns their actual department under **Users → employee photo → department**.
+   Legacy accounts are explicitly shown as incomplete; no invented identity/photo
+   is backfilled. New invitations cannot activate without all required details/photo.
+2. Configure and enable a **workplace/global** SMTP, Gmail OAuth, Outlook OAuth,
+   SendGrid or SES connection in **Settings → Integrations** and run its connection
+   test. Account mail uses the most recently updated connected workplace email
+   provider (then the most recently configured enabled one). A failed selected
+   provider fails closed; it never falls back to a test address. Company-only
+   connections and `sandbox_recipient` are not used for account invitations.
+3. If no workplace email connection is enabled, account mail uses the explicit
+   `SMTP_*` environment settings. Production refuses local/Mailpit/Mailtrap/sandbox
+   SMTP hosts, test senders and unencrypted SMTP for account mail. For port 587 use
+   `SMTP_START_TLS=true`, `SMTP_USE_TLS=false`; for implicit TLS on 465 use
+   `SMTP_START_TLS=false`, `SMTP_USE_TLS=true`. `DEV_SMS_MAILBOX` must be false in
+   production. Keep provider credentials outside Git/chat; use the existing secret
+   store or the encrypted integrations form.
+4. Set `PUBLIC_APP_URL` to the real **HTTPS origin** serving the SPA, not localhost,
+   the API-only host or a test URL. A one-time `/invite#token=...` link expires in
+   48 hours; the fragment avoids access-log/referrer leakage. Existing `?token=`
+   links remain supported. Expired/pending invites can be re-sent in Users; the
+   previous token is invalidated atomically. A provider rejection rolls back the
+   new user/invitation (or reset/resend) rather than reporting success.
+5. Use a verified sender/domain (SPF, DKIM and DMARC). SES accounts must be out of
+   the SES sandbox to reach arbitrary addresses. Gmail/Outlook OAuth requires the
+   actual mail-send scopes. A successful API response means **provider acceptance**,
+   not proof of inbox delivery: check provider delivery/bounce logs and Spam/Junk.
+   Run a deployment acceptance test by inviting an address you control on Gmail
+   and on your company domain; open the actual email, complete the form, sign in,
+   and click the photo from `/staff/admin` and `/staff/users`.
+
+The invitation form collects full name, Egyptian national ID, mobile, address,
+city/governorate, optional job title/emergency phone and a required JPEG/PNG/WebP
+photo (512 KiB maximum). Birth date is derived from the validated national ID.
+Email and department come from the invitation, not the public request. Images
+are decoded, bounded, resized to 512×512 and re-encoded as metadata-free JPEG;
+SVG/animation/corrupt images are refused. Both identity JSON and photo are
+row-bound AES-GCM encrypted inside PostgreSQL and included in key rotation.
+Directory lists expose no national ID/address/phone. Profile/photo reads require
+`users.view` **and global scope**; department writes require `users.edit` and CSRF.
+Departments never grant role/team/complaint access. Do not cache these private APIs.
+
+Automated evidence: `backend/tests/test_staff_onboarding*.py` covers provider
+routing, SMTP recipient envelopes, transaction rollback, invitation replay/expiry,
+validation, encrypted photos, departments and authorization. The integration file
+uses a disposable real PostgreSQL database and a local SMTP server, **not Gmail**.
+Browser coverage is in `frontend/e2e/onboarding.spec.ts`; a separate live inbox
+acceptance test is still required after deploying real provider credentials.

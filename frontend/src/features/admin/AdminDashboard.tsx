@@ -5,6 +5,8 @@ import { Icon, type IconName } from '../../components/Icon';
 import { hasPermission } from '../../utils/access';
 import { displayRange, formatNumber, rangeBounds } from '../../utils/date';
 import type { AnalyticsOverview, AppRoute, DateRange, StaffAccess, StaffDirectoryEntry } from '../../types';
+import { StaffAvatar } from '../../components/StaffAvatar';
+import { StaffProfileModal } from './StaffProfileModal';
 import { canViewAdminDashboard } from './adminAccess';
 
 const STATUS: Record<string, string> = {
@@ -36,6 +38,7 @@ export function AdminDashboard({ access, range, onNavigate }: Props) {
   const [users, setUsers] = useState<StaffDirectoryEntry[] | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
+  const [profileId, setProfileId] = useState<string | null>(null);
   const [updated, setUpdated] = useState<Date | null>(null);
   const allowed = canViewAdminDashboard(access);
   const canSeeUsers = hasPermission(access, 'users.view');
@@ -131,6 +134,8 @@ export function AdminDashboard({ access, range, onNavigate }: Props) {
         {canSeeUsers && <button type="button" className="admin-text-link" onClick={() => onNavigate({ page: 'users' })}>إدارة المستخدمين ←</button>}
       </section>
     </div>
+    {canSeeUsers && !!users?.length && <section className="admin-panel"><div className="admin-panel-head"><div><span className="admin-eyebrow">بروفايلات الموظفين</span><h2>الفريق والأقسام</h2></div><button className="admin-text-link" type="button" onClick={() => onNavigate({ page: 'users' })}>عرض كل الموظفين ←</button></div><div className="employee-card-grid">{users.slice(0, 8).map((user) => <button key={user.id} type="button" className="employee-card" aria-label={`عرض بروفايل ${user.full_name || user.email || 'موظف'}`} onClick={() => setProfileId(user.id)}><StaffAvatar name={user.full_name} src={user.avatar_url} status={user.status} /><span><strong>{user.full_name}</strong><small>{user.department_name || 'غير محدد'}</small></span></button>)}</div></section>}
+    {profileId && <StaffProfileModal key={profileId} userId={profileId} canEdit={hasPermission(access, 'users.edit')} onClose={() => setProfileId(null)} onUpdated={() => load()} />}
     <section className="admin-panel"><div className="admin-panel-head"><div><span className="admin-eyebrow">أولوية اليوم</span><h2>يحتاج انتباه</h2></div><button type="button" className="admin-text-link" onClick={() => onNavigate({ page: 'complaints' } as AppRoute)}>فتح قائمة الشكاوى ←</button></div>
       <div className="attention-list">
         {[

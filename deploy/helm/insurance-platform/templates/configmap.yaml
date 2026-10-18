@@ -10,6 +10,7 @@ data:
   SMTP_PORT: {{ .Values.smtp.port | quote }}
   SMTP_FROM: {{ .Values.smtp.from | quote }}
   SMTP_START_TLS: {{ .Values.smtp.startTls | quote }}
+  SMTP_USE_TLS: {{ .Values.smtp.useTls | default false | quote }}
   PROMETHEUS_MULTIPROC_DIR: /tmp/prometheus-multiproc
   {{- range $key, $value := .Values.config }}
   {{ $key }}: {{ $value | quote }}

@@ -59,12 +59,16 @@ class StaffLoginRequest(StrictModel):
 
 
 class StaffInviteRequest(StrictModel):
+    department_id: UUID
     email: str = Field(min_length=5, max_length=254, pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
     full_name: str = Field(min_length=2, max_length=120)
 
 
-class StaffProfileEdit(StaffInviteRequest):
+class StaffProfileEdit(StrictModel):
     """Profile only; roles, scopes and credentials have separate guarded flows."""
+
+    email: str = Field(min_length=5, max_length=254, pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+    full_name: str = Field(min_length=2, max_length=120)
 
     @field_validator("email")
     @classmethod
@@ -308,9 +312,38 @@ class TeamSpec(StrictModel):
         return self
 
 
-class InviteAcceptRequest(StrictModel):
-    token: str = Field(min_length=40, max_length=128)
-    password: str = Field(min_length=12, max_length=128)
+class StaffPersonalData(StrictModel):
+    full_name: str = Field(min_length=2, max_length=120)
+    national_id: str = Field(repr=False)
+    mobile: str = Mobile
+    address: str = Field(min_length=5, max_length=500)
+    city: str = Field(min_length=2, max_length=120)
+    job_title: str = Field(default="", max_length=120)
+    emergency_phone: str | None = Field(default=None, pattern=r"^\+201[0-9]{9}$")
+
+    @field_validator("national_id")
+    @classmethod
+    def valid_national_id(cls, value: str) -> str:
+        return validate_national_id(value)
+
+
+class InvitationTokenRequest(StrictModel):
+    token: str = Field(min_length=40, max_length=128, repr=False)
+
+
+class InviteAcceptRequest(InvitationTokenRequest):
+    password: str = Field(min_length=12, max_length=128, repr=False)
+    # Required for first-time invitations; omitted for password resets only.
+    profile: StaffPersonalData | None = None
+    avatar_base64: str | None = Field(default=None, max_length=699052, repr=False)
+
+
+class DepartmentSpec(StrictModel):
+    name: str = Field(min_length=2, max_length=120)
+
+
+class DepartmentAssignment(StrictModel):
+    department_id: UUID
 
 
 class ChangePasswordRequest(StrictModel):
@@ -616,6 +649,7 @@ class IntegrationConfigSpec(StrictModel):
             "username",
             "password",
             "start_tls",
+            "use_tls",
             "from_email",
             "api_key",
             "access_key_id",
@@ -680,6 +714,10 @@ class IntegrationConfigSpec(StrictModel):
             not credentials["port"].isdigit() or not 1 <= int(credentials["port"]) <= 65535
         ):
             raise ValueError("Provider port must be between 1 and 65535")
+        if credentials.get("use_tls", "false").lower() in {"true", "1", "yes"} and credentials.get(
+            "start_tls", "false"
+        ).lower() in {"true", "1", "yes"}:
+            raise ValueError("Choose STARTTLS or implicit TLS, not both")
         if credentials.get("from_email") and not re.fullmatch(
             r"[^@\s]+@[^@\s]+\.[^@\s]+", credentials["from_email"]
         ):

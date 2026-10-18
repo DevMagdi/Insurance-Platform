@@ -243,14 +243,15 @@ async def test_password_reset_delivery_failure_is_fail_closed(
     monkeypatch.setattr(access_module, "AccessRepository", lambda: repo)
     sender = SimpleNamespace(send_password_reset=AsyncMock(side_effect=RuntimeError("offline")))
     service = AuthService.__new__(AuthService)
-    service.settings = SimpleNamespace(public_app_url="https://public.example")
+    service.settings = SimpleNamespace(public_app_url="https://public.example", is_production=False)
     service.delivery = sender
+    service.staff_mail = SimpleNamespace(send=sender.send_password_reset)
     with pytest.raises(HTTPException) as exc:
         await service.reset_staff_password(SimpleNamespace(), uuid4())
     assert exc.value.status_code == 503
-    assert "token=" in sender.send_password_reset.call_args.args[1]
+    assert "token=" in sender.send_password_reset.call_args.args[2]
     assert repo.issue_reset.call_args.args[3] > datetime.now(UTC) + timedelta(hours=47)
-    assert "target@test.invalid" in sender.send_password_reset.call_args.args[0]
+    assert "target@test.invalid" in sender.send_password_reset.call_args.args[1]
 
 
 def test_role_spec_rejects_unknown_permission() -> None:

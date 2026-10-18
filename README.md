@@ -110,7 +110,13 @@ Then open `http://localhost:8080/staff/login` and configure real providers
 under **Settings -> Integrations** (workplace settings: SMTP / Gmail OAuth /
 Outlook Graph / WhatsApp Cloud / Twilio SMS / OpenAI / Twilio+Vonage voice /
 ClamAV). Connection tests never send messages; sandbox sends require
-explicit consent and only reach the configured sandbox recipient.
+explicit consent and only reach the configured sandbox recipient. Staff invitations
+are different: they use the enabled **workplace email connection** and the invited
+user’s actual address, never the sandbox recipient. Set `PUBLIC_APP_URL` to the
+public SPA origin, choose a department in Users, then the recipient follows the
+`/invite` link to create a password, complete personal details and upload a photo.
+Click an employee photo in Users or the admin dashboard to open the full protected
+profile. See [staff onboarding deployment checks](docs/DEPLOYMENT.md#staff-invitations-and-employee-profiles).
 
 5. `make partitions` prepares current/upcoming UTC monthly partitions. `make down` retains data; `docker compose down -v` **destroys local data**. Changing `POSTGRES_DB` after the first boot requires a new *development* data volume (init scripts only run on an empty volume).
 

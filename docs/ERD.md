@@ -47,6 +47,8 @@ erDiagram
     CUSTOMERS ||--o{ PRIVACY_REQUESTS : requests
     STAFF_USERS ||--o{ PRIVACY_REQUESTS : handles
     STAFF_USERS ||--o{ STAFF_INVITATIONS : receives
+    DEPARTMENTS ||--o{ STAFF_USERS : employs
+    STAFF_USERS ||--o| STAFF_PROFILES : completes
     STAFF_USERS |o--o{ SECURITY_SETTINGS : updates
     CUSTOMERS ||--o{ COMPLAINT_IDEMPOTENCY : submits
     COMPLAINTS ||--o{ COMPLAINT_IDEMPOTENCY : deduplicated
@@ -67,6 +69,16 @@ erDiagram
     STAFF_USERS ||--o{ API_KEYS : owns
     STAFF_USERS |o--o{ CANNED_REPLIES : creates
 
+    DEPARTMENTS {
+      uuid id PK
+      text name UK
+    }
+    STAFF_PROFILES {
+      uuid staff_user_id PK,FK
+      bytea personal_ciphertext
+      bytea national_id_blind_index UK
+      bytea avatar_content
+    }
     CUSTOMERS {
       uuid id PK
       bytea national_id_ciphertext

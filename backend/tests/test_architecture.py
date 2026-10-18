@@ -230,6 +230,7 @@ def test_sql_migrations_cover_every_requested_table_and_fail_closed_rls() -> Non
             "016_export_formats.sql",
             "017_integrations_ai.sql",
             "021_privacy_operations.sql",
+            "029_staff_onboarding.sql",
         )
     )
     declared_tables = set(re.findall(r"CREATE TABLE (?:public\.)?(\w+) \(", schema + additive))

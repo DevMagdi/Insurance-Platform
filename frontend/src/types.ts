@@ -195,6 +195,30 @@ export interface AnalyticsOverview {
   window: { date_from: string; date_to: string };
 }
 
+export interface StaffDepartment { id: string; name: string }
+
+export interface StaffEmployeeProfile {
+  id: string;
+  email: string;
+  full_name: string;
+  status: string;
+  department_id: string;
+  department_name: string;
+  avatar_url: string | null;
+  profile_completed_at: string | null;
+  national_id_masked: string | null;
+  personal: null | {
+    full_name: string;
+    national_id: string;
+    mobile: string;
+    address: string;
+    city: string;
+    job_title: string;
+    emergency_phone: string | null;
+    date_of_birth: string;
+  };
+}
+
 export interface StaffDirectoryEntry {
   id: string;
   email: string;
@@ -203,6 +227,10 @@ export interface StaffDirectoryEntry {
   two_factor_enabled: boolean;
   two_factor_required: boolean;
   last_login_at?: string | null;
+  department_id?: string;
+  department_name?: string;
+  avatar_url?: string | null;
+  profile_completed_at?: string | null;
 }
 
 export interface Role {

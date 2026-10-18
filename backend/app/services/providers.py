@@ -12,7 +12,7 @@ from uuid import UUID
 
 import aiosmtplib
 
-from app.services.email_templates import render_customer_notice
+from app.services.email_templates import render_customer_notice, render_staff_invitation
 
 
 class DeliveryConfig(Protocol):
@@ -22,6 +22,7 @@ class DeliveryConfig(Protocol):
     smtp_username: str | None
     smtp_password: str | None
     smtp_start_tls: bool
+    smtp_use_tls: bool
     dev_sms_mailbox: bool
 
 
@@ -75,9 +76,11 @@ class SMTPDelivery:
             message,
             hostname=self.settings.smtp_host,
             port=self.settings.smtp_port,
-            username=self.settings.smtp_username,
-            password=self.settings.smtp_password,
+            username=self.settings.smtp_username or None,
+            password=self.settings.smtp_password or None,
             start_tls=self.settings.smtp_start_tls,
+            use_tls=self.settings.smtp_use_tls,
+            timeout=20,
         )
 
     async def send_otp(self, mobile: str, code: str) -> None:
@@ -91,18 +94,12 @@ class SMTPDelivery:
         )
 
     async def send_invitation(self, email: str, url: str) -> None:
-        await self._mail(
-            email,
-            "Set your Insurance Platform password",
-            f"Your one-time invitation expires in 48 hours. Open: {url}",
-        )
+        subject, body = render_staff_invitation(url)
+        await self._mail(email, subject, body)
 
     async def send_password_reset(self, email: str, url: str) -> None:
-        await self._mail(
-            email,
-            "Reset your Insurance Platform password",
-            f"Your one-time password reset expires in 48 hours. Open: {url}",
-        )
+        subject, body = render_staff_invitation(url, reset=True)
+        await self._mail(email, subject, body)
 
     async def send_notice(
         self,
@@ -160,9 +157,11 @@ class SMTPDelivery:
             message,
             hostname=self.settings.smtp_host,
             port=self.settings.smtp_port,
-            username=self.settings.smtp_username,
-            password=self.settings.smtp_password,
+            username=self.settings.smtp_username or None,
+            password=self.settings.smtp_password or None,
             start_tls=self.settings.smtp_start_tls,
+            use_tls=self.settings.smtp_use_tls,
+            timeout=20,
         )
         return True
 

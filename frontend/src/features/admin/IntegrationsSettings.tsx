@@ -59,7 +59,8 @@ const PROVIDERS: ProviderSpec[] = [
     fields: [
       { key: 'host', label: 'خادم SMTP', placeholder: 'smtp.example.com' },
       { key: 'port', label: 'المنفذ', placeholder: '587' },
-      { key: 'start_tls', label: 'STARTTLS', boolean: true },
+      { key: 'start_tls', label: 'STARTTLS (587)', boolean: true },
+      { key: 'use_tls', label: 'TLS مباشر (465) — عطّل STARTTLS عند استخدامه', boolean: true },
       { key: 'username', label: 'اسم المستخدم' },
       { key: 'password', label: 'كلمة المرور', secret: true },
       { key: 'from_email', label: 'المرسل من', placeholder: 'claims@example.com' },

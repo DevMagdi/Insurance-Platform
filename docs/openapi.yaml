@@ -121,6 +121,35 @@ paths:
         schema:
           type: string
           maxLength: 2048
+  /api/auth/staff/invitation/inspect:
+    post:
+      tags:
+      - auth
+      summary: Inspect Invitation
+      operationId: inspect_invitation_api_auth_staff_invitation_inspect_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InvitationTokenRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response Inspect Invitation Api Auth Staff Invitation Inspect
+                  Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security: []
   /api/auth/staff/invitation/accept:
     post:
       tags:
@@ -2842,6 +2871,205 @@ paths:
       security:
       - AccessCookie: []
       x-required-permission: complaints.view
+  /api/staff/departments:
+    get:
+      tags:
+      - staff
+      summary: Departments
+      operationId: departments_api_staff_departments_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                items:
+                  additionalProperties: true
+                  type: object
+                type: array
+                title: Response Departments Api Staff Departments Get
+      security:
+      - AccessCookie: []
+      x-required-permission: users.view
+    post:
+      tags:
+      - staff
+      summary: Create Department
+      operationId: create_department_api_staff_departments_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DepartmentSpec'
+        required: true
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response Create Department Api Staff Departments Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: users.edit
+      parameters:
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
+  /api/staff/users/{user_id}/department:
+    patch:
+      tags:
+      - staff
+      summary: Assign Department
+      operationId: assign_department_api_staff_users__user_id__department_patch
+      parameters:
+      - name: user_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: User Id
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DepartmentAssignment'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Assign Department Api Staff Users  User Id  Department
+                  Patch
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: users.edit
+  /api/staff/users/{user_id}/profile:
+    get:
+      tags:
+      - staff
+      summary: Staff Profile
+      operationId: staff_profile_api_staff_users__user_id__profile_get
+      parameters:
+      - name: user_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: User Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Staff Profile Api Staff Users  User Id  Profile Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: users.view
+  /api/staff/users/{user_id}/avatar:
+    get:
+      tags:
+      - staff
+      summary: Staff Avatar
+      operationId: staff_avatar_api_staff_users__user_id__avatar_get
+      parameters:
+      - name: user_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: User Id
+      responses:
+        '200':
+          description: Successful Response
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: users.view
+  /api/staff/users/{user_id}/resend-invitation:
+    post:
+      tags:
+      - staff
+      summary: Resend Invitation
+      operationId: resend_invitation_api_staff_users__user_id__resend_invitation_post
+      parameters:
+      - name: user_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: User Id
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
+      responses:
+        '202':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: string
+                title: Response Resend Invitation Api Staff Users  User Id  Resend
+                  Invitation Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: users.create
   /api/staff/complaints/bulk:
     post:
       tags:
@@ -7983,6 +8211,29 @@ components:
       - mobile
       - code
       title: CustomerVerifyRequest
+    DepartmentAssignment:
+      properties:
+        department_id:
+          type: string
+          format: uuid
+          title: Department Id
+      additionalProperties: false
+      type: object
+      required:
+      - department_id
+      title: DepartmentAssignment
+    DepartmentSpec:
+      properties:
+        name:
+          type: string
+          maxLength: 120
+          minLength: 2
+          title: Name
+      additionalProperties: false
+      type: object
+      required:
+      - name
+      title: DepartmentSpec
     EscalationRequest:
       properties:
         reason:
@@ -8108,6 +8359,18 @@ components:
         an operator can change a hostname without re-entering every secret. Stored
 
         values are never echoed back to the client.'
+    InvitationTokenRequest:
+      properties:
+        token:
+          type: string
+          maxLength: 128
+          minLength: 40
+          title: Token
+      additionalProperties: false
+      type: object
+      required:
+      - token
+      title: InvitationTokenRequest
     InviteAcceptRequest:
       properties:
         token:
@@ -8120,6 +8383,16 @@ components:
           maxLength: 128
           minLength: 12
           title: Password
+        profile:
+          anyOf:
+          - $ref: '#/components/schemas/StaffPersonalData'
+          - type: 'null'
+        avatar_base64:
+          anyOf:
+          - type: string
+            maxLength: 699052
+          - type: 'null'
+          title: Avatar Base64
       additionalProperties: false
       type: object
       required:
@@ -8663,6 +8936,10 @@ components:
       title: SlaSimulationRequest
     StaffInviteRequest:
       properties:
+        department_id:
+          type: string
+          format: uuid
+          title: Department Id
         email:
           type: string
           maxLength: 254
@@ -8677,6 +8954,7 @@ components:
       additionalProperties: false
       type: object
       required:
+      - department_id
       - email
       - full_name
       title: StaffInviteRequest
@@ -8699,6 +8977,50 @@ components:
       - email
       - password
       title: StaffLoginRequest
+    StaffPersonalData:
+      properties:
+        full_name:
+          type: string
+          maxLength: 120
+          minLength: 2
+          title: Full Name
+        national_id:
+          type: string
+          title: National Id
+        mobile:
+          type: string
+          pattern: ^\+201[0-9]{9}$
+          title: Mobile
+        address:
+          type: string
+          maxLength: 500
+          minLength: 5
+          title: Address
+        city:
+          type: string
+          maxLength: 120
+          minLength: 2
+          title: City
+        job_title:
+          type: string
+          maxLength: 120
+          title: Job Title
+          default: ''
+        emergency_phone:
+          anyOf:
+          - type: string
+            pattern: ^\+201[0-9]{9}$
+          - type: 'null'
+          title: Emergency Phone
+      additionalProperties: false
+      type: object
+      required:
+      - full_name
+      - national_id
+      - mobile
+      - address
+      - city
+      title: StaffPersonalData
     StaffProfileEdit:
       properties:
         email:

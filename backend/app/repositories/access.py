@@ -23,8 +23,13 @@ class AccessRepository:
         return result  # type: ignore[no-any-return]
 
     async def staff_directory(self, db: AsyncSession) -> list[dict[str, Any]]:
-        result = await db.execute(text("SELECT * FROM app_security.staff_directory()"))
-        return [dict(row._mapping) for row in result]
+        result = await db.execute(text("SELECT * FROM app_security.staff_directory_profiles()"))
+        users = [dict(row._mapping) for row in result]
+        for user in users:
+            user["avatar_url"] = (
+                f"/api/staff/users/{user['id']}/avatar" if user.pop("has_avatar", False) else None
+            )
+        return users
 
     async def replace(self, db: AsyncSession, target: UUID, spec: AccessSpec) -> int:
         result = await db.scalar(

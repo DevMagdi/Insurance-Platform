@@ -40,6 +40,10 @@ class StaffUser(Base):
     id: Mapped[UUID] = mapped_column(primary_key=True, server_default=func.gen_random_uuid())
     email: Mapped[str] = mapped_column(Text, unique=True)
     full_name: Mapped[str] = mapped_column(Text)
+    department_id: Mapped[UUID] = mapped_column(
+        ForeignKey("departments.id"),
+        server_default=text("'d5c4c2f7-2c1d-4f45-b9d6-366866c90ec9'::uuid"),
+    )
     password_hash: Mapped[str | None] = mapped_column(Text)
     status: Mapped[StaffStatus] = mapped_column(STAFF_ENUM, server_default="invited")
     must_change_password: Mapped[bool] = mapped_column(Boolean, server_default=text("true"))
@@ -142,3 +146,22 @@ class AccessChangeLog(Base):
     before_state: Mapped[dict[str, Any]] = mapped_column(JSONB, server_default=text("'{}'::jsonb"))
     after_state: Mapped[dict[str, Any]] = mapped_column(JSONB, server_default=text("'{}'::jsonb"))
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+
+
+class Department(Base):
+    __tablename__ = "departments"
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, server_default=func.gen_random_uuid())
+    name: Mapped[str] = mapped_column(Text, unique=True)
+    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+
+
+class StaffProfile(Base):
+    __tablename__ = "staff_profiles"
+
+    staff_user_id: Mapped[UUID] = mapped_column(ForeignKey("staff_users.id"), primary_key=True)
+    personal_ciphertext: Mapped[bytes] = mapped_column(LargeBinary)
+    national_id_blind_index: Mapped[bytes] = mapped_column(LargeBinary, unique=True)
+    national_id_last4: Mapped[str] = mapped_column(Text)
+    avatar_content: Mapped[bytes] = mapped_column(LargeBinary)
+    completed_at: Mapped[datetime] = mapped_column(server_default=func.now())

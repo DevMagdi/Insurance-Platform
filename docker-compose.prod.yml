@@ -128,6 +128,7 @@ services:
       SMTP_USERNAME: ${SMTP_USERNAME:-}
       SMTP_PASSWORD: ${SMTP_PASSWORD:-}
       SMTP_START_TLS: ${SMTP_START_TLS:-true}
+      SMTP_USE_TLS: ${SMTP_USE_TLS:-false}
       ENVIRONMENT: production
       COOKIE_SECURE: 'true'
       PUBLIC_APP_URL: ${PUBLIC_APP_URL:?set PUBLIC_APP_URL in .env.production}
@@ -174,6 +175,7 @@ services:
       SMTP_USERNAME: ${SMTP_USERNAME:-}
       SMTP_PASSWORD: ${SMTP_PASSWORD:-}
       SMTP_START_TLS: ${SMTP_START_TLS:-true}
+      SMTP_USE_TLS: ${SMTP_USE_TLS:-false}
       ENVIRONMENT: production
       # The worker decrypts integration payloads and runs key-rotation aware crons.
       APP_ENCRYPTION_KEY: ${APP_ENCRYPTION_KEY:?set APP_ENCRYPTION_KEY in .env.production}

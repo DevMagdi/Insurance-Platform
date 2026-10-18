@@ -7,6 +7,7 @@ import hmac
 import secrets
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+from typing import Any
 from uuid import UUID, uuid4
 
 from fastapi import HTTPException
@@ -15,14 +16,17 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.db import Actor, purpose_transaction, scoped_transaction
-from app.domain.schemas import CustomerVerifyRequest
+from app.domain.schemas import CustomerVerifyRequest, StaffPersonalData
 from app.repositories.auth import AuthRepository, StaffCredentials
+from app.security.blobs import AVATAR, STAFF_PROFILE, BlobCipher
 from app.security.crypto import NationalIdProtector, decode_key
 from app.security.lockout import LoginLockout
 from app.security.passwords import StaffPasswords, TotpProtector
 from app.security.rate_limit import MobileOTP, RateLimiter
 from app.security.tokens import TokenClaims, TokenManager
 from app.services.providers import Delivery, ProviderUnavailable
+from app.services.staff_mail import StaffMailService, invitation_url
+from app.services.staff_profiles import StaffProfileService
 from app.settings import Settings
 
 
@@ -52,6 +56,8 @@ class AuthService:
         self.settings = settings
         self.delivery = delivery
         self.repo = AuthRepository()
+        self.staff_mail = StaffMailService(settings, delivery)
+        self.staff_profiles = StaffProfileService(BlobCipher(settings.encryption_keyring()))
         self.tokens = TokenManager(settings)
         self.passwords = StaffPasswords()
         self.totp = TotpProtector(settings)
@@ -373,6 +379,7 @@ class AuthService:
         db: AsyncSession,
         email: str,
         name: str,
+        department_id: UUID,
     ) -> UUID:
         email = email.lower().strip()
         token = secrets.token_urlsafe(32)
@@ -382,10 +389,11 @@ class AuthService:
             name=name,
             digest=hashlib.sha256(token.encode()).digest(),
             expires_at=datetime.now(UTC) + timedelta(hours=48),
+            department_id=department_id,
         )
-        url = f"{self.settings.public_app_url.rstrip('/')}/invite?token={token}"
         try:
-            await self.delivery.send_invitation(email, url)
+            url = invitation_url(self.settings, token)
+            await self.staff_mail.send(db, email, url)
         except Exception:
             raise HTTPException(status_code=503, detail="Invitation delivery unavailable") from None
         return staff_id
@@ -403,20 +411,91 @@ class AuthService:
         )
         if email is None:
             raise HTTPException(status_code=404, detail="Active staff user unavailable")
-        url = f"{self.settings.public_app_url.rstrip('/')}/invite?token={token}"
         try:
-            await self.delivery.send_password_reset(email, url)
+            url = invitation_url(self.settings, token)
+            await self.staff_mail.send(db, email, url, reset=True)
         except Exception:
             # The request transaction rolls back the credential/session change.
             raise HTTPException(
                 status_code=503, detail="Password reset delivery unavailable"
             ) from None
 
-    async def accept_invitation(self, token: str, password: str) -> None:
-        hashed = await self.passwords.hash(password)
+    async def inspect_invitation(self, token: str) -> dict[str, Any]:
         async with purpose_transaction(self.factory, "invitation") as db:
-            staff_id = await self.repo.accept_invite(
-                db, hashlib.sha256(token.encode()).digest(), hashed
+            details = await self.repo.invitation_details(
+                db, hashlib.sha256(token.encode()).digest()
             )
-        if staff_id is None:
+        if details is None:
             raise HTTPException(status_code=400, detail="Invalid or expired invitation")
+        return {key: value for key, value in details.items() if key != "id"}
+
+    async def resend_invitation(self, db: AsyncSession, user_id: UUID) -> None:
+        token = secrets.token_urlsafe(32)
+        email = await self.repo.reissue_invite(
+            db,
+            user_id,
+            hashlib.sha256(token.encode()).digest(),
+            datetime.now(UTC) + timedelta(hours=48),
+        )
+        if email is None:
+            raise HTTPException(status_code=404, detail="Pending invitation unavailable")
+        try:
+            await self.staff_mail.send(db, email, invitation_url(self.settings, token))
+        except Exception:
+            raise HTTPException(status_code=503, detail="Invitation delivery unavailable") from None
+
+    async def accept_invitation(
+        self,
+        token: str,
+        password: str,
+        profile: StaffPersonalData | None = None,
+        avatar_base64: str | None = None,
+    ) -> None:
+        digest = hashlib.sha256(token.encode()).digest()
+        hashed = await self.passwords.hash(password)
+        try:
+            async with purpose_transaction(self.factory, "invitation") as db:
+                details = await self.repo.invitation_details(db, digest)
+                if details is None:
+                    raise HTTPException(status_code=400, detail="Invalid or expired invitation")
+                user_id = UUID(str(details["id"]))
+                personal = blind = avatar = None
+                name = last4 = None
+                if details["kind"] == "invitation":
+                    if profile is None or not avatar_base64:
+                        raise HTTPException(
+                            status_code=422,
+                            detail="Complete your personal details and upload a profile photo",
+                        )
+                    clean = await self.staff_profiles.normalized_avatar(avatar_base64)
+                    personal = self.staff_profiles.blobs.encrypt(
+                        profile.model_dump_json().encode(),
+                        purpose=STAFF_PROFILE,
+                        resource_id=user_id,
+                    )
+                    avatar = self.staff_profiles.blobs.encrypt(
+                        clean, purpose=AVATAR, resource_id=user_id
+                    )
+                    blind = self.protector.blind_index(profile.national_id)
+                    name, last4 = profile.full_name, profile.national_id[-4:]
+                elif profile is not None or avatar_base64 is not None:
+                    raise HTTPException(
+                        status_code=422, detail="Password reset does not change personal details"
+                    )
+                staff_id = await self.repo.complete_invite(
+                    db,
+                    digest=digest,
+                    user_id=user_id,
+                    password_hash=hashed,
+                    name=name,
+                    personal=personal,
+                    blind=blind,
+                    last4=last4,
+                    avatar=avatar,
+                )
+                if staff_id is None:
+                    raise HTTPException(status_code=400, detail="Invalid or expired invitation")
+        except IntegrityError:
+            raise HTTPException(
+                status_code=409, detail="Profile identity is already registered"
+            ) from None
