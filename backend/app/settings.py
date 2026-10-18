@@ -10,6 +10,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlalchemy.engine import make_url
 
 from app.security.crypto import build_keyring, decode_key, idempotency_root
+from app.security.jwt_keys import JWTKeyRing
+from app.security.jwt_keys import build_keyring as build_jwt_keyring
 from app.security.keyring import Keyring
 from app.security.proxy import DEFAULT_TRUSTED_PROXIES, ClientIPResolver
 
@@ -31,7 +33,13 @@ class Settings(BaseSettings):
     # original key is retired so dedupe keys survive encryption-key rotation.
     app_idempotency_key: str | None = Field(default=None, validation_alias="APP_IDEMPOTENCY_KEY")
     app_blind_index_key: str = Field(validation_alias="APP_BLIND_INDEX_KEY")
+    # Legacy-named HMAC root used by OTP, lockout and rate-limit digests. JWTs
+    # are signed separately with the asymmetric Ed25519 key pair below.
     jwt_signing_key: str = Field(validation_alias="JWT_SIGNING_KEY")
+    jwt_key_id: str = Field(default="active", validation_alias="JWT_KEY_ID")
+    jwt_private_key_b64: str | None = Field(default=None, validation_alias="JWT_PRIVATE_KEY_B64")
+    jwt_public_key_b64: str | None = Field(default=None, validation_alias="JWT_PUBLIC_KEY_B64")
+    jwt_previous_public_keys: str = Field(default="", validation_alias="JWT_PREVIOUS_PUBLIC_KEYS")
     smtp_host: str | None = None
     smtp_port: int = 1025
     smtp_from: str = "no-reply@insurance.local"
@@ -85,6 +93,7 @@ class Settings(BaseSettings):
             raise ValueError("Idempotency and blind-index keys must be independent")
         if len(self.jwt_signing_key) < 32:
             raise ValueError("JWT_SIGNING_KEY must contain at least 32 characters")
+        self.jwt_keyring()  # validate the configured Ed25519 pair and rotation keys
         if self.environment not in {"production", "development", "test"}:
             raise ValueError("Invalid environment")
         if self.dev_sms_mailbox and (self.environment != "development" or not self.smtp_host):
@@ -118,11 +127,23 @@ class Settings(BaseSettings):
                 raise ValueError("RATE_LIMIT_MULTIPLIER may only be changed outside production")
         if not 0.01 <= self.rate_limit_multiplier <= 1000:
             raise ValueError("Invalid RATE_LIMIT_MULTIPLIER")
-        if self.metrics_token is not None and len(self.metrics_token) < 24:
-            raise ValueError("METRICS_TOKEN must contain at least 24 characters")
+        if self.metrics_token is not None and len(self.metrics_token) < 32:
+            raise ValueError("METRICS_TOKEN must contain at least 32 characters")
+        if self.environment == "production" and not self.metrics_token:
+            raise ValueError("Production requires METRICS_TOKEN")
         if not 0 <= self.sentry_traces_sample_rate <= 1:
             raise ValueError("SENTRY_TRACES_SAMPLE_RATE must be within 0..1")
         return self
+
+    def jwt_keyring(self) -> JWTKeyRing:
+        return build_jwt_keyring(
+            active_key_id=self.jwt_key_id,
+            private_key_b64=self.jwt_private_key_b64,
+            public_key_b64=self.jwt_public_key_b64,
+            previous_public_keys=self.jwt_previous_public_keys,
+            development_secret=self.jwt_signing_key,
+            allow_derived_key=not self.is_production,
+        )
 
     def encryption_keyring(self) -> Keyring:
         return build_keyring(

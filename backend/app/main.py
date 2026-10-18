@@ -8,7 +8,6 @@ BaseHTTPMiddleware) so streaming responses, SSE and WebSockets are unaffected.
 
 from __future__ import annotations
 
-import os
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
 from typing import Any
@@ -116,7 +115,6 @@ async def install_state(
     redis = redis if redis is not None else Redis.from_url(settings.redis_url)
     app.state.settings = settings
     app.state.draining = False
-    app.state.expose_docs = os.environ.get("EXPOSE_API_DOCS", "").lower() == "true"
     app.state.http_policy = http_policy(settings)
     app.state.engine = engine
     app.state.redis = redis

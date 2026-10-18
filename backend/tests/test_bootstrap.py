@@ -34,5 +34,7 @@ def test_bootstrap_refuses_overwrite_and_uses_separate_strong_keys(
     assert decode_key(values["APP_ENCRYPTION_KEY"]) != decode_key(values["APP_BLIND_INDEX_KEY"])
     assert len(values["POSTGRES_PASSWORD"]) > 32
     assert values["POSTGRES_PASSWORD"] != values["APP_DB_PASSWORD"]
+    assert len(values["METRICS_TOKEN"]) >= 32
+    assert values["JWT_PRIVATE_KEY_B64"] != values["JWT_PUBLIC_KEY_B64"]
     with pytest.raises(FileExistsError):
         module.bootstrap()

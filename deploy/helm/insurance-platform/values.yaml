@@ -15,11 +15,11 @@ publicUrl: https://complaints.example.com
 
 secrets:
   # Must contain: APP_ENCRYPTION_KEY (also encrypts stored binaries),
-  # APP_BLIND_INDEX_KEY, JWT_SIGNING_KEY, APP_DB_PASSWORD,
-  # APP_WORKER_DB_PASSWORD, TURNSTILE_SITE_KEY, TURNSTILE_SECRET_KEY,
-  # DATABASE_ADMIN_URL (migration hook only), optional METRICS_TOKEN,
+  # APP_BLIND_INDEX_KEY, JWT_SIGNING_KEY, JWT_PRIVATE_KEY_B64,
+  # JWT_PUBLIC_KEY_B64, METRICS_TOKEN, APP_DB_PASSWORD, APP_WORKER_DB_PASSWORD,
+  # TURNSTILE_SITE_KEY, TURNSTILE_SECRET_KEY, DATABASE_ADMIN_URL (migration hook only),
   # SENTRY_DSN, SMTP_USERNAME, SMTP_PASSWORD, APP_ENCRYPTION_PREVIOUS_KEYS,
-  # APP_IDEMPOTENCY_KEY.
+  # APP_IDEMPOTENCY_KEY, and optionally JWT_PREVIOUS_PUBLIC_KEYS during rotation.
   existingSecret: insurance-platform-secrets
 
 database:
@@ -55,6 +55,7 @@ config:
   QUEUE_BACKPRESSURE_THRESHOLD: "5000"
   SENTRY_TRACES_SAMPLE_RATE: "0.05"
   APP_ENCRYPTION_KEY_ID: "1"
+  JWT_KEY_ID: active
 
 api:
   serviceName: api      # the web image's nginx proxies to http://api:8000

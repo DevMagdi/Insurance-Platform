@@ -4,22 +4,49 @@ import { MAX_FILE_BYTES, validateNewFiles } from './files';
 import { MAIN_STEPS, isOpenStatus, timelineStepIndex } from './status';
 
 describe('complaint draft autosave', () => {
-  it('round-trips a draft and survives clearing', () => {
-    const draft = { ...emptyDraft(), full_name: 'Mona Ali', subject: 'Delayed claim', step: 2 };
+  it('persists resume metadata only and clears legacy PII and file names', () => {
+    const draft = {
+      ...emptyDraft(),
+      full_name: 'Mona Ali',
+      national_id: '29901010112345',
+      mobile: '+201123456789',
+      subject: 'Delayed claim',
+      description: 'Private complaint details',
+      step: 2,
+    };
     saveDraft(draft);
+    saveDraftFileNames(['mona-national-id.pdf']);
+    const raw = localStorage.getItem('insurance-portal:complaint-draft:v1') ?? '';
+    expect(raw).not.toContain('Mona Ali');
+    expect(raw).not.toContain('29901010112345');
+    expect(raw).not.toContain('+201123456789');
+    expect(raw).not.toContain('Delayed claim');
+    expect(raw).not.toContain('Private complaint details');
+    expect(raw).not.toContain('mona-national-id.pdf');
+
     const loaded = loadDraft();
-    expect(loaded?.full_name).toBe('Mona Ali');
+    expect(loaded?.step).toBe(2);
+    expect(loaded?.national_id).toBe('');
+    expect(loaded?.full_name).toBe('');
     expect(loaded?.idempotency_key).toBe(draft.idempotency_key);
-    saveDraftFileNames(['proof.pdf', 'photo.png']);
-    expect(loadDraftFileNames()).toEqual(['proof.pdf', 'photo.png']);
+    expect(loadDraftFileNames()).toEqual([]);
     clearDraft();
     expect(loadDraft()).toBeNull();
-    expect(loadDraftFileNames()).toEqual([]);
+  });
+
+  it('migrates legacy drafts without restoring personal data', () => {
+    localStorage.setItem(
+      'insurance-portal:complaint-draft:v1',
+      JSON.stringify({ ...emptyDraft(), full_name: 'Mona Ali', national_id: '29901010112345' }),
+    );
+    expect(loadDraft()?.full_name).toBe('');
+    expect(localStorage.getItem('insurance-portal:complaint-draft:v1')).not.toContain('29901010112345');
   });
 
   it('ignores corrupted storage', () => {
     localStorage.setItem('insurance-portal:complaint-draft:v1', '{broken');
     expect(loadDraft()).toBeNull();
+    expect(localStorage.getItem('insurance-portal:complaint-draft:v1')).toBeNull();
   });
 });
 

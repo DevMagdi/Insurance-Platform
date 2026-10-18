@@ -75,7 +75,10 @@ describe('complaint wizard', () => {
     await waitFor(() => {
       const raw = localStorage.getItem('insurance-portal:complaint-draft:v1');
       expect(raw).toBeTruthy();
-      expect(JSON.parse(raw as string).subject).toContain('تأخر');
+      expect(raw).not.toContain('29901010112345');
+      expect(raw).not.toContain('Mona Ali');
+      expect(raw).not.toContain('تأخر صرف تعويض');
+      expect(JSON.parse(raw as string).national_id).toBeUndefined();
     });
   });
 });

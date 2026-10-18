@@ -1,10 +1,7 @@
 /**
- * Autosaved complaint draft (localStorage, versioned).
- *
- * Only form text is persisted — file binaries cannot survive a reload, so the
- * wizard stores selected file *names* separately and asks the customer to
- * re-attach after a restore. The national ID is kept solely on this device so
- * an interrupted application can resume; it is cleared on successful submit.
+ * Minimal complaint wizard resume metadata. Form values are deliberately kept
+ * in memory only: localStorage is readable by every script running on the same
+ * origin and must not contain customer data, free text, or file names.
  */
 import type { InsuranceType } from './types';
 
@@ -49,27 +46,53 @@ export const emptyDraft = (): ComplaintDraft => ({
   saved_at: new Date().toISOString(),
 });
 
+function scrubStoredDraft(step: number, idempotencyKey: string, savedAt?: string): void {
+  try {
+    // Never serialize user-supplied form fields, even if the object gains new
+    // fields in the future. This also migrates old v1 drafts without preserving PII.
+    localStorage.setItem(
+      DRAFT_KEY,
+      JSON.stringify({
+        version: 1,
+        step: Math.min(4, Math.max(0, step)),
+        idempotency_key: idempotencyKey,
+        saved_at: savedAt ?? new Date().toISOString(),
+      }),
+    );
+    localStorage.removeItem(FILE_NAMES_KEY);
+  } catch {
+    // Storage full/blocked: resume metadata is best-effort.
+  }
+}
+
 export function loadDraft(): ComplaintDraft | null {
   try {
     const raw = localStorage.getItem(DRAFT_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as Partial<ComplaintDraft>;
-    if (parsed.version !== 1 || typeof parsed.idempotency_key !== 'string') return null;
-    return { ...emptyDraft(), ...parsed, version: 1 };
+    if (parsed.version !== 1 || typeof parsed.idempotency_key !== 'string') {
+      clearDraft();
+      return null;
+    }
+
+    // Treat every previously stored draft as untrusted legacy data. Migrate it
+    // immediately and return blank form values; do not expose old PII to React.
+    const draft = {
+      ...emptyDraft(),
+      step: typeof parsed.step === 'number' ? parsed.step : 0,
+      idempotency_key: parsed.idempotency_key,
+      saved_at: typeof parsed.saved_at === 'string' ? parsed.saved_at : new Date().toISOString(),
+    };
+    scrubStoredDraft(draft.step, draft.idempotency_key, draft.saved_at);
+    return draft;
   } catch {
+    clearDraft();
     return null;
   }
 }
 
 export function saveDraft(draft: ComplaintDraft): void {
-  try {
-    localStorage.setItem(
-      DRAFT_KEY,
-      JSON.stringify({ ...draft, saved_at: new Date().toISOString() }),
-    );
-  } catch {
-    // Storage full/blocked: autosave is best-effort, the form still works.
-  }
+  scrubStoredDraft(draft.step, draft.idempotency_key);
 }
 
 export function clearDraft(): void {
@@ -81,9 +104,12 @@ export function clearDraft(): void {
   }
 }
 
+/** File names may themselves contain personal data, so they are never persisted. */
 export function saveDraftFileNames(names: string[]): void {
+  // Intentionally discard filenames because they may contain personal data.
+  void names;
   try {
-    localStorage.setItem(FILE_NAMES_KEY, JSON.stringify(names.slice(0, 5)));
+    localStorage.removeItem(FILE_NAMES_KEY);
   } catch {
     // Best-effort only.
   }
@@ -91,10 +117,9 @@ export function saveDraftFileNames(names: string[]): void {
 
 export function loadDraftFileNames(): string[] {
   try {
-    const raw = localStorage.getItem(FILE_NAMES_KEY);
-    const parsed: unknown = raw ? JSON.parse(raw) : [];
-    return Array.isArray(parsed) ? parsed.filter((n): n is string => typeof n === 'string') : [];
+    localStorage.removeItem(FILE_NAMES_KEY);
   } catch {
-    return [];
+    // Best-effort only.
   }
+  return [];
 }

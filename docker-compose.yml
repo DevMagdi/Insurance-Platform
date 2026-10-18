@@ -83,6 +83,11 @@ services:
       APP_ENCRYPTION_KEY: ${APP_ENCRYPTION_KEY:?run make init}
       APP_BLIND_INDEX_KEY: ${APP_BLIND_INDEX_KEY:?run make init}
       JWT_SIGNING_KEY: ${JWT_SIGNING_KEY:?run make init}
+      JWT_KEY_ID: ${JWT_KEY_ID:-active}
+      JWT_PRIVATE_KEY_B64: ${JWT_PRIVATE_KEY_B64:-}
+      JWT_PUBLIC_KEY_B64: ${JWT_PUBLIC_KEY_B64:-}
+      JWT_PREVIOUS_PUBLIC_KEYS: ${JWT_PREVIOUS_PUBLIC_KEYS:-}
+      METRICS_TOKEN: ${METRICS_TOKEN:-}
       SMTP_HOST: mailpit
       SMTP_PORT: '1025'
       ENVIRONMENT: development

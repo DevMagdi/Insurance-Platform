@@ -449,6 +449,12 @@ def test_dev_stack_waits_for_backend_readiness_and_re_resolves_restarted_service
     assert "proxy_pass http://api:8000;" not in nginx
     assert "proxy_pass http://frontend:5173;" not in nginx
 
+    production_nginx = (ROOT / "infra/nginx/prod.conf").read_text()
+    for endpoint in ("/docs", "/redoc", "/openapi.json"):
+        assert f"location = {endpoint} {{\n        return 404;\n    }}" in production_nginx
+    assert "location ^~ /docs/ {\n        return 404;" in production_nginx
+    assert "location ^~ /redoc/ {\n        return 404;" in production_nginx
+
 
 # Object-storage SDKs, gateways and credentials were removed in revision 24. The
 # guard below fails the build if any of them is reintroduced anywhere that runs

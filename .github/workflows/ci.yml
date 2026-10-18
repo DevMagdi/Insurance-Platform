@@ -67,9 +67,15 @@ jobs:
           docker network create ci-smoke
           python - <<'PY' > /tmp/smoke.env
           import base64, secrets
+          from scripts.generate_jwt_keys import generate
+          private_key, public_key = generate()
           print("APP_ENCRYPTION_KEY=" + base64.urlsafe_b64encode(secrets.token_bytes(32)).decode())
           print("APP_BLIND_INDEX_KEY=" + base64.urlsafe_b64encode(secrets.token_bytes(32)).decode())
           print("JWT_SIGNING_KEY=" + secrets.token_urlsafe(48))
+          print("JWT_KEY_ID=ci-active")
+          print("JWT_PRIVATE_KEY_B64=" + private_key)
+          print("JWT_PUBLIC_KEY_B64=" + public_key)
+          print("METRICS_TOKEN=" + secrets.token_urlsafe(48))
           # Cloudflare's documented always-pass test keys: production refuses to boot without CAPTCHA.
           print("TURNSTILE_SITE_KEY=1x00000000000000000000AA")
           print("TURNSTILE_SECRET_KEY=1x0000000000000000000000000000000AA")
@@ -152,6 +158,8 @@ jobs:
           set -euo pipefail
           python - <<'PY' > /tmp/prod.env
           import base64, secrets
+          from scripts.generate_jwt_keys import generate
+          jwt_private, jwt_public = generate()
           values = {
               "POSTGRES_DB": "insurance", "POSTGRES_USER": "postgres",
               "POSTGRES_PASSWORD": secrets.token_urlsafe(24),
@@ -160,6 +168,10 @@ jobs:
               "APP_ENCRYPTION_KEY": base64.urlsafe_b64encode(secrets.token_bytes(32)).decode(),
               "APP_BLIND_INDEX_KEY": base64.urlsafe_b64encode(secrets.token_bytes(32)).decode(),
               "JWT_SIGNING_KEY": secrets.token_urlsafe(48),
+              "JWT_KEY_ID": "ci-active",
+              "JWT_PRIVATE_KEY_B64": jwt_private,
+              "JWT_PUBLIC_KEY_B64": jwt_public,
+              "METRICS_TOKEN": secrets.token_urlsafe(48),
               "SMTP_HOST": "smtp.example.invalid", "SMTP_FROM": "no-reply@example.invalid",
               "PUBLIC_APP_URL": "https://app.example.invalid",
               "IMAGE_OWNER": "ci-owner", "IMAGE_TAG": "ci",

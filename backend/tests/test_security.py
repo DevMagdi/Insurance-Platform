@@ -15,6 +15,17 @@ from app.settings import Settings
 
 # Fictional but syntactically valid; tests never depend on a real person's ID.
 VALID_ID = "29901010112345"
+# Publicly disposable fixtures only; never use these generated test keys in a deployment.
+_TEST_JWT_PRIVATE_KEY_B64 = (
+    "LS0tLS1CRUdJTiBQUklWQVRFIEtFWS0tLS0tCk1DNENBUUF3QlFZREsyVndCQ0lFSUdscW"
+    "gxM3A2T0ttQ2tXd0tjR2t3dk1hL0tYWTFtRmFsMzR6dUhmdEJ0TWEKLS0tLS1FTkQgUFJJ"
+    "VkFURSBLRVktLS0tLQo="
+)
+_TEST_JWT_PUBLIC_KEY_B64 = (
+    "LS0tLS1CRUdJTiBQVUJMSUMgS0VZLS0tLS0KTUNvd0JRWURLMlZ3QXlFQW5pemIya3ZQT2"
+    "84WnY2S2tqM3pQL1NQRzF6UlQ1T0hVUVVTTlBMQkYvbXM9Ci0tLS0tRU5EIFBVQkxJQyBL"
+    "RVktLS0tLQo="
+)
 
 
 def test_egyptian_national_id_validates_digits_birth_date_and_governorate() -> None:
@@ -66,6 +77,9 @@ def test_runtime_settings_reject_placeholder_or_reused_secrets() -> None:
         "APP_ENCRYPTION_KEY": base64.urlsafe_b64encode(b"a" * 32).decode(),
         "APP_BLIND_INDEX_KEY": base64.urlsafe_b64encode(b"b" * 32).decode(),
         "JWT_SIGNING_KEY": "jwt-signing-secret-for-disposable-tests-only",
+        "JWT_PRIVATE_KEY_B64": _TEST_JWT_PRIVATE_KEY_B64,
+        "JWT_PUBLIC_KEY_B64": _TEST_JWT_PUBLIC_KEY_B64,
+        "METRICS_TOKEN": "test-only-metrics-token-32-characters",
         # Production (the default environment) requires CAPTCHA on public forms.
         "TURNSTILE_SITE_KEY": "1x00000000000000000000AA",
         "TURNSTILE_SECRET_KEY": "1x0000000000000000000000000000000AA",

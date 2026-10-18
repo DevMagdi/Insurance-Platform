@@ -52,7 +52,11 @@ APP_WORKER_DB_PASSWORD=...
 # Phase 8: required in production (the API refuses to boot without them)
 TURNSTILE_SITE_KEY=...              # Cloudflare Turnstile widget key for public forms and OTP
 TURNSTILE_SECRET_KEY=...
-METRICS_TOKEN=...                   # >= 24 chars; Prometheus scrapes /metrics with "Bearer <token>"
+METRICS_TOKEN=...                   # >= 32 chars; required in production; Prometheus uses "Bearer <token>"
+JWT_KEY_ID=active
+JWT_PRIVATE_KEY_B64=...              # Ed25519 private PEM encoded as URL-safe base64
+JWT_PUBLIC_KEY_B64=...               # matching Ed25519 public PEM encoded as URL-safe base64
+JWT_PREVIOUS_PUBLIC_KEYS=            # optional comma-separated kid:base64url-PEM during key rotation
 # Phase 8: optional
 CORS_ALLOWED_ORIGINS=               # comma-separated https origins; empty = same-origin only (default SPA)
 SENTRY_DSN=                         # error tracking; PII is scrubbed before sending
@@ -175,8 +179,10 @@ database from backup (see below). Never edit a released revision in place.
 kubectl create namespace insurance
 # Secrets come from your secret manager (External Secrets / Sealed Secrets / Vault CSI).
 # Keys: APP_DB_PASSWORD, APP_WORKER_DB_PASSWORD (URL-safe), DATABASE_ADMIN_URL,
-# APP_ENCRYPTION_KEY, APP_BLIND_INDEX_KEY, JWT_SIGNING_KEY, TURNSTILE_SITE_KEY,
-# TURNSTILE_SECRET_KEY, METRICS_TOKEN, SMTP_PASSWORD, ...
+# APP_ENCRYPTION_KEY, APP_BLIND_INDEX_KEY, JWT_SIGNING_KEY, JWT_PRIVATE_KEY_B64,
+# JWT_PUBLIC_KEY_B64, METRICS_TOKEN, TURNSTILE_SITE_KEY, TURNSTILE_SECRET_KEY,
+# SMTP_PASSWORD, ...
+# Generate a fresh Ed25519 key pair with: python scripts/generate_jwt_keys.py
 helm upgrade --install ip deploy/helm/insurance-platform -n insurance \
   -f deploy/helm/insurance-platform/values-production.yaml \
   --set image.tag=<release tag or commit SHA>

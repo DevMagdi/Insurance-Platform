@@ -32,12 +32,11 @@ traffic is same-origin `/api/...`; the dev server/Nginx proxies it to FastAPI.
   signed `PUT` with XHR progress, per-file remove/retry. Files stay
   `pending` until a virus scanner marks them `clean`; downloads are blocked
   before that, exactly as the backend enforces.
-- **Autosave draft**: form text + wizard step + a stable `Idempotency-Key`
-  are persisted in `localStorage` (350 ms debounce), so an interrupted or
-  retried submission replays instead of duplicating. File binaries cannot be
-  persisted — only their names are remembered and the customer is told to
-  re-attach. The draft (including the national ID, on-device only) is cleared
-  on successful submission.
+- **Privacy-preserving resume metadata**: only the wizard step and stable
+  `Idempotency-Key` are persisted in `localStorage` (350 ms debounce). All
+  customer-entered fields, including the national ID, contact details, free
+  text and attachment names, stay in memory and are never autosaved. A reload
+  therefore requires the customer to re-enter their details and re-attach files.
 - **Guests** verify the mobile with an OTP inline at the review step; the
   verify call registers the customer on first use, then the complaint is
   created in the same flow. The success screen shows the ticket number.

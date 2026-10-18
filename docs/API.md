@@ -58,7 +58,7 @@ cd frontend && npm run api:types                                  # typed client
 | `GET`/`POST /api/customer/privacy/requests` | customer (CSRF) | list or create `{kind: access, erasure, rectification or objection, details}` |
 | `GET /api/staff/privacy/requests` | `settings.manage` with global scope | DPO queue (`?status=`) |
 | `POST /api/staff/privacy/requests/{id}` | `settings.manage` with global scope | `{status: in_progress, completed or rejected, resolution}`; completing an erasure anonymises the customer |
-| `GET /metrics` | Prometheus (bearer `METRICS_TOKEN`, or a private network when the token is unset) | metrics (not in the OpenAPI contract) |
+| `GET /metrics` | Prometheus with bearer `METRICS_TOKEN` (required in production) | metrics (not in the OpenAPI contract) |
 | `GET /api/health/live`, `GET /api/health/ready` | probes | liveness; readiness (DB through PgBouncer, plus Redis; `503` while draining) |
 
 ## Phase 9 endpoint
