@@ -59,4 +59,27 @@ describe('access editor', () => {
       },
     ]);
   });
+  it('never lets the company scope become empty', async () => {
+    vi.mocked(api).mockImplementation(async (path) => {
+      if (path.endsWith('/access/explain')) return { editable: true, access: snapshot, why: {} } as never;
+      if (path.endsWith('/access')) return snapshot as never;
+      if (path.endsWith('/access-options')) return options as never;
+      return {} as never;
+    });
+    const onSaved = vi.fn();
+    render(<AccessEditor user={user} onClose={vi.fn()} onSaved={onSaved} />);
+    const dialog = screen.getByRole('dialog');
+    await within(dialog).findByRole('heading', { name: 'مصفوفة الصلاحيات' });
+    // "شركات محددة" selects a company straight away: the API rejects an empty
+    // company list together with all_companies=false.
+    fireEvent.click(within(dialog).getByRole('radio', { name: /شركات محددة/ }));
+    await waitFor(() => expect((within(dialog).getByRole('checkbox', { name: 'شركة النيل' }) as HTMLInputElement).checked).toBe(true));
+    fireEvent.click(within(dialog).getByRole('checkbox', { name: 'شركة النيل' }));
+    // The last company stays selected: removing it would empty the scope.
+    expect((within(dialog).getByRole('checkbox', { name: 'شركة النيل' }) as HTMLInputElement).checked).toBe(true);
+    fireEvent.click(within(dialog).getByRole('button', { name: 'حفظ الوصول' }));
+    await waitFor(() => expect(onSaved).toHaveBeenCalledOnce());
+    const call = vi.mocked(api).mock.calls.find(([path, init]) => path === '/api/staff/users/employee/access' && init?.method === 'PUT');
+    expect(JSON.parse(String(call?.[1]?.body)).company_ids).toEqual(['one']);
+  });
 });

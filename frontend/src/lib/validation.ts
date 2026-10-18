@@ -64,10 +64,86 @@ export function isValidMobile(input: string): boolean {
 }
 
 export const OTP_PATTERN = /^[0-9]{6}$/;
+
+/**
+ * The platform logo may only be a same-origin static asset path; the API
+ * rejects an absolute URL from another host with 422. Mirrored here so the
+ * admin console can explain the rule before the request is sent.
+ */
+export function isValidLogoPath(value: string): boolean {
+  return /^\/(?!\/)[A-Za-z0-9._/-]+$/.test(value) && !value.split('/').includes('..');
+}
 export const TICKET_PATTERN = /^CMP-\d{4}-\d{6,}$/;
 
 export function isValidTicketNo(value: string): boolean {
   return TICKET_PATTERN.test(value.trim());
+}
+
+/**
+ * The API accepts a lowercase address of the form `local@domain.tld`; anything
+ * else is rejected with 422. Mirrored here so the admin console can explain
+ * the rule before the request is sent.
+ */
+export function isValidEmail(value: string): boolean {
+  const address = value.trim().toLowerCase();
+  return address.length <= 254 && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(address);
+}
+
+/** Split a comma separated address list into normalized, de-duplicated entries. */
+export function parseEmailList(value: string): string[] {
+  const seen = new Set<string>();
+  for (const part of value.split(',')) {
+    const address = part.trim().toLowerCase();
+    if (address) seen.add(address);
+  }
+  return [...seen];
+}
+
+/** The addresses of a comma separated list that the API would reject. */
+export function invalidEmailList(value: string): string[] {
+  return value
+    .split(',')
+    .map((part) => part.trim().toLowerCase())
+    .filter((part) => part && !isValidEmail(part));
+}
+
+/**
+ * The addresses of a comma separated list that appear more than once. The API
+ * requires every recipient of a scheduled report to be unique.
+ */
+export function duplicateEmailList(value: string): string[] {
+  const seen = new Set<string>();
+  const duplicates = new Set<string>();
+  for (const part of value.split(',')) {
+    const address = part.trim().toLowerCase();
+    if (!address) continue;
+    if (seen.has(address)) duplicates.add(address);
+    seen.add(address);
+  }
+  return [...duplicates];
+}
+
+/**
+ * Convert a `datetime-local` input value to an ISO timestamp. An empty or
+ * unparsable value yields '' instead of throwing, so clearing a date field
+ * never crashes the page.
+ */
+export function toIsoDateTime(value: string): string {
+  if (!value) return '';
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? '' : parsed.toISOString();
+}
+
+/**
+ * The API caps an export/analytics window at 366 days and refuses a window
+ * whose start is after its end.
+ */
+export function isValidDateWindow(from: string, to: string): boolean {
+  const start = Date.parse(from);
+  const end = Date.parse(to);
+  if (Number.isNaN(start) || Number.isNaN(end)) return false;
+  if (start > end) return false;
+  return end - start <= 366 * 24 * 60 * 60 * 1000;
 }
 
 const nationalIdSchema = z

@@ -131,6 +131,7 @@ export const ar = {
     "tooLarge": "ملف يتجاوز 10MB.",
     "totalTooLarge": "المجموع يتجاوز 25MB.",
     "badType": "صيغة غير مدعومة (PDF/PNG/JPG فقط).",
+    "badName": "اسم الملف يحتوي على مسارات غير مسموحة.",
     "pending": "بانتظار فحص الفيروسات",
     "clean": "سليم",
     "blocked": "غير متاح للتنزيل"

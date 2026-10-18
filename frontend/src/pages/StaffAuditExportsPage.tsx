@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { staffApi } from '../lib/api';
 import { hasPermission, type StaffComplaintFilters } from '../lib/staffTypes';
+import { isValidDateWindow, toIsoDateTime } from '../lib/validation';
 import { useStaffMe } from '../hooks/useStaffMe';
 import { StaffShell } from '../components/StaffShell';
 import { EmptyState, ErrorState, Field, LoadingState, TextInput, ghostButton, primaryButton } from '../components/ui';
@@ -87,6 +88,8 @@ export function StaffExportsPage() {
     const start = new Date(end.getTime() - 29 * 86400000);
     return { date_from: start.toISOString(), date_to: end.toISOString(), page: 1, page_size: 100 };
   });
+  // The API refuses an export without a complete window of at most 366 days.
+  const windowValid = isValidDateWindow(window.date_from ?? '', window.date_to ?? '');
   const jobs = useQuery({ queryKey: ['staff-exports'], queryFn: staffApi.exports, enabled: Boolean(access) });
   const create = useMutation({
     mutationFn: (kind: 'complaints' | 'analytics') => staffApi.createExport(kind, window),
@@ -103,12 +106,14 @@ export function StaffExportsPage() {
         <h2 className="text-xl font-black">{t('staff.exports')}</h2>
         <p className="mt-1 text-sm text-slate-500 dark:text-slate-300">{t('staff.dateWindow')}</p>
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
-          <Field label={t('staff.from')}><TextInput type="datetime-local" value={window.date_from?.slice(0, 16)} onChange={(e) => setWindow((w) => ({ ...w, date_from: new Date(e.target.value).toISOString() }))} /></Field>
-          <Field label={t('staff.to')}><TextInput type="datetime-local" value={window.date_to?.slice(0, 16)} onChange={(e) => setWindow((w) => ({ ...w, date_to: new Date(e.target.value).toISOString() }))} /></Field>
+          <Field label={t('staff.from')}><TextInput type="datetime-local" value={window.date_from?.slice(0, 16)} onChange={(e) => setWindow((w) => ({ ...w, date_from: toIsoDateTime(e.target.value) }))} /></Field>
+          <Field label={t('staff.to')}><TextInput type="datetime-local" value={window.date_to?.slice(0, 16)} onChange={(e) => setWindow((w) => ({ ...w, date_to: toIsoDateTime(e.target.value) }))} /></Field>
         </div>
+        {!windowValid && <p className="mt-3 text-sm text-amber-700 dark:text-amber-300">حدّد تاريخ بداية ونهاية صالحين، وبفارق لا يتجاوز 366 يوماً.</p>}
+        {create.isError && <p className="mt-3 text-sm text-red-600 dark:text-red-400">{create.error instanceof Error ? create.error.message : 'تعذر إنشاء التصدير.'}</p>}
         <div className="mt-4 flex flex-wrap gap-2">
-          <button type="button" className={primaryButton} disabled={create.isPending} onClick={() => create.mutate('complaints')}>تصدير الشكاوى (CSV)</button>
-          <button type="button" className={ghostButton} disabled={create.isPending} onClick={() => create.mutate('analytics')}>تصدير التحليلات (CSV)</button>
+          <button type="button" className={primaryButton} disabled={create.isPending || !windowValid} onClick={() => create.mutate('complaints')}>تصدير الشكاوى (CSV)</button>
+          <button type="button" className={ghostButton} disabled={create.isPending || !windowValid} onClick={() => create.mutate('analytics')}>تصدير التحليلات (CSV)</button>
           <button type="button" className={ghostButton} onClick={() => void jobs.refetch()}>{t('common.retry')}</button>
         </div>
         <h3 className="mt-7 font-black">أحدث عمليات التصدير</h3>

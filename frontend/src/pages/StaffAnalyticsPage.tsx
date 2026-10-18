@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { api, staffApi } from '../lib/api';
 import { hasPermission, type StaffComplaintFilters } from '../lib/staffTypes';
+import { isValidDateWindow, toIsoDateTime } from '../lib/validation';
 import { useStaffMe } from '../hooks/useStaffMe';
 import { StaffShell } from '../components/StaffShell';
 import { EmptyState, ErrorState, Field, LoadingState, TextInput } from '../components/ui';
@@ -52,10 +53,13 @@ export function StaffAnalyticsPage() {
   const companies = useQuery({ queryKey: ['companies'], queryFn: api.companies, staleTime: 300_000 });
   const companyNameAr = (id: string, fallback: string) =>
     companies.data?.find((item) => item.id === id)?.name_ar || fallback;
+  // The API requires a complete window of at most 366 days; without it the
+  // request is rejected, so it is never sent.
+  const windowValid = isValidDateWindow(window.date_from ?? '', window.date_to ?? '');
   const query = useQuery({
     queryKey: ['staff-analytics', window],
-    queryFn: () => staffApi.analytics(window),
-    enabled: hasPermission(access, 'analytics.view'),
+    queryFn: () => staffApi.analytics({ ...window, date_from: window.date_from ?? '', date_to: window.date_to ?? '' }),
+    enabled: hasPermission(access, 'analytics.view') && windowValid,
   });
 
   if (!hasPermission(access, 'analytics.view')) {
@@ -72,13 +76,15 @@ export function StaffAnalyticsPage() {
         <p className="mt-1 text-sm text-slate-500 dark:text-slate-300">{t('staff.dateWindow')}</p>
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
           <Field label={t('staff.from')}>
-            <TextInput type="datetime-local" value={window.date_from?.slice(0, 16)} onChange={(e) => setWindow((w) => ({ ...w, date_from: new Date(e.target.value).toISOString() }))} />
+            <TextInput type="datetime-local" value={window.date_from?.slice(0, 16)} onChange={(e) => setWindow((w) => ({ ...w, date_from: toIsoDateTime(e.target.value) }))} />
           </Field>
           <Field label={t('staff.to')}>
-            <TextInput type="datetime-local" value={window.date_to?.slice(0, 16)} onChange={(e) => setWindow((w) => ({ ...w, date_to: new Date(e.target.value).toISOString() }))} />
+            <TextInput type="datetime-local" value={window.date_to?.slice(0, 16)} onChange={(e) => setWindow((w) => ({ ...w, date_to: toIsoDateTime(e.target.value) }))} />
           </Field>
         </div>
-        {query.isLoading ? <LoadingState /> : query.isError || !data ? (
+        {!windowValid ? (
+          <p className="mt-4 text-sm text-amber-700 dark:text-amber-300">حدّد تاريخ بداية ونهاية صالحين، وبفارق لا يتجاوز 366 يوماً.</p>
+        ) : query.isLoading ? <LoadingState /> : query.isError || !data ? (
           <ErrorState message={t('staff.loadError')} onRetry={() => void query.refetch()} />
         ) : (
           <>

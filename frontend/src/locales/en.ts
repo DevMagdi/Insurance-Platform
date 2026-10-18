@@ -131,6 +131,7 @@ export const en = {
     "tooLarge": "A file exceeds 10 MB.",
     "totalTooLarge": "Total exceeds 25 MB.",
     "badType": "Unsupported type (PDF/PNG/JPG only).",
+    "badName": "The file name contains an unsupported path.",
     "pending": "Awaiting virus scan",
     "clean": "Clean",
     "blocked": "Download unavailable"

@@ -89,6 +89,33 @@ def synthetic_national_id(rng: random.Random) -> str:
     return f"{century}{born:%y%m%d}{gov}{rng.randrange(10000):04}{rng.randrange(10)}"
 
 
+def ensure_system_roles(cursor: Any) -> dict[str, UUID]:
+    """Return the system roles, creating the missing ones.
+
+    ``bootstrap_admin`` provisions the administrator role before the demo
+    data is seeded, so the seed has to reuse the roles that already exist
+    instead of inserting a second row with the same name.
+    """
+    roles: dict[str, UUID] = {}
+    for name in ROLE_PERMISSIONS:
+        row = cursor.execute("SELECT id FROM roles WHERE name = %s", (name,)).fetchone()
+        if row is None:
+            role_id = uuid4()
+            cursor.execute(
+                "INSERT INTO roles(id, name, description, is_system) VALUES (%s, %s, %s, true)",
+                (role_id, name, f"Seeded {name} role"),
+            )
+            roles[name] = role_id
+        else:
+            roles[name] = row[0]
+    cursor.executemany(
+        "INSERT INTO role_permissions(role_id, permission_code) VALUES (%s, %s) "
+        "ON CONFLICT (role_id, permission_code) DO NOTHING",
+        [(roles[name], code) for name, grants in ROLE_PERMISSIONS.items() for code in grants],
+    )
+    return roles
+
+
 def seed(
     cursor: psycopg.Cursor[tuple[Any, ...]],
     protector: NationalIdProtector,
@@ -125,15 +152,7 @@ def seed(
         "ON CONFLICT (code) DO NOTHING",
         [(code, *permission_parts(code)) for code in sorted(PERMISSIONS)],
     )
-    roles = {name: uuid4() for name in ROLE_PERMISSIONS}
-    cursor.executemany(
-        "INSERT INTO roles(id, name, description, is_system) VALUES (%s, %s, %s, true)",
-        [(role_id, name, f"Seeded {name} role") for name, role_id in roles.items()],
-    )
-    cursor.executemany(
-        "INSERT INTO role_permissions(role_id, permission_code) VALUES (%s, %s)",
-        [(roles[name], code) for name, grants in ROLE_PERMISSIONS.items() for code in grants],
-    )
+    roles = ensure_system_roles(cursor)
 
     staff_specs = (
         ("admin@demo.example", "Demo Administrator", "administrator"),

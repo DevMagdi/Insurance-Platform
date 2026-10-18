@@ -9,7 +9,14 @@ from typing import Any, Literal
 from urllib.parse import urlsplit
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    field_serializer,
+    field_validator,
+    model_validator,
+)
 
 from app.domain.enums import (
     CommunicationChannel,
@@ -188,6 +195,20 @@ class SlaRuleSpec(StrictModel):
     business_hours: BusinessHoursCalendar | None = None
     is_active: bool = True
 
+    @field_validator("business_hours", mode="before")
+    @classmethod
+    def empty_calendar_means_continuous_coverage(cls, value: Any) -> Any:
+        """``{}`` is the stored spelling of "no calendar".
+
+        ``app_security.save_sla_rule`` coalesces a missing calendar to ``{}``
+        and ``valid_business_hours('{}')`` is true, so the database stores an
+        empty object for continuous 24/7 coverage. The API must accept the same
+        spelling, otherwise the operations console cannot save an SLA rule.
+        """
+        if value is None or value == {}:
+            return None
+        return value
+
     @model_validator(mode="after")
     def ordered_targets(self) -> SlaRuleSpec:
         if self.resolution_minutes < self.response_minutes:
@@ -213,6 +234,14 @@ class BusinessHoursTestRequest(StrictModel):
     from_at: datetime
     company_id: UUID | None = None
     insurance_type: InsuranceType | None = None
+
+    @field_validator("business_hours", mode="before")
+    @classmethod
+    def empty_calendar_means_continuous_coverage(cls, value: Any) -> Any:
+        """Mirror ``SlaRuleSpec``: ``{}`` means "no calendar"."""
+        if value is None or value == {}:
+            return None
+        return value
 
     @field_validator("from_at")
     @classmethod
@@ -258,6 +287,19 @@ class ReportScheduleSpec(StrictModel):
         if not self.recipient_emails:
             raise ValueError("At least one recipient is required")
         return self
+
+    @field_serializer("filters")
+    def relative_filters(self, filters: ReportFilter) -> dict[str, Any]:
+        """Serialize only the relative filter keys a schedule can store.
+
+        The pagination and sorting fields inherited from ``ComplaintFilter``
+        do not apply to a scheduled report, and ``save_report_schedule``
+        rejects them. Serializing them made every schedule creation fail.
+        This runs for ``model_dump`` and ``model_dump_json`` alike.
+        """
+        return filters.model_dump(
+            mode="json", exclude_none=True, exclude={"page", "page_size", "sort_by", "sort_dir"}
+        )
 
 
 class ReportScheduleView(StrictModel):
@@ -424,11 +466,25 @@ class ComplaintFilter(StrictModel):
     date_from: datetime | None = None
     date_to: datetime | None = None
     ticket_no: str | None = Field(default=None, max_length=30)
-    search: str | None = Field(default=None, min_length=2, max_length=120)
+    search: str | None = Field(default=None, max_length=120)
     sort_by: Literal["created_at", "updated_at", "priority", "status"] = "created_at"
     sort_dir: Literal["asc", "desc"] = "desc"
     page: int = Field(default=1, ge=1, le=100)
     page_size: int = Field(default=20, ge=1, le=100)
+
+    @field_validator("search", mode="before")
+    @classmethod
+    def blank_search_is_no_filter(cls, value: Any) -> Any:
+        """A one-character search is a normal thing to type; a blank one is no filter.
+
+        The console sends the search box verbatim, so rejecting a short term
+        with 422 would take the whole complaints table down while the user is
+        still typing.
+        """
+        if value is None:
+            return None
+        text = str(value).strip()
+        return text or None
 
     @model_validator(mode="after")
     def date_window(self) -> ComplaintFilter:
@@ -444,7 +500,11 @@ class ComplaintFilter(StrictModel):
 
 
 class ReportFilter(ComplaintFilter):
-    """Scheduled reports are relative: the window moves with each run."""
+    """Scheduled reports are relative: the window moves with each run.
+
+    A scheduled report always covers its whole window, so pagination and
+    sorting do not apply.
+    """
 
     window_days: int = Field(default=7, ge=1, le=366)
 
@@ -452,6 +512,13 @@ class ReportFilter(ComplaintFilter):
     def relative_window(self) -> ReportFilter:
         if self.date_from is not None or self.date_to is not None:
             raise ValueError("Scheduled reports cannot pin absolute dates")
+        if (
+            self.page != 1
+            or self.page_size != 20
+            or self.sort_by != "created_at"
+            or self.sort_dir != "desc"
+        ):
+            raise ValueError("Scheduled reports do not accept pagination or sorting")
         return self
 
 

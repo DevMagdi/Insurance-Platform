@@ -12,6 +12,7 @@ import { api, jsonBody } from '../../api';
 import { Icon } from '../../components/Icon';
 import { Modal, SectionTitle } from '../../components/Modal';
 import { formatDateTime } from '../../utils/date';
+import { validateIntegrationCredentials } from './integrationRules';
 import type { CompanyOption } from '../../types';
 
 export type ConnectionStatus = 'unconfigured' | 'configured' | 'connected' | 'failed';
@@ -44,6 +45,12 @@ interface ProviderSpec {
   family: 'email' | 'messaging' | 'ai' | 'voice' | 'security';
   summary: string;
   scope: 'global' | 'company' | 'both';
+  /**
+   * Mirrors the API rule: these providers can only be configured for one
+   * company, so the console must not offer a platform-wide setup for them.
+   * Saving one globally is rejected with 422 by the API.
+   */
+  companyRequired?: boolean;
   oauth?: 'gmail_oauth' | 'outlook_oauth';
   fields: FieldSpec[];
 }
@@ -142,6 +149,7 @@ const PROVIDERS: ProviderSpec[] = [
     family: 'email',
     summary: 'سحب البريد الوارد لصناديق عامة. لا يُستخدم مع Gmail/Outlook — استخدم مزودَي OAuth.',
     scope: 'company',
+    companyRequired: true,
     fields: [
       { key: 'host', label: 'خادم IMAP', placeholder: 'imap.example.com' },
       { key: 'port', label: 'المنفذ', placeholder: '993' },
@@ -461,13 +469,15 @@ export function IntegrationsSettings({ companies }: IntegrationsSettingsProps) {
                     </div>
                   ))}
                   <div className="row-action-group">
-                    <button
-                      className="button button-light button-small"
-                      type="button"
-                      onClick={() => setEditor({ provider, company_id: null, pickCompany: false })}
-                    >
-                      إعداد
-                    </button>
+                    {!provider.companyRequired && (
+                      <button
+                        className="button button-light button-small"
+                        type="button"
+                        onClick={() => setEditor({ provider, company_id: null, pickCompany: false })}
+                      >
+                        إعداد
+                      </button>
+                    )}
                     {provider.scope === 'company' && (
                       <button
                         className="button button-light button-small"
@@ -588,6 +598,7 @@ function IntegrationEditor({
   });
   const [saving, setSaving] = useState(false);
   const [disconnecting, setDisconnecting] = useState(false);
+  const [fieldIssues, setFieldIssues] = useState<Record<string, string>>({});
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -598,6 +609,14 @@ function IntegrationEditor({
         const value = (values[field.key] ?? '').trim();
         if (value !== '') credentials[field.key] = field.boolean ? value : value;
       }
+      // The API rejects an invalid credential set with 422; check the same
+      // rules here so the operator sees which field is wrong.
+      const issues = validateIntegrationCredentials(provider.id, credentials);
+      if (issues.length) {
+        setFieldIssues(Object.fromEntries(issues.map((issue) => [issue.field, issue.message])));
+        throw new Error(issues[0].message);
+      }
+      setFieldIssues({});
       const body = {
         provider: provider.id,
         company_id: (pickCompany ? scopeCompany : companyId) || null,
@@ -676,6 +695,7 @@ function IntegrationEditor({
                 />
               )}
               {field.help && <small>{field.help}</small>}
+              {fieldIssues[field.key] && <small role="alert" className="field-error">{fieldIssues[field.key]}</small>}
             </label>
           ))}
           <label className="switch-row">

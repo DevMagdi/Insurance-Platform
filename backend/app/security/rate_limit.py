@@ -64,6 +64,16 @@ return {1, math.floor(previous * ((window - elapsed) / window) + current), 0}
 
 _LOG_THRESHOLD = 200  # exact log up to this many entries; counter above it
 
+# Set a TTL only when the key has none yet. ``EXPIRE key seconds NX`` needs
+# Redis 7.0+, but the app supports any server the deployment provides (the
+# Docker-free local stack ships Redis 6.2), so the conditional is done in Lua.
+_SET_TTL_IF_ABSENT = """
+if redis.call('TTL', KEYS[1]) < 0 then
+  redis.call('EXPIRE', KEYS[1], ARGV[1])
+end
+return 1
+"""
+
 
 @dataclass(frozen=True)
 class LimitDecision:
@@ -139,6 +149,11 @@ class MobileOTP:
         self.redis = redis
         self.secret = signing_key.encode()
         self.ttl = ttl
+        self._ttl = redis.register_script(_SET_TTL_IF_ABSENT)
+
+    async def _set_ttl(self, key: str, ttl: int) -> None:
+        """Give ``key`` a lifetime without extending an existing one."""
+        await self._ttl(keys=[key], args=[ttl])
 
     def _key(self, mobile: str) -> str:
         digest = hmac.new(self.secret, mobile.encode(), hashlib.sha256).hexdigest()
@@ -168,7 +183,7 @@ class MobileOTP:
         key = self._key(mobile)
         attempt_key = key + ":attempts"
         attempts = await self.redis.incr(attempt_key)
-        await self.redis.expire(attempt_key, self.ttl, nx=True)
+        await self._set_ttl(attempt_key, self.ttl)
         if attempts > 5:
             await self.redis.delete(key)
             raise HTTPException(status_code=429, detail="Too many OTP attempts")

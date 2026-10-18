@@ -30,7 +30,15 @@ export function toQueuedFile(file: File): QueuedFile {
   };
 }
 
-export type FileValidationError = 'tooMany' | 'tooLarge' | 'totalTooLarge' | 'badType';
+export type FileValidationError = 'tooMany' | 'tooLarge' | 'totalTooLarge' | 'badType' | 'badName';
+
+/**
+ * The upload plan rejects a filename that carries a path separator or a
+ * control character; a file renamed on Linux may still contain a backslash.
+ */
+export function hasUnsafeFileName(name: string): boolean {
+  return name.includes('/') || name.includes('\\') || [...name].some((ch) => ch.charCodeAt(0) < 32);
+}
 
 /** Validate files being added to an existing queue. Returns the first problem found. */
 export function validateNewFiles(existing: File[], incoming: File[]): FileValidationError | null {
@@ -39,6 +47,7 @@ export function validateNewFiles(existing: File[], incoming: File[]): FileValida
     return 'badType';
   }
   if (incoming.some((file) => file.size > MAX_FILE_BYTES)) return 'tooLarge';
+  if (incoming.some((file) => hasUnsafeFileName(file.name))) return 'badName';
   const total = [...existing, ...incoming].reduce((sum, file) => sum + file.size, 0);
   if (total > MAX_TOTAL_BYTES) return 'totalTooLarge';
   return null;
