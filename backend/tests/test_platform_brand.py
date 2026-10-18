@@ -7,9 +7,11 @@ from unittest.mock import AsyncMock
 import pytest
 from fastapi import HTTPException
 from PIL import Image
+from pydantic import ValidationError
 from starlette.requests import Request
 
-from app.api.platform import _public_platform_brand, upload_platform_logo
+from app.api.platform import _public_platform_brand, update_brand, upload_platform_logo
+from app.domain.schemas import PlatformBrandRequest
 
 
 def make_request(body: bytes) -> Request:
@@ -84,3 +86,33 @@ async def test_platform_logo_upload_rejects_non_image_and_oversized_content() ->
         )
     assert oversized.value.status_code == 413
     db.scalar.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_update_brand_persists_name_and_logo_from_the_strict_contract() -> None:
+    db = SimpleNamespace(scalar=AsyncMock(return_value=True))
+    item = PlatformBrandRequest(platform_name="  My Platform  ", logo_url="/insurance-logo.svg")
+    result = await update_brand(item, SimpleNamespace(db=db), None)
+    assert result == {"platform_name": "My Platform", "logo_url": "/insurance-logo.svg"}
+    query, parameters = db.scalar.await_args.args
+    assert "update_platform_brand" in str(query)
+    assert parameters == {"name": "My Platform", "logo": "/insurance-logo.svg"}
+
+
+def test_platform_brand_request_rejects_public_config_runtime_fields() -> None:
+    """`captcha` and `privacy_policy_version` belong to /api/public/config only.
+
+    The brand contract stays strict (extra="forbid"); clients must send exactly
+    `platform_name` and `logo_url` — echoing unrelated runtime settings back is
+    what caused the 422 on `PUT /api/platform/brand`.
+    """
+    with pytest.raises(ValidationError) as excinfo:
+        PlatformBrandRequest(
+            platform_name="My Platform",
+            logo_url="/insurance-logo.svg",
+            captcha=None,  # type: ignore[call-arg]
+            privacy_policy_version="2026-10",  # type: ignore[call-arg]
+        )
+    message = str(excinfo.value)
+    assert "captcha" in message
+    assert "privacy_policy_version" in message

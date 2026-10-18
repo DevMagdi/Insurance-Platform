@@ -4,7 +4,10 @@ import { Icon } from '../../components/Icon';
 import type { StaffAccess } from '../../types';
 import { hasPermission } from '../../utils/access';
 
+/** Exactly the `PlatformBrandRequest` contract: nothing else may be sent. */
 interface Brand { platform_name: string; logo_url: string; }
+/** `/api/public/config` payload: brand fields plus unrelated runtime settings. */
+interface PublicConfig extends Partial<Brand> { captcha?: unknown; privacy_policy_version?: string; }
 export function BrandSettings({ access }: { access: StaffAccess }) {
   const [brand, setBrand] = useState<Brand>({ platform_name: 'Insurance', logo_url: '/insurance-logo.svg' });
   const [message, setMessage] = useState('');
@@ -14,7 +17,17 @@ export function BrandSettings({ access }: { access: StaffAccess }) {
   const brandTouched = useRef(false);
   const allowedScope = access.all_companies && access.company_ids.length === 0 && access.insurance_types.length === 0 && access.ownership === 'all';
   const allowed = allowedScope && hasPermission(access, 'settings.manage');
-  useEffect(() => { fetch('/api/public/config').then((r) => r.ok ? r.json() as Promise<Brand> : null).then((value) => { if (!brandTouched.current && value?.platform_name && value.logo_url) setBrand(value); }).catch(() => undefined); }, []);
+  useEffect(() => {
+    fetch('/api/public/config')
+      .then((r) => (r.ok ? (r.json() as Promise<PublicConfig>) : null))
+      .then((value) => {
+        if (brandTouched.current || !value?.platform_name || !value.logo_url) return;
+        // Seed only the brand fields: captcha/privacy_policy_version are runtime
+        // settings and must never echo back into `PUT /api/platform/brand`.
+        setBrand({ platform_name: value.platform_name, logo_url: value.logo_url });
+      })
+      .catch(() => undefined);
+  }, []);
   if (!allowed) return null;
   const uploadLogo = async (file: File | undefined) => {
     if (!file) return;
@@ -34,7 +47,9 @@ export function BrandSettings({ access }: { access: StaffAccess }) {
   const submit = async (event: FormEvent) => {
     event.preventDefault(); setSaving(true); setError(''); setMessage('');
     try {
-      const saved = await api<Brand>('/api/platform/brand', { method: 'PUT', body: jsonBody(brand) });
+      // Send exactly the strict `PlatformBrandRequest` fields — never the raw state.
+      const body: Brand = { platform_name: brand.platform_name, logo_url: brand.logo_url };
+      const saved = await api<Brand>('/api/platform/brand', { method: 'PUT', body: jsonBody(body) });
       setBrand(saved);
       window.dispatchEvent(new Event('insurance:brand-updated'));
       setMessage('تم تحديث هوية المنصة بنجاح.');
