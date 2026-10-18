@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { api } from '../../api';
 import type { AnalyticsOverview, StaffAccess } from '../../types';
@@ -44,7 +44,24 @@ describe('first-party admin dashboard', () => {
     await waitFor(() => expect(vi.mocked(api).mock.calls.some(([path]) => String(path).startsWith('/api/staff/analytics/overview?date_from='))).toBe(true));
   });
 
-  it('does not fetch user directory without users.view', async () => {
+  it('opens the full employee profile directly from the dashboard photo', async () => {
+    const employee = { id: 'employee', full_name: 'Mona Ali', email: 'mona@company.com', status: 'active', department_id: 'claims', department_name: 'التعويضات', avatar_url: '/api/staff/users/employee/avatar' };
+    vi.mocked(api).mockImplementation(async (path) => {
+      if (path === '/api/staff/users') return [employee] as never;
+      if (path === '/api/staff/users/employee/profile') return { ...employee, personal: { national_id: '29901010112345', mobile: '+201123456789', address: '12 Nile Street', city: 'Giza' } } as never;
+      return report as never;
+    });
+    render(<AdminDashboard access={access} range={range} onNavigate={vi.fn()} />);
+    const button = await screen.findByRole('button', { name: 'عرض بروفايل Mona Ali' });
+    expect(within(button).getByAltText('صورة Mona Ali').getAttribute('src')).toBe(employee.avatar_url);
+    fireEvent.click(button);
+    const modal = screen.getByRole('dialog');
+    expect(await within(modal).findByText('29901010112345')).toBeTruthy();
+    expect(within(modal).getByText('12 Nile Street')).toBeTruthy();
+    expect(within(modal).queryByRole('button', { name: 'حفظ القسم' })).toBeNull();
+  });
+
+  it('does not fetch user directory without users.view' , async () => {
     vi.mocked(api).mockResolvedValue(report);
     render(<AdminDashboard access={{ ...access, permissions: ['analytics.view', 'complaints.view'] }} range={range} onNavigate={vi.fn()} />);
     await screen.findByText('شركة اختبار');

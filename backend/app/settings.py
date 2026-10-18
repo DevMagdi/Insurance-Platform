@@ -46,6 +46,7 @@ class Settings(BaseSettings):
     smtp_username: str | None = None
     smtp_password: str | None = None
     smtp_start_tls: bool = False
+    smtp_use_tls: bool = False
     dev_sms_mailbox: bool = False
     environment: str = "production"
     public_app_url: str = "http://localhost:8080"
@@ -96,6 +97,10 @@ class Settings(BaseSettings):
         self.jwt_keyring()  # validate the configured Ed25519 pair and rotation keys
         if self.environment not in {"production", "development", "test"}:
             raise ValueError("Invalid environment")
+        if self.smtp_start_tls and self.smtp_use_tls:
+            raise ValueError("Choose SMTP_START_TLS or SMTP_USE_TLS, not both")
+        if not 1 <= self.smtp_port <= 65535:
+            raise ValueError("SMTP_PORT must be between 1 and 65535")
         if self.dev_sms_mailbox and (self.environment != "development" or not self.smtp_host):
             raise ValueError("Dev SMS mailbox requires development mode and SMTP")
         if self.environment == "production" and not self.cookie_secure:

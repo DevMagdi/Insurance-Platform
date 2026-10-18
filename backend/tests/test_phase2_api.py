@@ -272,7 +272,11 @@ async def test_staff_admin_access_and_2fa_routes_reevaluate_permission(
     assert (await client.get(f"/api/staff/users/{target}/access")).status_code == 200
     invited = await client.post(
         "/api/staff/users/invitations",
-        json={"email": "invited@example.test", "full_name": "Invited Staff"},
+        json={
+            "email": "invited@example.test",
+            "full_name": "Invited Staff",
+            "department_id": str(uuid4()),
+        },
         headers={"X-CSRF-Token": "known"},
     )
     assert invited.status_code == 202

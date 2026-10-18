@@ -93,3 +93,20 @@ def render_insurer_forward(
         if agent_note:
             header += f"\n\nBroker note:\n{agent_note}"
     return mail_subject, header[:20_000]
+
+
+def render_staff_invitation(url: str, *, reset: bool = False) -> tuple[str, str]:
+    if reset:
+        return (
+            "Reset your Insurance Platform password | إعادة تعيين كلمة المرور",
+            "لإعادة تعيين كلمة المرور افتح الرابط الآمن أدناه. لا تشاركه مع أي شخص.\n"
+            "Reset your password using the secure one-time link below.\n"
+            f"{url}\n\nThis link expires in 48 hours. Ignore it if you did not expect this email.",
+        )
+    return (
+        "Insurance Platform invitation | دعوة لإنشاء حسابك",
+        "تمت دعوتك للانضمام إلى منصة التأمين. أنشئ كلمة المرور وأكمل بياناتك وصورتك الشخصية.\n"
+        "You have been invited to Insurance Platform. Create your password and complete "
+        "your personal profile and photo using this secure one-time link:\n"
+        f"{url}\n\nThis invitation expires in 48 hours. Do not share this link.",
+    )

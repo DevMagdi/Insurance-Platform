@@ -5,8 +5,10 @@ import { hasPermission } from '../../utils/access';
 import { Icon } from '../../components/Icon';
 import { Modal, SectionTitle } from '../../components/Modal';
 import { formatDateTime, formatNumber } from '../../utils/date';
-import type { StaffAccess, StaffDirectoryEntry } from '../../types';
+import type { StaffAccess, StaffDepartment, StaffDirectoryEntry } from '../../types';
 import { AccessEditor } from './AccessEditor';
+import { StaffAvatar } from '../../components/StaffAvatar';
+import { StaffProfileModal } from './StaffProfileModal';
 
 interface UsersPageProps {
   access: StaffAccess;
@@ -23,6 +25,10 @@ export function UsersPage({ access, onAccessChanged }: UsersPageProps) {
   const [inviteName, setInviteName] = useState('');
   const [inviteEmail, setInviteEmail] = useState('');
   const [busy, setBusy] = useState(false);
+  const [departments, setDepartments] = useState<StaffDepartment[]>([]);
+  const [inviteDepartment, setInviteDepartment] = useState('');
+  const [departmentName, setDepartmentName] = useState('');
+  const [profileId, setProfileId] = useState<string | null>(null);
   const [selectedUser, setSelectedUser] = useState<StaffDirectoryEntry | null>(null);
   const [toast, setToast] = useState('');
 
@@ -30,8 +36,9 @@ export function UsersPage({ access, onAccessChanged }: UsersPageProps) {
     if (!hasPermission(access, 'users.view')) { setLoading(false); return; }
     setLoading(true);
     try {
-      const result = await api<StaffDirectoryEntry[]>('/api/staff/users');
+      const [result, options] = await Promise.all([api<StaffDirectoryEntry[]>('/api/staff/users'), api<StaffDepartment[]>('/api/staff/departments')]);
       setUsers(result);
+      setDepartments(options);
       setError('');
     } catch (cause) {
       setUsers([]);
@@ -45,15 +52,15 @@ export function UsersPage({ access, onAccessChanged }: UsersPageProps) {
   }, [load]);
 
   const filteredUsers = useMemo(() => users.filter((user) => {
-    const matchesSearch = `${user.full_name} ${user.email}`.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase());
+    const matchesSearch = `${user.full_name} ${user.email} ${user.department_name ?? ''}`.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase());
     return matchesSearch && (!statusFilter || user.status === statusFilter);
   }), [users, search, statusFilter]);
 
   if (!hasPermission(access, 'users.view')) return <AccessDenied title="إدارة المستخدمين غير متاحة" />;
 
-  const runAction = async (user: StaffDirectoryEntry, action: 'deactivate' | 'reactivate' | 'force-logout' | 'password-reset' | '2fa') => {
+  const runAction = async (user: StaffDirectoryEntry, action: 'deactivate' | 'reactivate' | 'force-logout' | 'password-reset' | 'resend-invitation' | '2fa') => {
     const labels = {
-      deactivate: 'تعطيل المستخدم', reactivate: 'تفعيل المستخدم', 'force-logout': 'إنهاء جميع الجلسات', 'password-reset': 'إرسال رابط إعادة تعيين كلمة المرور', '2fa': 'تغيير سياسة المصادقة الثنائية',
+      deactivate: 'تعطيل المستخدم', reactivate: 'تفعيل المستخدم', 'force-logout': 'إنهاء جميع الجلسات', 'password-reset': 'إرسال رابط إعادة تعيين كلمة المرور', '2fa': 'تغيير سياسة المصادقة الثنائية', 'resend-invitation': 'إعادة إرسال الدعوة',
     };
     if (action !== '2fa' && !window.confirm(`هل تريد ${labels[action]} لـ ${user.full_name}؟`)) return;
     setBusy(true);
@@ -74,15 +81,28 @@ export function UsersPage({ access, onAccessChanged }: UsersPageProps) {
     event.preventDefault();
     setBusy(true);
     try {
-      await api('/api/staff/users/invitations', { method: 'POST', body: jsonBody({ email: inviteEmail.trim().toLowerCase(), full_name: inviteName.trim() }) });
+      await api('/api/staff/users/invitations', { method: 'POST', body: jsonBody({ email: inviteEmail.trim().toLowerCase(), full_name: inviteName.trim(), department_id: inviteDepartment }) });
       setShowInvite(false);
       setInviteEmail('');
       setInviteName('');
-      setToast('أُرسلت دعوة الانضمام عبر مزوّد البريد المُعدّ.');
+      setInviteDepartment('');
+      setToast('قَبِل مزوّد البريد إرسال الدعوة إلى البريد المحدد. إذا لم تصل، راجع الرسائل غير المرغوبة وحالة المزوّد.');
       await load();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'تعذر إرسال الدعوة.');
     } finally { setBusy(false); }
+  };
+
+  const createDepartment = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setBusy(true);
+    try {
+      await api('/api/staff/departments', { method: 'POST', body: jsonBody({ name: departmentName.trim() }) });
+      setDepartmentName('');
+      setToast('تم إنشاء القسم.');
+      await load();
+    } catch (cause) { setError(cause instanceof Error ? cause.message : 'تعذر إنشاء القسم.'); }
+    finally { setBusy(false); }
   };
 
   const canInvite = hasPermission(access, 'users.create');
@@ -112,18 +132,22 @@ export function UsersPage({ access, onAccessChanged }: UsersPageProps) {
         <button className="button button-light" type="button" onClick={() => { void load(); }} disabled={loading}><Icon name="refresh" size={15} /> تحديث</button>
       </div>
 
+      {hasPermission(access, 'users.edit') && <form className="surface-card user-toolbar" onSubmit={(event) => { void createDepartment(event); }}><label className="compact-field">قسم جديد<input aria-label="اسم القسم الجديد" required minLength={2} maxLength={120} value={departmentName} onChange={(event) => setDepartmentName(event.target.value)} /></label><button className="button button-light" type="submit" disabled={busy || departmentName.trim().length < 2}>إضافة قسم</button></form>}
+
       <section className="surface-card admin-table-card">
         <div className="table-topline"><div><strong>{formatNumber(filteredUsers.length)} مستخدم</strong><span>حسب نطاق الإدارة المصرّح</span></div><span className="last-login-note"><Icon name="clock" size={14} /> آخر تسجيل دخول</span></div>
-        <div className="table-wrap"><table className="data-table admin-users-table"><thead><tr><th>المستخدم</th><th>الحالة</th><th>المصادقة الثنائية</th><th>آخر تسجيل دخول</th><th>إجراءات الإدارة</th></tr></thead><tbody>
-          {loading && users.length === 0 && <tr><td colSpan={5}><div className="loading-surface compact-loading"><span className="loading-spinner" /> جارٍ تحميل المستخدمين…</div></td></tr>}
+        <div className="table-wrap"><table className="data-table admin-users-table"><thead><tr><th>المستخدم</th><th>القسم</th><th>الحالة</th><th>المصادقة الثنائية</th><th>آخر تسجيل دخول</th><th>إجراءات الإدارة</th></tr></thead><tbody>
+          {loading && users.length === 0 && <tr><td colSpan={6}><div className="loading-surface compact-loading"><span className="loading-spinner" /> جارٍ تحميل المستخدمين…</div></td></tr>}
           {!loading && filteredUsers.map((user) => {
             const isSelf = user.id === access.id;
             return <tr key={user.id}>
-              <td><div className="user-cell"><span className={`avatar-circle avatar-${user.status}`}>{user.full_name.split(' ').map((part) => part[0]).slice(0, 2).join('')}</span><span><strong>{user.full_name}{isSelf && <small className="self-label">أنت</small>}</strong><small dir="ltr">{user.email}</small></span></div></td>
+              <td><div className="user-cell"><button className="employee-avatar-button" type="button" aria-label={`عرض بروفايل ${user.full_name}`} onClick={() => setProfileId(user.id)}><StaffAvatar name={user.full_name} src={user.avatar_url} status={user.status} /></button><span><strong>{user.full_name}{isSelf && <small className="self-label">أنت</small>}</strong><small dir="ltr">{user.email}</small></span></div></td>
+              <td>{user.department_name || 'غير محدد'}</td>
               <td><span className={`staff-status staff-${user.status}`}><i />{user.status === 'active' ? 'مفعّل' : user.status === 'invited' ? 'بانتظار الدعوة' : 'معطّل'}</span></td>
               <td><span className={`twofa-pill ${user.two_factor_enabled ? 'is-enabled' : 'is-disabled'}`}><Icon name={user.two_factor_enabled ? 'shield' : 'lock'} size={13} />{user.two_factor_enabled ? 'مفعّلة' : 'غير مفعّلة'}{user.two_factor_required && <em>إلزامية</em>}</span></td>
               <td className="date-cell">{formatDateTime(user.last_login_at)}</td>
               <td><div className="user-action-buttons">
+                {canInvite && user.status === 'invited' && <button type="button" className="button button-light button-small" disabled={busy} onClick={() => { void runAction(user, 'resend-invitation'); }}>إعادة إرسال الدعوة</button>}
                 {canManageAccess && !isSelf && <button className="icon-button small" title="تحرير الوصول" aria-label={`تحرير وصول ${user.full_name}`} onClick={() => setSelectedUser(user)}><Icon name="roles" size={15} /></button>}
                 {hasPermission(access, 'users.manage_access') && !isSelf && <button className="icon-button small" title="إنهاء الجلسات" aria-label={`إنهاء جلسات ${user.full_name}`} disabled={busy} onClick={() => { void runAction(user, 'force-logout'); }}><Icon name="logout" size={15} /></button>}
                 {hasPermission(access, 'users.edit') && !isSelf && <button className="icon-button small" title="إعادة تعيين كلمة المرور" aria-label={`إعادة تعيين كلمة مرور ${user.full_name}`} disabled={busy || user.status !== 'active'} onClick={() => { void runAction(user, 'password-reset'); }}><Icon name="refresh" size={15} /></button>}
@@ -134,11 +158,12 @@ export function UsersPage({ access, onAccessChanged }: UsersPageProps) {
               </div></td>
             </tr>;
           })}
-          {!loading && filteredUsers.length === 0 && <tr><td colSpan={5}><div className="empty-table"><span className="empty-icon"><Icon name="users" size={20} /></span><strong>لا يوجد مستخدمون مطابقون</strong><span>غيّر كلمات البحث أو مرشح الحالة.</span></div></td></tr>}
+          {!loading && filteredUsers.length === 0 && <tr><td colSpan={6}><div className="empty-table"><span className="empty-icon"><Icon name="users" size={20} /></span><strong>لا يوجد مستخدمون مطابقون</strong><span>غيّر كلمات البحث أو مرشح الحالة.</span></div></td></tr>}
         </tbody></table></div>
       </section>
 
-      {showInvite && <Modal title="دعوة عضو جديد" eyebrow="إضافة إلى فريق الوساطة" onClose={() => setShowInvite(false)}><p className="modal-intro">ستُرسل دعوة آمنة بالبريد الإلكتروني. تعيين الدور ونطاق الشركات يتم بعد إنشاء الحساب.</p><form onSubmit={(event) => { void invite(event); }}><label className="field-label">الاسم الكامل<input autoFocus required minLength={2} maxLength={120} value={inviteName} onChange={(event) => setInviteName(event.target.value)} placeholder="الاسم كما سيظهر في مساحة العمل" /></label><label className="field-label">البريد الإلكتروني<input required type="email" maxLength={254} value={inviteEmail} onChange={(event) => setInviteEmail(event.target.value)} placeholder="name@company.com" dir="ltr" /></label><div className="modal-actions"><button className="button button-light" type="button" onClick={() => setShowInvite(false)}>إلغاء</button><button className="button button-dark" type="submit" disabled={busy || inviteName.trim().length < 2 || !inviteEmail.includes('@')}>{busy ? 'جارٍ الإرسال…' : 'إرسال الدعوة'}</button></div></form></Modal>}
+      {showInvite && <Modal title="دعوة عضو جديد" eyebrow="إضافة إلى فريق الوساطة" onClose={() => setShowInvite(false)}><p className="modal-intro">ستُرسل دعوة آمنة بالبريد الإلكتروني. تعيين الدور ونطاق الشركات يتم بعد إنشاء الحساب.</p><form onSubmit={(event) => { void invite(event); }}><label className="field-label">الاسم الكامل<input autoFocus required minLength={2} maxLength={120} value={inviteName} onChange={(event) => setInviteName(event.target.value)} placeholder="الاسم كما سيظهر في مساحة العمل" /></label><label className="field-label">البريد الإلكتروني<input required type="email" maxLength={254} value={inviteEmail} onChange={(event) => setInviteEmail(event.target.value)} placeholder="name@company.com" dir="ltr" /></label><label className="field-label">القسم<select aria-label="قسم المستخدم الجديد" required value={inviteDepartment} onChange={(event) => setInviteDepartment(event.target.value)}><option value="">اختر القسم</option>{departments.map((department) => <option key={department.id} value={department.id}>{department.name}</option>)}</select></label><div className="modal-actions"><button className="button button-light" type="button" onClick={() => setShowInvite(false)}>إلغاء</button><button className="button button-dark" type="submit" disabled={busy || inviteName.trim().length < 2 || !inviteEmail.includes('@') || !inviteDepartment}>{busy ? 'جارٍ الإرسال…' : 'إرسال الدعوة'}</button></div></form></Modal>}
+      {profileId && <StaffProfileModal key={profileId} userId={profileId} canEdit={hasPermission(access, 'users.edit')} onClose={() => setProfileId(null)} onUpdated={load} />}
       {selectedUser && <AccessEditor user={selectedUser} onClose={() => setSelectedUser(null)} onSaved={async () => { setSelectedUser(null); setToast('تم تحديث وصول المستخدم وإبطال جلساته السابقة.'); await load(); await onAccessChanged(); }} />}
     </div>
   );

@@ -21,7 +21,9 @@ from app.security.keyring import Keyring
 ATTACHMENT = "attachment"
 EXPORT = "export"
 RECORDING = "recording"
-PURPOSES = frozenset({ATTACHMENT, EXPORT, RECORDING})
+STAFF_PROFILE = "staff-profile"
+AVATAR = "staff-avatar"
+PURPOSES = frozenset({ATTACHMENT, EXPORT, RECORDING, STAFF_PROFILE, AVATAR})
 
 # "KR" magic (2) + key id (1) + nonce (12) + GCM tag (16): the smallest stored blob.
 ENCRYPTION_OVERHEAD_BYTES = 31

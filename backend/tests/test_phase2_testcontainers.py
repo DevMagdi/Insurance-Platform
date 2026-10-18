@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import io
 import os
 import secrets
 import subprocess
@@ -22,6 +23,7 @@ import pytest
 from argon2 import PasswordHasher
 from docker.errors import DockerException
 from httpx import ASGITransport, AsyncClient
+from PIL import Image
 from psycopg import sql
 from redis.asyncio import Redis
 from sqlalchemy import text
@@ -582,19 +584,38 @@ async def test_phase3_role_delegation_revocation_and_reset(test_app: SimpleNames
     )
     assert cloned.status_code == 201, cloned.text
     email = "phase3-user@test.invalid"
+    departments = await ctx.admin.get("/api/staff/departments")
+    assert departments.status_code == 200, departments.text
     invited = await ctx.admin.post(
         "/api/staff/users/invitations",
-        json={"email": email, "full_name": "Phase Three User"},
+        json={
+            "email": email,
+            "full_name": "Phase Three User",
+            "department_id": departments.json()[0]["id"],
+        },
         headers=csrf(ctx.admin),
     )
     assert invited.status_code == 202, invited.text
     user_id = invited.json()["id"]
-    token = parse_qs(urlsplit(ctx.mailbox.invites[email]).query)["token"][0]
+    token = parse_qs(urlsplit(ctx.mailbox.invites[email]).fragment)["token"][0]
     recipient = AsyncClient(transport=ASGITransport(app=app), base_url="https://testserver")
     try:
+        portrait = io.BytesIO()
+        Image.new("RGB", (32, 32), "blue").save(portrait, format="PNG")
         accepted = await recipient.post(
             "/api/auth/staff/invitation/accept",
-            json={"token": token, "password": PASSWORD},
+            json={
+                "token": token,
+                "password": PASSWORD,
+                "profile": {
+                    "full_name": "Phase Three User",
+                    "national_id": NID,
+                    "mobile": MOBILE,
+                    "address": "12 Nile Street, Dokki",
+                    "city": "Giza",
+                },
+                "avatar_base64": base64.b64encode(portrait.getvalue()).decode(),
+            },
         )
         assert accepted.status_code == 200, accepted.text
         await sign_in_staff(recipient, email)
@@ -633,7 +654,7 @@ async def test_phase3_role_delegation_revocation_and_reset(test_app: SimpleNames
         )
         assert reset.status_code == 202, reset.text
         assert (await recipient.get("/api/me")).status_code == 401
-        reset_token = parse_qs(urlsplit(ctx.mailbox.invites[email]).query)["token"][0]
+        reset_token = parse_qs(urlsplit(ctx.mailbox.invites[email]).fragment)["token"][0]
         new_password = "Changed!Secure123"
         assert (
             await recipient.post(

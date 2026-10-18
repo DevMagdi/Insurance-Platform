@@ -2,9 +2,11 @@
 
 from app.models.access import (
     AccessChangeLog,
+    Department,
     Permission,
     Role,
     RolePermission,
+    StaffProfile,
     StaffUser,
     Team,
     TeamMember,
@@ -76,6 +78,7 @@ __all__ = [
     "ConsentRecord",
     "CsatResponse",
     "Customer",
+    "Department",
     "DuplicateCandidate",
     "ExportJob",
     "ExportJobRow",
@@ -96,6 +99,7 @@ __all__ = [
     "SecuritySettings",
     "SlaRule",
     "StaffInvitation",
+    "StaffProfile",
     "StaffUser",
     "Team",
     "TeamMember",

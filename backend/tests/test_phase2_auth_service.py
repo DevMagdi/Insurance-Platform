@@ -86,9 +86,12 @@ async def fixture(
         "set_totp",
         "invite",
         "accept_invite",
+        "invitation_details",
+        "complete_invite",
     ):
         setattr(repo, name, AsyncMock())
     service.repo = repo
+    service.staff_mail.repository.email_connection = AsyncMock(return_value=None)
     db = SimpleNamespace()
     scopes: dict[str, list] = {"purpose": [], "scoped": []}
 
@@ -109,6 +112,11 @@ async def fixture(
     repo.invite.return_value = uuid4()
     repo.register_customer.return_value = uuid4()
     repo.accept_invite.return_value = uuid4()
+    repo.complete_invite.return_value = repo.invite.return_value
+    repo.invitation_details.return_value = {
+        "id": str(repo.invite.return_value),
+        "kind": "password_reset",
+    }
     yield service, repo, delivery, scopes, redis
     await redis.aclose()
 
@@ -326,18 +334,20 @@ async def test_refresh_rotation_replay_revokes_family(fixture: tuple) -> None:
 
 async def test_email_invitation_token_is_hashed_and_single_use(fixture: tuple) -> None:
     auth, repo, delivery, _scopes, _redis = fixture
-    user = await auth.create_invitation(SimpleNamespace(), "INVITED@example.test", "New Staff")
+    user = await auth.create_invitation(
+        SimpleNamespace(), "INVITED@example.test", "New Staff", uuid4()
+    )
     assert user == repo.invite.return_value
     sent_url = delivery.invites["invited@example.test"]
-    token = parse_qs(urlsplit(sent_url).query)["token"][0]
+    token = parse_qs(urlsplit(sent_url).fragment)["token"][0]
     assert repo.invite.call_args.kwargs["digest"] == hashlib.sha256(token.encode()).digest()
     await auth.accept_invitation(token, PASSWORD)
-    repo.accept_invite.assert_awaited_once()
+    repo.complete_invite.assert_awaited_once()
     delivery.fail_invite = True
     with pytest.raises(HTTPException) as exc:
-        await auth.create_invitation(SimpleNamespace(), "other@example.test", "New Staff")
+        await auth.create_invitation(SimpleNamespace(), "other@example.test", "New Staff", uuid4())
     assert exc.value.status_code == 503
-    repo.accept_invite.return_value = None
+    repo.complete_invite.return_value = None
     with pytest.raises(HTTPException) as exc:
         await auth.accept_invitation("expired-token", PASSWORD)
     assert exc.value.status_code == 400

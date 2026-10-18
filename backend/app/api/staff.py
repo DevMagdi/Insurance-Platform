@@ -19,6 +19,8 @@ from app.domain.enums import (
 from app.domain.schemas import (
     AccessSpec,
     ComplaintFilter,
+    DepartmentAssignment,
+    DepartmentSpec,
     ReplyRequest,
     RevealReason,
     RoleClone,
@@ -30,6 +32,7 @@ from app.domain.schemas import (
 )
 from app.repositories.access import AccessRepository
 from app.repositories.complaints import ComplaintRepository
+from app.repositories.staff_profiles import StaffProfileRepository
 from app.security.tokens import csrf_required
 
 router = APIRouter(prefix="/api/staff", tags=["staff"])
@@ -62,11 +65,11 @@ async def invite_user(
 ) -> dict[str, Any]:
     try:
         staff_id = await request.app.state.auth.create_invitation(
-            ctx.db, item.email, item.full_name
+            ctx.db, item.email, item.full_name, item.department_id
         )
     except DBAPIError as exc:
         raise access_error(exc) from exc
-    return {"id": staff_id, "message": "Invitation sent by the configured email provider"}
+    return {"id": staff_id, "message": "Invitation accepted by the configured email provider"}
 
 
 @router.get("/users/{user_id}/access")
@@ -442,3 +445,70 @@ async def staff_notifications(
         }
         for item in records
     ]
+
+
+@router.get("/departments")
+async def departments(
+    ctx: RequestContext = Depends(require_permission("users.view")),
+) -> list[dict[str, Any]]:
+    result = await StaffProfileRepository().departments(ctx.db)
+    if result is None:
+        raise HTTPException(status_code=403, detail="Global staff administration required")
+    return result
+
+
+@router.post("/departments", status_code=201)
+async def create_department(
+    item: DepartmentSpec,
+    ctx: RequestContext = Depends(require_permission("users.edit")),
+    _: None = Depends(csrf_required),
+) -> dict[str, Any]:
+    try:
+        department_id = await StaffProfileRepository().create_department(ctx.db, item.name)
+    except DBAPIError as exc:
+        raise access_error(exc) from exc
+    if department_id is None:
+        raise HTTPException(status_code=403, detail="Global staff administration required")
+    return {"id": department_id, "name": item.name}
+
+
+@router.patch("/users/{user_id}/department")
+async def assign_department(
+    user_id: UUID,
+    item: DepartmentAssignment,
+    ctx: RequestContext = Depends(require_permission("users.edit")),
+    _: None = Depends(csrf_required),
+) -> dict[str, Any]:
+    changed = await StaffProfileRepository().assign_department(ctx.db, user_id, item.department_id)
+    if not changed:
+        raise HTTPException(status_code=404, detail="Staff user or department unavailable")
+    return {"id": user_id, "department_id": item.department_id}
+
+
+@router.get("/users/{user_id}/profile")
+async def staff_profile(
+    user_id: UUID, request: Request, ctx: RequestContext = Depends(require_permission("users.view"))
+) -> dict[str, Any]:
+    result: dict[str, Any] = await request.app.state.auth.staff_profiles.profile(ctx.db, user_id)
+    return result
+
+
+@router.get("/users/{user_id}/avatar", response_class=Response)
+async def staff_avatar(
+    user_id: UUID, request: Request, ctx: RequestContext = Depends(require_permission("users.view"))
+) -> Response:
+    content = await request.app.state.auth.staff_profiles.avatar(ctx.db, user_id)
+    return Response(
+        content, media_type="image/jpeg", headers={"Cache-Control": "private, no-store"}
+    )
+
+
+@router.post("/users/{user_id}/resend-invitation", status_code=202)
+async def resend_invitation(
+    user_id: UUID,
+    request: Request,
+    ctx: RequestContext = Depends(require_permission("users.create")),
+    _: None = Depends(csrf_required),
+) -> dict[str, str]:
+    await request.app.state.auth.resend_invitation(ctx.db, user_id)
+    return {"message": "Invitation accepted by the configured email provider"}

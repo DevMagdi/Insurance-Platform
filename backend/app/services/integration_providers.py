@@ -200,7 +200,11 @@ class SMTPEmailProvider:
                 port=int(self.config.get("port", 587)),
                 username=self.config.get("username"),
                 password=self.config.get("password"),
-                start_tls=_config_bool(self.config.get("start_tls"), True),
+                start_tls=_config_bool(
+                    self.config.get("start_tls"),
+                    not _config_bool(self.config.get("use_tls"), False),
+                ),
+                use_tls=_config_bool(self.config.get("use_tls"), False),
                 timeout=20,
             )
         except (OSError, aiosmtplib.SMTPException, TimeoutError) as exc:
@@ -217,7 +221,11 @@ class SMTPEmailProvider:
                 hostname=host,
                 port=int(self.config.get("port", 587)),
                 timeout=20,
-                start_tls=_config_bool(self.config.get("start_tls"), True),
+                start_tls=_config_bool(
+                    self.config.get("start_tls"),
+                    not _config_bool(self.config.get("use_tls"), False),
+                ),
+                use_tls=_config_bool(self.config.get("use_tls"), False),
             )
             await client.connect()
             if self.config.get("username"):

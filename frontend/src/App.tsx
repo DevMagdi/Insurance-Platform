@@ -4,6 +4,7 @@ import { usePathname } from './lib/router';
 import { HomePage } from './pages/HomePage';
 import { LoginPage } from './pages/LoginPage';
 import { NewComplaintPage } from './pages/NewComplaintPage';
+import { InvitePage } from './pages/InvitePage';
 import { ProfilePage } from './pages/ProfilePage';
 import { StaffAnalyticsPage } from './pages/StaffAnalyticsPage';
 import { StaffAuditPage, StaffExportsPage } from './pages/StaffAuditExportsPage';
@@ -40,6 +41,7 @@ function App() {
 
   let page: React.ReactNode;
   if (path === '/staff/login' || path === '/auth/staff' || path === '/auth') page = <StaffLoginPage />;
+  else if (path === '/invite') page = <InvitePage />;
   else if (path === '/staff/analytics') page = <StaffAnalyticsPage />;
   else if (path === '/staff/audit') page = <StaffAuditPage />;
   else if (path === '/staff/exports') page = <StaffExportsPage />;

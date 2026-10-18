@@ -4949,3 +4949,18 @@ html[dir='rtl'] .staff-console .admin-shortcuts button > svg {
   --btn-bg: var(--surface-hover);
   --btn-fg: var(--text);
 }
+
+
+/* Employee identity: private profile photos and department-bound directory. */
+.staff-console .employee-avatar-button { border: 0; padding: 0; background: transparent; cursor: pointer; border-radius: 50%; }
+.staff-console .employee-avatar-button:focus-visible, .staff-console .employee-card:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+.staff-console .employee-card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; }
+.staff-console .employee-card { display: flex; align-items: center; gap: 12px; text-align: start; padding: 14px; border: 1px solid var(--border); border-radius: 14px; color: var(--text); background: var(--surface-muted); cursor: pointer; }
+.staff-console .employee-card:hover { background: var(--surface-hover); }
+.staff-console .employee-card small { display: block; color: var(--text-muted); margin-top: 5px; }
+.staff-console .employee-profile-heading { margin-bottom: 24px; }
+.staff-console .employee-profile-heading .avatar-circle { width: 80px; height: 80px; flex-shrink: 0; }
+.staff-console .employee-profile-details { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 18px; }
+.staff-console .employee-profile-details dt { color: var(--text-muted); font-size: 12px; margin-bottom: 5px; }
+.staff-console .employee-profile-details dd { margin: 0; overflow-wrap: anywhere; font-weight: 600; }
+.staff-console .employee-department-form { margin-top: 24px; border-top: 1px solid var(--border); padding-top: 16px; }

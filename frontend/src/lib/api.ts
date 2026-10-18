@@ -392,10 +392,12 @@ export const staffApi = {
 
   users: () => request<StaffUser[]>('/api/staff/users'),
 
-  inviteUser: (email: string, full_name: string) =>
+  departments: () => request<{ id: string; name: string }[]>('/api/staff/departments'),
+
+  inviteUser: (email: string, full_name: string, department_id: string) =>
     request<{ id: string; message: string }>('/api/staff/users/invitations', {
       method: 'POST',
-      body: { email, full_name },
+      body: { email, full_name, department_id },
     }),
 
   userAccess: (id: string) => request<Record<string, unknown>>(`/api/staff/users/${id}/access`),

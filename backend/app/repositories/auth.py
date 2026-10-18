@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
@@ -205,10 +206,20 @@ class AuthRepository:
         name: str,
         digest: bytes,
         expires_at: datetime,
+        department_id: UUID,
     ) -> UUID:
         value = await db.scalar(
-            text("SELECT app_security.create_staff_invitation(:email, :name, :digest, :expires)"),
-            {"email": email, "name": name, "digest": digest, "expires": expires_at},
+            text(
+                "SELECT app_security.create_staff_invitation_in_department("
+                ":email, :name, :digest, :expires, :department)"
+            ),
+            {
+                "email": email,
+                "name": name,
+                "digest": digest,
+                "expires": expires_at,
+                "department": department_id,
+            },
         )
         assert isinstance(value, UUID)
         return value
@@ -219,5 +230,51 @@ class AuthRepository:
         result: UUID | None = await db.scalar(
             text("SELECT app_security.accept_staff_invitation(:digest, :password_hash)"),
             {"digest": digest, "password_hash": password_hash},
+        )
+        return result
+
+    async def invitation_details(self, db: AsyncSession, digest: bytes) -> dict[str, Any] | None:
+        result = await db.scalar(
+            text("SELECT app_security.staff_invitation_details(:digest)"), {"digest": digest}
+        )
+        return json.loads(result) if isinstance(result, str) else result  # type: ignore[no-any-return]
+
+    async def complete_invite(
+        self,
+        db: AsyncSession,
+        *,
+        digest: bytes,
+        user_id: UUID,
+        password_hash: str,
+        name: str | None,
+        personal: bytes | None,
+        blind: bytes | None,
+        last4: str | None,
+        avatar: bytes | None,
+    ) -> UUID | None:
+        result: UUID | None = await db.scalar(
+            text(
+                "SELECT app_security.complete_staff_invitation(:digest, :user, :password, :name, "
+                ":personal, :blind, :last4, :avatar)"
+            ),
+            {
+                "digest": digest,
+                "user": user_id,
+                "password": password_hash,
+                "name": name,
+                "personal": personal,
+                "blind": blind,
+                "last4": last4,
+                "avatar": avatar,
+            },
+        )
+        return result
+
+    async def reissue_invite(
+        self, db: AsyncSession, user_id: UUID, digest: bytes, expires_at: datetime
+    ) -> str | None:
+        result: str | None = await db.scalar(
+            text("SELECT app_security.reissue_staff_invitation(:user, :digest, :expires)"),
+            {"user": user_id, "digest": digest, "expires": expires_at},
         )
         return result

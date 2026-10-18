@@ -20,6 +20,7 @@ from app.domain.schemas import (
     ChallengeRequest,
     ChangePasswordRequest,
     CustomerVerifyRequest,
+    InvitationTokenRequest,
     InviteAcceptRequest,
     MobileOTPRequest,
     StaffLoginRequest,
@@ -92,6 +93,14 @@ async def staff_login(
     return {"next_step": result.next_step or "authenticated", "challenge": result.challenge}
 
 
+@router.post("/auth/staff/invitation/inspect")
+async def inspect_invitation(item: InvitationTokenRequest, request: Request) -> dict[str, Any]:
+    auth = request.app.state.auth
+    await auth.limits.check("invite:inspect", client_ip(request), 30, 3600)
+    result: dict[str, Any] = await auth.inspect_invitation(item.token)
+    return result
+
+
 @router.post(
     "/auth/staff/invitation/accept", dependencies=[Depends(captcha_guard("invite_accept"))]
 )
@@ -99,7 +108,7 @@ async def accept_invitation(item: InviteAcceptRequest, request: Request) -> dict
     auth = request.app.state.auth
     await auth.limits.check("invite:accept", client_ip(request), 10, 3600)
     try:
-        await auth.accept_invitation(item.token, item.password)
+        await auth.accept_invitation(item.token, item.password, item.profile, item.avatar_base64)
     except ValueError:
         # Validation failures are reported with a stable client-safe message;
         # never reflect implementation or provider exception text to callers.

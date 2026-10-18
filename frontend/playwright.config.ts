@@ -13,13 +13,16 @@ export default defineConfig({
   use: {
     baseURL: 'http://127.0.0.1:5173',
     trace: 'retain-on-failure',
+    launchOptions: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE
+      ? { executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE }
+      : undefined,
   },
   projects: [
     { name: 'chromium-mobile', use: { ...devices['Pixel 7'] } },
     { name: 'chromium-desktop', use: { ...devices['Desktop Chrome'] } },
   ],
   webServer: {
-    command: 'npm run dev -- --host 127.0.0.1 --port 5173',
+    command: 'npm run dev -- --host 0.0.0.0 --port 5173',
     url: 'http://127.0.0.1:5173',
     reuseExistingServer: true,
     timeout: 120_000,

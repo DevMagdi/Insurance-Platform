@@ -16,6 +16,7 @@ export function StaffAdminPage() {
   const [error, setError] = useState('');
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteName, setInviteName] = useState('');
+  const [inviteDepartment, setInviteDepartment] = useState('');
   const [selectedUser, setSelectedUser] = useState('');
   const [accessJson, setAccessJson] = useState('{\n  "role_ids": [],\n  "allow": [],\n  "deny": [],\n  "all_companies": true,\n  "company_ids": [],\n  "insurance_types": [],\n  "ownership": "all",\n  "team_ids": []\n}');
   const [roleId, setRoleId] = useState<string | null>(null);
@@ -27,6 +28,7 @@ export function StaffAdminPage() {
   const [catalogJson, setCatalogJson] = useState('{}');
   const [global2fa, setGlobal2fa] = useState(false);
 
+  const departments = useQuery({ queryKey: ['staff-departments'], queryFn: staffApi.departments, enabled: hasPermission(access, 'users.view') });
   const users = useQuery({ queryKey: ['staff-users'], queryFn: staffApi.users, enabled: hasPermission(access, 'users.view') });
   const roles = useQuery({ queryKey: ['staff-roles'], queryFn: staffApi.roles, enabled: hasPermission(access, 'roles.manage') });
   const catalog = useQuery({
@@ -72,8 +74,9 @@ export function StaffAdminPage() {
             <div className="mt-4 grid gap-3 md:grid-cols-3">
               <Field label={t('staff.email')}><TextInput type="email" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} /></Field>
               <Field label={t('staff.fullName')}><TextInput value={inviteName} onChange={(e) => setInviteName(e.target.value)} /></Field>
+              <Field label="القسم"><SelectInput required value={inviteDepartment} onChange={(event) => setInviteDepartment(event.target.value)}><option value="">اختر القسم</option>{departments.data?.map((department) => <option key={department.id} value={department.id}>{department.name}</option>)}</SelectInput></Field>
               <div className="flex items-end">
-                <button type="button" className={primaryButton} disabled={!inviteEmail || inviteName.trim().length < 2 || act.isPending} onClick={() => act.mutate(() => staffApi.inviteUser(inviteEmail, inviteName))}>
+                <button type="button" className={primaryButton} disabled={!inviteEmail || !inviteDepartment || inviteName.trim().length < 2 || act.isPending} onClick={() => act.mutate(() => staffApi.inviteUser(inviteEmail, inviteName, inviteDepartment))}>
                   {t('staff.invite')}
                 </button>
               </div>
