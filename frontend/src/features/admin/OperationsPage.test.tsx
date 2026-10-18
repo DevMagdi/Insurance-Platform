@@ -164,3 +164,149 @@ describe('OperationsPage permission boundaries', () => {
       path === '/api/staff/reports/schedules' && options?.method === 'POST')).toBe(false);
   });
 });
+
+const range = { from: '2026-10-01', to: '2026-10-15', preset: 'custom' } as const;
+const reportAccess: StaffAccess = { ...access, permissions: ['reports.manage', 'analytics.view', 'analytics.export'] };
+const teamAccess: StaffAccess = { ...access, permissions: ['teams.manage', 'users.view'] };
+
+/**
+ * Every case below reproduces a real console crash: the table used to cast the
+ * fetched payload straight into a record type, so one missing field (`filters`,
+ * `recipient_emails`, `supported_types`, `member_ids`) threw a TypeError and
+ * blanked the whole Operations page.
+ */
+describe('OperationsPage never crashes on incomplete data', () => {
+  it('renders scheduled reports whose fields are missing', async () => {
+    vi.mocked(api).mockImplementation(async (path: string) => {
+      if (path === '/api/staff/reports/schedules') return [
+        { id: 'r-1', name: 'تقرير ناقص' }, // no filters, no recipient_emails
+        { id: 'r-2' }, // no name either
+        null, // not even an object
+      ] as never;
+      return [] as never;
+    });
+    render(<OperationsPage access={reportAccess} range={range} inScopeCompanies={scopedCompanies} />);
+    fireEvent.click(await screen.findByRole('tab', { name: /التقارير المجدولة/ }));
+    expect(await screen.findByText('تقرير ناقص')).toBeTruthy();
+    // The absent window falls back to 7 days and the absent recipients to a dash.
+    expect(screen.getAllByText(/7 يوم/, { selector: 'small' }).length).toBe(2);
+    expect(screen.getAllByText('—').length).toBeGreaterThan(0);
+    // The unusable row is reported instead of being rendered as `undefined`.
+    expect(screen.getByText(/تم إخفاء/)).toBeTruthy();
+  });
+
+  it('renders a full schedule row exactly as the API returns it', async () => {
+    vi.mocked(api).mockImplementation(async (path: string) => {
+      if (path === '/api/staff/reports/schedules') return [{
+        id: 'r-1', name: 'تقرير أسبوعي', filters: { window_days: 30, company_id: null, insurance_type: null },
+        cron_expression: '0 8 * * 1', time_zone: 'Africa/Cairo', recipient_emails: ['ops@example.com', 'lead@example.com'],
+        format: 'xlsx', is_active: true, next_run_at: '2026-10-19T06:00:00Z', last_run_at: null, last_state: null,
+        created_at: '2026-10-01T08:00:00Z',
+      }] as never;
+      return [] as never;
+    });
+    render(<OperationsPage access={reportAccess} range={range} inScopeCompanies={scopedCompanies} />);
+    fireEvent.click(await screen.findByRole('tab', { name: /التقارير المجدولة/ }));
+    expect(await screen.findByText('تقرير أسبوعي')).toBeTruthy();
+    expect(screen.getByText(/30 يوم/, { selector: 'small' })).toBeTruthy();
+    expect(screen.getByText('ops@example.com, lead@example.com')).toBeTruthy();
+    expect(screen.getByText('0 8 * * 1')).toBeTruthy();
+    expect(screen.queryByText(/تم إخفاء/)).toBeNull();
+  });
+
+  it('shows the empty state when the API returns no schedules', async () => {
+    vi.mocked(api).mockResolvedValue([] as never);
+    render(<OperationsPage access={reportAccess} range={range} inScopeCompanies={scopedCompanies} />);
+    fireEvent.click(await screen.findByRole('tab', { name: /التقارير المجدولة/ }));
+    expect(await screen.findByText('لا توجد إعدادات بعد')).toBeTruthy();
+  });
+
+  it('shows the empty state when the schedules endpoint fails', async () => {
+    vi.mocked(api).mockImplementation(async (path: string) => {
+      if (path === '/api/staff/reports/schedules') throw new Error('تعذر تحميل التقارير.');
+      return [] as never;
+    });
+    render(<OperationsPage access={reportAccess} range={range} inScopeCompanies={scopedCompanies} />);
+    fireEvent.click(await screen.findByRole('tab', { name: /التقارير المجدولة/ }));
+    expect(await screen.findByText('لا توجد إعدادات بعد')).toBeTruthy();
+    expect(screen.getByRole('alert').textContent).toContain('تعذر تحميل التقارير.');
+  });
+
+  it('renders companies without list fields', async () => {
+    vi.mocked(api).mockImplementation(async (path: string) => (path === '/api/staff/admin/companies'
+      ? ([{ id: 'co-1', slug: 'nile', name_en: 'Nile', name_ar: 'تأمين النيل' }, { id: 'co-2' }] as never)
+      : ([] as never)));
+    render(<OperationsPage access={access} range={range} inScopeCompanies={scopedCompanies} />);
+    expect(await screen.findByText('تأمين النيل')).toBeTruthy();
+    expect(screen.getAllByText('—').length).toBeGreaterThan(0);
+  });
+
+  it('renders teams without a member list or a leader', async () => {
+    vi.mocked(api).mockImplementation(async (path: string) => (path === '/api/staff/admin/teams'
+      ? ([{ id: 'team-1', name: 'فريق المطالبات' }, { id: 'team-2', name: 'فريق ثانٍ', member_ids: 'not-an-array' }] as never)
+      : ([] as never)));
+    render(<OperationsPage access={teamAccess} range={range} inScopeCompanies={scopedCompanies} />);
+    expect(await screen.findByText('فريق المطالبات')).toBeTruthy();
+    expect(screen.getByText('فريق ثانٍ')).toBeTruthy();
+    expect(screen.getAllByText(/أعضاء/, { selector: 'span.count-pill' }).length).toBe(2);
+  });
+
+  it('never renders a stale response from another tab', async () => {
+    // The reported crash: the companies response landed after the operator had
+    // already switched to the reports tab, and the reports renderer then read
+    // `recipient_emails` (and `filters.window_days` before it) off a company row.
+    let releaseCompanies: () => void = () => undefined;
+    const gate = new Promise<void>((resolve) => { releaseCompanies = resolve; });
+    vi.mocked(api).mockImplementation(async (path: string) => {
+      if (path === '/api/staff/admin/companies') {
+        await gate;
+        return [{ id: 'co-9', slug: 'late', name_en: 'Late', name_ar: 'شركة متأخرة', contact_emails: [], supported_types: ['health'], is_active: true }] as never;
+      }
+      if (path === '/api/staff/reports/schedules') return [{
+        id: 'r-1', name: 'تقرير أسبوعي', filters: { window_days: 30 }, cron_expression: '0 8 * * 1',
+        time_zone: 'Africa/Cairo', recipient_emails: ['ops@example.com'], format: 'csv', is_active: true,
+        next_run_at: null, last_run_at: null, last_state: null, created_at: '2026-10-01T08:00:00Z',
+      }] as never;
+      return [] as never;
+    });
+    render(<OperationsPage
+      access={{ ...access, permissions: ['companies.manage', 'reports.manage', 'analytics.view', 'analytics.export'] }}
+      range={range}
+      inScopeCompanies={scopedCompanies}
+    />);
+    fireEvent.click(await screen.findByRole('tab', { name: /التقارير المجدولة/ }));
+    expect(await screen.findByText('تقرير أسبوعي')).toBeTruthy();
+    releaseCompanies();
+    await waitFor(() => expect(vi.mocked(api).mock.calls.filter(([path]) => path === '/api/staff/admin/companies').length).toBeGreaterThan(0));
+    await new Promise((resolve) => { setTimeout(resolve, 30); });
+    // The late companies payload must not reach the reports table.
+    expect(screen.queryByText('شركة متأخرة')).toBeNull();
+    expect(screen.getByText('ops@example.com')).toBeTruthy();
+  });
+
+  it('refuses a company slug the API would reject', async () => {
+    vi.mocked(api).mockResolvedValue([] as never);
+    render(<OperationsPage access={access} range={range} inScopeCompanies={scopedCompanies} />);
+    fireEvent.click(await screen.findByRole('button', { name: /إضافة شركات التأمين/ }));
+    fireEvent.change(screen.getByRole('textbox', { name: 'المعرّف المختصر' }), { target: { value: 'Nile Assurance' } });
+    fireEvent.change(screen.getByRole('textbox', { name: 'الاسم بالإنجليزية' }), { target: { value: 'Nile Assurance' } });
+    fireEvent.change(screen.getByRole('textbox', { name: 'الاسم بالعربية' }), { target: { value: 'تأمين النيل' } });
+    fireEvent.submit(screen.getByRole('textbox', { name: 'المعرّف المختصر' }).closest('form') as HTMLFormElement);
+    await waitFor(() => expect(screen.getByRole('alert').textContent).toContain('المعرّف المختصر'));
+    expect(vi.mocked(api).mock.calls.some(([path, options]) =>
+      path === '/api/staff/admin/companies' && options?.method === 'POST')).toBe(false);
+  });
+
+  it('keeps an HTML pattern the browser can compile (unicodeSets `v` flag)', async () => {
+    vi.mocked(api).mockResolvedValue([] as never);
+    render(<OperationsPage access={access} range={range} inScopeCompanies={scopedCompanies} />);
+    fireEvent.click(await screen.findByRole('button', { name: /إضافة شركات التأمين/ }));
+    const slug = screen.getByRole('textbox', { name: 'المعرّف المختصر' }) as HTMLInputElement;
+    expect(slug.pattern).toBeTruthy();
+    // Browsers compile `pattern` as `new RegExp('^(?:' + pattern + ')$', 'v')`;
+    // an unescaped `/` or `-` inside a class throws "Invalid regular expression".
+    const compiled = new RegExp(`^(?:${slug.pattern})$`, 'v');
+    expect(compiled.test('nile-assurance')).toBe(true);
+    expect(compiled.test('Nile')).toBe(false);
+  });
+});
