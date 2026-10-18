@@ -96,7 +96,7 @@ export function StaffProfileModal({ userId, canEdit = false, onClose, onUpdated 
                   ['الاسم الكامل', profile.full_name, false],
                   ['الرقم القومي', details.national_id, true],
                   ['تاريخ الميلاد', details.date_of_birth, true],
-                  ['رقم الهاتف', details.mobile, true],
+                  ['رقم الموبايل', details.mobile, true],
                   ['المدينة / المحافظة', details.city, false],
                   ['العنوان', details.address, false],
                   ['المسمى الوظيفي', details.job_title, false],

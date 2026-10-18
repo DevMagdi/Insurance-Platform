@@ -202,9 +202,17 @@ async def test_otp_multi_profile_and_provider_failure(fixture: tuple) -> None:
     delivery.fail_otp = True
     with pytest.raises(HTTPException) as exc:
         await auth.start_customer_otp(MOBILE, "customer@example.test", "127.0.0.1")
-    assert exc.value.status_code == 422
+    # Delivery failures are a service-side problem: 503 with one graceful,
+    # customer-safe message and never an environment/configuration error.
+    assert exc.value.status_code == 503
+    assert exc.value.detail == (
+        "We could not send your verification code right now. Please try again in a few minutes."
+    )
+    assert "not configured" not in exc.value.detail.lower()
     assert not await redis.exists(auth.otp._key(f"{MOBILE}:customer@example.test"))
     delivery.fail_otp = False
+    # The failed attempt was cancelled, so the retry is not blocked by the
+    # single-outstanding-code cooldown.
     await auth.start_customer_otp(MOBILE, "customer@example.test", "127.0.0.1")
     customer_id = uuid4()
     repo.customers_by_mobile.return_value = [(customer_id, 0), (uuid4(), 0)]

@@ -64,7 +64,10 @@ async def migrate_csrf_cookie(request: Request, response: Response) -> dict[str,
 )
 async def start_otp(item: MobileOTPRequest, request: Request) -> dict[str, str]:
     await request.app.state.auth.start_customer_otp(item.mobile, item.email, client_ip(request))
-    return {"message": "If delivery is available, a one-time code has been sent"}
+    # A 202 means the code was handed to the delivery provider; failures raise
+    # a graceful 503 instead. The message is identical for new and existing
+    # identities, so it cannot be used to enumerate accounts.
+    return {"message": "A one-time code has been sent to your email"}
 
 
 @router.post("/auth/customer/otp/verify")

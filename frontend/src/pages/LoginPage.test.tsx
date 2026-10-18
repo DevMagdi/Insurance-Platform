@@ -38,7 +38,7 @@ describe('customer OTP registration flow', () => {
     renderLoginPage();
 
     fireEvent.change(screen.getByLabelText('البريد الإلكتروني'), { target: { value: 'mona@example.test' } });
-    fireEvent.change(screen.getByLabelText('رقم الجوال'), { target: { value: '01123456789' } });
+    fireEvent.change(screen.getByLabelText('رقم الموبايل'), { target: { value: '01123456789' } });
     fireEvent.click(screen.getByRole('button', { name: 'إرسال الرمز' }));
     expect(await screen.findByText(/تم إرسال رمز التحقق إلى بريدك الإلكتروني/)).toBeTruthy();
 

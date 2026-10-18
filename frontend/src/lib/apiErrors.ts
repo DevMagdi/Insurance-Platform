@@ -25,7 +25,7 @@ const FIELD_LABELS: Record<string, string> = {
   body_en: 'النص بالإنجليزية',
   body_ar: 'النص بالعربية',
   national_id: 'الرقم القومي',
-  mobile: 'رقم الهاتف',
+  mobile: 'رقم الموبايل',
   emergency_phone: 'هاتف الطوارئ',
   address: 'العنوان',
   city: 'المدينة',
@@ -106,6 +106,8 @@ const ISSUE_TEXT: Record<string, string> = {
 const DETAIL_TEXT: Record<string, string> = {
   'Invalid credentials': 'البريد الإلكتروني أو كلمة المرور غير صحيحة.',
   'Invalid or expired code': 'الرمز غير صحيح أو انتهت صلاحيته.',
+  'We could not send your verification code right now. Please try again in a few minutes.':
+    'لم نتمكن من إرسال رمز التحقق الآن. حاول مرة أخرى بعد بضع دقائق.',
   'Too many failed attempts; try again later': 'محاولات فاشلة كثيرة. حاول مرة أخرى لاحقاً.',
   'Temporarily blocked; try later': 'تم الإيقاف مؤقتاً بسبب كثرة الطلبات. حاول لاحقاً.',
   'Permission denied': 'ليست لديك صلاحية لتنفيذ هذا الإجراء.',

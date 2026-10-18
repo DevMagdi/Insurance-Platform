@@ -144,7 +144,11 @@ export function LoginPage() {
 
           {start.isError && (
             <p role="alert" className="alert alert-error">
-              {start.error instanceof ApiError && start.error.status === 429 ? t('security.tooMany') : t('errors.generic')}
+              {start.error instanceof ApiError && start.error.status === 429
+                ? t('security.tooMany')
+                : start.error instanceof ApiError
+                  ? start.error.message
+                  : t('errors.generic')}
             </p>
           )}
           {start.isSuccess && (
@@ -185,7 +189,13 @@ export function LoginPage() {
           )}
 
           {verify.isError && !registrationPrompt && (
-            <p role="alert" className="alert alert-error">{t('errors.generic')}</p>
+            <p role="alert" className="alert alert-error">
+              {verify.error instanceof ApiError && verify.error.status === 429
+                ? t('security.tooMany')
+                : verify.error instanceof ApiError
+                  ? verify.error.message
+                  : t('errors.generic')}
+            </p>
           )}
 
           <Button type="submit" size="lg" loading={verify.isPending} trailingIcon={<Back size={15} />}>

@@ -18,7 +18,7 @@
   },
   "auth": {
     "customerOtpTitle": "دخول العملاء عبر OTP",
-    "mobile": "رقم الجوال",
+    "mobile": "رقم الموبايل",
     "sendOtp": "إرسال رمز التحقق",
     "otpCode": "رمز التحقق",
     "verify": "تحقق",

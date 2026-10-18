@@ -20,7 +20,7 @@ async function fillProfile() {
   await screen.findByLabelText('الاسم الكامل');
   fireEvent.change(screen.getByLabelText('الاسم الكامل'), { target: { value: 'Mona Ahmed Ali' } });
   fireEvent.change(screen.getByLabelText('الرقم القومي'), { target: { value: '29901010112345' } });
-  fireEvent.change(screen.getByLabelText('رقم الهاتف'), { target: { value: '+201123456789' } });
+  fireEvent.change(screen.getByLabelText('رقم الموبايل'), { target: { value: '+201123456789' } });
   fireEvent.change(screen.getByLabelText('العنوان'), { target: { value: '12 Nile Street, Dokki' } });
   fireEvent.change(screen.getByLabelText('المدينة / المحافظة'), { target: { value: 'Giza' } });
   setPassword();
