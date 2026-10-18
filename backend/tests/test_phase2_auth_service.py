@@ -202,7 +202,7 @@ async def test_otp_multi_profile_and_provider_failure(fixture: tuple) -> None:
     delivery.fail_otp = True
     with pytest.raises(HTTPException) as exc:
         await auth.start_customer_otp(MOBILE, "customer@example.test", "127.0.0.1")
-    assert exc.value.status_code == 503
+    assert exc.value.status_code == 422
     assert not await redis.exists(auth.otp._key(f"{MOBILE}:customer@example.test"))
     delivery.fail_otp = False
     await auth.start_customer_otp(MOBILE, "customer@example.test", "127.0.0.1")
