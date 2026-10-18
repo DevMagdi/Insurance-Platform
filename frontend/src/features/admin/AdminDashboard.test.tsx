@@ -5,7 +5,7 @@ import type { AnalyticsOverview, StaffAccess } from '../../types';
 import { AdminDashboard } from './AdminDashboard';
 import { canViewAdminDashboard } from './adminAccess';
 
-vi.mock('../../api', () => ({ api: vi.fn(), queryString: (query: Record<string, string>) => `?date_from=${query.date_from}&date_to=${query.date_to}` }));
+vi.mock('../../api', () => ({ api: vi.fn(), jsonBody: JSON.stringify, queryString: (query: Record<string, string>) => `?date_from=${query.date_from}&date_to=${query.date_to}` }));
 const access: StaffAccess = {
   id: 'admin', email: 'admin@example.test', full_name: 'Admin', status: 'active',
   token_version: 0, two_factor_enabled: true, two_factor_required: true,
@@ -32,7 +32,7 @@ describe('first-party admin dashboard', () => {
   });
 
   it('shows real analytics and permission-filtered navigation', async () => {
-    vi.mocked(api).mockImplementation(async (path) => (path === '/api/staff/users' ? [{ id: 'a', status: 'active', two_factor_required: true }] : report) as never);
+    vi.mocked(api).mockImplementation(async (path) => (path === '/api/staff/users' ? [{ id: 'a', status: 'active', two_factor_required: true }] : path === '/api/staff/departments' ? [{ id: 'claims', name: 'التعويضات', description: '', is_active: true, employee_count: 1 }] : report) as never);
     const navigate = vi.fn();
     render(<AdminDashboard access={access} range={range} onNavigate={navigate} />);
     expect(await screen.findByText('شركة اختبار')).toBeTruthy();
@@ -48,6 +48,7 @@ describe('first-party admin dashboard', () => {
     const employee = { id: 'employee', full_name: 'Mona Ali', email: 'mona@company.com', status: 'active', department_id: 'claims', department_name: 'التعويضات', avatar_url: '/api/staff/users/employee/avatar' };
     vi.mocked(api).mockImplementation(async (path) => {
       if (path === '/api/staff/users') return [employee] as never;
+      if (path === '/api/staff/departments') return [{ id: 'claims', name: 'التعويضات', description: '', is_active: true, employee_count: 1 }] as never;
       if (path === '/api/staff/users/employee/profile') return { ...employee, personal: { national_id: '29901010112345', mobile: '+201123456789', address: '12 Nile Street', city: 'Giza' } } as never;
       return report as never;
     });
@@ -61,11 +62,32 @@ describe('first-party admin dashboard', () => {
     expect(within(modal).queryByRole('button', { name: 'حفظ القسم' })).toBeNull();
   });
 
+  it('lets a global staff administrator create a department on the dashboard', async () => {
+    const catalogue = [{ id: 'claims', name: 'التعويضات', description: '', is_active: true, employee_count: 1 }];
+    vi.mocked(api).mockImplementation(async (path, init) => {
+      if (path === '/api/staff/users') return [] as never;
+      if (path === '/api/staff/departments' && init?.method === 'POST') {
+        catalogue.push({ id: 'support', ...JSON.parse(init.body as string), employee_count: 0 });
+        return catalogue.at(-1) as never;
+      }
+      if (path === '/api/staff/departments') return [...catalogue] as never;
+      return report as never;
+    });
+    render(<AdminDashboard access={{ ...access, permissions: [...access.permissions, 'users.edit'] }} range={range} onNavigate={vi.fn()} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'قسم جديد' }));
+    const modal = screen.getByRole('dialog');
+    fireEvent.change(within(modal).getByLabelText('اسم القسم'), { target: { value: 'خدمة العملاء' } });
+    fireEvent.change(within(modal).getByLabelText('الوصف (اختياري)'), { target: { value: 'متابعة الفريق' } });
+    fireEvent.click(within(modal).getByRole('button', { name: 'إنشاء القسم' }));
+    await waitFor(() => expect(vi.mocked(api).mock.calls.some(([path, init]) => path === '/api/staff/departments' && init?.method === 'POST' && JSON.parse(init.body as string).description === 'متابعة الفريق')).toBe(true));
+    expect(await screen.findByRole('button', { name: 'تعديل قسم خدمة العملاء' })).toBeTruthy();
+  });
+
   it('does not fetch user directory without users.view' , async () => {
     vi.mocked(api).mockResolvedValue(report);
     render(<AdminDashboard access={{ ...access, permissions: ['analytics.view', 'complaints.view'] }} range={range} onNavigate={vi.fn()} />);
     await screen.findByText('شركة اختبار');
-    expect(vi.mocked(api).mock.calls.some(([path]) => path === '/api/staff/users')).toBe(false);
+    expect(vi.mocked(api).mock.calls.some(([path]) => path === '/api/staff/users' || path === '/api/staff/departments')).toBe(false);
     expect(screen.queryByText('إدارة المستخدمين ←')).toBeNull();
   });
 });

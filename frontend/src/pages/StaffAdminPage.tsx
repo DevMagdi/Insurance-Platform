@@ -74,7 +74,7 @@ export function StaffAdminPage() {
             <div className="mt-4 grid gap-3 md:grid-cols-3">
               <Field label={t('staff.email')}><TextInput type="email" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} /></Field>
               <Field label={t('staff.fullName')}><TextInput value={inviteName} onChange={(e) => setInviteName(e.target.value)} /></Field>
-              <Field label="القسم"><SelectInput required value={inviteDepartment} onChange={(event) => setInviteDepartment(event.target.value)}><option value="">اختر القسم</option>{departments.data?.map((department) => <option key={department.id} value={department.id}>{department.name}</option>)}</SelectInput></Field>
+              <Field label="القسم"><SelectInput required value={inviteDepartment} onChange={(event) => setInviteDepartment(event.target.value)}><option value="">اختر القسم</option>{departments.data?.filter((department) => department.is_active !== false).map((department) => <option key={department.id} value={department.id}>{department.name}</option>)}</SelectInput></Field>
               <div className="flex items-end">
                 <button type="button" className={primaryButton} disabled={!inviteEmail || !inviteDepartment || inviteName.trim().length < 2 || act.isPending} onClick={() => act.mutate(() => staffApi.inviteUser(inviteEmail, inviteName, inviteDepartment))}>
                   {t('staff.invite')}

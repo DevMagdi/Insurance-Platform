@@ -457,6 +457,12 @@ async def departments(
     return result
 
 
+def department_error(exc: DBAPIError) -> HTTPException:
+    if getattr(exc.orig, "sqlstate", "") == "23505":
+        return HTTPException(status_code=409, detail="Department name already exists")
+    return access_error(exc)
+
+
 @router.post("/departments", status_code=201)
 async def create_department(
     item: DepartmentSpec,
@@ -464,12 +470,32 @@ async def create_department(
     _: None = Depends(csrf_required),
 ) -> dict[str, Any]:
     try:
-        department_id = await StaffProfileRepository().create_department(ctx.db, item.name)
+        department_id = await StaffProfileRepository().create_department(
+            ctx.db, item.name, item.description, item.is_active
+        )
     except DBAPIError as exc:
-        raise access_error(exc) from exc
+        raise department_error(exc) from exc
     if department_id is None:
         raise HTTPException(status_code=403, detail="Global staff administration required")
-    return {"id": department_id, "name": item.name}
+    return {"id": department_id, **item.model_dump(), "employee_count": 0}
+
+
+@router.put("/departments/{department_id}")
+async def update_department(
+    department_id: UUID,
+    item: DepartmentSpec,
+    ctx: RequestContext = Depends(require_permission("users.edit")),
+    _: None = Depends(csrf_required),
+) -> dict[str, Any]:
+    try:
+        updated = await StaffProfileRepository().update_department(
+            ctx.db, department_id, item.name, item.description, item.is_active
+        )
+    except DBAPIError as exc:
+        raise department_error(exc) from exc
+    if not updated:
+        raise HTTPException(status_code=404, detail="Department unavailable")
+    return {"id": department_id, **item.model_dump()}
 
 
 @router.patch("/users/{user_id}/department")

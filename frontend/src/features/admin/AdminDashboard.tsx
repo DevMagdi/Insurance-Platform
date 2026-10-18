@@ -4,9 +4,10 @@ import { AccessDenied } from '../../components/Access';
 import { Icon, type IconName } from '../../components/Icon';
 import { hasPermission } from '../../utils/access';
 import { displayRange, formatNumber, rangeBounds } from '../../utils/date';
-import type { AnalyticsOverview, AppRoute, DateRange, StaffAccess, StaffDirectoryEntry } from '../../types';
+import type { AnalyticsOverview, AppRoute, DateRange, StaffAccess, StaffDepartment, StaffDirectoryEntry } from '../../types';
 import { StaffAvatar } from '../../components/StaffAvatar';
 import { StaffProfileModal } from './StaffProfileModal';
+import { DepartmentsPanel } from './DepartmentsPanel';
 import { canViewAdminDashboard } from './adminAccess';
 
 const STATUS: Record<string, string> = {
@@ -36,6 +37,7 @@ interface Props {
 export function AdminDashboard({ access, range, onNavigate }: Props) {
   const [report, setReport] = useState<AnalyticsOverview | null>(null);
   const [users, setUsers] = useState<StaffDirectoryEntry[] | null>(null);
+  const [departments, setDepartments] = useState<StaffDepartment[] | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [profileId, setProfileId] = useState<string | null>(null);
@@ -48,13 +50,15 @@ export function AdminDashboard({ access, range, onNavigate }: Props) {
     if (!allowed) return;
     setLoading(true);
     try {
-      const [overview, directory] = await Promise.all([
+      const [overview, directory, departmentList] = await Promise.all([
         api<AnalyticsOverview>(`/api/staff/analytics/overview${queryString({ date_from, date_to })}`, { signal }),
         canSeeUsers ? api<StaffDirectoryEntry[]>('/api/staff/users', { signal }).catch(() => null) : Promise.resolve(null),
+        canSeeUsers ? api<StaffDepartment[]>('/api/staff/departments', { signal }).catch(() => null) : Promise.resolve(null),
       ]);
       if (signal?.aborted) return;
       setReport(overview);
       setUsers(directory);
+      setDepartments(Array.isArray(departmentList) ? departmentList : null);
       setUpdated(new Date());
       setError('');
     } catch (cause) {
@@ -134,6 +138,7 @@ export function AdminDashboard({ access, range, onNavigate }: Props) {
         {canSeeUsers && <button type="button" className="admin-text-link" onClick={() => onNavigate({ page: 'users' })}>إدارة المستخدمين ←</button>}
       </section>
     </div>
+    {canSeeUsers && (departments ? <DepartmentsPanel departments={departments} canManage={hasPermission(access, 'users.edit')} onRefresh={async () => { setDepartments(await api<StaffDepartment[]>('/api/staff/departments')); }} /> : !loading && <p className="admin-empty">تعذر تحميل الأقسام حالياً.</p>)}
     {canSeeUsers && !!users?.length && <section className="admin-panel"><div className="admin-panel-head"><div><span className="admin-eyebrow">بروفايلات الموظفين</span><h2>الفريق والأقسام</h2></div><button className="admin-text-link" type="button" onClick={() => onNavigate({ page: 'users' })}>عرض كل الموظفين ←</button></div><div className="employee-card-grid">{users.slice(0, 8).map((user) => <button key={user.id} type="button" className="employee-card" aria-label={`عرض بروفايل ${user.full_name || user.email || 'موظف'}`} onClick={() => setProfileId(user.id)}><StaffAvatar name={user.full_name} src={user.avatar_url} status={user.status} /><span><strong>{user.full_name}</strong><small>{user.department_name || 'غير محدد'}</small></span></button>)}</div></section>}
     {profileId && <StaffProfileModal key={profileId} userId={profileId} canEdit={hasPermission(access, 'users.edit')} onClose={() => setProfileId(null)} onUpdated={() => load()} />}
     <section className="admin-panel"><div className="admin-panel-head"><div><span className="admin-eyebrow">أولوية اليوم</span><h2>يحتاج انتباه</h2></div><button type="button" className="admin-text-link" onClick={() => onNavigate({ page: 'complaints' } as AppRoute)}>فتح قائمة الشكاوى ←</button></div>

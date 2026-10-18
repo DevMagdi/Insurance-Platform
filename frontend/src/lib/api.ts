@@ -29,6 +29,7 @@ import {
   type StaffRole,
   type StaffUser,
 } from './staffTypes';
+import type { StaffDepartment } from '../types';
 import { captchaHeaders } from './captcha';
 import {
   getCsrfToken,
@@ -392,7 +393,15 @@ export const staffApi = {
 
   users: () => request<StaffUser[]>('/api/staff/users'),
 
-  departments: () => request<{ id: string; name: string }[]>('/api/staff/departments'),
+  departments: () => request<StaffDepartment[]>('/api/staff/departments'),
+
+  createDepartment: (body: { name: string; description: string; is_active: boolean }) =>
+    request<StaffDepartment>('/api/staff/departments', { method: 'POST', body }),
+
+  updateDepartment: (id: string, body: { name: string; description: string; is_active: boolean }) =>
+    request<Pick<StaffDepartment, 'id' | 'name' | 'description' | 'is_active'>>(
+      `/api/staff/departments/${encodeURIComponent(id)}`, { method: 'PUT', body },
+    ),
 
   inviteUser: (email: string, full_name: string, department_id: string) =>
     request<{ id: string; message: string }>('/api/staff/users/invitations', {

@@ -1,4 +1,4 @@
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, useId, useRef, type ReactNode } from 'react';
 import { Icon } from './Icon';
 
 interface ModalProps {
@@ -7,12 +7,16 @@ interface ModalProps {
   children: ReactNode;
   onClose: () => void;
   wide?: boolean;
+  className?: string;
 }
 
-export function Modal({ title, eyebrow, children, onClose, wide = false }: ModalProps) {
+export function Modal({ title, eyebrow, children, onClose, wide = false, className = '' }: ModalProps) {
+  const backdrop = useRef<HTMLDivElement>(null);
+  const titleId = useId();
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose();
+      const dialogs = document.querySelectorAll('.modal-backdrop');
+      if (event.key === 'Escape' && dialogs.item(dialogs.length - 1) === backdrop.current) onClose();
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
@@ -20,6 +24,7 @@ export function Modal({ title, eyebrow, children, onClose, wide = false }: Modal
 
   return (
     <div
+      ref={backdrop}
       className="modal-backdrop"
       role="presentation"
       onMouseDown={(event) => {
@@ -28,14 +33,14 @@ export function Modal({ title, eyebrow, children, onClose, wide = false }: Modal
     >
       <section
         aria-modal="true"
-        className={`modal-card${wide ? ' modal-card-wide' : ''}`}
+        className={`modal-card${wide ? ' modal-card-wide' : ''}${className ? ` ${className}` : ''}`}
         role="dialog"
-        aria-labelledby="modal-title"
+        aria-labelledby={titleId}
       >
         <div className="modal-heading">
           <div>
             {eyebrow && <p className="eyebrow">{eyebrow}</p>}
-            <h2 id="modal-title">{title}</h2>
+            <h2 id={titleId}>{title}</h2>
           </div>
           <button className="icon-button" type="button" onClick={onClose} aria-label="إغلاق">
             <Icon name="close" />

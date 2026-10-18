@@ -72,6 +72,9 @@ erDiagram
     DEPARTMENTS {
       uuid id PK
       text name UK
+      text description
+      boolean is_active
+      timestamptz created_at
     }
     STAFF_PROFILES {
       uuid staff_user_id PK,FK

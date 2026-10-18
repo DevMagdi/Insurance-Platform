@@ -438,6 +438,86 @@ async def test_invalid_photo_duplicate_id_department_and_concurrent_acceptance(
     ).status_code == 422
 
 
+async def test_departments_description_status_and_profile_roles(world: SimpleNamespace) -> None:
+    name = f"Service {uuid4().hex[:8]}"
+    created = await world.client.post(
+        "/api/staff/departments",
+        json={"name": name, "description": "Customer care", "is_active": False},
+        headers=world.headers,
+    )
+    assert created.status_code == 201, created.text
+    department_id = created.json()["id"]
+    listing = (await world.client.get("/api/staff/departments")).json()
+    department = next(item for item in listing if item["id"] == department_id)
+    assert department["description"] == "Customer care"
+    assert department["is_active"] is False and department["employee_count"] == 0
+    assert (
+        await world.client.post(
+            "/api/staff/users/invitations",
+            json={
+                "email": f"inactive-{uuid4().hex}@company.com",
+                "full_name": "Employee",
+                "department_id": department_id,
+            },
+            headers=world.headers,
+        )
+    ).status_code == 422
+    employee, _email, _token = await invite(world)
+    assert (
+        await world.client.patch(
+            f"/api/staff/users/{employee}/department",
+            json={"department_id": department_id},
+            headers=world.headers,
+        )
+    ).status_code == 404
+    path = f"/api/staff/departments/{department_id}"
+    assert (await world.client.put(path, json={"name": name})).status_code == 403
+    updated = await world.client.put(
+        path,
+        json={"name": name, "description": "Operations", "is_active": True},
+        headers=world.headers,
+    )
+    assert updated.status_code == 200, updated.text
+    assert (
+        await world.client.patch(
+            f"/api/staff/users/{employee}/department",
+            json={"department_id": department_id},
+            headers=world.headers,
+        )
+    ).status_code == 200
+    assert (
+        await world.client.put(
+            path,
+            json={"name": world.department["name"]},
+            headers=world.headers,
+        )
+    ).status_code == 409
+    admin_profile = (await world.client.get(f"/api/staff/users/{world.staff_id}/profile")).json()
+    assert admin_profile["roles"] and "users.edit" in admin_profile["permissions"]
+    assert "two_factor_enabled" in admin_profile and admin_profile["created_at"]
+    assert (await world.client.get(f"/api/staff/users/{employee}/profile")).json()[
+        "department_name"
+    ] == name
+    assert (
+        await world.client.put(
+            path,
+            json={"name": name, "description": "Operations", "is_active": False},
+            headers=world.headers,
+        )
+    ).status_code == 200
+    # Existing employees keep their department; the disabled destination is no
+    # longer assignable. No department status can grant permissions.
+    profile = (await world.client.get(f"/api/staff/users/{employee}/profile")).json()
+    assert profile["department_is_active"] is False
+    assert (
+        await world.client.patch(
+            f"/api/staff/users/{world.staff_id}/department",
+            json={"department_id": department_id},
+            headers=world.headers,
+        )
+    ).status_code == 404
+
+
 async def test_profile_rls_no_direct_grants_and_scope_checks(world: SimpleNamespace) -> None:
     user, _email, token = await invite(world)
     assert (
