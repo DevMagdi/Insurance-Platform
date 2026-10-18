@@ -10,7 +10,7 @@ is described in [ACCESS_CONTROL.md](ACCESS_CONTROL.md), privacy in
 | # | Risk | Controls (where) | Phase 8 findings → fixes |
 |---|---|---|---|
 | A01 | Broken access control | `require_permission` on every staff route, plus `AccessScope` predicates, plus PostgreSQL RLS on the same transaction. Customers are bound to `customer_id`. Signed, single-use attachment tokens. WebSocket/SSE re-check access on every poll. | **Fixed:** session revoke did not check the owner (`DELETE /api/me/sessions/{id}`). **Fixed:** attachment `authorize` checked the scan state before scope, which leaked existence; scope is now checked first. Automated pen-test suite added (below). |
-| A02 | Cryptographic failures | AES-256-GCM with a **versioned keyring** (`KR` header + key id) and online rotation (`app.scripts.rotate_keys`). Independent HMAC blind index key. Argon2id passwords. API keys stored as SHA-256. TLS required in production (HSTS, `Secure` cookies). | **Added:** key rotation with `APP_ENCRYPTION_PREVIOUS_KEYS`, plus a stable `APP_IDEMPOTENCY_KEY` so de-dup digests survive rotation. **Fixed:** the production compose worker was missing `APP_ENCRYPTION_KEY`. Production refuses to reuse a key across purposes. |
+| A02 | Cryptographic failures | AES-256-GCM with a **versioned keyring** (`KR` header + key id) and online rotation (`app.scripts.rotate_keys`). JWTs use Ed25519/EdDSA with key IDs and a retained public-key set for rotation. Independent HMAC blind index key. Argon2id passwords with a common-password denylist. API keys stored as SHA-256. TLS required in production (HSTS, `Secure` cookies). | **Added:** key rotation with `APP_ENCRYPTION_PREVIOUS_KEYS`, plus a stable `APP_IDEMPOTENCY_KEY` so de-dup digests survive rotation. **Fixed:** the production compose worker was missing `APP_ENCRYPTION_KEY`. Production refuses to reuse a key across purposes. |
 | A03 | Injection | SQLAlchemy bound parameters everywhere; `test_no_dynamic_sql_outside_reviewed_allowlist` fails the build on dynamic (f-string) SQL. Pydantic strict schemas. React escaping. No `dangerouslySetInnerHTML`. CSV formula neutralisation. | Reviewed; no SQLi/XSS found. **Added:** the dynamic-SQL allowlist test. |
 | A04 | Insecure design | Guest tracking needs ticket **and** national ID. Same response whether or not an account exists. Idempotent complaint creation. Queue backpressure. Human approval for AI replies. | **Added:** Turnstile CAPTCHA on OTP start, guest tracking, staff login and invite acceptance (`X-Captcha-Token`). Progressive lockout. Abuse detector. |
 | A05 | Security misconfiguration | API CSP `default-src 'none'`. SPA CSP self plus Turnstile only. HSTS (`HSTS_SECONDS`), `nosniff`, `DENY` framing, COOP/CORP, Permissions-Policy, `Server` header removed. `/docs` disabled in production. Strict `CORS_ALLOWED_ORIGINS` allowlist (https only in production). Non-root, read-only containers. | **Added:** security header middleware and nginx snippets. **Added:** origin guard (CORS plus a cross-site write block). **Added:** production settings validation that refuses to boot on weak config. **Added:** self-hosted fonts (no third-party CSS). |
@@ -70,9 +70,9 @@ The SPA is same-origin, so the default allowlist is empty.
 * Production startup validation rejects:
   * placeholder or short keys;
   * reused keys;
-  * missing Turnstile keys;
+  * missing Turnstile keys or Ed25519 JWT signing/verification keys;
   * `RATE_LIMIT_MULTIPLIER` other than 1;
-  * a short `METRICS_TOKEN`;
+  * a missing or shorter-than-32-character `METRICS_TOKEN`;
   * non-https CORS origins.
 
 ## Rate limiting and abuse detection

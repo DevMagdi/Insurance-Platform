@@ -189,8 +189,25 @@ payloads, AI insights, transcripts and recordings.
    `call_logs.recording_content`) — so once `--check` reports 0 stale values no
    old key is needed anywhere.
 
-`JWT_SIGNING_KEY` rotation invalidates every session (users sign in again), so
-do it in a quiet window. `APP_BLIND_INDEX_KEY` cannot be rotated online (see
+The first deployment after the HS256-to-EdDSA change invalidates existing
+HS256 access and refresh tokens; users must sign in again. After migration,
+JWTs use Ed25519/EdDSA and a key ID. Rotate the JWT pair without interrupting
+sessions using the verification-key set:
+
+1. Generate a new pair with `python scripts/generate_jwt_keys.py` and store both
+   values in the secret manager; never commit or log the private key.
+2. First deploy the current signer with the new public key added to
+   `JWT_PREVIOUS_PUBLIC_KEYS` under the future key ID. This preloads every
+   instance so an old replica can verify tokens minted by the new signer.
+3. Switch `JWT_KEY_ID`, `JWT_PRIVATE_KEY_B64`, and `JWT_PUBLIC_KEY_B64` to the
+   new pair while retaining the old public key under its former ID. Preserve
+   any other public keys still needed for verification.
+4. After the maximum token lifetime (up to 30 days) and a full redeployment,
+   remove the old public key. Keep old keys longer if token lifetimes differ.
+
+`JWT_SIGNING_KEY` is a legacy-named HMAC root for OTP, lockout and rate-limit
+digests; changing it invalidates those transient digests, not JWT sessions.
+`APP_BLIND_INDEX_KEY` cannot be rotated online (see
 [SECURITY.md](SECURITY.md#residual-risks-and-required-external-work)).
 
 ## Backups and disaster recovery
@@ -229,9 +246,10 @@ do it in a quiet window. `APP_BLIND_INDEX_KEY` cannot be rotated online (see
   scheduling). It can be lost: users re-request OTPs and caches rebuild. The
   durable queues are in PostgreSQL.
 * **Secrets:** escrow `APP_ENCRYPTION_KEY` (all ids still in use),
-  `APP_BLIND_INDEX_KEY` and `JWT_SIGNING_KEY` in the KMS or secret manager,
-  with break-glass access. **A database backup without its keys is
-  unreadable.**
+  `APP_BLIND_INDEX_KEY`, `JWT_SIGNING_KEY`, the active JWT private key, all
+  required JWT verification public keys, and `METRICS_TOKEN` in the KMS or
+  secret manager with break-glass access. **A database backup without its
+  encryption keys is unreadable.**
 
 ### Region or primary loss
 

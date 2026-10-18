@@ -143,6 +143,27 @@ async def test_staff_login_uses_secure_http_only_cookies_and_no_password_echo(
     assert (await client.get("/api/me")).json()["access"]["permissions"] == ["complaints.view"]
 
 
+async def test_password_errors_do_not_reflect_internal_exception_details(fixture: tuple) -> None:
+    client, _ctx, service, _repo, _tokens = fixture
+    service.accept_invitation.side_effect = ValueError("database details: private constraint")
+    response = await client.post(
+        "/api/auth/staff/invitation/accept",
+        json={"token": "i" * 48, "password": "Private-River-Cedar-48"},
+    )
+    assert response.status_code == 422
+    assert response.json()["detail"] == "Invitation or password is invalid"
+    assert "database details" not in response.text
+
+    service.change_forced_password.side_effect = ValueError("internal path /secret/config")
+    response = await client.post(
+        "/api/auth/staff/password/change",
+        json={"challenge": "c" * 64, "password": "Private-River-Cedar-48"},
+    )
+    assert response.status_code == 422
+    assert response.json()["detail"] == "Password does not meet security requirements"
+    assert "/secret/config" not in response.text
+
+
 async def test_otp_verify_and_mfa_challenge_do_not_set_cookies_early(fixture: tuple) -> None:
     client, _ctx, service, _repo, _tokens = fixture
     result = await client.post("/api/auth/customer/otp/start", json={"mobile": "+201123456789"})

@@ -100,8 +100,10 @@ async def accept_invitation(item: InviteAcceptRequest, request: Request) -> dict
     await auth.limits.check("invite:accept", client_ip(request), 10, 3600)
     try:
         await auth.accept_invitation(item.token, item.password)
-    except ValueError as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except ValueError:
+        # Validation failures are reported with a stable client-safe message;
+        # never reflect implementation or provider exception text to callers.
+        raise HTTPException(status_code=422, detail="Invitation or password is invalid") from None
     return {"next_step": "sign_in_with_password"}
 
 
@@ -109,8 +111,10 @@ async def accept_invitation(item: InviteAcceptRequest, request: Request) -> dict
 async def change_password(item: ChangePasswordRequest, request: Request) -> dict[str, str]:
     try:
         await request.app.state.auth.change_forced_password(item.challenge, item.password)
-    except ValueError as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except ValueError:
+        raise HTTPException(
+            status_code=422, detail="Password does not meet security requirements"
+        ) from None
     return {"next_step": "sign_in_with_new_password"}
 
 

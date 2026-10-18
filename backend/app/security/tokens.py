@@ -36,6 +36,7 @@ class TokenClaims:
 class TokenManager:
     def __init__(self, settings: Settings) -> None:
         self.settings = settings
+        self.keyring = settings.jwt_keyring()
 
     def issue(
         self,
@@ -66,16 +67,30 @@ class TokenManager:
             claims["purpose"] = purpose
         if resource_id is not None:
             claims["rid"] = str(resource_id)
-        return str(jwt.encode(claims, self.settings.jwt_signing_key, algorithm="HS256"))
+        return str(
+            jwt.encode(
+                claims,
+                self.keyring.private_key,
+                algorithm="EdDSA",
+                headers={"kid": self.keyring.active_key_id},
+            )
+        )
 
     def parse(self, token: str | None, expected_type: TokenType) -> TokenClaims:
         if not token:
             raise HTTPException(status_code=401, detail="Authentication required")
         try:
+            header = jwt.get_unverified_header(token)
+            key_id = header.get("kid")
+            if not isinstance(key_id, str):
+                raise ValueError("Missing JWT key ID")
+            verification_key = self.keyring.verification_keys.get(key_id)
+            if verification_key is None:
+                raise ValueError("Unknown JWT key ID")
             payload = jwt.decode(
                 token,
-                self.settings.jwt_signing_key,
-                algorithms=["HS256"],
+                verification_key,
+                algorithms=["EdDSA"],
                 audience=_AUDIENCE,
                 issuer=_ISSUER,
                 options={

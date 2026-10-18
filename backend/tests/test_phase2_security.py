@@ -8,7 +8,9 @@ from types import SimpleNamespace
 from uuid import uuid4
 
 import fakeredis.aioredis
+import jwt
 import pytest
+from cryptography.hazmat.primitives import serialization
 from fastapi import HTTPException, Request, Response
 from pydantic import ValidationError
 from sqlalchemy import select
@@ -199,6 +201,34 @@ def test_tokens_expiration_type_integrity_and_cookie_security(settings: Settings
     parsed = tokens.parse(access, "access")
     assert parsed.subject == actor and parsed.token_version == 2 and parsed.session_id == sid
     assert parsed.purpose is None
+    assert jwt.get_unverified_header(access)["alg"] == "EdDSA"
+    assert jwt.get_unverified_header(access)["kid"] == "active"
+
+    # A new signer can retain the old public key by key ID during rotation.
+    private_pem = tokens.keyring.private_key.private_bytes(
+        serialization.Encoding.PEM,
+        serialization.PrivateFormat.PKCS8,
+        serialization.NoEncryption(),
+    )
+    public_pem = tokens.keyring.private_key.public_key().public_bytes(
+        serialization.Encoding.PEM, serialization.PublicFormat.SubjectPublicKeyInfo
+    )
+
+    def encode(value: bytes) -> str:
+        return base64.urlsafe_b64encode(value).decode()
+
+    rotated_settings = settings.model_copy(
+        update={
+            "jwt_key_id": "next",
+            "jwt_private_key_b64": encode(private_pem),
+            "jwt_public_key_b64": encode(public_pem),
+            "jwt_previous_public_keys": f"active:{encode(public_pem)}",
+        }
+    )
+    rotated = TokenManager(rotated_settings)
+    assert rotated.parse(access, "access").subject == actor
+    next_token = rotated.issue(actor, sid, 2, "access", timedelta(minutes=5))
+    assert jwt.get_unverified_header(next_token)["kid"] == "next"
     assert tokens.digest(access) != tokens.digest(access + "x")
     for payload, kind in [
         (access, "refresh"),
@@ -299,6 +329,10 @@ async def test_staff_password_and_totp_protection(settings: Settings) -> None:
     passwords = StaffPasswords()
     with pytest.raises(ValueError):
         passwords.validate("tooshort")
+    for common in ("Password1234!", "P@ssw0rd2026", "Welcome1234!"):
+        with pytest.raises(ValueError, match="commonly used"):
+            passwords.validate(common)
+    passwords.validate("Private-River-Cedar-48")
     hashed = await passwords.hash("long-password-123")
     assert hashed.startswith("$argon2id$")
     assert await passwords.verify(hashed, "long-password-123")

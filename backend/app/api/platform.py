@@ -9,10 +9,8 @@ from fastapi import APIRouter, HTTPException, Request, Response
 from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
 from fastapi.responses import HTMLResponse, JSONResponse
 
-from app.api.deps import client_ip
 from app.observability.metrics import render_latest
 from app.security.captcha import CaptchaVerifier
-from app.security.proxy import is_private_address
 
 router = APIRouter(tags=["platform"])
 
@@ -31,14 +29,11 @@ async def public_config(request: Request, response: Response) -> dict[str, Any]:
 
 @router.get("/metrics", include_in_schema=False)
 async def metrics(request: Request) -> Response:
-    """Prometheus scrape: bearer METRICS_TOKEN, or a private-network scraper."""
+    """Prometheus scrape protected exclusively by the configured bearer token."""
     settings = getattr(request.app.state, "settings", None)
     token: str | None = getattr(settings, "metrics_token", None)
     supplied = request.headers.get("authorization", "")
-    if token:
-        allowed = hmac.compare_digest(supplied.encode(), f"Bearer {token}".encode())
-    else:
-        allowed = is_private_address(client_ip(request))
+    allowed = bool(token and hmac.compare_digest(supplied.encode(), f"Bearer {token}".encode()))
     if not allowed:
         raise HTTPException(status_code=404, detail="Not Found")
     body, content_type = render_latest()
@@ -47,9 +42,9 @@ async def metrics(request: Request) -> Response:
 
 def _docs_enabled(request: Request) -> bool:
     settings = getattr(request.app.state, "settings", None)
-    if settings is None:
-        return True
-    return not settings.is_production or bool(getattr(request.app.state, "expose_docs", False))
+    # Fail closed when startup has not installed settings. There is deliberately
+    # no production override: docs are never served in a production environment.
+    return settings is not None and not settings.is_production
 
 
 @router.get("/openapi.json", include_in_schema=False)
@@ -59,6 +54,7 @@ async def openapi_json(request: Request) -> JSONResponse:
     return JSONResponse(request.app.openapi())
 
 
+@router.get("/docs/", include_in_schema=False)
 @router.get("/docs", include_in_schema=False)
 async def swagger(request: Request) -> HTMLResponse:
     if not _docs_enabled(request):
@@ -66,6 +62,7 @@ async def swagger(request: Request) -> HTMLResponse:
     return get_swagger_ui_html(openapi_url="/openapi.json", title=request.app.title)
 
 
+@router.get("/redoc/", include_in_schema=False)
 @router.get("/redoc", include_in_schema=False)
 async def redoc(request: Request) -> HTMLResponse:
     if not _docs_enabled(request):

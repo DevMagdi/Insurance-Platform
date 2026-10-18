@@ -47,6 +47,17 @@ from app.settings import Settings
 
 ROOT = Path(__file__).resolve().parents[2]
 NID = "29901010112345"
+# Disposable fixture material only. Production deploys must generate unique keys.
+_TEST_JWT_PRIVATE_KEY_B64 = (
+    "LS0tLS1CRUdJTiBQUklWQVRFIEtFWS0tLS0tCk1DNENBUUF3QlFZREsyVndCQ0lFSUdscW"
+    "gxM3A2T0ttQ2tXd0tjR2t3dk1hL0tYWTFtRmFsMzR6dUhmdEJ0TWEKLS0tLS1FTkQgUFJJ"
+    "VkFURSBLRVktLS0tLQo="
+)
+_TEST_JWT_PUBLIC_KEY_B64 = (
+    "LS0tLS1CRUdJTiBQVUJMSUMgS0VZLS0tLS0KTUNvd0JRWURLMlZ3QXlFQW5pemIya3ZQT2"
+    "84WnY2S2tqM3pQL1NQRzF6UlQ1T0hVUVVTTlBMQkYvbXM9Ci0tLS0tRU5EIFBVQkxJQyBL"
+    "RVktLS0tLQo="
+)
 
 
 def key(byte: bytes) -> str:
@@ -163,10 +174,20 @@ def test_phase8_settings_validation() -> None:
         "ENVIRONMENT": "production",
         "TURNSTILE_SITE_KEY": "1x00000000000000000000AA",
         "TURNSTILE_SECRET_KEY": "1x0000000000000000000000000000000AA",
+        "JWT_PRIVATE_KEY_B64": _TEST_JWT_PRIVATE_KEY_B64,
+        "JWT_PUBLIC_KEY_B64": _TEST_JWT_PUBLIC_KEY_B64,
+        "METRICS_TOKEN": "test-only-metrics-token-32-characters",
     }
     assert settings(**production).is_production
+    with pytest.raises(ValidationError, match="METRICS_TOKEN"):
+        settings(**{**production, "METRICS_TOKEN": None})
+    with pytest.raises(ValidationError, match="JWT_PRIVATE_KEY_B64"):
+        settings(**{**production, "JWT_PRIVATE_KEY_B64": None, "JWT_PUBLIC_KEY_B64": None})
+    no_captcha = {
+        name: value for name, value in production.items() if not name.startswith("TURNSTILE_")
+    }
     with pytest.raises(ValidationError, match="Turnstile"):
-        settings(ENVIRONMENT="production")
+        settings(**no_captcha)
     with pytest.raises(ValidationError):
         settings(**production, RATE_LIMIT_MULTIPLIER="5")
     with pytest.raises(ValidationError):
@@ -465,15 +486,30 @@ def test_logs_and_sentry_events_are_redacted() -> None:
     assert "Bearer x" not in json.dumps(scrubbed)
 
 
-async def test_metrics_endpoint_requires_token_or_private_network() -> None:
+async def test_metrics_endpoint_requires_token_and_production_docs_are_never_exposed(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     saved = dict(app.state._state)
-    app.state.settings = SimpleNamespace(metrics_token="m" * 32, is_production=True)
+    monkeypatch.setenv("EXPOSE_API_DOCS", "true")  # there is no production override
+    app.state.settings = SimpleNamespace(metrics_token=None, is_production=True)
     try:
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="https://t") as c:
+        private_edge = ASGITransport(app=app, client=("10.2.3.4", 54321))
+        async with AsyncClient(transport=private_edge, base_url="https://t") as c:
+            assert (await c.get("/metrics")).status_code == 404
+            app.state.settings = SimpleNamespace(metrics_token="m" * 32, is_production=True)
             assert (await c.get("/metrics")).status_code == 404
             ok = await c.get("/metrics", headers={"Authorization": f"Bearer {'m' * 32}"})
             assert ok.status_code == 200 and "http_requests_total" in ok.text
-            assert (await c.get("/docs")).status_code == 404  # production default
+            paths = (
+                "/docs",
+                "/docs/",
+                "/docs/oauth2-redirect",
+                "/redoc",
+                "/redoc/",
+                "/openapi.json",
+            )
+            for path in paths:
+                assert (await c.get(path)).status_code == 404
             config = await c.get("/api/public/config")
             assert config.json()["captcha"] is None
     finally:

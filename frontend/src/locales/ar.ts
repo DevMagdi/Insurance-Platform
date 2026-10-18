@@ -28,7 +28,7 @@ export const ar = {
     "dark": "داكن",
     "light": "فاتح",
     "language": "English",
-    "savedDraft": "تم حفظ المسودة تلقائيًا",
+    "savedDraft": "تم حفظ خطوة التقدم فقط؛ لا تُحفظ بيانات النموذج",
     "clearDraft": "مسح المسودة"
   },
   "hero": {

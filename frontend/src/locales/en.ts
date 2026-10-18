@@ -28,7 +28,7 @@ export const en = {
     "dark": "Dark",
     "light": "Light",
     "language": "العربية",
-    "savedDraft": "Draft autosaved",
+    "savedDraft": "Progress saved; form details are not stored",
     "clearDraft": "Clear draft"
   },
   "hero": {
