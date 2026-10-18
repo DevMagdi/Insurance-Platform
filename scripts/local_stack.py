@@ -371,11 +371,15 @@ def start_worker(env: dict[str, str]) -> None:
         f"postgresql+asyncpg://app_worker:{env['APP_WORKER_DB_PASSWORD']}"
         f"@127.0.0.1:{POSTGRES_PORT}/{env['POSTGRES_DB']}"
     )
+    # The raw `arq` process exits when its Redis broker disappears (L-8).
+    # Docker Compose restarts it via `restart: unless-stopped`; locally the
+    # supervisor provides the same resilience so notices are not lost after a
+    # transient outage.
     spawn(
         "worker",
-        [sys.executable, "-m", "arq", "app.worker.WorkerSettings"],
+        [sys.executable, "scripts/worker_supervisor.py"],
         env=runtime,
-        cwd=ROOT / "backend",
+        cwd=ROOT,
     )
 
 

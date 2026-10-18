@@ -187,10 +187,10 @@ export const api = {
   profile: () => request<CustomerProfile>('/api/customer/profile'),
 
   updateProfile: (body: {
-    full_name: string;
-    email: string | null;
-    whatsapp_available: boolean;
-    notification_preferences: { email: boolean; whatsapp: boolean; sms: boolean };
+    full_name?: string;
+    email?: string | null;
+    whatsapp_available?: boolean;
+    notification_preferences?: { email: boolean; whatsapp: boolean; sms: boolean };
   }) => request<CustomerProfile>('/api/customer/profile', { method: 'PATCH', body }),
 
   createComplaint: (body: ComplaintCreateBody, idempotencyKey: string) =>
