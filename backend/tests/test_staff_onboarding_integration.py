@@ -98,7 +98,11 @@ async def world():
     server = await asyncio.start_server(receive, "127.0.0.1", 0)
     port = server.sockets[0].getsockname()[1]
     config = Settings(
+        _env_file=None,
         DATABASE_URL=runtime,
+        DEV_SMS_MAILBOX=False,  # CI exports development-only mailbox settings.
+        TURNSTILE_SITE_KEY=None,
+        TURNSTILE_SECRET_KEY=None,
         APP_ENCRYPTION_KEY=base64.urlsafe_b64encode(b"e" * 32).decode(),
         APP_BLIND_INDEX_KEY=base64.urlsafe_b64encode(b"b" * 32).decode(),
         JWT_SIGNING_KEY="s" * 64,

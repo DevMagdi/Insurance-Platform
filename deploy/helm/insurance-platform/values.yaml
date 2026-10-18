@@ -42,6 +42,8 @@ smtp:
   port: 587
   from: no-reply@example.com
   startTls: true
+  # Port 465: useTls=true and startTls=false. Port 587: leave these defaults.
+  useTls: false
 
 config:
   ENVIRONMENT: production
