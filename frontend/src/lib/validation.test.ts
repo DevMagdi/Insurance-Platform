@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
+  COMPANY_SLUG_PATTERN_SOURCE,
+  LOGO_PATH_PATTERN_SOURCE,
   formatNationalId,
   invalidEmailList,
+  isValidCompanySlug,
   isValidDateWindow,
   isValidEmail,
   isValidLogoPath,
@@ -121,5 +124,48 @@ describe('platform logo path (mirrors the API validator)', () => {
     expect(isValidLogoPath('//cdn.example.com/logo.svg')).toBe(false);
     expect(isValidLogoPath('/../secret')).toBe(false);
     expect(isValidLogoPath('')).toBe(false);
+  });
+});
+
+/**
+ * Browsers compile an HTML `pattern` attribute as
+ * `new RegExp('^(?:' + pattern + ')$', 'v')`. Under that `v` (unicodeSets) flag
+ * a literal `/` or `-` inside a character class is a syntax error, the browser
+ * logs "Invalid regular expression" and silently drops the constraint — which
+ * is exactly what `^/(?!/)[A-Za-z0-9._/-]+$` did on the logo field.
+ */
+describe('HTML pattern sources (compiled with the browser `v` flag)', () => {
+  const compile = (source: string, flags?: string) => new RegExp(`^(?:${source})$`, flags);
+
+  it('compiles the shared sources in every regex mode a browser may use', () => {
+    for (const source of [LOGO_PATH_PATTERN_SOURCE, COMPANY_SLUG_PATTERN_SOURCE]) {
+      expect(() => compile(source, 'v')).not.toThrow();
+      expect(() => compile(source, 'u')).not.toThrow();
+      expect(() => compile(source)).not.toThrow();
+    }
+  });
+
+  it('keeps the logo rule identical to the backend `safe_logo_path` validator', () => {
+    const browser = compile(LOGO_PATH_PATTERN_SOURCE, 'v');
+    const backend = /^\/(?!\/)[A-Za-z0-9._/-]+$/;
+    const samples = [
+      '/insurance-logo.svg', '/api/public/brand/logo', '/assets/brand/logo-2.webp', '/a/b_c-1.svg',
+      '//cdn.example.com/logo.svg', 'https://cdn.example.com/logo.svg', 'logo.svg', '/', '',
+      '/a b.svg', '/شعار.svg', '/a?b=1', '/a#b',
+    ];
+    for (const sample of samples) {
+      expect(browser.test(sample), sample).toBe(backend.test(sample));
+      expect(isValidLogoPath(sample), sample).toBe(backend.test(sample) && !sample.split('/').includes('..'));
+    }
+  });
+
+  it('keeps the company slug rule identical to the backend `CompanySpec.slug` pattern', () => {
+    const browser = compile(COMPANY_SLUG_PATTERN_SOURCE, 'v');
+    const backend = /^[a-z][a-z0-9-]{1,59}$/;
+    const samples = ['nile-assurance', 'n', 'nile1', '9nile', 'Nile', 'nile_1', 'nile assurance', '', `a${'b'.repeat(59)}`, `a${'b'.repeat(60)}`];
+    for (const sample of samples) {
+      expect(browser.test(sample), sample).toBe(backend.test(sample));
+      expect(isValidCompanySlug(sample), sample).toBe(backend.test(sample));
+    }
   });
 });

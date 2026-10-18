@@ -66,12 +66,34 @@ export function isValidMobile(input: string): boolean {
 export const OTP_PATTERN = /^[0-9]{6}$/;
 
 /**
+ * Sources for HTML `pattern` attributes.
+ *
+ * A browser compiles the attribute as `new RegExp('^(?:' + pattern + ')$', 'v')`
+ * — the `v` (unicodeSets) flag. Under that flag a literal `/` or `-` inside a
+ * character class must be escaped, otherwise the browser throws
+ * "Invalid regular expression: Invalid character in character class", logs it to
+ * the console and silently drops the constraint. These constants are the single
+ * source shared by the JSX attribute and the validators below, so the input
+ * constraint and the JS rule can never drift apart.
+ */
+export const LOGO_PATH_PATTERN_SOURCE = '/(?!/)[A-Za-z0-9._\\/\\-]+';
+export const COMPANY_SLUG_PATTERN_SOURCE = '[a-z][a-z0-9\\-]{1,59}';
+
+export const LOGO_PATH_PATTERN = new RegExp(`^(?:${LOGO_PATH_PATTERN_SOURCE})$`);
+export const COMPANY_SLUG_PATTERN = new RegExp(`^(?:${COMPANY_SLUG_PATTERN_SOURCE})$`);
+
+/**
  * The platform logo may only be a same-origin static asset path; the API
  * rejects an absolute URL from another host with 422. Mirrored here so the
  * admin console can explain the rule before the request is sent.
  */
 export function isValidLogoPath(value: string): boolean {
-  return /^\/(?!\/)[A-Za-z0-9._/-]+$/.test(value) && !value.split('/').includes('..');
+  return LOGO_PATH_PATTERN.test(value) && !value.split('/').includes('..');
+}
+
+/** Mirrors the backend `CompanySpec.slug` rule (`^[a-z][a-z0-9-]{1,59}$`). */
+export function isValidCompanySlug(value: string): boolean {
+  return COMPANY_SLUG_PATTERN.test(value);
 }
 export const TICKET_PATTERN = /^CMP-\d{4}-\d{6,}$/;
 

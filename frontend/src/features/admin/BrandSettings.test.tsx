@@ -31,11 +31,37 @@ describe('BrandSettings', () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({ platform_name: 'Insurance', logo_url: '/insurance-logo.svg' }) }));
     vi.mocked(api).mockResolvedValue({ logo_url: '/api/public/brand/logo' } as never);
     render(<BrandSettings access={access} />);
-    const input = await screen.findByLabelText(/رابط\/مسار الشعار/);
+    const input = await screen.findByLabelText(/رابط\/مسار الشعار/) as HTMLInputElement;
     fireEvent.change(input, { target: { value: 'https://cdn.example.com/logo.svg' } });
-    fireEvent.click(screen.getByRole('button', { name: /حفظ الهوية/ }));
+    // The native constraint is enforceable again: while the pattern was an
+    // invalid `v`-flag regex the engine ignored it and any value looked valid.
+    expect(input.checkValidity()).toBe(false);
+    fireEvent.change(input, { target: { value: '/insurance-logo.svg' } });
+    expect(input.checkValidity()).toBe(true);
+    fireEvent.change(input, { target: { value: 'https://cdn.example.com/logo.svg' } });
+    // A submit that bypasses the native check still meets the JS guard, which
+    // explains the rule in Arabic instead of sending a request the API rejects.
+    fireEvent.submit(input.closest('form') as HTMLFormElement);
     await waitFor(() => expect(screen.getByRole('alert').textContent).toContain('مسار الشعار'));
     expect(vi.mocked(api).mock.calls.some(([path]) => path === '/api/platform/brand')).toBe(false);
+  });
+
+  it('exposes a logo pattern a browser can compile (unicodeSets `v` flag)', async () => {
+    // Regression: the field shipped `pattern="^/(?!/)[A-Za-z0-9._/-]+$"`, which
+    // the browser rejects ("Invalid regular expression: Invalid character in
+    // character class") because `pattern` is compiled with the `v` flag, where a
+    // literal `/` or `-` inside a class must be escaped. The constraint was then
+    // dropped and the console logged the error on every render.
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({ platform_name: 'Insurance', logo_url: '/insurance-logo.svg' }) }));
+    render(<BrandSettings access={access} />);
+    const input = await screen.findByLabelText(/رابط\/مسار الشعار/);
+    const pattern = (input as HTMLInputElement).pattern;
+    expect(pattern).toBeTruthy();
+    const compiled = new RegExp(`^(?:${pattern})$`, 'v');
+    expect(compiled.test('/insurance-logo.svg')).toBe(true);
+    expect(compiled.test('/api/public/brand/logo')).toBe(true);
+    expect(compiled.test('https://cdn.example.com/logo.svg')).toBe(false);
+    expect(compiled.test('//cdn.example.com/logo.svg')).toBe(false);
   });
 
   it('PUTs only the PlatformBrandRequest fields when public config carries captcha/privacy extras', async () => {
