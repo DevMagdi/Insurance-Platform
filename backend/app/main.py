@@ -8,13 +8,17 @@ BaseHTTPMiddleware) so streaming responses, SSE and WebSockets are unaffected.
 
 from __future__ import annotations
 
+import logging
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
 from typing import Any
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import JSONResponse
 from redis.asyncio import Redis
+from redis.exceptions import RedisError
 from sqlalchemy import text
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncEngine, async_sessionmaker
 
 from app.api import (
@@ -222,6 +226,67 @@ app.include_router(websocket.router)
 app.include_router(privacy.router)
 app.include_router(storage_admin.router)
 app.include_router(platform.router)
+
+
+logger = logging.getLogger(__name__)
+
+# One client-safe answer for every dependency failure, mirroring /api/health/ready:
+# callers must not learn WHICH dependency (database or cache) is down - that is
+# operator knowledge, logged server-side instead. Without these handlers Starlette
+# answers a bare text 500; a JSON 503 with Retry-After keeps the API contract and
+# gives clients a graceful degradation path during outages.
+DEPENDENCY_UNAVAILABLE = "Service temporarily unavailable; please retry shortly."
+
+# Dependency failures do not always arrive wrapped: during pool checkout asyncpg
+# lets the raw OSError escape (ConnectionRefusedError while PostgreSQL restarts)
+# and asyncpg maps lost connections onto the builtin ConnectionError family, so
+# the classifier accepts those alongside the ORM/client exception hierarchies.
+DEPENDENCY_ERRORS = (SQLAlchemyError, RedisError, ConnectionError, TimeoutError)
+
+
+@app.exception_handler(SQLAlchemyError)
+async def database_failure(request: Request, exc: SQLAlchemyError) -> JSONResponse:
+    logger.warning(
+        "unhandled database error on %s %s", request.method, request.url.path, exc_info=exc
+    )
+    return JSONResponse(
+        status_code=503,
+        content={"detail": DEPENDENCY_UNAVAILABLE},
+        headers={"Retry-After": "30"},
+    )
+
+
+@app.exception_handler(RedisError)
+async def cache_failure(request: Request, exc: RedisError) -> JSONResponse:
+    logger.warning("unhandled cache error on %s %s", request.method, request.url.path, exc_info=exc)
+    return JSONResponse(
+        status_code=503,
+        content={"detail": DEPENDENCY_UNAVAILABLE},
+        headers={"Retry-After": "30"},
+    )
+
+
+@app.exception_handler(Exception)
+async def unhandled_failure(request: Request, exc: Exception) -> JSONResponse:
+    """Last-resort JSON answers for failures raised OUTSIDE the route layer.
+
+    The pure-ASGI middleware stack (request context, rate limiting) touches the
+    database and Redis before routing, so dependency failures can bypass the
+    narrow handlers above; Starlette routes them here. Anything that is not a
+    dependency failure becomes a generic JSON 500 - never a stack trace, never
+    driver wording.
+    """
+    if isinstance(exc, DEPENDENCY_ERRORS):
+        logger.warning(
+            "dependency failure on %s %s", request.method, request.url.path, exc_info=exc
+        )
+        return JSONResponse(
+            status_code=503,
+            content={"detail": DEPENDENCY_UNAVAILABLE},
+            headers={"Retry-After": "30"},
+        )
+    logger.exception("unhandled error on %s %s", request.method, request.url.path)
+    return JSONResponse(status_code=500, content={"detail": "Internal server error"})
 
 
 @app.get("/api/health/live", tags=["health"])

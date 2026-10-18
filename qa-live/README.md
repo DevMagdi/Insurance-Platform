@@ -11,9 +11,9 @@ output of the runs quoted in the report.
 | --- | --- |
 | `qa_lib.py` | Shared HTTP client (manual cookie jar, X-Forwarded-For rotation, CSRF/Idempotency helpers), mail-sink reader, OTP extractor, check `Recorder`. |
 | `mail_sink.py` | aiosmtpd STARTTLS sink on `0.0.0.0:2525` that writes every delivered message to `mail/*.eml` next to the script. |
-| `e2e_core.py` | Part 1 (S1–S4): platform health, **customer registration/OTP/identification (highest priority)**, complaint creation/idempotency/attachments/CSAT, body limits, XSS/SQLi/Origin abuse. 74 checks. |
+| `e2e_core.py` | Part 1 (S1–S4): platform health, **customer registration/OTP/identification (highest priority)**, complaint creation/idempotency/attachments/CSAT, body limits, XSS/SQLi/Origin abuse, partial-PATCH profile semantics. 76 checks. |
 | `e2e_staff.py` | Part 2 (S5–S12): staff login + forced password change, invitation onboarding (e-mail token, profile, avatar), permission matrix, RLS scope enforcement, session security (rotation/replay/family revocation/force-logout), TOTP 2FA, full complaint lifecycle (assign → reply → note → escalate → resolve → reopen → CSAT), NID reveal + audit, CSV export, WebSocket, metrics, abuse detector. 85 checks. |
-| `e2e_resilience.py` | Part 3 (R1–R4): SMTP provider down during registration, Redis down, Postgres down (with recovery), JWT hardening (expired / `alg=none` / HS256 confusion / kid attacks / type confusion). 34 checks. |
+| `e2e_resilience.py` | Part 3 (R1–R4): SMTP provider down during registration, Redis down, Postgres down (with recovery), JWT hardening (expired / `alg=none` / HS256 confusion / kid attacks / type confusion) + graceful-503 dependency checks. 32 checks. |
 | `results_core.json`, `results_staff.json`, `results_resilience.json` | Recorded evidence of the final green runs (2026-10-18). |
 
 ## How to run

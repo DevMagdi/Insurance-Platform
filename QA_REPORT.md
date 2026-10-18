@@ -5,7 +5,9 @@
 - **Date of final green runs:** 2026-10-18 (UTC)
 - **Method:** docs-first review → full local stack → existing suites → purpose-built live
   HTTP E2E harness (193 checks) against the running stack with a **real SMTP provider** →
-  resilience kills/recovery → static gates (lint/types/build/coverage/spec drift).
+  resilience kills/recovery → static gates (lint/types/build/coverage/spec drift) →
+  **follow-up fix round** that closed six additional findings (L-1, L-2, L-3, L-4, L-6, L-7 —
+  see §11) with a full re-run of every suite and every live check afterwards.
 
 ---
 
@@ -29,16 +31,16 @@ backlog, zero uncommitted regressions.
 
 | Suite | Result |
 | --- | --- |
-| Backend `pytest -m 'not integration'` + coverage | ✅ **414 passed** (78 integration deselected), **coverage 80.31 %** (gate ≥ 80 %) — includes the new `backend/tests/test_registration_otp_flow.py` (55 regression tests for the fixed registration/OTP flow) |
+| Backend `pytest -m 'not integration'` + coverage | ✅ **419 passed** (78 integration deselected), **coverage 80.23 %** (gate ≥ 80 %) — includes the new `backend/tests/test_registration_otp_flow.py` (55 regression tests for the fixed registration/OTP flow) and `backend/tests/test_dependency_handlers.py` (graceful degradation contracts) |
 | Frontend `vitest run` | ✅ **148 passed / 30 files** — includes new i18n regression tests (the deprecated wording "جوال" must never appear in any bundle) |
 | `npm run lint` | ✅ 0 errors (2 pre-existing `react-refresh` warnings in untouched files `Branding.tsx`, `ui.tsx`) |
 | `tsc --noEmit` / `npm run build` | ✅ clean / ✅ built |
 | `ruff check` + `ruff format --check` + `mypy` (backend) | ✅ All checks passed; 186 files formatted; mypy clean on 108 files |
 | OpenAPI drift (`scripts/export_openapi.py` vs `docs/openapi.yaml`) | ✅ **zero drift** (byte-identical re-export) |
-| **Live E2E part 1 — core** (`qa-live/e2e_core.py`, S1–S4) | ✅ **74 / 74 PASS** (`results_core.json`) |
+| **Live E2E part 1 — core** (`qa-live/e2e_core.py`, S1–S4) | ✅ **76 / 76 PASS** (`results_core.json`) — incl. two live checks for the L-4 partial-PATCH fix |
 | **Live E2E part 2 — staff** (`qa-live/e2e_staff.py`, S5–S12) | ✅ **85 / 85 PASS** (`results_staff.json`) |
-| **Live E2E part 3 — resilience + JWT** (`qa-live/e2e_resilience.py`, R1–R4) | ✅ **33 / 34 PASS**; the single FAIL is deliberate evidence of finding **L-8** (worker does not survive a broker outage) |
-| **Total live checks** | **192 PASS / 1 FAIL(product finding) / 7 INFO** |
+| **Live E2E part 3 — resilience + JWT** (`qa-live/e2e_resilience.py`, R1–R4) | ✅ **31 / 32 PASS** (incl. three `[FIX L-7]` graceful-503 checks); the single FAIL is deliberate evidence of finding **L-8** (worker does not survive a broker outage) |
+| **Total live checks (final build)** | **193 recorded: 187 PASS / 5 INFO / 1 FAIL (product finding L-8)** |
 
 ## 3. HIGHEST PRIORITY — Customer Registration / Identification / OTP / E-mail Delivery
 
@@ -96,7 +98,12 @@ backlog, zero uncommitted regressions.
   number — the account's contact and part of the OTP identity (`mobile:email`) — is **never
   verified** (no customer SMS path). An attacker who controls the victim's e-mail can anchor
   an identity to an arbitrary mobile. Design decision or gap — needs a product ruling.
-- **L-1 (Low):** `EmailStr` accepts `a@b..com` (double dot) — schema-valid, undeliverable.
+- **L-1 (Low) — FIXED in the follow-up round (§11):** the shared e-mail pattern was tightened
+  from `^[^@\s]+@[^@\s]+\.[^@\s]+$` to `^[^@\s]+@[^@\s.]+(\.[^@\s.]+)+$`, so empty domain
+  labels (`a@b..com`, `a@.com`, `a@b.com.`) are rejected at the schema while sub-domains,
+  plus-tags and internationalised labels stay valid (verified live: 422
+  `string_pattern_mismatch`). The SQL definer keeps its looser internal pattern as a second
+  line of defence — the API layer rejects first.
 - **L-5 (Low):** the seeded backlog of aged tickets breaches SLA **every** worker tick
   (`check_sla` → ~20 breaches/tick, `deliver_notices` drains 20/60 s → queue ~40 deep), so a
   notice for a brand-new ticket arrives ~60–90 s late. In production with an old backlog this
@@ -110,17 +117,20 @@ backlog, zero uncommitted regressions.
 | **H-1** | High | **FIXED on this branch** | Arabic mobile label "الجوال" instead of "رقم الموبايل" across registration/login/profile/invite/admin forms (§7.1) |
 | **M-1** | Medium | open | Mobile ownership never verified in customer onboarding (§3.3) |
 | **M-2** | Medium | open | No change-of-mobile flow: same NID + new mobile → 409 dead-end; user must contact support with no in-product path |
-| **L-1** | Low | open | E-mail regex accepts `a@b..com` |
-| **L-2** | Low | open | `docs/ARCHITECTURE.md` says alembic head is `20261017_27`; actual head is `20261018_32_staff_mobile_otp` (`DEPLOYMENT.md` is correct) |
-| **L-3** | Low | open (docs) | Docs describe `/api/public/config` as `max-age=300`; the API sends `Cache-Control: no-store` (code is stricter — fix the docs) |
-| **L-4** | Low | open | `PATCH /api/customer/profile` requires `full_name` even for a preferences-only change (`CustomerProfileUpdate`, `schemas.py:611`) |
+| **L-1** | Low | **FIXED (§11)** | E-mail regex accepted `a@b..com` — pattern tightened, degenerate domains now 422 |
+| **L-2** | Low | **FIXED (§11)** | `docs/ARCHITECTURE.md` said alembic head is `20261017_27`; actual head is `20261018_32_staff_mobile_otp` — docs corrected (incl. the 28–32 revision summary) |
+| **L-3** | Low | **FIXED (§11)** | Docs described `/api/public/config` as `max-age=300`; the API sends `no-store` — `docs/API.md` now documents reality (`/api/companies` = `public, max-age=300, stale-while-revalidate=60`; `/api/public/config` = `no-store`) |
+| **L-4** | Low | **FIXED (§11)** | `PATCH /api/customer/profile` required `full_name` even for preferences-only changes — now true PATCH semantics (unsent fields keep stored values; empty body → 422) |
 | **L-5** | Low | open | SLA-notice churn on aged backlogs delays transactional notices (§3.3) |
-| **L-6** | Low | open | 409 `"Identity cannot be registered"` has no Arabic mapping in `apiErrors.ts` — English detail shown in the Arabic UI |
-| **L-7** | Low | open | During Redis/Postgres outages, data endpoints answer bare `500 "Internal Server Error"` (Starlette default). **No internals leak** (verified), but a JSON 503 would match the graceful-degradation posture of `/api/health/ready` |
+| **L-6** | Low | **FIXED (§11)** | 409 `"Identity cannot be registered"` had no Arabic mapping — added (plus `"Complaint cannot be reopened"` and the new dependency-503 message) |
+| **L-7** | Low | **FIXED (§11)** | Dependency outages produced bare text 500s — now uniform JSON `503 "Service temporarily unavailable; please retry shortly."` + `Retry-After: 30` at **both** route and middleware level, one message for DB and cache (no oracle), verified by live kills |
 | **L-8** | Low | open | arq **worker process exits** when Redis (its broker) disappears: `redis.exceptions.ConnectionError: Error 111 … 127.0.0.1:6379` (traceback in worker log). Mitigated in production by `restart: unless-stopped` in `docker-compose.prod.yml`; the bare `local_stack.py` process has no supervisor. Repro: `e2e_resilience.py` R2 |
 
-No High/Critical **unfixed** bugs were found. No 5xx was ever produced by hostile input
-(SQLi, XSS, formula injection, oversized bodies, malformed JWTs, dependency outages).
+No High/Critical **unfixed** bugs were found. After the follow-up round (§11) the only open
+findings are **M-1**, **M-2** (product decisions), **L-5** (worker scheduling) and **L-8**
+(process supervision, mitigated by the prod compose restart policy). No 5xx was ever produced
+by hostile input (SQLi, XSS, formula injection, oversized bodies, malformed JWTs), and
+dependency outages now answer a uniform, leak-free JSON 503.
 
 ## 5. Security Findings
 
@@ -171,7 +181,7 @@ below behaved correctly (evidence: `[SECURITY]`-tagged entries in `qa-live/resul
 - Body limit: >1 MB JSON → 413.
 - `/metrics`: 404 (hidden) without the bearer token; 200 Prometheus text with `METRICS_TOKEN`. `/docs` dev-only.
 - **Abuse detector:** anonymous 401s are *by design* not counted (expired sessions are normal); an **authenticated** actor bursting 45 foreign-ticket 404s (classic IDOR probe) crosses 40 denials/300 s and is blocked for 900 s with `429 "Temporarily blocked; try later"` — verified live.
-- Dependency-failure responses (SMTP/Redis/PG killed) leak **no** internals (checked against a leak-word list) — see L-7 for the bare-500 nuance.
+- Dependency-failure responses (SMTP/Redis/PG killed) leak **no** internals (checked against a leak-word list) and — after the L-7 fix — answer a **uniform JSON 503** that does not reveal *which* dependency is down (DB and cache produce the identical message; the cause is logged server-side only).
 
 ## 6. Missing Coverage (gaps, honestly stated)
 
@@ -204,8 +214,13 @@ Fixed in 14 files (registration `NewComplaintPage`, `LoginPage`, `InvitePage`,
   `LoginPage` surfaces it as an alert rather than a raw detail string.
 
 ### 7.2 Other UI/UX findings
-- **L-4:** preferences-only profile save forces re-sending `full_name` (422 otherwise) — friction for a "notification preferences" screen.
-- **L-6:** the 409 `"Identity cannot be registered"` (same NID + new mobile) shows in raw English inside the Arabic UI and offers **no next step** (see M-2 — this is the dead-end users hit when they change phone numbers).
+- **L-4 — FIXED (§11):** the profile PATCH now has true PATCH semantics; a preferences-only
+  save no longer forces re-sending `full_name`, and a stray `{}` cannot reset anything
+  (422 `"Provide at least one profile field to update"`). Verified live: name and
+  `whatsapp_available` preserved while preferences change.
+- **L-6 — FIXED (§11):** `"Identity cannot be registered"` now renders in Arabic **with a next
+  step** (contact support to update the account — the M-2 dead-end is at least actionable);
+  also mapped: `"Complaint cannot be reopened"` and the new dependency-503 message.
 - **Not assessable without a browser** (documented, not skipped silently): RTL layout/visual polish, focus order & screen-reader labels, mobile viewport behavior, empty/loading/error state rendering, real-time WS updates in the UI. The underlying APIs/contracts for all of these were verified live.
 
 ## 8. Resilience & Integration Findings (live kills)
@@ -213,8 +228,8 @@ Fixed in 14 files (registration `NewComplaintPage`, `LoginPage`, `InvitePage`,
 | Scenario | Behavior observed | Verdict |
 | --- | --- | --- |
 | **SMTP sink killed during registration (R1)** | `503` + exact customer-safe message + `Retry-After: 120`; no leak words; pending OTP cancelled; **recovery:** next registration after sink restart → 202 + real e-mail | ✅ graceful (this is the C-1 acceptance criterion) |
-| **Redis killed (R2)** | `/api/health/live` 200; `/api/health/ready` **503 `Dependencies unavailable`**; `/api/companies` → bare 500 (no leak, L-7); OTP start → bare 500 (no leak); **recovery:** ready 200, full OTP registration works again immediately | ✅ detection/recovery correct; ⚠️ L-7, **L-8: arq worker exits** (broker ConnectionError), restarted by the harness; prod compose `restart: unless-stopped` covers Docker deployments |
-| **Postgres killed (`pg_ctl -m fast`) (R3)** | live 200; ready 503 `Dependencies unavailable`; `/api/companies` bare 500 (no leak); **recovery:** ready 200, companies 200 (asyncpg pool reconnects); **worker survives** a DB outage | ✅ |
+| **Redis killed (R2)** | `/api/health/live` 200; `/api/health/ready` **503 `Dependencies unavailable`**; `/api/companies` and OTP start → **graceful JSON `503 "Service temporarily unavailable; please retry shortly."` + `Retry-After: 30`** (L-7 fixed; route-level `RedisError` handlers); **recovery:** ready 200, full OTP registration works again immediately | ✅; ⚠️ **L-8: arq worker exits** (broker ConnectionError), restarted by the harness; prod compose `restart: unless-stopped` covers Docker deployments |
+| **Postgres killed (`pg_ctl -m fast`) (R3)** | live 200; ready 503 `Dependencies unavailable`; `/api/companies` → same graceful JSON 503 (L-7 catch-all: asyncpg lets a raw `ConnectionRefusedError` escape during pool checkout **inside middleware**, which the narrow handlers cannot see — the classifier maps `SQLAlchemyError`/`RedisError`/`ConnectionError`/`TimeoutError` to 503 and everything else to a generic JSON 500); **recovery:** ready 200, companies 200 (pool reconnects); **worker survives** a DB outage | ✅ |
 | Notice e-mail through the worker outbox | New ticket → customer notice e-mail captured at the sink ~60–90 s later (queue depth from seeded SLA backlog, L-5); insurer escalation queued to `insurer_outbox` and drained (20/tick) | ✅ with L-5 caveat |
 | Rate limits & lockouts under repeat runs | All documented windows reproduced live (otp 3/600, verify lockout 8→900 s, staff login 8/900, abuse block 40 denials→900 s) | ✅ by design |
 
@@ -233,27 +248,52 @@ Fixed in 14 files (registration `NewComplaintPage`, `LoginPage`, `InvitePage`,
 
 ## 10. Recommendations (prioritized)
 
+**Done on this branch (follow-up round, §11):** graceful dependency-failure JSON 503 (was 5),
+tightened e-mail validator (was 6), docs hygiene for alembic head + config caching (was 7),
+preferences-only profile PATCH (was 9), Arabic mapping of the identity/reopen/503 details (part of 3).
+
+Still recommended:
+
 1. **Keep the C-1 fix** and add a CI/staging smoke test that boots with SMTP deliberately unconfigured and asserts the graceful 503 (prevents regression of the exact reported bug).
 2. **Decide M-1:** either add customer SMS OTP (mobile verification) or clearly treat the mobile as an unverified contact channel in the threat model/docs.
-3. **Build the M-2 change-of-mobile flow** (identity re-verification with NID + OTP to the new number) and map its 409 message into the Arabic UI (L-6).
+3. **Build the M-2 change-of-mobile flow** (identity re-verification with NID + OTP to the new number) — the Arabic message now points users to support, but the product path is still missing.
 4. **Supervise the worker everywhere** (L-8): prod compose already restarts it; add a healthcheck/alert on crash-loop and make `local_stack.py` supervise or document the limitation.
-5. **Graceful dependency-failure responses** (L-7): map unhandled DB/Redis errors to a JSON `503 {"detail": "Service temporarily unavailable"}` via a global exception handler — keeps the no-leak posture while matching `/api/health/ready`.
-6. **Tighten the e-mail validator** (L-1) to reject consecutive dots/invalid TLDs.
-7. **Docs hygiene:** fix `ARCHITECTURE.md` alembic head (L-2) and the `/api/public/config` caching sentence (L-3).
-8. **Backlog-aware notice draining** (L-5): prioritize transactional notices for *new* activity over re-notifying aged SLA breaches (batch cap/backoff per complaint), so production backlogs cannot delay fresh customers' e-mails.
-9. **Allow preferences-only profile PATCH** (L-4) without `full_name`.
-10. **Run a browser-based UI pass** (Playwright + a11y audit, mobile & desktop, AR & EN) in an environment that can download browsers — the exact suite this sandbox could not execute (§1/§6.1).
-11. **Raise `app/worker.py` coverage** above 80 % and run the 78 integration-marked tests in CI with Docker.
+5. **Backlog-aware notice draining** (L-5): prioritize transactional notices for *new* activity over re-notifying aged SLA breaches (batch cap/backoff per complaint), so production backlogs cannot delay fresh customers' e-mails.
+6. **Run a browser-based UI pass** (Playwright + a11y audit, mobile & desktop, AR & EN) in an environment that can download browsers — the exact suite this sandbox could not execute (§1/§6.1).
+7. **Raise `app/worker.py` coverage** above 80 % and run the 78 integration-marked tests in CI with Docker.
+
+## 11. Follow-up fix round (same session, after the initial report)
+
+Six findings were fixed, each with unit tests **and** live verification, followed by a full
+re-run of every gate and all three live E2E suites against the final build (76/76 + 85/85 +
+31/32 — the single FAIL being the deliberate L-8 evidence):
+
+| Finding | Fix | Verification |
+| --- | --- | --- |
+| **L-7** dependency failures → bare text 500 | `backend/app/main.py`: narrow `SQLAlchemyError`/`RedisError` handlers (route level) + a catch-all `Exception` handler (middleware level — where the pure-ASGI stack touches DB/Redis *before* routing) returning one uniform JSON `503 "Service temporarily unavailable; please retry shortly."` + `Retry-After: 30`. Classifier also maps raw `ConnectionError`/`TimeoutError` (asyncpg lets `ConnectionRefusedError` escape during pool checkout); anything unexpected becomes a generic JSON 500 — never a stack trace, never driver wording, and DB vs cache are indistinguishable (no oracle). | `test_dependency_handlers.py` (4 tests) + live `[FIX L-7]` checks in R2/R3 with Redis and Postgres really killed |
+| **L-4** profile PATCH forces `full_name` | `CustomerProfileUpdate.full_name` optional + `require_at_least_one_field` validator (empty body → 422); route merges the stored profile for every field the client did not send (`model_fields_set`), so the SECURITY DEFINER invariants still validate the full payload — an explicit `"email": null` remains an intentional "clear my e-mail" | `test_phase6_portal.py` (new schema test) + live `[FIX L-4]` checks in S3 (preferences-only PATCH keeps name/whatsapp; `{}` → 422) |
+| **L-1** loose e-mail pattern | Shared `EMAIL_PATTERN`/`Email` field in `schemas.py`: `^[^@\s]+@[^@\s.]+(\.[^@\s.]+)+$` (rejects empty domain labels; keeps sub-domains, plus-tags, unicode) | rewritten `test_degenerate_email_domains_are_rejected` + live 422 `string_pattern_mismatch` for `a@b..com` / `a@.com` |
+| **L-6** unmapped Arabic details | `apiErrors.ts`: `Identity cannot be registered` (with a support next-step), `Complaint cannot be reopened`, `Service temporarily unavailable; please retry shortly.` | `apiErrors.test.ts` assertions; vitest 148 green |
+| **L-2** stale alembic head in docs | `docs/ARCHITECTURE.md`: revisions 28–32 summarized, head corrected to `20261018_32`, "thirty-two ordered revisions" | doc review |
+| **L-3** wrong caching docs | `docs/API.md`: `/api/companies` = `public, max-age=300, stale-while-revalidate=60`; `/api/public/config` = `no-store` (matches the verified live headers) | doc review vs live `Cache-Control` evidence |
+
+Schema-visible changes (L-4/L-1) were re-exported: `docs/openapi.yaml` regenerated with
+`scripts/export_openapi.py` — the in-suite drift test
+(`test_architecture.py::test_live_openapi_is_valid_and_cannot_claim_unimplemented_routes`)
+passes against the committed spec.
 
 ---
 
 ### Appendix — Evidence & rerun instructions
 
-- Harness + recorded results: [`qa-live/`](qa-live/README.md) (`results_core.json` 74 checks,
-  `results_staff.json` 85 checks, `results_resilience.json` 34 checks).
-- Backend regression tests for the critical fix: `backend/tests/test_registration_otp_flow.py`.
+- Harness + recorded results: [`qa-live/`](qa-live/README.md) (`results_core.json` 76 checks,
+  `results_staff.json` 85 checks, `results_resilience.json` 32 checks — final-build runs).
+- Backend regression tests for the critical fix: `backend/tests/test_registration_otp_flow.py`;
+  graceful-degradation contracts: `backend/tests/test_dependency_handlers.py`;
+  partial-PATCH semantics: `backend/tests/test_phase6_portal.py`.
 - Frontend label/message regressions: `frontend/src/i18n/i18n.test.ts`,
   `frontend/src/pages/LoginPage.test.tsx`, `InvitePage.test.tsx`, `NewComplaintPage.test.tsx`.
-- Source diff on this branch: `backend/app/{api,services}/auth.py`, 14 frontend files, + tests
-  (`git diff main --stat`).
+- Source diff on this branch: `backend/app/{api,services}/auth.py`, `backend/app/main.py`,
+  `backend/app/domain/schemas.py`, `backend/app/api/customer.py`, `docs/`, `docs/openapi.yaml`,
+  14+ frontend files, + tests (`git diff main --stat`).
 - Rerun: see `qa-live/README.md` (stack boot, sink, three scripts, state-carryover notes).

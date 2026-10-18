@@ -8302,15 +8302,17 @@ components:
     CustomerProfileUpdate:
       properties:
         full_name:
-          type: string
-          maxLength: 120
-          minLength: 2
+          anyOf:
+          - type: string
+            maxLength: 120
+            minLength: 2
+          - type: 'null'
           title: Full Name
         email:
           anyOf:
           - type: string
             maxLength: 254
-            pattern: ^[^@\s]+@[^@\s]+\.[^@\s]+$
+            pattern: ^[^@\s]+@[^@\s.]+(\.[^@\s.]+)+$
           - type: 'null'
           title: Email
         whatsapp_available:
@@ -8321,11 +8323,18 @@ components:
           $ref: '#/components/schemas/NotificationPreferences'
       additionalProperties: false
       type: object
-      required:
-      - full_name
       title: CustomerProfileUpdate
-      description: Self-service profile edit; identity fields (mobile, national ID)
+      description: 'Self-service profile edit; identity fields (mobile, national ID)
         are immutable here.
+
+
+        True PATCH semantics: every field is optional and a field the client did not
+
+        send keeps its stored value (the route merges the current profile in before
+
+        calling the definer, which still enforces the full invariants). An empty
+
+        body is rejected so a stray ``{}`` can never reset preferences by accident.'
     CustomerSmsRequest:
       properties:
         body:
@@ -8348,7 +8357,7 @@ components:
           type: string
           maxLength: 254
           minLength: 5
-          pattern: ^[^@\s]+@[^@\s]+\.[^@\s]+$
+          pattern: ^[^@\s]+@[^@\s.]+(\.[^@\s.]+)+$
           title: Email
         code:
           type: string
@@ -8595,7 +8604,7 @@ components:
           type: string
           maxLength: 254
           minLength: 5
-          pattern: ^[^@\s]+@[^@\s]+\.[^@\s]+$
+          pattern: ^[^@\s]+@[^@\s.]+(\.[^@\s.]+)+$
           title: Email
       additionalProperties: false
       type: object
@@ -9148,7 +9157,7 @@ components:
           type: string
           maxLength: 254
           minLength: 5
-          pattern: ^[^@\s]+@[^@\s]+\.[^@\s]+$
+          pattern: ^[^@\s]+@[^@\s.]+(\.[^@\s.]+)+$
           title: Email
         full_name:
           type: string
@@ -9168,7 +9177,7 @@ components:
           type: string
           maxLength: 254
           minLength: 5
-          pattern: ^[^@\s]+@[^@\s]+\.[^@\s]+$
+          pattern: ^[^@\s]+@[^@\s.]+(\.[^@\s.]+)+$
           title: Email
         password:
           type: string
@@ -9231,7 +9240,7 @@ components:
           type: string
           maxLength: 254
           minLength: 5
-          pattern: ^[^@\s]+@[^@\s]+\.[^@\s]+$
+          pattern: ^[^@\s]+@[^@\s.]+(\.[^@\s.]+)+$
           title: Email
         full_name:
           type: string

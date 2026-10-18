@@ -63,6 +63,25 @@ def test_profile_schema_normalizes_email_and_defaults_preferences() -> None:
         )
 
 
+def test_profile_update_supports_partial_patch_and_rejects_empty_body() -> None:
+    """QA finding L-4 (fixed): a preferences-only PATCH must not force the user
+    to re-send ``full_name``, and a stray ``{}`` must not silently reset
+    anything - unsent fields keep their stored value (merged in the route)."""
+    item = CustomerProfileUpdate.model_validate(
+        {"notification_preferences": {"email": False, "whatsapp": True, "sms": True}}
+    )
+    assert item.full_name is None
+    assert "full_name" not in item.model_fields_set
+    assert "notification_preferences" in item.model_fields_set
+    name_only = CustomerProfileUpdate.model_validate({"full_name": "Mona Ali"})
+    assert "whatsapp_available" not in name_only.model_fields_set
+    with pytest.raises(ValidationError):
+        CustomerProfileUpdate.model_validate({})
+    # an explicitly-sent null e-mail stays an intentional "clear my e-mail"
+    cleared = CustomerProfileUpdate.model_validate({"full_name": "Mona Ali", "email": None})
+    assert "email" in cleared.model_fields_set and cleared.email is None
+
+
 async def test_profile_repository_uses_only_definer_functions() -> None:
     repo = CustomerProfileRepository()
     payload = {"full_name": "Mona Ali", "notification_preferences": {"sms": False}}

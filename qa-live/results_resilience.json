@@ -39,7 +39,7 @@
     "name": "registration recovers after provider returns -> 202 + real OTP e-mail",
     "status": "PASS",
     "expected": "202 + code",
-    "actual": "202 mail=True code=788655"
+    "actual": "202 mail=True code=184897"
   },
   {
     "section": "R2 redis-down",
@@ -64,24 +64,17 @@
   },
   {
     "section": "R2 redis-down",
-    "name": "GET /api/companies during redis outage -> no internals leaked",
+    "name": "[FIX L-7] GET /api/companies during redis outage -> graceful JSON 503 + Retry-After",
     "status": "PASS",
-    "expected": "<5xx or graceful",
-    "actual": "500 Internal Server Error"
+    "expected": "503 JSON, no internals",
+    "actual": "503 {\"detail\":\"Service temporarily unavailable; please retry shortly.\"}"
   },
   {
     "section": "R2 redis-down",
-    "name": "OTP start during redis outage -> fails without leaking internals",
+    "name": "[FIX L-7] OTP start during redis outage -> graceful JSON 503 (rate limiter fails safe)",
     "status": "PASS",
-    "expected": "no leak words",
-    "actual": "500 Internal Server Error"
-  },
-  {
-    "section": "R2 redis-down",
-    "name": "redis-down OTP status",
-    "status": "INFO",
-    "expected": "",
-    "actual": "500 Internal Server Error"
+    "expected": "503 JSON, no internals",
+    "actual": "503 {\"detail\":\"Service temporarily unavailable; please retry shortly.\"}"
   },
   {
     "section": "R2 redis-down",
@@ -134,17 +127,10 @@
   },
   {
     "section": "R3 postgres-down",
-    "name": "GET /api/companies during DB outage -> no internals leaked",
+    "name": "[FIX L-7] GET /api/companies during DB outage -> graceful JSON 503 (middleware-level)",
     "status": "PASS",
-    "expected": "no leak words",
-    "actual": "500 Internal Server Error"
-  },
-  {
-    "section": "R3 postgres-down",
-    "name": "pg-down companies status",
-    "status": "INFO",
-    "expected": "",
-    "actual": "500 Internal Server Error"
+    "expected": "503 JSON, no internals",
+    "actual": "503 {\"detail\":\"Service temporarily unavailable; please retry shortly.\"}"
   },
   {
     "section": "R3 postgres-down",

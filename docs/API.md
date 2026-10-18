@@ -44,8 +44,9 @@ cd frontend && npm run api:types                                  # typed client
   | `503` | queue backpressure or draining (with `Retry-After`) |
 * **Tracing:** send or receive `X-Request-ID`. It appears in every log line
   and in Sentry.
-* **Caching:** `/api/companies` and `/api/public/config` are
-  `public, max-age=300`. Everything else under `/api` is `no-store`.
+* **Caching:** `/api/companies` is `public, max-age=300, stale-while-revalidate=60`.
+  `/api/public/config` is `no-store` (the CAPTCHA configuration must never be cached).
+  Everything else under `/api` is `no-store`.
 
 ## Phase 8 endpoints
 

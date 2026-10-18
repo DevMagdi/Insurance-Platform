@@ -132,6 +132,11 @@ const DETAIL_TEXT: Record<string, string> = {
   'A start and end date are required': 'حدّد تاريخ البداية والنهاية.',
   'Limit analytics to 366 days': 'الحد الأقصى للفترة 366 يوماً.',
   'Feedback is unavailable': 'التقييم غير متاح لهذه الشكوى حالياً.',
+  'Complaint cannot be reopened': 'لا يمكن إعادة فتح هذه الشكوى حالياً.',
+  'Identity cannot be registered':
+    'لا يمكن تسجيل هذه الهوية: الرقم القومي مسجّل بالفعل. إذا غيّرت رقم الموبايل أو البريد الإلكتروني، تواصل مع الدعم لتحديث حسابك.',
+  'Service temporarily unavailable; please retry shortly.':
+    'الخدمة غير متاحة مؤقتاً. حاول مرة أخرى بعد قليل.',
   'Escalation is unavailable': 'التصعيد غير متاح لهذه الشكوى حالياً.',
   'Report schedule unavailable': 'التقرير المجدول غير متاح.',
   'Staff user unavailable': 'الموظف غير موجود أو خارج نطاقك.',

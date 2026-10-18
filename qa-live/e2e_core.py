@@ -477,6 +477,20 @@ r.check("PATCH /api/customer/profile -> 200 and persisted",
         .get("whatsapp_available") is False,
         "persisted", f"{prof_patch.status} {prof_patch.text[:100]}")
 
+# L-4 fix: true PATCH semantics - unsent fields keep their stored value
+prefs_only = c1.patch("/api/customer/profile", csrf=True,
+                      json_body={"notification_preferences": {"email": False, "whatsapp": True,
+                                                              "sms": True}})
+after = prefs_only.json() if prefs_only.status == 200 else {}
+r.check("[FIX L-4] preferences-only PATCH (no full_name) -> 200; name and whatsapp preserved",
+        prefs_only.status == 200 and after.get("full_name") == "عميل جديد QA"
+        and after.get("whatsapp_available") is False
+        and after.get("notification_preferences", {}).get("email") is False,
+        "name/whatsapp kept, prefs saved", f"{prefs_only.status} {prefs_only.text[:140]}")
+empty_patch = c1.patch("/api/customer/profile", csrf=True, json_body={})
+r.check("[FIX L-4] empty PATCH body -> 422 (cannot reset the profile by accident)",
+        empty_patch.status == 422, "422", f"{empty_patch.status} {empty_patch.text[:100]}")
+
 # --------------------------------------------------------------------------- #
 print("\n== S4. Body limits and abuse guards ==")
 r.section = "S4 abuse"

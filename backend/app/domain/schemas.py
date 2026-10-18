@@ -42,10 +42,16 @@ def _require_tz(value: datetime) -> datetime:
 Mobile = Field(pattern=r"^\+201[0-9]{9}$")
 Ticket = Field(pattern=r"^CMP-[0-9]{4}-[0-9]{6,}$")
 
+# One shared e-mail shape. Domain labels must be non-empty, so ``a@b..com``,
+# ``a@.com`` and ``a@b.com.`` are rejected (QA finding L-1) while sub-domains,
+# plus-tags and internationalised labels stay valid.
+EMAIL_PATTERN = r"^[^@\s]+@[^@\s.]+(\.[^@\s.]+)+$"
+Email = Field(min_length=5, max_length=254, pattern=EMAIL_PATTERN)
+
 
 class MobileOTPRequest(StrictModel):
     mobile: str = Mobile
-    email: str = Field(min_length=5, max_length=254, pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+    email: str = Email
 
     @field_validator("email")
     @classmethod
@@ -69,7 +75,7 @@ class CustomerVerifyRequest(MobileOTPRequest):
     code: str = Field(pattern=r"^[0-9]{6}$")
     national_id: str | None = None
     full_name: str | None = Field(default=None, min_length=2, max_length=120)
-    email: str = Field(min_length=5, max_length=254, pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+    email: str = Email
     whatsapp_available: bool = False
 
     @field_validator("national_id")
@@ -79,20 +85,20 @@ class CustomerVerifyRequest(MobileOTPRequest):
 
 
 class StaffLoginRequest(StrictModel):
-    email: str = Field(min_length=5, max_length=254, pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+    email: str = Email
     password: str = Field(min_length=1, max_length=256)
 
 
 class StaffInviteRequest(StrictModel):
     department_id: UUID
-    email: str = Field(min_length=5, max_length=254, pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+    email: str = Email
     full_name: str = Field(min_length=2, max_length=120)
 
 
 class StaffProfileEdit(StrictModel):
     """Profile only; roles, scopes and credentials have separate guarded flows."""
 
-    email: str = Field(min_length=5, max_length=254, pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+    email: str = Email
     full_name: str = Field(min_length=2, max_length=120)
 
     @field_validator("email")
@@ -609,10 +615,16 @@ class NotificationPreferences(StrictModel):
 
 
 class CustomerProfileUpdate(StrictModel):
-    """Self-service profile edit; identity fields (mobile, national ID) are immutable here."""
+    """Self-service profile edit; identity fields (mobile, national ID) are immutable here.
 
-    full_name: str = Field(min_length=2, max_length=120)
-    email: str | None = Field(default=None, max_length=254, pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+    True PATCH semantics: every field is optional and a field the client did not
+    send keeps its stored value (the route merges the current profile in before
+    calling the definer, which still enforces the full invariants). An empty
+    body is rejected so a stray ``{}`` can never reset preferences by accident.
+    """
+
+    full_name: str | None = Field(default=None, min_length=2, max_length=120)
+    email: str | None = Field(default=None, max_length=254, pattern=EMAIL_PATTERN)
     whatsapp_available: bool = False
     notification_preferences: NotificationPreferences = Field(
         default_factory=NotificationPreferences
@@ -622,6 +634,12 @@ class CustomerProfileUpdate(StrictModel):
     @classmethod
     def normalize_email(cls, value: str | None) -> str | None:
         return value.lower() if value is not None else None
+
+    @model_validator(mode="after")
+    def require_at_least_one_field(self) -> CustomerProfileUpdate:
+        if not self.model_fields_set:
+            raise ValueError("Provide at least one profile field to update")
+        return self
 
 
 class AccessSpec(StrictModel):

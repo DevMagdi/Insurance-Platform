@@ -35,6 +35,9 @@ describe('describeApiError', () => {
   it('translates the details users meet in normal use', () => {
     expect(describeApiError(401, 'Invalid credentials')).toBe('البريد الإلكتروني أو كلمة المرور غير صحيحة.');
     expect(describeApiError(413, 'Narrow filters to 1000 complaints or fewer')).toContain('1000');
+    expect(describeApiError(409, 'Identity cannot be registered')).toContain('الدعم');
+    expect(describeApiError(409, 'Complaint cannot be reopened')).toContain('إعادة فتح');
+    expect(describeApiError(503, 'Service temporarily unavailable; please retry shortly.')).toContain('مؤقتاً');
   });
 
   it('keeps an unknown string detail as it is', () => {

@@ -299,12 +299,16 @@ def test_invalid_email_formats_are_rejected(email: str) -> None:
         MobileOTPRequest(mobile=NEW_MOBILE, email=email)
 
 
-def test_double_dot_domain_passes_the_loose_regex_but_degrades_gracefully() -> None:
-    """Known loose spot in ``^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$``: ``a@b..com`` is
-    schema-valid even though no provider will accept it. Documented in the QA
-    report; delivery then fails with the graceful 503, never a raw SMTP error.
-    """
-    assert MobileOTPRequest(mobile=NEW_MOBILE, email="a@b..com").email == "a@b..com"
+def test_degenerate_email_domains_are_rejected() -> None:
+    """QA finding L-1 (fixed): the pattern was tightened to
+    ``^[^@\\s]+@[^@\\s.]+(\\.[^@\\s.]+)+$`` so empty domain labels (``a@b..com``),
+    bare TLDs and leading/trailing dots are rejected at the schema, while
+    ordinary addresses - sub-domains, plus-tags, unicode - stay valid."""
+    for bad in ("a@b..com", "a@.com", "a@b.com.", "a@b", "a@b...com"):
+        with pytest.raises(ValidationError):
+            MobileOTPRequest(mobile=NEW_MOBILE, email=bad)
+    for good in ("a@b.co", "user+tag@sub.example.com", "منير@مثال.مصر"):
+        assert MobileOTPRequest(mobile=NEW_MOBILE, email=good).email == good
 
 
 @pytest.mark.parametrize(

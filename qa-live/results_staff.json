@@ -18,14 +18,14 @@
     "name": "admin creates a department -> 201 with id",
     "status": "PASS",
     "expected": "201 + id",
-    "actual": "201 {\"id\":\"0457b89c-bc44-41ac-af76-ddf7fef035fe\",\"name\":\"QA Dept d940\",\"description\":\"QA onboarding depa"
+    "actual": "201 {\"id\":\"0f94f6b2-1b23-4649-9bd9-a4be5fc2299e\",\"name\":\"QA Dept f06f\",\"description\":\"QA onboarding depa"
   },
   {
     "section": "S5b invitation",
     "name": "admin invites staff -> 2xx and invitation e-mail queued",
     "status": "PASS",
     "expected": "2xx",
-    "actual": "202 {\"id\":\"e606cca1-9a1c-46a8-985a-c1aeaa634f18\",\"message\":\"Invitation accepted by the configured email provider\"}"
+    "actual": "202 {\"id\":\"b24216a6-ad00-4d17-aefe-0969309219ac\",\"message\":\"Invitation accepted by the configured email provider\"}"
   },
   {
     "section": "S5b invitation",
@@ -39,7 +39,7 @@
     "name": "invite inspect -> 200 with name/email, no user id leak",
     "status": "PASS",
     "expected": "details, no id",
-    "actual": "200 {\"kind\":\"invitation\",\"email\":\"invitee.b72550a1@qa.example.com\",\"full_name\":\"QA Invitee\",\"department_name\":\"QA Dept d940\""
+    "actual": "200 {\"kind\":\"invitation\",\"email\":\"invitee.4c25e5ea@qa.example.com\",\"full_name\":\"QA Invitee\",\"department_name\":\"QA Dept f06f\""
   },
   {
     "section": "S5b invitation",
@@ -74,7 +74,7 @@
     "name": "invitee signs in with the chosen password -> session with zero permissions",
     "status": "PASS",
     "expected": "empty effective access",
-    "actual": "200 {\"kind\":\"staff\",\"access\":{\"id\":\"e606cca1-9a1c-46a8-985a-c1aeaa634f18\",\"email\":\"invitee.b72550a1@qa.e"
+    "actual": "200 {\"kind\":\"staff\",\"access\":{\"id\":\"b24216a6-ad00-4d17-aefe-0969309219ac\",\"email\":\"invitee.4c25e5ea@qa.e"
   },
   {
     "section": "S5b invitation",
@@ -186,7 +186,7 @@
     "name": "permission matrix: admin GET /api/staff/audit/events -> 200",
     "status": "PASS",
     "expected": "200",
-    "actual": "200 [{\"id\":\"6904c3a2-f348-4900-9421-c687642a130f\",\"created_at\":\"2026-10-18T19:16:29."
+    "actual": "200 [{\"id\":\"f7aa302a-80f7-4daa-81f7-7e3a7b0ffb3e\",\"created_at\":\"2026-10-18T20:28:02."
   },
   {
     "section": "S6 permissions",
@@ -256,7 +256,7 @@
     "name": "scoped counters < global counters (RLS applied to aggregates)",
     "status": "PASS",
     "expected": "agent total < admin total",
-    "actual": "260 vs 5004"
+    "actual": "262 vs 5012"
   },
   {
     "section": "S7 scope",
@@ -389,7 +389,7 @@
     "name": "admin assigns ticket to agent+team -> status assigned",
     "status": "PASS",
     "expected": "assigned",
-    "actual": "200 {\"id\":\"61be9501-ea72-418f-8894-e4a9f788a17d\",\"assigned_agent_id\":\"a27f4205-6496-44c8-b149-74439441b1"
+    "actual": "200 {\"id\":\"e438c610-f31f-4a60-acfc-8c06103a12b0\",\"assigned_agent_id\":\"a27f4205-6496-44c8-b149-74439441b1"
   },
   {
     "section": "S10 lifecycle",
@@ -410,14 +410,14 @@
     "name": "agent public reply -> 2xx",
     "status": "PASS",
     "expected": "2xx",
-    "actual": "200 {\"id\":\"4bed2859-e836-43ac-8e4e-6be33c0432b5\",\"created_at\":\"2026-10-18T19:16:31.5"
+    "actual": "200 {\"id\":\"12388733-9a2e-474b-b534-224036230f32\",\"created_at\":\"2026-10-18T20:28:04.7"
   },
   {
     "section": "S10 lifecycle",
     "name": "agent internal note -> 2xx",
     "status": "PASS",
     "expected": "2xx",
-    "actual": "200 {\"id\":\"9bc60f42-190a-490b-973e-389f197352bd\",\"created_at\":\"2026-10-18T19:16:31.6"
+    "actual": "200 {\"id\":\"1c1c8d20-a6af-4972-b465-5f0a25abdcd3\",\"created_at\":\"2026-10-18T20:28:04.8"
   },
   {
     "section": "S10 lifecycle",
@@ -459,7 +459,7 @@
     "name": "supervisor escalate -> queued for insurer delivery",
     "status": "PASS",
     "expected": "queued",
-    "actual": "200 {\"id\":\"61be9501-ea72-418f-8894-e4a9f788a17d\",\"status\":\"transferred\",\"delivery\":\"queued\"}"
+    "actual": "200 {\"id\":\"e438c610-f31f-4a60-acfc-8c06103a12b0\",\"status\":\"transferred\",\"delivery\":\"queued\"}"
   },
   {
     "section": "S10 lifecycle",
@@ -508,14 +508,14 @@
     "name": "admin NID reveal with reason -> 200 returns full ID",
     "status": "PASS",
     "expected": "full NID",
-    "actual": "200 {\"national_id\":\"30105200435436\"}"
+    "actual": "200 {\"national_id\":\"30105200431063\"}"
   },
   {
     "section": "S10 lifecycle",
     "name": "staff CSV export (GET, flat ComplaintFilter) -> 200 text/csv",
     "status": "PASS",
     "expected": "200 text/csv",
-    "actual": "200 ct=text/csv; charset=utf-8 ﻿ticket_no,created_at,company_id,insurance_type,status,subject,policy_number\r\nCMP-2026-005005,2026-1"
+    "actual": "200 ct=text/csv; charset=utf-8 ﻿ticket_no,created_at,company_id,insurance_type,status,subject,policy_number\r\nCMP-2026-005013,2026-1"
   },
   {
     "section": "S10 lifecycle",
@@ -557,7 +557,7 @@
     "name": "WS authenticated staff -> snapshot payload",
     "status": "PASS",
     "expected": "snapshot json",
-    "actual": "{'type': 'snapshot', 'items': [{'id': '61be9501-ea72-418f-8894-e4a9f788a17d', 'ticket_no': 'CMP-2026"
+    "actual": "{'type': 'snapshot', 'items': [{'id': 'e438c610-f31f-4a60-acfc-8c06103a12b0', 'ticket_no': 'CMP-2026"
   },
   {
     "section": "S12 platform",

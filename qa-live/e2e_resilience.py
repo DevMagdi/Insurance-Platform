@@ -168,14 +168,16 @@ r.check("/api/health/ready -> 503 'Dependencies unavailable'",
         "503 Dependencies unavailable", f"{ready.status} {ready.text[:100]}")
 
 comp = QAClient().get("/api/companies")
-r.check("GET /api/companies during redis outage -> no internals leaked",
-        no_leak(comp.text), "<5xx or graceful", f"{comp.status} {comp.text[:120]}")
+r.check("[FIX L-7] GET /api/companies during redis outage -> graceful JSON 503 + Retry-After",
+        comp.status == 503 and comp.detail == "Service temporarily unavailable; please retry shortly."
+        and comp.headers.get("retry-after") == "30" and no_leak(comp.text),
+        "503 JSON, no internals", f"{comp.status} {comp.text[:120]}")
 ident3 = new_identity()
 otp_redis = start_otp(QAClient(), ident3)
-r.check("OTP start during redis outage -> fails without leaking internals",
-        no_leak(otp_redis.text), "no leak words",
-        f"{otp_redis.status} {otp_redis.text[:140]}")
-r.info("redis-down OTP status", f"{otp_redis.status} {otp_redis.text[:140]}")
+r.check("[FIX L-7] OTP start during redis outage -> graceful JSON 503 (rate limiter fails safe)",
+        otp_redis.status == 503 and otp_redis.detail == "Service temporarily unavailable; please retry shortly."
+        and no_leak(otp_redis.text),
+        "503 JSON, no internals", f"{otp_redis.status} {otp_redis.text[:140]}")
 
 rp = spawn([str(REDIS_BIN), "--port", "6379", "--bind", "127.0.0.1",
             "--dir", str(STATE / "redis"), "--dbfilename", "dump.rdb", "--save", ""],
@@ -229,9 +231,9 @@ r.check("ready -> 503 'Dependencies unavailable' while DB is down",
         ready.status == 503 and ready.detail == "Dependencies unavailable",
         "503", f"{ready.status} {ready.text[:100]}")
 comp = QAClient().get("/api/companies")
-r.check("GET /api/companies during DB outage -> no internals leaked",
-        no_leak(comp.text), "no leak words", f"{comp.status} {comp.text[:140]}")
-r.info("pg-down companies status", f"{comp.status} {comp.text[:140]}")
+r.check("[FIX L-7] GET /api/companies during DB outage -> graceful JSON 503 (middleware-level)",
+        comp.status == 503 and comp.detail == "Service temporarily unavailable; please retry shortly." and no_leak(comp.text),
+        "503 JSON, no internals", f"{comp.status} {comp.text[:140]}")
 
 start = subprocess.run(
     [str(PG_BIN / "pg_ctl"), "-w", "-D", str(pgdata),
