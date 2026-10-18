@@ -10,6 +10,7 @@ const ERROR_KEYS: Record<FileValidationError, string> = {
   tooLarge: 'files.tooLarge',
   totalTooLarge: 'files.totalTooLarge',
   badType: 'files.badType',
+  badName: 'files.badName',
 };
 
 /**

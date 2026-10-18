@@ -111,6 +111,11 @@ export function AccessEditor({ user, onClose, onSaved }: AccessEditorProps) {
     const allow = PERMISSIONS.filter((permission) => overrides[permission] === 'allow');
     const deny = PERMISSIONS.filter((permission) => overrides[permission] === 'deny');
     try {
+      // The API demands exactly one scope: either every company or an explicit
+      // list. An empty list together with `all_companies: false` is rejected.
+      if (!allCompanies && companyIds.length === 0) {
+        throw new Error('اختر شركة واحدة على الأقل، أو فعّل «جميع الشركات».');
+      }
       await api(`/api/staff/users/${encodeURIComponent(user.id)}/access`, {
         method: 'PUT',
         body: jsonBody({
@@ -131,7 +136,12 @@ export function AccessEditor({ user, onClose, onSaved }: AccessEditorProps) {
   };
 
   const toggleRole = (id: string) => setRoleIds((current) => current.includes(id) ? current.filter((roleId) => roleId !== id) : [...current, id]);
-  const toggleCompany = (id: string) => setCompanyIds((current) => current.includes(id) ? current.filter((companyId) => companyId !== id) : [...current, id]);
+  // The last company cannot be removed while the scope is "specific companies":
+  // the API rejects an empty company list together with all_companies=false.
+  const toggleCompany = (id: string) => setCompanyIds((current) => {
+    if (current.includes(id) && !allCompanies && current.length === 1) return current;
+    return current.includes(id) ? current.filter((companyId) => companyId !== id) : [...current, id];
+  });
   const toggleType = (value: InsuranceType) => setInsuranceTypes((current) => current.includes(value) ? current.filter((item) => item !== value) : [...current, value]);
   const toggleTeam = (id: string) => setTeamIds((current) => current.includes(id) ? current.filter((teamId) => teamId !== id) : [...current, id]);
   const setGroupEffect = (permissions: Permission[], effect: PermissionEffect | '') => setOverrides((current) => ({ ...current, ...Object.fromEntries(permissions.map((permission) => [permission, effect])) }));

@@ -1,12 +1,18 @@
 import { describe, expect, it } from 'vitest';
 import {
   formatNationalId,
+  invalidEmailList,
+  isValidDateWindow,
+  isValidEmail,
+  isValidLogoPath,
   isValidMobile,
   isValidNationalId,
   isValidTicketNo,
   maskNationalId,
   nationalIdError,
   normalizeMobile,
+  parseEmailList,
+  toIsoDateTime,
 } from './validation';
 
 describe('Egyptian national ID (mirrors backend validator)', () => {
@@ -52,5 +58,68 @@ describe('ticket numbers', () => {
     expect(isValidTicketNo('CMP-2026-000123')).toBe(true);
     expect(isValidTicketNo('cmp-2026-000123')).toBe(false);
     expect(isValidTicketNo('CMP-26-1')).toBe(false);
+  });
+});
+
+describe('contact addresses (mirrors the API validators)', () => {
+  it('accepts a plain lowercase address', () => {
+    expect(isValidEmail('claims@example.com')).toBe(true);
+  });
+
+  it('rejects an address without a domain or with a space', () => {
+    expect(isValidEmail('not-an-address')).toBe(false);
+    expect(isValidEmail('a b@example.com')).toBe(false);
+    expect(isValidEmail('claims@example')).toBe(false);
+  });
+
+  it('normalizes and de-duplicates a comma separated list', () => {
+    expect(parseEmailList(' A@Example.com , b@example.com ,a@example.com ')).toEqual([
+      'a@example.com',
+      'b@example.com',
+    ]);
+  });
+
+  it('lists the addresses the API would reject', () => {
+    expect(invalidEmailList('ok@example.com, broken')).toEqual(['broken']);
+    expect(invalidEmailList('ok@example.com')).toEqual([]);
+  });
+});
+
+describe('date windows (mirrors the export/analytics rules)', () => {
+  const from = '2026-01-01T00:00:00.000Z';
+  const to = '2026-01-30T00:00:00.000Z';
+
+  it('accepts a complete window inside 366 days', () => {
+    expect(isValidDateWindow(from, to)).toBe(true);
+  });
+
+  it('rejects an incomplete or inverted window', () => {
+    expect(isValidDateWindow('', to)).toBe(false);
+    expect(isValidDateWindow(from, '')).toBe(false);
+    expect(isValidDateWindow(to, from)).toBe(false);
+  });
+
+  it('rejects a window longer than 366 days', () => {
+    expect(isValidDateWindow('2024-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')).toBe(false);
+  });
+
+  it('turns a cleared date field into an empty value instead of throwing', () => {
+    expect(toIsoDateTime('')).toBe('');
+    expect(toIsoDateTime('not-a-date')).toBe('');
+    expect(toIsoDateTime('2026-01-01T00:00')).toBe(new Date('2026-01-01T00:00').toISOString());
+  });
+});
+
+describe('platform logo path (mirrors the API validator)', () => {
+  it('accepts a same-origin asset path', () => {
+    expect(isValidLogoPath('/insurance-logo.svg')).toBe(true);
+    expect(isValidLogoPath('/api/public/brand/logo')).toBe(true);
+  });
+
+  it('rejects an absolute URL or a traversal', () => {
+    expect(isValidLogoPath('https://cdn.example.com/logo.svg')).toBe(false);
+    expect(isValidLogoPath('//cdn.example.com/logo.svg')).toBe(false);
+    expect(isValidLogoPath('/../secret')).toBe(false);
+    expect(isValidLogoPath('')).toBe(false);
   });
 });

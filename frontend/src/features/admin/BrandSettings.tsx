@@ -3,11 +3,13 @@ import { api, jsonBody } from '../../api';
 import { Icon } from '../../components/Icon';
 import type { StaffAccess } from '../../types';
 import { hasPermission } from '../../utils/access';
+import { isValidLogoPath } from '../../lib/validation';
 
 /** Exactly the `PlatformBrandRequest` contract: nothing else may be sent. */
 interface Brand { platform_name: string; logo_url: string; }
 /** `/api/public/config` payload: brand fields plus unrelated runtime settings. */
 interface PublicConfig extends Partial<Brand> { captcha?: unknown; privacy_policy_version?: string; }
+
 export function BrandSettings({ access }: { access: StaffAccess }) {
   const [brand, setBrand] = useState<Brand>({ platform_name: 'Insurance', logo_url: '/insurance-logo.svg' });
   const [message, setMessage] = useState('');
@@ -47,6 +49,11 @@ export function BrandSettings({ access }: { access: StaffAccess }) {
   const submit = async (event: FormEvent) => {
     event.preventDefault(); setSaving(true); setError(''); setMessage('');
     try {
+      // The API only accepts a same-origin asset path for the logo.
+      if (!isValidLogoPath(brand.logo_url)) {
+        setError('مسار الشعار يجب أن يكون مساراً محلياً يبدأ بـ / مثل /insurance-logo.svg.');
+        return;
+      }
       // Send exactly the strict `PlatformBrandRequest` fields — never the raw state.
       const body: Brand = { platform_name: brand.platform_name, logo_url: brand.logo_url };
       const saved = await api<Brand>('/api/platform/brand', { method: 'PUT', body: jsonBody(body) });
@@ -61,7 +68,7 @@ export function BrandSettings({ access }: { access: StaffAccess }) {
     {message && <p className="inline-alert success" role="status">{message}</p>}{error && <p className="inline-alert error" role="alert">{error}</p>}
     <form onSubmit={(event) => { void submit(event); }} style={{ display: 'grid', gap: 12, maxWidth: 620 }}>
       <label className="field-label">اسم المنصة<input required minLength={2} maxLength={80} value={brand.platform_name} onChange={(event) => { brandTouched.current = true; setBrand({ ...brand, platform_name: event.target.value }); }} /></label>
-      <label className="field-label">رابط/مسار الشعار<input required maxLength={2048} value={brand.logo_url} dir="ltr" onChange={(event) => { brandTouched.current = true; setBrand({ ...brand, logo_url: event.target.value }); }} placeholder="/insurance-logo.svg" /></label>
+      <label className="field-label">رابط/مسار الشعار<input required maxLength={2048} pattern="^/(?!/)[A-Za-z0-9._/-]+$" value={brand.logo_url} dir="ltr" onChange={(event) => { brandTouched.current = true; setBrand({ ...brand, logo_url: event.target.value }); }} placeholder="/insurance-logo.svg" /><small>مسار محلي على المنصة (يبدأ بـ /). لتغيير الشعار ارفع صورة من الخيار بالأسفل.</small></label>
       <label className="field-label">أو ارفع صورة شعار (PNG أو JPEG أو WebP، بحد أقصى 2 ميجابايت)<input type="file" accept="image/png,image/jpeg,image/webp" disabled={uploading} onChange={(event) => { void uploadLogo(event.currentTarget.files?.[0]); event.currentTarget.value = ''; }} /></label>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}><img src={brand.logo_url} alt="معاينة الشعار" style={{ width: 44, height: 44, objectFit: 'contain' }} /><button className="button button-dark" type="submit" disabled={saving || uploading}><Icon name="check" size={15} />{uploading ? 'جارٍ رفع الشعار…' : saving ? 'جارٍ الحفظ…' : 'حفظ الهوية'}</button></div>
     </form>

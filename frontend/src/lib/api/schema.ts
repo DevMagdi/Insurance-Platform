@@ -3320,6 +3320,9 @@ export interface components {
         /**
          * ReportFilter
          * @description Scheduled reports are relative: the window moves with each run.
+         *
+         *     A scheduled report always covers its whole window, so pagination and
+         *     sorting do not apply.
          */
         ReportFilter: {
             status?: components["schemas"]["ComplaintStatus"] | null;

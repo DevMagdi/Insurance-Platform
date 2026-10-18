@@ -30,6 +30,7 @@ import {
   type StaffUser,
 } from './staffTypes';
 import type { StaffDepartment } from '../types';
+import { describeApiError } from './apiErrors';
 import { captchaHeaders } from './captcha';
 import {
   getCsrfToken,
@@ -37,6 +38,9 @@ import {
   refreshSession,
   shouldAttemptRefresh,
 } from './session';
+
+/** Analytics filters: the date window is mandatory on the server. */
+export type AnalyticsWindowFilters = StaffComplaintFilters & { date_from: string; date_to: string };
 
 export type ConsentPurpose =
   | 'complaint_processing'
@@ -47,27 +51,35 @@ export type ConsentPurpose =
 
 export class ApiError extends Error {
   readonly status: number;
+  /** The server's own `detail` text (kept for diagnostics). */
   readonly detail: string;
+  /** The raw `detail` member: a string or FastAPI's validation-issue list. */
+  readonly raw: unknown;
 
-  constructor(status: number, detail: string) {
-    super(detail);
+  /** `message` is the Arabic text the UI shows (see ./apiErrors.ts). */
+  constructor(status: number, detail: string, message?: string, raw?: unknown) {
+    super(message ?? detail);
+    this.name = 'ApiError';
     this.status = status;
     this.detail = detail;
+    this.raw = raw === undefined ? detail : raw;
   }
 }
 
+function errorFromBody(status: number, statusText: string, body: unknown): ApiError {
+  const raw = body && typeof body === 'object' && 'detail' in body ? (body as { detail: unknown }).detail : null;
+  const detail = typeof raw === 'string' ? raw : statusText || 'Request failed';
+  return new ApiError(status, detail, describeApiError(status, raw), raw);
+}
+
 async function parseError(response: Response): Promise<ApiError> {
-  let detail = response.statusText || 'Request failed';
+  let body: unknown = null;
   try {
-    const body: unknown = await response.json();
-    if (body && typeof body === 'object' && 'detail' in body) {
-      const value = (body as { detail: unknown }).detail;
-      if (typeof value === 'string') detail = value;
-    }
+    body = await response.json();
   } catch {
     // Non-JSON error body; keep the status text.
   }
-  return new ApiError(response.status, detail);
+  return errorFromBody(response.status, response.statusText, body);
 }
 
 interface RequestOptions {
@@ -391,10 +403,12 @@ export const staffApi = {
       },
     ),
 
-  analytics: (filters: StaffComplaintFilters) =>
+  // The analytics endpoints reject a request without a complete window (422),
+  // so the window is part of the signature rather than an optional filter.
+  analytics: (filters: AnalyticsWindowFilters) =>
     request<AnalyticsOverview>(`/api/staff/analytics/overview${staffComplaintsQuery(filters)}`),
 
-  scorecards: (filters: StaffComplaintFilters) =>
+  scorecards: (filters: AnalyticsWindowFilters) =>
     request<Record<string, unknown>[]>(`/api/staff/analytics/scorecards${staffComplaintsQuery(filters)}`),
 
   users: () => request<StaffUser[]>('/api/staff/users'),
@@ -551,17 +565,13 @@ export function uploadWithProgress(
           reject(new ApiError(xhr.status, 'Invalid upload response'));
         }
       } else {
-        let detail = xhr.statusText || 'Upload failed';
+        let body: unknown = null;
         try {
-          const body: unknown = JSON.parse(xhr.responseText);
-          if (body && typeof body === 'object' && 'detail' in body) {
-            const value = (body as { detail: unknown }).detail;
-            if (typeof value === 'string') detail = value;
-          }
+          body = JSON.parse(xhr.responseText);
         } catch {
           // Keep status text.
         }
-        reject(new ApiError(xhr.status, detail));
+        reject(errorFromBody(xhr.status, xhr.statusText || 'Upload failed', body));
       }
     };
     xhr.onerror = () => reject(new ApiError(0, 'Network error during upload'));

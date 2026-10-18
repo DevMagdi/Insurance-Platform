@@ -18,6 +18,7 @@ import hashlib
 import hmac
 import json
 import os
+from collections.abc import Iterator
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 from typing import Any
@@ -79,9 +80,78 @@ def _skip() -> None:
         pytest.skip("Set APP_WORKER_DB_PASSWORD for the restricted app_worker login")
 
 
+# Providers this module configures platform-wide (company_id IS NULL).
+GLOBAL_PROVIDERS = ("smtp", "whatsapp_cloud", "mock_llm", "mock_voice")
+_RESTORED_COLUMNS = (
+    "config_ciphertext",
+    "secret_ref",
+    "is_enabled",
+    "updated_at",
+    "connection_status",
+    "last_test_at",
+    "last_error_code",
+)
+
+
+def _snapshot_global_providers() -> dict[str, dict[str, Any]]:
+    """The platform-wide provider rows as they were before this module ran."""
+    with psycopg.connect(ADMIN, prepare_threshold=None) as conn, conn.cursor() as cur:
+        cur.execute(
+            f"SELECT id, provider, {', '.join(_RESTORED_COLUMNS)} FROM integrations_config "
+            "WHERE company_id IS NULL AND provider = ANY(%s)",
+            (list(GLOBAL_PROVIDERS),),
+        )
+        columns = [column.name for column in cur.description or ()]
+        return {row[1]: dict(zip(columns, row, strict=True)) for row in cur.fetchall()}
+
+
+def _restore_global_providers(saved: dict[str, dict[str, Any]]) -> None:
+    """Put the platform-wide providers back exactly as they were.
+
+    This module saves global SMTP/WhatsApp/AI/voice connections. Leaving them
+    behind changes how *every later test* sending mail behaves on the same
+    database (an invitation would go to the fake SMTP host and fail with 503),
+    so the rows are restored -- or removed when they did not exist before.
+    """
+    with psycopg.connect(ADMIN, prepare_threshold=None) as conn, conn.cursor() as cur:
+        for provider in GLOBAL_PROVIDERS:
+            before = saved.get(provider)
+            if before is not None:
+                assignments = ", ".join(f"{column} = %s" for column in _RESTORED_COLUMNS)
+                cur.execute(
+                    f"UPDATE integrations_config SET {assignments} WHERE id = %s",
+                    (*(before[column] for column in _RESTORED_COLUMNS), before["id"]),
+                )
+                continue
+            cur.execute(
+                "SELECT id FROM integrations_config WHERE company_id IS NULL AND provider = %s",
+                (provider,),
+            )
+            created = [row[0] for row in cur.fetchall()]
+            if not created:
+                continue
+            # Every job pointing at a connection this module created belongs to it.
+            cur.execute(
+                "DELETE FROM integration_dead_letters WHERE job_id IN "
+                "(SELECT id FROM integration_jobs WHERE integration_config_id = ANY(%s))",
+                (created,),
+            )
+            cur.execute(
+                "DELETE FROM ai_insights WHERE integration_job_id IN "
+                "(SELECT id FROM integration_jobs WHERE integration_config_id = ANY(%s))",
+                (created,),
+            )
+            cur.execute(
+                "DELETE FROM integration_jobs WHERE integration_config_id = ANY(%s)", (created,)
+            )
+            cur.execute("DELETE FROM integrations_config WHERE id = ANY(%s)", (created,))
+        conn.commit()
+
+
 @pytest.fixture(scope="module")
-def world() -> dict[str, Any]:
+def world() -> Iterator[dict[str, Any]]:
     _skip()
+    saved_providers = _snapshot_global_providers()
     unique = uuid4().hex[:10]
     company = uuid4()
     customer = uuid4()
@@ -202,19 +272,22 @@ def world() -> dict[str, Any]:
     cipher = SecretCipher(keyring)
     idem = derive_idempotency_key(idempotency_root(keyring, None))
     blobs = BlobCipher(keyring)
-    return {
-        "company": company,
-        "customer": customer,
-        "staff": staff,
-        "complaint": complaint,
-        "created": now,
-        "ticket": ticket,
-        "cipher": cipher,
-        "idem": idem,
-        "blobs": blobs,
-        "unique": unique,
-        "mobile": mobile,
-    }
+    try:
+        yield {
+            "company": company,
+            "customer": customer,
+            "staff": staff,
+            "complaint": complaint,
+            "created": now,
+            "ticket": ticket,
+            "cipher": cipher,
+            "idem": idem,
+            "blobs": blobs,
+            "unique": unique,
+            "mobile": mobile,
+        }
+    finally:
+        _restore_global_providers(saved_providers)
 
 
 @pytest.fixture(scope="module")

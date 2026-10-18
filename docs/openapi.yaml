@@ -805,7 +805,6 @@ paths:
         schema:
           anyOf:
           - type: string
-            minLength: 2
             maxLength: 120
           - type: 'null'
           title: Search
@@ -965,7 +964,6 @@ paths:
         schema:
           anyOf:
           - type: string
-            minLength: 2
             maxLength: 120
           - type: 'null'
           title: Search
@@ -2170,7 +2168,6 @@ paths:
         schema:
           anyOf:
           - type: string
-            minLength: 2
             maxLength: 120
           - type: 'null'
           title: Search
@@ -2331,7 +2328,6 @@ paths:
         schema:
           anyOf:
           - type: string
-            minLength: 2
             maxLength: 120
           - type: 'null'
           title: Search
@@ -2493,7 +2489,6 @@ paths:
         schema:
           anyOf:
           - type: string
-            minLength: 2
             maxLength: 120
           - type: 'null'
           title: Search
@@ -3734,7 +3729,6 @@ paths:
         schema:
           anyOf:
           - type: string
-            minLength: 2
             maxLength: 120
           - type: 'null'
           title: Search
@@ -3897,7 +3891,6 @@ paths:
         schema:
           anyOf:
           - type: string
-            minLength: 2
             maxLength: 120
           - type: 'null'
           title: Search
@@ -4058,7 +4051,6 @@ paths:
         schema:
           anyOf:
           - type: string
-            minLength: 2
             maxLength: 120
           - type: 'null'
           title: Search
@@ -8183,7 +8175,6 @@ components:
           anyOf:
           - type: string
             maxLength: 120
-            minLength: 2
           - type: 'null'
           title: Search
         sort_by:
@@ -8795,7 +8786,6 @@ components:
           anyOf:
           - type: string
             maxLength: 120
-            minLength: 2
           - type: 'null'
           title: Search
         sort_by:
@@ -8835,7 +8825,12 @@ components:
       additionalProperties: false
       type: object
       title: ReportFilter
-      description: 'Scheduled reports are relative: the window moves with each run.'
+      description: 'Scheduled reports are relative: the window moves with each run.
+
+
+        A scheduled report always covers its whole window, so pagination and
+
+        sorting do not apply.'
     ReportScheduleSpec:
       properties:
         name:

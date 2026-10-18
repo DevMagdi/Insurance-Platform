@@ -1,14 +1,23 @@
+import { describeApiError } from './lib/apiErrors';
 import { getCsrfToken, notifyAuthExpired, refreshSession, shouldAttemptRefresh } from './lib/session';
 
 export class ApiError extends Error {
   readonly status: number;
+  /** The server's own `detail` text (kept for diagnostics). */
   readonly detail: string;
+  /** The raw `detail` member: a string or FastAPI's validation-issue list. */
+  readonly raw: unknown;
 
-  constructor(status: number, detail: string) {
-    super(detail);
+  /**
+   * `message` is what the UI shows: an Arabic sentence that names the field
+   * and the problem (see lib/apiErrors.ts), never "Request failed (422)".
+   */
+  constructor(status: number, detail: string, message?: string, raw?: unknown) {
+    super(message ?? detail);
     this.name = 'ApiError';
     this.status = status;
     this.detail = detail;
+    this.raw = raw === undefined ? detail : raw;
   }
 }
 
@@ -50,17 +59,15 @@ async function send(path: string, init: RequestInit, allowRefresh: boolean): Pro
 }
 
 async function errorFor(response: Response): Promise<ApiError> {
-  let detail = `Request failed (${response.status})`;
+  let raw: unknown = null;
   try {
     const body: unknown = await response.json();
-    if (body && typeof body === 'object' && 'detail' in body) {
-      const value = (body as { detail?: unknown }).detail;
-      if (typeof value === 'string') detail = value;
-    }
+    if (body && typeof body === 'object' && 'detail' in body) raw = (body as { detail?: unknown }).detail;
   } catch {
     // Keep the status-based message for non-JSON provider/proxy failures.
   }
-  return new ApiError(response.status, detail);
+  const detail = typeof raw === 'string' ? raw : `Request failed (${response.status})`;
+  return new ApiError(response.status, detail, describeApiError(response.status, raw), raw);
 }
 
 export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {

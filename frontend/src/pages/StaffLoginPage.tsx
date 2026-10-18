@@ -23,7 +23,7 @@ export function StaffLoginPage() {
   const captcha = useCaptcha('staff_login');
 
   const fail = (caught: unknown) => {
-    setError(caught instanceof ApiError ? caught.detail : t('errors.generic'));
+    setError(caught instanceof ApiError ? caught.message : t('errors.generic'));
   };
 
   const login = async () => {
