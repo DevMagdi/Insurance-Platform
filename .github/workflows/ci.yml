@@ -76,6 +76,12 @@ jobs:
           print("JWT_PRIVATE_KEY_B64=" + private_key)
           print("JWT_PUBLIC_KEY_B64=" + public_key)
           print("METRICS_TOKEN=" + secrets.token_urlsafe(48))
+          # A non-deliverable example-domain transport satisfies production validation;
+          # smoke checks never send mail.
+          print("SMTP_HOST=smtp.example.com")
+          print("SMTP_FROM=ci@example.com")
+          print("SMTP_START_TLS=true")
+          print("SMTP_USE_TLS=false")
           # Cloudflare's documented always-pass test keys: production refuses to boot without CAPTCHA.
           print("TURNSTILE_SITE_KEY=1x00000000000000000000AA")
           print("TURNSTILE_SECRET_KEY=1x0000000000000000000000000000000AA")

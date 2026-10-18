@@ -7,9 +7,10 @@ from unittest.mock import AsyncMock
 import pytest
 from fastapi import HTTPException
 from PIL import Image
+from sqlalchemy.exc import SQLAlchemyError
 from starlette.requests import Request
 
-from app.api.platform import upload_platform_logo
+from app.api.platform import _public_platform_brand, upload_platform_logo
 
 
 def make_request(body: bytes) -> Request:
@@ -32,6 +33,25 @@ def make_request(body: bytes) -> Request:
         },
         receive,
     )
+
+
+@pytest.mark.asyncio
+async def test_public_brand_uses_default_identity_when_database_is_unavailable(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class BrokenTransaction:
+        async def __aenter__(self) -> None:
+            raise SQLAlchemyError("database unavailable")
+
+        async def __aexit__(self, *_: object) -> None:
+            return None
+
+    monkeypatch.setattr("app.api.platform.purpose_transaction", lambda *_: BrokenTransaction())
+    request = SimpleNamespace(app=SimpleNamespace(state=SimpleNamespace(factory=object())))
+    assert await _public_platform_brand(request) == {
+        "platform_name": "Insurance",
+        "logo_url": "/insurance-logo.svg",
+    }
 
 
 def png_bytes() -> bytes:

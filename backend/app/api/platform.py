@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hmac
+import logging
 from io import BytesIO
 from typing import Any
 
@@ -11,6 +12,7 @@ from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
 from fastapi.responses import HTMLResponse, JSONResponse
 from PIL import Image, UnidentifiedImageError
 from sqlalchemy import text
+from sqlalchemy.exc import SQLAlchemyError
 
 from app.api.deps import RequestContext, require_permission
 from app.db import purpose_transaction
@@ -19,6 +21,7 @@ from app.observability.metrics import render_latest
 from app.security.captcha import CaptchaVerifier
 from app.security.tokens import csrf_required
 
+logger = logging.getLogger(__name__)
 router = APIRouter(tags=["platform"])
 
 
@@ -26,11 +29,16 @@ async def _public_platform_brand(request: Request) -> dict[str, str]:
     brand = {"platform_name": "Insurance", "logo_url": "/insurance-logo.svg"}
     factory = getattr(request.app.state, "factory", None)
     if factory is not None:
-        async with purpose_transaction(factory, "guest") as db:
-            result = await db.execute(text("SELECT * FROM app_security.public_platform_brand()"))
-            row = result.one_or_none()
-            if row is not None:
-                brand = {"platform_name": row.platform_name, "logo_url": row.logo_url}
+        try:
+            async with purpose_transaction(factory, "guest") as db:
+                result = await db.execute(
+                    text("SELECT * FROM app_security.public_platform_brand()")
+                )
+                row = result.one_or_none()
+                if row is not None:
+                    brand = {"platform_name": row.platform_name, "logo_url": row.logo_url}
+        except SQLAlchemyError:
+            logger.warning("Unable to load platform brand; using default identity", exc_info=True)
     return brand
 
 

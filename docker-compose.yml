@@ -82,9 +82,9 @@ services:
       JWT_PUBLIC_KEY_B64: ${JWT_PUBLIC_KEY_B64:-}
       JWT_PREVIOUS_PUBLIC_KEYS: ${JWT_PREVIOUS_PUBLIC_KEYS:-}
       METRICS_TOKEN: ${METRICS_TOKEN:-}
-      SMTP_HOST: ${SMTP_HOST:?Set SMTP_HOST to your real mail provider}
+      SMTP_HOST: ${SMTP_HOST:-}
       SMTP_PORT: ${SMTP_PORT:-587}
-      SMTP_FROM: ${SMTP_FROM:?Set SMTP_FROM to a verified sender address}
+      SMTP_FROM: ${SMTP_FROM:-}
       SMTP_USERNAME: ${SMTP_USERNAME:-}
       SMTP_PASSWORD: ${SMTP_PASSWORD:-}
       SMTP_START_TLS: ${SMTP_START_TLS:-true}
@@ -122,9 +122,9 @@ services:
       WORKER_DATABASE_URL: postgresql+asyncpg://app_worker:${APP_WORKER_DB_PASSWORD}@postgres:5432/${POSTGRES_DB}
       APP_ENCRYPTION_KEY: ${APP_ENCRYPTION_KEY:?run make init}
       REDIS_URL: redis://redis:6379/0
-      SMTP_HOST: ${SMTP_HOST:?Set SMTP_HOST to your real mail provider}
+      SMTP_HOST: ${SMTP_HOST:-}
       SMTP_PORT: ${SMTP_PORT:-587}
-      SMTP_FROM: ${SMTP_FROM:?Set SMTP_FROM to a verified sender address}
+      SMTP_FROM: ${SMTP_FROM:-}
       SMTP_USERNAME: ${SMTP_USERNAME:-}
       SMTP_PASSWORD: ${SMTP_PASSWORD:-}
       SMTP_START_TLS: ${SMTP_START_TLS:-true}
