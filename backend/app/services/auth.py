@@ -84,10 +84,10 @@ class AuthService:
             await self.delivery.send_otp(email, code)
         except ProviderUnavailable as exc:
             await self.otp.cancel(otp_identity)
-            raise HTTPException(status_code=503, detail="Email delivery is not configured") from exc
+            raise HTTPException(status_code=422, detail="Email delivery is not configured") from exc
         except Exception:
             await self.otp.cancel(otp_identity)
-            raise HTTPException(status_code=503, detail="OTP delivery unavailable") from None
+            raise HTTPException(status_code=422, detail="OTP delivery unavailable") from None
 
     async def verify_customer(
         self,
