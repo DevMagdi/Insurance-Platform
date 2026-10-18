@@ -7,7 +7,6 @@ from unittest.mock import AsyncMock
 import pytest
 from fastapi import HTTPException
 from PIL import Image
-from sqlalchemy.exc import SQLAlchemyError
 from starlette.requests import Request
 
 from app.api.platform import _public_platform_brand, upload_platform_logo
@@ -41,7 +40,7 @@ async def test_public_brand_uses_default_identity_when_database_is_unavailable(
 ) -> None:
     class BrokenTransaction:
         async def __aenter__(self) -> None:
-            raise SQLAlchemyError("database unavailable")
+            raise RuntimeError("database unavailable")
 
         async def __aexit__(self, *_: object) -> None:
             return None

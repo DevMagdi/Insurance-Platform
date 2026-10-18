@@ -12,7 +12,6 @@ from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
 from fastapi.responses import HTMLResponse, JSONResponse
 from PIL import Image, UnidentifiedImageError
 from sqlalchemy import text
-from sqlalchemy.exc import SQLAlchemyError
 
 from app.api.deps import RequestContext, require_permission
 from app.db import purpose_transaction
@@ -37,7 +36,7 @@ async def _public_platform_brand(request: Request) -> dict[str, str]:
                 row = result.one_or_none()
                 if row is not None:
                     brand = {"platform_name": row.platform_name, "logo_url": row.logo_url}
-        except SQLAlchemyError:
+        except Exception:
             logger.warning("Unable to load platform brand; using default identity", exc_info=True)
     return brand
 

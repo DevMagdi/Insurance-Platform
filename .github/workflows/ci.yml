@@ -63,7 +63,18 @@ jobs:
         run: |
           set -euo pipefail
           smoke_stage='create test network'
-          trap 'status=$?; if [ "$status" -ne 0 ]; then echo "::error title=container smoke failed::stage=${smoke_stage:-unknown}; exit=${status}"; docker ps -a --no-trunc || true; for service in ci-api ci-api-next ci-redis ci-web ci-dev-proxy; do docker logs "$service" || true; done; fi; exit "$status"' EXIT
+          smoke_cleanup() {
+            status=$?
+            if [ "$status" -ne 0 ]; then
+              echo "::error title=container smoke failed::stage=${smoke_stage:-unknown}; exit=${status}"
+              docker ps -a --no-trunc || true
+              for service in ci-api ci-api-next ci-redis ci-web ci-dev-proxy; do
+                scripts/ci/annotate.sh "container logs: $service" sh -c "docker logs '$service'; exit 1" || true
+              done
+            fi
+            exit "$status"
+          }
+          trap smoke_cleanup EXIT
           docker network create ci-smoke
           python - <<'PY' > /tmp/smoke.env
           import base64, secrets
