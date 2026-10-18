@@ -24,6 +24,31 @@ describe('StaffLoginPage', () => {
     );
   });
 
+  it('verifies mobile staff OTP through the SMS challenge endpoint', async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes('/api/auth/staff/login')) {
+        return Response.json({ next_step: 'sms_otp', challenge: 'challenge-token' });
+      }
+      if (url.includes('/api/auth/staff/sms-otp/verify')) {
+        return Response.json({ authenticated_as: 'staff' });
+      }
+      return new Response('{}', { status: 404 });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    render(<StaffLoginPage />);
+    fireEvent.change(screen.getByLabelText(/بريد العمل/), { target: { value: 'agent@example.test' } });
+    fireEvent.change(screen.getByLabelText(/كلمة المرور/), { target: { value: 'correct-password' } });
+    fireEvent.click(screen.getByRole('button', { name: 'تسجيل الدخول' }));
+    await waitFor(() => expect(screen.getByLabelText(/رمز الدخول المرسل/)).toBeTruthy());
+    fireEvent.change(screen.getByLabelText(/رمز الدخول المرسل/), { target: { value: '123456' } });
+    fireEvent.click(screen.getByRole('button', { name: 'متابعة' }));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
+      '/api/auth/staff/sms-otp/verify',
+      expect.objectContaining({ method: 'POST' }),
+    ));
+  });
+
   it('starts authenticator enrollment when setup is required', async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);

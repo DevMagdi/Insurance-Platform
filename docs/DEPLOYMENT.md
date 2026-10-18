@@ -216,7 +216,7 @@ compares them.
 
 ## Staff invitations and employee profiles
 
-1. Apply Alembic through `20261018_31` before deploying the new UI. Existing staff
+1. Apply Alembic through `20261018_32` before deploying the updated UI. Existing staff
    (and bootstrap/seed accounts) belong to **الإدارة العامة** until an administrator
    assigns their actual department under **Users → employee photo → department**.
    Legacy accounts are explicitly shown as incomplete; no invented identity/photo
@@ -227,55 +227,39 @@ compares them.
    provider (then the most recently configured enabled one). A failed selected
    provider fails closed; it never falls back to a test address. Company-only
    connections and `sandbox_recipient` are not used for account invitations.
-3. If no workplace email connection is enabled, account mail uses the explicit
+3. Mobile-browser staff login OTPs are sent by the enabled **global Twilio SMS**
+   integration, not email. Configure its credentials and an operator-verified
+   `allowed_country_codes` value (for example `+20` only after confirming the
+   Twilio account can deliver to Egypt). Login fails closed if the staff profile has
+   no valid mobile or the SMS provider is not configured; no OTP is logged or
+   redirected to email.
+4. If no workplace email connection is enabled, account mail uses the explicit
    `SMTP_*` environment settings. Production refuses local/Mailpit/Mailtrap/sandbox
    SMTP hosts, test senders and unencrypted SMTP for account mail. For port 587 use
    `SMTP_START_TLS=true`, `SMTP_USE_TLS=false`; for implicit TLS on 465 use
-   `SMTP_START_TLS=false`, `SMTP_USE_TLS=true`. There is no local/sandbox mailbox fallback; authentication email uses the configured provider. Keep provider credentials outside Git/chat; use the existing secret store or the encrypted integrations form.
-4. Set `PUBLIC_APP_URL` to the real **HTTPS origin** serving the SPA, not localhost,
+   `SMTP_START_TLS=false`, `SMTP_USE_TLS=true`. There is no local/sandbox mailbox
+   fallback. Keep provider credentials outside Git/chat; use the existing secret
+   store or the encrypted integrations form.
+5. Set `PUBLIC_APP_URL` to the real **HTTPS origin** serving the SPA, not localhost,
    the API-only host or a test URL. A one-time `/invite#token=...` link expires in
    48 hours; the fragment avoids access-log/referrer leakage. Existing `?token=`
    links remain supported. Expired/pending invites can be re-sent in Users; the
    previous token is invalidated atomically. A provider rejection rolls back the
    new user/invitation (or reset/resend) rather than reporting success.
-5. **Platform identity:** the bootstrap administrator is the platform super admin.
+6. **Platform identity:** the bootstrap administrator is the platform super admin.
    Only this account can persist the platform name and logo under **Settings →
    Platform identity**. PNG/JPEG/WebP uploads are decoded, limited to 2 MiB and
    stored in PostgreSQL; text logos may instead reference a safe same-origin static
    path. The public browser title, favicon, PWA manifest and transactional mail read
    the active name/logo from the platform configuration. Apply migration
-   `20261018_31` before using this screen.
-6. **Customer directory:** global staff with `users.view` can search the full
+   `20261018_32` before using this screen.
+7. **Customer directory:** global staff with `users.view` can search the full
    customer profile, policies and complaint history under **Users → Customers**;
    the API and database function independently require global scope.
-5. Use a verified sender/domain (SPF, DKIM and DMARC). SES accounts must be out of
-   the SES sandbox to reach arbitrary addresses. Gmail/Outlook OAuth requires the
-   actual mail-send scopes. A successful API response means **provider acceptance**,
+8. Use a verified email sender/domain (SPF, DKIM and DMARC). SES accounts must be
+   out of the SES sandbox to reach arbitrary addresses. Gmail/Outlook OAuth requires
+   the actual mail-send scopes. A successful API response means **provider acceptance**,
    not proof of inbox delivery: check provider delivery/bounce logs and Spam/Junk.
    Run a deployment acceptance test by inviting an address you control on Gmail
    and on your company domain; open the actual email, complete the form, sign in,
    and click the photo from `/staff/admin` and `/staff/users`.
-
-The invitation form collects full name, Egyptian national ID, mobile, address,
-city/governorate, optional job title/emergency phone and a required JPEG/PNG/WebP
-photo (512 KiB maximum). Birth date is derived from the validated national ID.
-Email and department come from the invitation, not the public request. Images
-are decoded, bounded, resized to 512×512 and re-encoded as metadata-free JPEG;
-SVG/animation/corrupt images are refused. Both identity JSON and photo are
-row-bound AES-GCM encrypted inside PostgreSQL and included in key rotation.
-Directory lists expose no national ID/address/phone. Profile/photo reads require
-`users.view` **and global scope**; department writes require `users.edit`, global
-scope and CSRF. Global staff administrators can create/edit departments (name,
-optional description, active state) on `/staff/admin` or `/staff/users`. Inactive
-departments remain visible and retain existing employees, but cannot receive new
-invitations or assignments. The directory can be filtered by department; the
-profile shows personal data, department, roles, effective permissions and account
-security. Departments never grant role/team/complaint access. Do not cache these
-private APIs.
-
-Automated evidence: `backend/tests/test_staff_onboarding*.py` covers provider
-routing, SMTP recipient envelopes, transaction rollback, invitation replay/expiry,
-validation, encrypted photos, departments and authorization. The integration file
-uses a disposable real PostgreSQL database and a local SMTP server, **not Gmail**.
-Browser coverage is in `frontend/e2e/onboarding.spec.ts`; a separate live inbox
-acceptance test is still required after deploying real provider credentials.

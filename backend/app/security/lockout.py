@@ -33,7 +33,7 @@ POLICIES: dict[str, LockoutPolicy] = {
     "staff_login": LockoutPolicy(threshold=5, window=900, base_lock=300),
     "staff_login_ip": LockoutPolicy(threshold=30, window=900, base_lock=600),
     "staff_totp": LockoutPolicy(threshold=5, window=900, base_lock=300),
-    "staff_email_otp": LockoutPolicy(threshold=5, window=900, base_lock=300),
+    "staff_sms_otp": LockoutPolicy(threshold=5, window=900, base_lock=300),
     "otp_verify": LockoutPolicy(threshold=8, window=3600, base_lock=900),
 }
 

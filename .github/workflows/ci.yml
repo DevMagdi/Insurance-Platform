@@ -103,9 +103,10 @@ jobs:
             if curl -fsS http://127.0.0.1:18080/api/health/live >/dev/null; then break; fi
             sleep 2
           done
-          smoke_stage='verify production web proxy and SPA'
-          curl -fsS http://127.0.0.1:18080/api/health/live
-          curl -fsS http://127.0.0.1:18080/ | grep -qi '<div id="root"'
+          smoke_stage='verify production API health through edge'
+          curl --retry 10 --retry-connrefused --retry-delay 1 -fsS http://127.0.0.1:18080/api/health/live
+          smoke_stage='verify production SPA shell'
+          curl --retry 10 --retry-connrefused --retry-delay 1 -fsS http://127.0.0.1:18080/ | grep -qi '<div id="root"'
           # The staff console and CAPTCHA bootstrap both rely on the same-origin API proxy.
           smoke_stage='check /api/me and CAPTCHA config through production edge'
           test "$(curl -sS -o /dev/null -w '%{http_code}' http://127.0.0.1:18080/api/me)" = 401

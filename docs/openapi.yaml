@@ -219,12 +219,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
       security: []
-  /api/auth/staff/email-otp/verify:
+  /api/auth/staff/sms-otp/verify:
     post:
       tags:
       - auth
-      summary: Verify Staff Email Otp
-      operationId: verify_staff_email_otp_api_auth_staff_email_otp_verify_post
+      summary: Verify Staff Sms Otp
+      operationId: verify_staff_sms_otp_api_auth_staff_sms_otp_verify_post
       requestBody:
         content:
           application/json:
@@ -240,7 +240,7 @@ paths:
                 additionalProperties:
                   type: string
                 type: object
-                title: Response Verify Staff Email Otp Api Auth Staff Email Otp Verify
+                title: Response Verify Staff Sms Otp Api Auth Staff Sms Otp Verify
                   Post
         '422':
           description: Validation Error

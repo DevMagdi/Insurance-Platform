@@ -14,7 +14,7 @@ from urllib.parse import parse_qs, urlencode
 from uuid import NAMESPACE_URL, UUID, uuid4, uuid5
 
 from fastapi import HTTPException
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -57,6 +57,7 @@ from app.services.integration_providers import (
     build_provider,
     probe_provider,
 )
+from app.services.providers import ProviderUnavailable
 
 _TICKET_RE = re.compile(r"\bCMP-\d{4}-\d{6,}\b", re.IGNORECASE)
 _NATIONAL_ID_RE = re.compile(r"(?<!\d)\d{14}(?!\d)")
@@ -201,6 +202,27 @@ class IntegrationService:
         self.complaints = complaints or ComplaintRepository()
         self.attachments = attachments or AttachmentRepository()
         self.oauth_redirect_base = oauth_redirect_base.rstrip("/") if oauth_redirect_base else None
+
+    async def send_staff_otp(self, db: AsyncSession, mobile: str, code: str) -> None:
+        """Send the password-verified staff challenge through the global SMS provider."""
+        loaded = await self._load_credentials(db, None, "twilio_sms", fallback=False)
+        if loaded is None:
+            raise ProviderUnavailable("A global Twilio SMS integration is required")
+        _config_id, _company_id, config = loaded
+        platform_name = await db.scalar(
+            text("SELECT platform_name FROM app_security.public_platform_brand()")
+        )
+        brand = str(platform_name or "Insurance").strip()[:80] or "Insurance"
+        try:
+            await build_provider("twilio_sms", config).send(
+                SMSProviderRequest(
+                    recipient=mobile,
+                    body=f"{brand} staff verification code: {code}. Do not share this code.",
+                ),
+                idempotency_key="staff-otp-" + secrets.token_urlsafe(24),
+            )
+        except IntegrationProviderError as exc:
+            raise ProviderUnavailable("Staff SMS OTP delivery failed") from exc
 
     @staticmethod
     def _require_staff(scope: AccessScope) -> None:

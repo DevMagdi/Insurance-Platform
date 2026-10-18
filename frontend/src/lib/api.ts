@@ -270,6 +270,12 @@ export const staffApi = {
       body: { challenge, code },
     }),
 
+  smsOtpVerify: (challenge: string, code: string) =>
+    request<{ authenticated_as: string }>('/api/auth/staff/sms-otp/verify', {
+      method: 'POST',
+      body: { challenge, code },
+    }),
+
   totpEnrollStart: (challenge: string) =>
     request<{ provisioning_uri: string }>('/api/auth/staff/2fa/enroll/start', {
       method: 'POST',

@@ -44,7 +44,7 @@ PUBLIC = {
     "/api/auth/staff/invitation/inspect",
     "/api/auth/staff/password/change",
     "/api/auth/staff/2fa/verify",
-    "/api/auth/staff/email-otp/verify",
+    "/api/auth/staff/sms-otp/verify",
     "/api/auth/staff/2fa/enroll/start",
     "/api/auth/staff/2fa/enroll/confirm",
     "/api/public/config",

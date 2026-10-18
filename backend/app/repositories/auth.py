@@ -47,6 +47,15 @@ class StaffCredentials:
 
 
 class AuthRepository:
+    async def staff_profile_ciphertext_for_auth(
+        self, db: AsyncSession, user_id: UUID
+    ) -> bytes | None:
+        value = await db.scalar(
+            text("SELECT app_security.staff_profile_ciphertext_for_auth(:user_id)"),
+            {"user_id": user_id},
+        )
+        return bytes(value) if value is not None else None
+
     async def staff_by_email(self, db: AsyncSession, email: str) -> StaffCredentials | None:
         row = (
             await db.execute(

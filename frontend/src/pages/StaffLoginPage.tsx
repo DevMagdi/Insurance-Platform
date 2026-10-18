@@ -6,7 +6,7 @@ import { usePlatformBrand } from '../components/Branding';
 import { ErrorState, Field, TextInput, primaryButton } from '../components/ui';
 import { useCaptcha } from '../lib/captcha';
 
-type Step = 'credentials' | 'password_change' | 'totp_verify' | 'totp_setup';
+type Step = 'credentials' | 'password_change' | 'totp_verify' | 'sms_verify' | 'totp_setup';
 
 export function StaffLoginPage() {
   const { t } = useTranslation();
@@ -43,6 +43,7 @@ export function StaffLoginPage() {
       setChallenge(result.challenge);
       if (result.next_step === 'password_change') setStep('password_change');
       else if (result.next_step === 'totp_verify') setStep('totp_verify');
+      else if (result.next_step === 'sms_otp') setStep('sms_verify');
       else if (result.next_step === 'totp_setup') {
         setStep('totp_setup');
         const setup = await staffApi.totpEnrollStart(result.challenge);
@@ -69,6 +70,10 @@ export function StaffLoginPage() {
         setNewPassword('');
       } else if (step === 'totp_verify') {
         await staffApi.totpVerify(challenge, code);
+        navigate('/staff');
+        window.location.reload();
+      } else if (step === 'sms_verify') {
+        await staffApi.smsOtpVerify(challenge, code);
         navigate('/staff');
         window.location.reload();
       } else if (step === 'totp_setup') {
@@ -129,8 +134,8 @@ export function StaffLoginPage() {
               <code className="mt-2 block break-all text-xs" dir="ltr">{provisioningUri}</code>
             </div>
           )}
-          {(step === 'totp_verify' || step === 'totp_setup') && (
-            <Field label={t('staff.totp')}>
+          {(step === 'totp_verify' || step === 'sms_verify' || step === 'totp_setup') && (
+            <Field label={step === 'sms_verify' ? t('staff.smsOtp') : t('staff.totp')}>
               <TextInput inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" value={code} onChange={(e) => setCode(e.target.value)} required />
             </Field>
           )}

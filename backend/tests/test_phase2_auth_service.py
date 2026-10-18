@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import json
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from types import SimpleNamespace
@@ -19,6 +20,7 @@ from fastapi import HTTPException
 from app.db import Actor
 from app.domain.schemas import CustomerVerifyRequest
 from app.repositories.auth import AuthRepository, StaffCredentials
+from app.security.blobs import STAFF_PROFILE
 from app.services.auth import AuthService
 from app.services.providers import ProviderUnavailable
 from app.settings import Settings
@@ -75,6 +77,7 @@ async def fixture(
     for name in (
         "staff_by_email",
         "staff_by_id",
+        "staff_profile_ciphertext_for_auth",
         "customers_by_mobile",
         "customer_email_matches",
         "register_customer",
@@ -258,6 +261,34 @@ async def test_staff_unknown_disabled_forced_password_and_login(fixture: tuple) 
     assert outcome.tokens and outcome.next_step is None
     assert scopes["scoped"][-1] == Actor(fresh.id, "staff")
     repo.record_login.assert_awaited_once()
+
+
+async def test_mobile_staff_login_sends_sms_otp_and_verifies_once(fixture: tuple) -> None:
+    auth, repo, _delivery, _scopes, _redis = fixture
+    hashed = await auth.passwords.hash(PASSWORD)
+    account = staff(password_hash=hashed)
+    repo.staff_by_email.return_value = account
+    repo.staff_by_id.return_value = account
+    repo.current_version.return_value = account.token_version
+    repo.staff_profile_ciphertext_for_auth.return_value = auth.staff_profiles.blobs.encrypt(
+        json.dumps({"mobile": MOBILE}).encode(), purpose=STAFF_PROFILE, resource_id=account.id
+    )
+    sender = AsyncMock()
+    auth.staff_sms_sender = sender
+
+    login = await auth.staff_login(
+        account.email, PASSWORD, "127.0.0.1", "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0)"
+    )
+    assert login.next_step == "sms_otp" and login.tokens is None
+    sender.assert_awaited_once()
+    assert sender.await_args.args[0] == MOBILE
+    code = sender.await_args.args[1]
+    tokens = await auth.verify_staff_sms_otp(
+        login.challenge, code, "127.0.0.1", "Mozilla/5.0 (iPhone)"
+    )
+    assert auth.tokens.parse(tokens.access, "access").subject.id == account.id
+    with pytest.raises(HTTPException):
+        await auth.verify_staff_sms_otp(login.challenge, code, "127.0.0.1", "Mozilla/5.0 (iPhone)")
 
 
 async def test_totp_policy_required_enroll_confirm_verify(fixture: tuple) -> None:

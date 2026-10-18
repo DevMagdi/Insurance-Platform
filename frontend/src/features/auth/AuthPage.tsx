@@ -8,7 +8,7 @@ interface AuthPageProps {
   onAuthenticated: () => Promise<void> | void;
 }
 
-type AuthMode = 'login' | 'totp' | 'email-otp' | 'password-change' | 'totp-setup' | 'invite';
+type AuthMode = 'login' | 'totp' | 'sms-otp' | 'password-change' | 'totp-setup' | 'invite';
 
 interface StaffLoginResult {
   next_step: string | null;
@@ -67,8 +67,8 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
         setMode('totp');
         return;
       }
-      if (result.next_step === 'email_otp') {
-        setMode('email-otp');
+      if (result.next_step === 'sms_otp') {
+        setMode('sms-otp');
         return;
       }
       if (result.next_step === 'password_change') {
@@ -88,10 +88,10 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
     }));
   };
 
-  const verifyEmailOtp = (event: FormEvent<HTMLFormElement>) => {
+  const verifySmsOtp = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     void run(async () => {
-      await api('/api/auth/staff/email-otp/verify', {
+      await api('/api/auth/staff/sms-otp/verify', {
         method: 'POST',
         body: jsonBody({ challenge, code }),
       });
@@ -155,7 +155,7 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
   const modeTitle: Record<AuthMode, string> = {
     login: 'مرحباً بعودتك',
     totp: 'تحقق من هويتك',
-    'email-otp': 'تحقق من بريدك الإلكتروني',
+    'sms-otp': 'تحقق من هاتفك المحمول',
     'password-change': 'اختر كلمة مرور جديدة',
     'totp-setup': 'فعّل المصادقة الثنائية',
     invite: 'انضم إلى مساحة وَثيق',
@@ -192,8 +192,8 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
               ? 'سجّل الدخول للوصول إلى لوحة العمليات.'
               : mode === 'totp'
                 ? 'أدخل الرمز المكوّن من ٦ أرقام من تطبيق المصادقة.'
-                : mode === 'email-otp'
-                  ? 'أدخل رمز الدخول المكوّن من ٦ أرقام الذي أُرسل إلى بريدك الإلكتروني.'
+                : mode === 'sms-otp'
+                  ? 'أدخل رمز الدخول المكوّن من ٦ أرقام الذي أُرسل إلى هاتفك المحمول.'
                   : mode === 'password-change'
                   ? 'يلزم تحديث كلمة المرور قبل فتح مساحة العمل.'
                   : mode === 'totp-setup'
@@ -225,9 +225,9 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
             </form>
           )}
 
-          {mode === 'email-otp' && (
-            <form className="auth-form" onSubmit={verifyEmailOtp}>
-              <label className="field-label">رمز البريد الإلكتروني
+          {mode === 'sms-otp' && (
+            <form className="auth-form" onSubmit={verifySmsOtp}>
+              <label className="field-label">رمز الهاتف المحمول
                 <input autoFocus autoComplete="one-time-code" inputMode="numeric" maxLength={6} required value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, ''))} placeholder="000000" dir="ltr" />
               </label>
               <button className="button button-gold auth-submit" disabled={busy || code.length !== 6} type="submit">تحقق ومتابعة</button>

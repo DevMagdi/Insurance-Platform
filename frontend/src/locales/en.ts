@@ -203,6 +203,7 @@ export const en = {
     "password": "Password",
     "newPassword": "New password (12+ characters)",
     "totp": "6-digit authenticator code",
+    "smsOtp": "Verification code sent to your mobile phone",
     "provisioning": "Add this provisioning URI to your authenticator app, then enter its code:",
     "continue": "Continue",
     "workspace": "Staff workspace",

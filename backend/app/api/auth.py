@@ -127,12 +127,12 @@ async def change_password(item: ChangePasswordRequest, request: Request) -> dict
     return {"next_step": "sign_in_with_new_password"}
 
 
-@router.post("/auth/staff/email-otp/verify")
-async def verify_staff_email_otp(
+@router.post("/auth/staff/sms-otp/verify")
+async def verify_staff_sms_otp(
     item: TotpVerifyRequest, request: Request, response: Response
 ) -> dict[str, str]:
     auth = request.app.state.auth
-    tokens = await auth.verify_staff_email_otp(
+    tokens = await auth.verify_staff_sms_otp(
         item.challenge, item.code, client_ip(request), user_agent(request)
     )
     set_auth_cookies(response, tokens.access, tokens.refresh, auth.settings)

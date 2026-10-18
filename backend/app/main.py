@@ -140,7 +140,6 @@ async def install_state(
         return str(name or "Insurance")
 
     delivery = SMTPDelivery(settings, brand_loader=platform_name)
-    app.state.auth = AuthService(app.state.factory, redis, settings, delivery)
     keyring = settings.encryption_keyring()
     # Private binaries (attachments, export artifacts, call recordings) are encrypted
     # with this keyring and stored in PostgreSQL; no object storage is involved.
@@ -151,6 +150,14 @@ async def install_state(
         oauth_redirect_base=settings.public_app_url,
     )
     app.state.integrations = integrations_service
+
+    async def send_staff_sms_otp(mobile: str, code: str) -> None:
+        async with purpose_transaction(app.state.factory, "staff_auth") as db:
+            await integrations_service.send_staff_otp(db, mobile, code)
+
+    app.state.auth = AuthService(
+        app.state.factory, redis, settings, delivery, staff_sms_sender=send_staff_sms_otp
+    )
     protector = NationalIdProtector(keyring, decode_key(settings.app_blind_index_key))
     app.state.complaints = ComplaintService(
         ComplaintRepository(),
