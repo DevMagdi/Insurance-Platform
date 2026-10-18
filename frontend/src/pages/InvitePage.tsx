@@ -98,7 +98,7 @@ export function InvitePage() {
       {details.kind === 'invitation' && <>
         <Field label={ar ? 'الاسم الكامل' : 'Full name'}><TextInput required autoComplete="name" minLength={2} maxLength={120} value={name} onChange={(event) => setName(event.target.value)} /></Field>
         <Field label={ar ? 'الرقم القومي' : 'National ID'}><TextInput required dir="ltr" inputMode="numeric" pattern="[23][0-9]{13}" maxLength={14} value={nationalId} onChange={(event) => setNationalId(event.target.value)} /></Field>
-        <Field label={ar ? 'رقم الهاتف' : 'Phone number'}><TextInput required type="tel" dir="ltr" autoComplete="tel" pattern="\+201[0-9]{9}" placeholder="+201xxxxxxxxx" value={mobile} onChange={(event) => setMobile(event.target.value)} /></Field>
+        <Field label={ar ? 'رقم الموبايل' : 'Mobile number'}><TextInput required type="tel" dir="ltr" autoComplete="tel" pattern="\+201[0-9]{9}" placeholder="+201xxxxxxxxx" value={mobile} onChange={(event) => setMobile(event.target.value)} /></Field>
         <Field label={ar ? 'العنوان' : 'Address'}><TextInput required autoComplete="street-address" minLength={5} maxLength={500} value={address} onChange={(event) => setAddress(event.target.value)} /></Field>
         <Field label={ar ? 'المدينة / المحافظة' : 'City / Governorate'}><TextInput required autoComplete="address-level2" minLength={2} maxLength={120} value={city} onChange={(event) => setCity(event.target.value)} /></Field>
         <Field label={ar ? 'المسمى الوظيفي (اختياري)' : 'Job title (optional)'}><TextInput autoComplete="organization-title" maxLength={120} value={jobTitle} onChange={(event) => setJobTitle(event.target.value)} /></Field>

@@ -19,6 +19,7 @@ from app.domain.schemas import (
     CsatRequest,
     CustomerProfileUpdate,
     GuestTrackRequest,
+    NotificationPreferences,
     ReplyRequest,
     VoiceConsentRequest,
 )
@@ -219,8 +220,29 @@ async def update_customer_profile(
     ctx: RequestContext = Depends(require_customer),
     _: None = Depends(csrf_required),
 ) -> dict[str, Any]:
+    repository = CustomerProfileRepository()
+    # True PATCH semantics: a field the client did not send keeps its stored
+    # value. The SECURITY DEFINER helper still validates the merged payload, so
+    # no invariant (name length, email shape, preference keys) is bypassed.
+    sent = item.model_fields_set
+    if not {"full_name", "email", "whatsapp_available", "notification_preferences"} <= sent:
+        current = await repository.profile(ctx.db)
+        if current is None:
+            raise HTTPException(status_code=404, detail="Customer unavailable")
+        merge: dict[str, Any] = {}
+        if "full_name" not in sent or item.full_name is None:
+            merge["full_name"] = current["full_name"]
+        if "email" not in sent:
+            merge["email"] = current["email"]
+        if "whatsapp_available" not in sent:
+            merge["whatsapp_available"] = current["whatsapp_available"]
+        if "notification_preferences" not in sent:
+            merge["notification_preferences"] = NotificationPreferences.model_validate(
+                current["notification_preferences"]
+            )
+        item = item.model_copy(update=merge)
     try:
-        profile = await CustomerProfileRepository().update(ctx.db, item)
+        profile = await repository.update(ctx.db, item)
     except Exception as exc:  # The definer raises 22023 for invalid payloads.
         if "22023" in str(exc) or "invalid customer profile" in str(exc):
             raise HTTPException(status_code=422, detail="Invalid customer profile") from exc

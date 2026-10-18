@@ -173,7 +173,7 @@ export const en = {
   "profile": {
     "title": "My profile",
     "subtitle": "Your details and notifications in one place.",
-    "mobile": "Mobile",
+    "mobile": "Mobile number",
     "nationalId": "National ID",
     "prefsTitle": "Complaint status notifications",
     "email": "Email",

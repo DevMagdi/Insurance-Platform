@@ -1,0 +1,597 @@
+[
+  {
+    "section": "S5 staff auth",
+    "name": "wrong password -> 401 uniform 'Invalid credentials'",
+    "status": "PASS",
+    "expected": "401",
+    "actual": "401 {\"detail\":\"Invalid credentials\"}"
+  },
+  {
+    "section": "S5 staff auth",
+    "name": "[SECURITY] unknown staff email -> identical 401 (no enumeration)",
+    "status": "PASS",
+    "expected": "same body",
+    "actual": "401 {\"detail\":\"Invalid credentials\"}"
+  },
+  {
+    "section": "S5b invitation",
+    "name": "admin creates a department -> 201 with id",
+    "status": "PASS",
+    "expected": "201 + id",
+    "actual": "201 {\"id\":\"0f94f6b2-1b23-4649-9bd9-a4be5fc2299e\",\"name\":\"QA Dept f06f\",\"description\":\"QA onboarding depa"
+  },
+  {
+    "section": "S5b invitation",
+    "name": "admin invites staff -> 2xx and invitation e-mail queued",
+    "status": "PASS",
+    "expected": "2xx",
+    "actual": "202 {\"id\":\"b24216a6-ad00-4d17-aefe-0969309219ac\",\"message\":\"Invitation accepted by the configured email provider\"}"
+  },
+  {
+    "section": "S5b invitation",
+    "name": "invitation e-mail delivered through the SMTP provider with a token URL",
+    "status": "PASS",
+    "expected": "token in mail",
+    "actual": "mail=True token=True"
+  },
+  {
+    "section": "S5b invitation",
+    "name": "invite inspect -> 200 with name/email, no user id leak",
+    "status": "PASS",
+    "expected": "details, no id",
+    "actual": "200 {\"kind\":\"invitation\",\"email\":\"invitee.4c25e5ea@qa.example.com\",\"full_name\":\"QA Invitee\",\"department_name\":\"QA Dept f06f\""
+  },
+  {
+    "section": "S5b invitation",
+    "name": "[SECURITY] accept with common/weak password -> 422 stable message (no internals)",
+    "status": "PASS",
+    "expected": "422 stable",
+    "actual": "422 {\"detail\":\"Invitation or password is invalid\"}"
+  },
+  {
+    "section": "S5b invitation",
+    "name": "accept with too-short password -> 422 schema validation (token NOT consumed)",
+    "status": "PASS",
+    "expected": "422",
+    "actual": "422"
+  },
+  {
+    "section": "S5b invitation",
+    "name": "accept with profile + avatar -> 200 sign_in_with_password",
+    "status": "PASS",
+    "expected": "200",
+    "actual": "200 {\"next_step\":\"sign_in_with_password\"}"
+  },
+  {
+    "section": "S5b invitation",
+    "name": "[SECURITY] invitation token is single-use (replay -> 400)",
+    "status": "PASS",
+    "expected": "400",
+    "actual": "400 {\"detail\":\"Invalid or expired invitation\"}"
+  },
+  {
+    "section": "S5b invitation",
+    "name": "invitee signs in with the chosen password -> session with zero permissions",
+    "status": "PASS",
+    "expected": "empty effective access",
+    "actual": "200 {\"kind\":\"staff\",\"access\":{\"id\":\"b24216a6-ad00-4d17-aefe-0969309219ac\",\"email\":\"invitee.4c25e5ea@qa.e"
+  },
+  {
+    "section": "S5b invitation",
+    "name": "[SECURITY] mobile-UA staff login -> SMS OTP path fails GRACEFULLY (503, no raw config error)",
+    "status": "PASS",
+    "expected": "graceful 503",
+    "actual": "503 {\"detail\":\"SMS delivery is not configured\"}"
+  },
+  {
+    "section": "S5b invitation",
+    "name": "assumption: SMS path",
+    "status": "INFO",
+    "expected": "",
+    "actual": "Twilio is not configured locally; the SMS login branch must 503 gracefully (invitee HAS a profile mobile, seeded demo staff do not)"
+  },
+  {
+    "section": "S5b invitation",
+    "name": "[SECURITY] freshly-onboarded staff without roles -> complaints 403",
+    "status": "PASS",
+    "expected": "403",
+    "actual": "403"
+  },
+  {
+    "section": "S6 permissions",
+    "name": "admin /api/me -> full permission catalog + global scope",
+    "status": "PASS",
+    "expected": ">=34 permissions, all_companies",
+    "actual": "{\"kind\":\"staff\",\"access\":{\"id\":\"e74a9bdb-1fda-4d0b-a294-b8c3aae3e69b\",\"email\":\"admin@demo.example\",\"roles\":[\"d70107ed-12"
+  },
+  {
+    "section": "S6 permissions",
+    "name": "agent effective access -> company0 + health + own",
+    "status": "PASS",
+    "expected": "scoped",
+    "actual": "{\"all_companies\": false, \"insurance_types\": [\"health\"], \"ownership\": \"own\"}"
+  },
+  {
+    "section": "S6 permissions",
+    "name": "permission matrix: analyst GET /api/staff/users -> 403",
+    "status": "PASS",
+    "expected": "403",
+    "actual": "403 {\"detail\":\"Permission denied\"}"
+  },
+  {
+    "section": "S6 permissions",
+    "name": "permission matrix: analyst GET /api/staff/analytics/overview -> 200",
+    "status": "PASS",
+    "expected": "200",
+    "actual": "200 {\"kpis\":{\"total\":433,\"new\":45,\"assigned\":56,\"in_review\":136,\"resolved\":121,\"reop"
+  },
+  {
+    "section": "S6 permissions",
+    "name": "permission matrix: agent GET /api/staff/users -> 403",
+    "status": "PASS",
+    "expected": "403",
+    "actual": "403 {\"detail\":\"Permission denied\"}"
+  },
+  {
+    "section": "S6 permissions",
+    "name": "permission matrix: agent GET /api/staff/roles -> 403",
+    "status": "PASS",
+    "expected": "403",
+    "actual": "403 {\"detail\":\"Permission denied\"}"
+  },
+  {
+    "section": "S6 permissions",
+    "name": "permission matrix: agent GET /api/staff/audit/events -> 403",
+    "status": "PASS",
+    "expected": "403",
+    "actual": "403 {\"detail\":\"Permission denied\"}"
+  },
+  {
+    "section": "S6 permissions",
+    "name": "permission matrix: agent GET /api/staff/storage -> 403",
+    "status": "PASS",
+    "expected": "403",
+    "actual": "403 {\"detail\":\"Permission denied\"}"
+  },
+  {
+    "section": "S6 permissions",
+    "name": "permission matrix: supervisor GET /api/staff/users -> 200",
+    "status": "PASS",
+    "expected": "200",
+    "actual": "200 []"
+  },
+  {
+    "section": "S6 permissions",
+    "name": "permission matrix: supervisor GET /api/staff/storage -> 403",
+    "status": "PASS",
+    "expected": "403",
+    "actual": "403 {\"detail\":\"Permission denied\"}"
+  },
+  {
+    "section": "S6 permissions",
+    "name": "permission matrix: admin GET /api/staff/storage -> 200",
+    "status": "PASS",
+    "expected": "200",
+    "actual": "200 {\"backend\":\"postgresql\",\"store\":\"insurance-platform\",\"status\":\"online\",\"prefix\":"
+  },
+  {
+    "section": "S6 permissions",
+    "name": "permission matrix: admin GET /api/staff/users -> 200",
+    "status": "PASS",
+    "expected": "200",
+    "actual": "200 [{\"id\":\"e74a9bdb-1fda-4d0b-a294-b8c3aae3e69b\",\"email\":\"admin@demo.example\",\"full"
+  },
+  {
+    "section": "S6 permissions",
+    "name": "permission matrix: admin GET /api/staff/audit/events -> 200",
+    "status": "PASS",
+    "expected": "200",
+    "actual": "200 [{\"id\":\"f7aa302a-80f7-4daa-81f7-7e3a7b0ffb3e\",\"created_at\":\"2026-10-18T20:28:02."
+  },
+  {
+    "section": "S6 permissions",
+    "name": "[SECURITY] supervisor analytics.export DENY override wins over role grant -> 403",
+    "status": "PASS",
+    "expected": "403",
+    "actual": "403 {\"detail\":\"Permission denied\"}"
+  },
+  {
+    "section": "S6 permissions",
+    "name": "[SECURITY] customer session on staff route -> 403 (vertical escalation blocked)",
+    "status": "PASS",
+    "expected": "403",
+    "actual": "403 {\"detail\":\"Staff account required\"}"
+  },
+  {
+    "section": "S6 permissions",
+    "name": "[SECURITY] anonymous on staff route -> 401",
+    "status": "PASS",
+    "expected": "401",
+    "actual": "401"
+  },
+  {
+    "section": "S7 scope",
+    "name": "access snapshots: agent companies subset of supervisor, admin global",
+    "status": "PASS",
+    "expected": "nested scopes",
+    "actual": "agent=['7176046f-231d-47f6-ae62-50716d1f9a90'] sup=['5fafac43-6d54-44eb-ae58-b2fd7d841778', '7176046f-231d-47f6-ae62-50716d1f9a90']"
+  },
+  {
+    "section": "S7 scope",
+    "name": "[SECURITY] agent scoped list -> only own-company + health rows",
+    "status": "PASS",
+    "expected": "no out-of-scope rows",
+    "actual": "100 rows, 0 leaks"
+  },
+  {
+    "section": "S7 scope",
+    "name": "[SECURITY] agent ownership=own -> every listed row is self-assigned",
+    "status": "PASS",
+    "expected": "all self-assigned",
+    "actual": "100 rows, all own"
+  },
+  {
+    "section": "S7 scope",
+    "name": "[SECURITY] agent filter by out-of-scope company -> empty (scope beats filter)",
+    "status": "PASS",
+    "expected": "empty",
+    "actual": "200 n=0"
+  },
+  {
+    "section": "S7 scope",
+    "name": "[SECURITY] agent GET out-of-scope ticket detail -> 404 (indistinguishable)",
+    "status": "PASS",
+    "expected": "404",
+    "actual": "404 {\"detail\":\"Complaint not found\"}"
+  },
+  {
+    "section": "S7 scope",
+    "name": "[SECURITY] agent search cannot surface out-of-scope ticket",
+    "status": "PASS",
+    "expected": "not found",
+    "actual": "0 rows"
+  },
+  {
+    "section": "S7 scope",
+    "name": "scoped counters < global counters (RLS applied to aggregates)",
+    "status": "PASS",
+    "expected": "agent total < admin total",
+    "actual": "262 vs 5012"
+  },
+  {
+    "section": "S7 scope",
+    "name": "analyst (all companies, complaints.view) sees cross-company rows",
+    "status": "PASS",
+    "expected": "200",
+    "actual": "200"
+  },
+  {
+    "section": "S7 scope",
+    "name": "[SECURITY] analyst cannot assign (no complaints.assign) -> 403",
+    "status": "PASS",
+    "expected": "403",
+    "actual": "403"
+  },
+  {
+    "section": "S8 sessions",
+    "name": "refresh with CSRF -> 200 and rotated cookies",
+    "status": "PASS",
+    "expected": "rotated",
+    "actual": "200"
+  },
+  {
+    "section": "S8 sessions",
+    "name": "[SECURITY] refresh without CSRF header -> 403",
+    "status": "PASS",
+    "expected": "403",
+    "actual": "403"
+  },
+  {
+    "section": "S8 sessions",
+    "name": "[SECURITY] replayed old refresh token -> 401",
+    "status": "PASS",
+    "expected": "401",
+    "actual": "401"
+  },
+  {
+    "section": "S8 sessions",
+    "name": "[SECURITY] token family revoked after replay (new refresh also dead) -> 401",
+    "status": "PASS",
+    "expected": "401",
+    "actual": "401"
+  },
+  {
+    "section": "S8 sessions",
+    "name": "[SECURITY] access token from revoked family rejected on next request -> 401",
+    "status": "PASS",
+    "expected": "401",
+    "actual": "401 {\"detail\":\"Authentication required\"}"
+  },
+  {
+    "section": "S8 sessions",
+    "name": "[SECURITY] tampered JWT signature -> 401",
+    "status": "PASS",
+    "expected": "401",
+    "actual": ""
+  },
+  {
+    "section": "S8 sessions",
+    "name": "GET /api/me/sessions -> list with current flag",
+    "status": "PASS",
+    "expected": "200 + current",
+    "actual": "200"
+  },
+  {
+    "section": "S8 sessions",
+    "name": "revoke another own session -> 200",
+    "status": "PASS",
+    "expected": "200",
+    "actual": "200"
+  },
+  {
+    "section": "S8 sessions",
+    "name": "[SECURITY] revoke unknown/foreign session id -> 404",
+    "status": "PASS",
+    "expected": "404",
+    "actual": "404"
+  },
+  {
+    "section": "S8 sessions",
+    "name": "[SECURITY] admin force-logout -> target session dead on next request",
+    "status": "PASS",
+    "expected": "200 then 401",
+    "actual": "200/401"
+  },
+  {
+    "section": "S9 totp",
+    "name": "TOTP",
+    "status": "INFO",
+    "expected": "",
+    "actual": "already enrolled from a previous run; using saved secret"
+  },
+  {
+    "section": "S9 totp",
+    "name": "rerun login -> totp_verify challenge; correct TOTP -> session",
+    "status": "PASS",
+    "expected": "session (probe + S5 admin)",
+    "actual": "200 {\"authenticated_as\":\"staff\"}"
+  },
+  {
+    "section": "S10 lifecycle",
+    "name": "lifecycle ticket created",
+    "status": "PASS",
+    "expected": "201",
+    "actual": "201"
+  },
+  {
+    "section": "S10 lifecycle",
+    "name": "[SECURITY] supervisor (ownership=team) cannot see unassigned ticket -> 404",
+    "status": "PASS",
+    "expected": "404",
+    "actual": "404"
+  },
+  {
+    "section": "S10 lifecycle",
+    "name": "[SECURITY] agent (ownership=own) cannot see unassigned ticket -> 404",
+    "status": "PASS",
+    "expected": "404",
+    "actual": "404"
+  },
+  {
+    "section": "S10 lifecycle",
+    "name": "[SECURITY] agent self-assign without complaints.assign -> 403",
+    "status": "PASS",
+    "expected": "403",
+    "actual": "403"
+  },
+  {
+    "section": "S10 lifecycle",
+    "name": "admin assigns ticket to agent+team -> status assigned",
+    "status": "PASS",
+    "expected": "assigned",
+    "actual": "200 {\"id\":\"e438c610-f31f-4a60-acfc-8c06103a12b0\",\"assigned_agent_id\":\"a27f4205-6496-44c8-b149-74439441b1"
+  },
+  {
+    "section": "S10 lifecycle",
+    "name": "supervisor sees the assigned team ticket via ticket_no filter",
+    "status": "PASS",
+    "expected": "found",
+    "actual": "200 n=1"
+  },
+  {
+    "section": "S10 lifecycle",
+    "name": "assigned agent (ownership=own) can now open the ticket",
+    "status": "PASS",
+    "expected": "200",
+    "actual": "200"
+  },
+  {
+    "section": "S10 lifecycle",
+    "name": "agent public reply -> 2xx",
+    "status": "PASS",
+    "expected": "2xx",
+    "actual": "200 {\"id\":\"12388733-9a2e-474b-b534-224036230f32\",\"created_at\":\"2026-10-18T20:28:04.7"
+  },
+  {
+    "section": "S10 lifecycle",
+    "name": "agent internal note -> 2xx",
+    "status": "PASS",
+    "expected": "2xx",
+    "actual": "200 {\"id\":\"1c1c8d20-a6af-4972-b465-5f0a25abdcd3\",\"created_at\":\"2026-10-18T20:28:04.8"
+  },
+  {
+    "section": "S10 lifecycle",
+    "name": "[SECURITY] internal note NEVER visible in customer timeline",
+    "status": "PASS",
+    "expected": "note hidden",
+    "actual": "200 leaked=False"
+  },
+  {
+    "section": "S10 lifecycle",
+    "name": "customer DOES see the public reply",
+    "status": "PASS",
+    "expected": "reply visible",
+    "actual": "True"
+  },
+  {
+    "section": "S10 lifecycle",
+    "name": "agent moves assigned -> in_review",
+    "status": "PASS",
+    "expected": "200",
+    "actual": "200 {\"status\":\"in_review\"}"
+  },
+  {
+    "section": "S10 lifecycle",
+    "name": "illegal transition in_review -> new rejected",
+    "status": "PASS",
+    "expected": "4xx",
+    "actual": "422"
+  },
+  {
+    "section": "S10 lifecycle",
+    "name": "[SECURITY] agent escalate without complaints.escalate -> 403",
+    "status": "PASS",
+    "expected": "403",
+    "actual": "403"
+  },
+  {
+    "section": "S10 lifecycle",
+    "name": "supervisor escalate -> queued for insurer delivery",
+    "status": "PASS",
+    "expected": "queued",
+    "actual": "200 {\"id\":\"e438c610-f31f-4a60-acfc-8c06103a12b0\",\"status\":\"transferred\",\"delivery\":\"queued\"}"
+  },
+  {
+    "section": "S10 lifecycle",
+    "name": "supervisor resolves ticket",
+    "status": "PASS",
+    "expected": "200",
+    "actual": "200"
+  },
+  {
+    "section": "S10 lifecycle",
+    "name": "customer reopens within window -> allowed",
+    "status": "PASS",
+    "expected": "200",
+    "actual": "200 {\"status\":\"reopened\"}"
+  },
+  {
+    "section": "S10 lifecycle",
+    "name": "CSAT after resolution -> accepted",
+    "status": "PASS",
+    "expected": "2xx",
+    "actual": "200 {\"score\":5,\"submitted\":true}"
+  },
+  {
+    "section": "S10 lifecycle",
+    "name": "duplicate CSAT -> rejected",
+    "status": "PASS",
+    "expected": "4xx",
+    "actual": "409"
+  },
+  {
+    "section": "S10 lifecycle",
+    "name": "[SECURITY] agent NID reveal without permission -> 403",
+    "status": "PASS",
+    "expected": "403",
+    "actual": "403"
+  },
+  {
+    "section": "S10 lifecycle",
+    "name": "NID reveal with too-short reason -> 422",
+    "status": "PASS",
+    "expected": "422",
+    "actual": "422"
+  },
+  {
+    "section": "S10 lifecycle",
+    "name": "admin NID reveal with reason -> 200 returns full ID",
+    "status": "PASS",
+    "expected": "full NID",
+    "actual": "200 {\"national_id\":\"30105200431063\"}"
+  },
+  {
+    "section": "S10 lifecycle",
+    "name": "staff CSV export (GET, flat ComplaintFilter) -> 200 text/csv",
+    "status": "PASS",
+    "expected": "200 text/csv",
+    "actual": "200 ct=text/csv; charset=utf-8 ﻿ticket_no,created_at,company_id,insurance_type,status,subject,policy_number\r\nCMP-2026-005013,2026-1"
+  },
+  {
+    "section": "S10 lifecycle",
+    "name": "CSV export with invalid filter -> 422 (not 500)",
+    "status": "PASS",
+    "expected": "422",
+    "actual": "422"
+  },
+  {
+    "section": "S10 lifecycle",
+    "name": "CSV export with formula-like search term does not 500",
+    "status": "PASS",
+    "expected": "<500",
+    "actual": "200"
+  },
+  {
+    "section": "S10 lifecycle",
+    "name": "audit events list -> 200 and contains the reveal event",
+    "status": "PASS",
+    "expected": "reveal audited",
+    "actual": "200"
+  },
+  {
+    "section": "S11 websocket",
+    "name": "[SECURITY] WS cross-origin -> rejected/closed",
+    "status": "PASS",
+    "expected": "",
+    "actual": "server rejected WebSocket connection: HTTP 403"
+  },
+  {
+    "section": "S11 websocket",
+    "name": "[SECURITY] WS without cookies -> rejected/closed",
+    "status": "PASS",
+    "expected": "",
+    "actual": "server rejected WebSocket connection: HTTP 403"
+  },
+  {
+    "section": "S11 websocket",
+    "name": "WS authenticated staff -> snapshot payload",
+    "status": "PASS",
+    "expected": "snapshot json",
+    "actual": "{'type': 'snapshot', 'items': [{'id': 'e438c610-f31f-4a60-acfc-8c06103a12b0', 'ticket_no': 'CMP-2026"
+  },
+  {
+    "section": "S12 platform",
+    "name": "[SECURITY] /metrics without bearer token -> 401/403/404 (hidden)",
+    "status": "PASS",
+    "expected": "401/403/404",
+    "actual": "404"
+  },
+  {
+    "section": "S12 platform",
+    "name": "/metrics with token -> 200 prometheus text",
+    "status": "PASS",
+    "expected": "200 + metrics",
+    "actual": "200 b'# HELP python_gc_objects_collected_total Objects collected d'"
+  },
+  {
+    "section": "S12 platform",
+    "name": "/docs available in development",
+    "status": "PASS",
+    "expected": "200",
+    "actual": "200"
+  },
+  {
+    "section": "S12 platform",
+    "name": "anonymous IDOR probe -> uniform 401 (not counted toward abuse block by design)",
+    "status": "PASS",
+    "expected": "401",
+    "actual": "401"
+  },
+  {
+    "section": "S12 platform",
+    "name": "[SECURITY] abuse detector blocks authenticated IDOR-probing user (429 Temporarily blocked)",
+    "status": "PASS",
+    "expected": "429 blocked",
+    "actual": "denied=41 final=429 {\"detail\": \"Temporarily blocked; try later\"}"
+  }
+]

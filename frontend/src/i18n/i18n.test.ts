@@ -49,3 +49,36 @@ describe('i18n resources', () => {
     expect([...en].filter((key) => !ar.has(key))).toEqual([]);
   });
 });
+
+/**
+ * Regression guard for the canonical Arabic mobile label. The customer-facing
+ * field was labelled "الجوال"/"رقم الجوال" and had to become "رقم الموبايل"
+ * consistently across registration (login), the complaint wizard and the
+ * profile, with "Mobile number" as the English counterpart.
+ */
+describe('mobile field labels', () => {
+  const MOBILE_KEYS = ['auth.mobile', 'wizard.mobile', 'profile.mobile'];
+
+  it('labels every customer mobile field "رقم الموبايل" in Arabic', async () => {
+    await i18n.changeLanguage('ar');
+    for (const key of MOBILE_KEYS) {
+      expect(i18n.t(key), `ar:${key}`).toBe('رقم الموبايل');
+    }
+    expect(i18n.t('validation.mobile')).toContain('رقم موبايل مصري');
+  });
+
+  it('labels every customer mobile field "Mobile number" in English', async () => {
+    await i18n.changeLanguage('en');
+    for (const key of MOBILE_KEYS) {
+      expect(i18n.t(key), `en:${key}`).toBe('Mobile number');
+    }
+  });
+
+  it('never renders the deprecated wording "جوال" anywhere', async () => {
+    for (const lng of ['ar', 'en'] as const) {
+      await i18n.changeLanguage(lng);
+      const bundle = JSON.stringify(i18n.getResourceBundle(lng, 'translation'));
+      expect(bundle, `${lng} bundle`).not.toContain('جوال');
+    }
+  });
+});

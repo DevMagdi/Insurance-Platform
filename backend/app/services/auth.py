@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 import json
+import logging
 import re
 import secrets
 from collections.abc import Awaitable, Callable
@@ -31,6 +32,17 @@ from app.services.providers import Delivery, ProviderUnavailable
 from app.services.staff_mail import StaffMailService, invitation_url
 from app.services.staff_profiles import StaffProfileService
 from app.settings import Settings
+
+logger = logging.getLogger(__name__)
+
+# One customer-safe message for every OTP delivery failure. It deliberately
+# does not distinguish "provider unconfigured" from "provider errored": the
+# public endpoint must not become an oracle for the operator's environment,
+# and a person signing in cannot act on infrastructure wording. The true
+# cause is logged server-side instead.
+OTP_DELIVERY_FAILED = (
+    "We could not send your verification code right now. Please try again in a few minutes."
+)
 
 
 @dataclass(frozen=True)
@@ -81,13 +93,26 @@ class AuthService:
         otp_identity = f"{mobile}:{email_identity}"
         code = await self.otp.start(otp_identity)
         try:
-            await self.delivery.send_otp(email, code)
-        except ProviderUnavailable as exc:
+            # Deliver to the same normalized address the OTP identity uses, so
+            # a direct service caller cannot split the delivery target and the
+            # verification identity by casing or whitespace.
+            await self.delivery.send_otp(email_identity, code)
+        except ProviderUnavailable:
+            # Cancel the pending code so a retry is not blocked by the
+            # "wait for the current code to expire" cooldown, log the real
+            # cause for operators, and answer the customer with one graceful,
+            # actionable message that leaks nothing about SMTP configuration.
             await self.otp.cancel(otp_identity)
-            raise HTTPException(status_code=422, detail="Email delivery is not configured") from exc
+            logger.warning("customer OTP delivery provider unavailable", exc_info=True)
+            raise HTTPException(
+                status_code=503, detail=OTP_DELIVERY_FAILED, headers={"Retry-After": "120"}
+            ) from None
         except Exception:
             await self.otp.cancel(otp_identity)
-            raise HTTPException(status_code=422, detail="OTP delivery unavailable") from None
+            logger.warning("customer OTP delivery failed", exc_info=True)
+            raise HTTPException(
+                status_code=503, detail=OTP_DELIVERY_FAILED, headers={"Retry-After": "120"}
+            ) from None
 
     async def verify_customer(
         self,

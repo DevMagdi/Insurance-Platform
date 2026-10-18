@@ -1,0 +1,534 @@
+[
+  {
+    "section": "S1 health",
+    "name": "GET /api/health/live -> 200 ok",
+    "status": "PASS",
+    "expected": "200 {'status':'ok'}",
+    "actual": "200 {\"status\":\"ok\"}"
+  },
+  {
+    "section": "S1 health",
+    "name": "GET /api/health/ready -> 200 ready",
+    "status": "PASS",
+    "expected": "200",
+    "actual": "200"
+  },
+  {
+    "section": "S1 health",
+    "name": "GET /api/public/config -> captcha null + policy version",
+    "status": "PASS",
+    "expected": "captcha null",
+    "actual": "{\"captcha\":null,\"privacy_policy_version\":\"2026-10\",\"platform_name\":\"Insurance\",\"logo_url\":\"/insurance-logo.svg\"}"
+  },
+  {
+    "section": "S1 health",
+    "name": "companies list is cacheable (public, max-age=300)",
+    "status": "PASS",
+    "expected": "public, max-age=300",
+    "actual": "public, max-age=300, stale-while-revalidate=60"
+  },
+  {
+    "section": "S1 health",
+    "name": "QA FINDING (low, docs)",
+    "status": "INFO",
+    "expected": "",
+    "actual": "docs/API.md claims GET /api/public/config is 'public, max-age=300' but the code sends 'no-store' (platform.py:47). Code is fine (brand data); docs stale."
+  },
+  {
+    "section": "S1 health",
+    "name": "GET /api/companies -> seeded insurers listed publicly",
+    "status": "PASS",
+    "expected": ">=4 companies",
+    "actual": "200 n=4"
+  },
+  {
+    "section": "S1 health",
+    "name": "security headers on API responses",
+    "status": "PASS",
+    "expected": "nosniff + CSP",
+    "actual": "{'x-content-type-options': 'nosniff', 'x-frame-options': 'DENY', 'content-security-policy': \"default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-a"
+  },
+  {
+    "section": "S1 health",
+    "name": "Vite same-origin proxy /api -> API works",
+    "status": "PASS",
+    "expected": "200",
+    "actual": "200"
+  },
+  {
+    "section": "S1 health",
+    "name": "SPA served at / with root div",
+    "status": "PASS",
+    "expected": "200 + #root",
+    "actual": "200"
+  },
+  {
+    "section": "S2 registration",
+    "name": "[CRITICAL] new email + new mobile: otp/start -> 202 (no config error)",
+    "status": "PASS",
+    "expected": "202",
+    "actual": "202 {\"message\":\"A one-time code has been sent to your email\"}"
+  },
+  {
+    "section": "S2 registration",
+    "name": "[CRITICAL] OTP e-mail actually delivered to the new address",
+    "status": "PASS",
+    "expected": "mail with 6-digit code",
+    "actual": "code=246360"
+  },
+  {
+    "section": "S2 registration",
+    "name": "verify without identity -> 409 asking for national ID + name",
+    "status": "PASS",
+    "expected": "409 Provide national ID and name to register",
+    "actual": "409 {\"detail\":\"Provide national ID and name to register\"}"
+  },
+  {
+    "section": "S2 registration",
+    "name": "[CRITICAL] registration completes -> 200 authenticated_as customer",
+    "status": "PASS",
+    "expected": "200 customer",
+    "actual": "200 {\"authenticated_as\":\"customer\"}"
+  },
+  {
+    "section": "S2 registration",
+    "name": "session cookies set (HttpOnly access + refresh + csrf)",
+    "status": "PASS",
+    "expected": "3 cookies",
+    "actual": "['access_token', 'csrf_token', 'refresh_token']"
+  },
+  {
+    "section": "S2 registration",
+    "name": "GET /api/me -> customer identity with masked national ID",
+    "status": "PASS",
+    "expected": "masked NID",
+    "actual": "{\"kind\":\"customer\",\"id\":\"7b01102d-8e52-488e-bd3f-6fd438725092\",\"full_name\":\"عميل جديد QA\",\"mobile\":\"+201155208490\",\"email\":\"brand.new.330448ad@example.com\",\"nat"
+  },
+  {
+    "section": "S2 registration",
+    "name": "OTP replay after success -> 401 (single use)",
+    "status": "PASS",
+    "expected": "401",
+    "actual": "401 {\"detail\":\"Invalid or expired code\"}"
+  },
+  {
+    "section": "S2 registration",
+    "name": "existing email + existing mobile -> login 200 without identity fields",
+    "status": "PASS",
+    "expected": "202 then 200",
+    "actual": "202/200 {\"authenticated_as\":\"customer\"}"
+  },
+  {
+    "section": "S2 registration",
+    "name": "login lands on the SAME customer (no duplicate)",
+    "status": "PASS",
+    "expected": "same id",
+    "actual": "7b01102d-8e52-488e-bd3f-6fd438725092 vs 7b01102d-8e52-488e-bd3f-6fd438725092"
+  },
+  {
+    "section": "S2 registration",
+    "name": "[SECURITY] existing mobile + different email (no NID) -> uniform 401",
+    "status": "PASS",
+    "expected": "401 Invalid or expired code",
+    "actual": "202/401 {\"detail\":\"Invalid or expired code\"}"
+  },
+  {
+    "section": "S2 registration",
+    "name": "existing mobile + different email + different NID -> separate customer (by design)",
+    "status": "PASS",
+    "expected": "200 distinct customer",
+    "actual": "200 {\"authenticated_as\":\"customer\"}"
+  },
+  {
+    "section": "S2 registration",
+    "name": "QA FINDING (medium)",
+    "status": "INFO",
+    "expected": "",
+    "actual": "Customer OTP proves EMAIL control only; mobile ownership is never verified (no SMS OTP for customers). Anyone can anchor an account to a mobile they do not own. Impact limited: data access is keyed on the national-ID blind index, but the brokerage may contact the mobile owner about a stranger's ticket (harassment vector)."
+  },
+  {
+    "section": "S2 registration",
+    "name": "existing email + new mobile (same NID) -> OTP still sent; verify 409 conflict (no duplicate account; no mobile-change flow — QA FINDING)",
+    "status": "PASS",
+    "expected": "202 then 409 Identity cannot be registered",
+    "actual": "202/409 {\"detail\":\"Identity cannot be registered\"}"
+  },
+  {
+    "section": "S2 registration",
+    "name": "invalid input rejected: mobile not +201 -> 422",
+    "status": "PASS",
+    "expected": "422",
+    "actual": "422 {\"detail\":[{\"type\":\"string_pattern_mismatch\",\"loc\":[\"body\",\"mobile\"],\"msg\":\"Stri"
+  },
+  {
+    "section": "S2 registration",
+    "name": "invalid input rejected: mobile US number -> 422",
+    "status": "PASS",
+    "expected": "422",
+    "actual": "422 {\"detail\":[{\"type\":\"string_pattern_mismatch\",\"loc\":[\"body\",\"mobile\"],\"msg\":\"Stri"
+  },
+  {
+    "section": "S2 registration",
+    "name": "invalid input rejected: mobile too short -> 422",
+    "status": "PASS",
+    "expected": "422",
+    "actual": "422 {\"detail\":[{\"type\":\"string_pattern_mismatch\",\"loc\":[\"body\",\"mobile\"],\"msg\":\"Stri"
+  },
+  {
+    "section": "S2 registration",
+    "name": "invalid input rejected: email without TLD -> 422",
+    "status": "PASS",
+    "expected": "422",
+    "actual": "422 {\"detail\":[{\"type\":\"string_pattern_mismatch\",\"loc\":[\"body\",\"email\"],\"msg\":\"Strin"
+  },
+  {
+    "section": "S2 registration",
+    "name": "invalid input rejected: email with spaces -> 422",
+    "status": "PASS",
+    "expected": "422",
+    "actual": "422 {\"detail\":[{\"type\":\"string_pattern_mismatch\",\"loc\":[\"body\",\"email\"],\"msg\":\"Strin"
+  },
+  {
+    "section": "S2 registration",
+    "name": "invalid input rejected: missing email -> 422",
+    "status": "PASS",
+    "expected": "422",
+    "actual": "422 {\"detail\":[{\"type\":\"missing\",\"loc\":[\"body\",\"email\"],\"msg\":\"Field required\",\"inpu"
+  },
+  {
+    "section": "S2 registration",
+    "name": "invalid input rejected: extra field rejected -> 422",
+    "status": "PASS",
+    "expected": "422",
+    "actual": "422 {\"detail\":[{\"type\":\"extra_forbidden\",\"loc\":[\"body\",\"admin\"],\"msg\":\"Extra inputs "
+  },
+  {
+    "section": "S2 registration",
+    "name": "4th OTP start for same email -> 429 with Retry-After",
+    "status": "PASS",
+    "expected": "[202,202,202,429]",
+    "actual": "[202, 202, 202, 429]"
+  },
+  {
+    "section": "S2 registration",
+    "name": "429 carries Retry-After and rate-limit headers",
+    "status": "PASS",
+    "expected": "Retry-After + X-RateLimit-*",
+    "actual": "{'x-ratelimit-limit': '3', 'x-ratelimit-remaining': '0', 'retry-after': '600'}"
+  },
+  {
+    "section": "S2 registration",
+    "name": "second start while a code is live -> 429 wait-for-expiry",
+    "status": "PASS",
+    "expected": "202 then 429",
+    "actual": "202/429 {\"detail\":\"Wait for the current code to expire\"}"
+  },
+  {
+    "section": "S2 registration",
+    "name": "wrong codes: 5x401 then 429 attempt-burn then lockout 429",
+    "status": "PASS",
+    "expected": "[401 x5, 429...]",
+    "actual": "[401, 401, 401, 401, 401, 429, 429, 429, 429]"
+  },
+  {
+    "section": "S2 registration",
+    "name": "correct code rejected while lockout active (uniform 429)",
+    "status": "PASS",
+    "expected": "429 locked",
+    "actual": "429 {\"detail\":\"Too many failed attempts; try again later\"}"
+  },
+  {
+    "section": "S2 registration",
+    "name": "guest track without national ID -> 422",
+    "status": "PASS",
+    "expected": "422",
+    "actual": "422"
+  },
+  {
+    "section": "S2 registration",
+    "name": "guest track with wrong national ID -> 404 (not 403: no oracle)",
+    "status": "PASS",
+    "expected": "404",
+    "actual": "404 {\"detail\":\"Ticket and national ID pair not found\"}"
+  },
+  {
+    "section": "S3 complaints",
+    "name": "complaint create -> 201 with unique ticket number",
+    "status": "PASS",
+    "expected": "201 CMP-…",
+    "actual": "201 {\"id\":\"b1346385-7a4c-4e09-92e5-60b722616d59\",\"ticket_no\":\"CMP-2026-005011\",\"status\":\"new\",\"company_id\":\"b4635db1-c6b1-412e-b60f-9da2199e6b39"
+  },
+  {
+    "section": "S3 complaints",
+    "name": "idempotent replay (same key+body) -> original ticket, no duplicate",
+    "status": "PASS",
+    "expected": "same ticket CMP-2026-005011",
+    "actual": "200 {\"id\":\"b1346385-7a4c-4e09-92e5-60b722616d59\",\"ticket_no\":\"CMP-2026-005011\",\"status\":\"new\",\"company_i"
+  },
+  {
+    "section": "S3 complaints",
+    "name": "same key + different body -> 409 conflict",
+    "status": "PASS",
+    "expected": "409",
+    "actual": "409 {\"detail\":\"Idempotency key expired or reused\"}"
+  },
+  {
+    "section": "S3 complaints",
+    "name": "create without Idempotency-Key -> 422",
+    "status": "PASS",
+    "expected": "422",
+    "actual": "422"
+  },
+  {
+    "section": "S3 complaints",
+    "name": "create without auth cookies -> 401",
+    "status": "PASS",
+    "expected": "401",
+    "actual": ""
+  },
+  {
+    "section": "S3 complaints",
+    "name": "[SECURITY] complaint for a different mobile -> rejected (4xx, no ticket)",
+    "status": "PASS",
+    "expected": "4xx",
+    "actual": "403 {\"detail\":\"Customer identity does not match sign-in\"}"
+  },
+  {
+    "section": "S3 complaints",
+    "name": "complaint validation: bad NID -> 4xx",
+    "status": "PASS",
+    "expected": "4xx",
+    "actual": "422 {\"detail\":[{\"type\":\"value_error\",\"loc\":[\"body\",\"national_id\"],\"msg\":\"Value error"
+  },
+  {
+    "section": "S3 complaints",
+    "name": "complaint validation: future-dated NID -> 4xx",
+    "status": "PASS",
+    "expected": "4xx",
+    "actual": "422 {\"detail\":[{\"type\":\"value_error\",\"loc\":[\"body\",\"national_id\"],\"msg\":\"Value error"
+  },
+  {
+    "section": "S3 complaints",
+    "name": "complaint validation: bad governorate NID -> 4xx",
+    "status": "PASS",
+    "expected": "4xx",
+    "actual": "422 {\"detail\":[{\"type\":\"value_error\",\"loc\":[\"body\",\"national_id\"],\"msg\":\"Value error"
+  },
+  {
+    "section": "S3 complaints",
+    "name": "complaint validation: short subject -> 4xx",
+    "status": "PASS",
+    "expected": "4xx",
+    "actual": "422 {\"detail\":[{\"type\":\"string_too_short\",\"loc\":[\"body\",\"subject\"],\"msg\":\"String sho"
+  },
+  {
+    "section": "S3 complaints",
+    "name": "complaint validation: short description -> 4xx",
+    "status": "PASS",
+    "expected": "4xx",
+    "actual": "422 {\"detail\":[{\"type\":\"string_too_short\",\"loc\":[\"body\",\"description\"],\"msg\":\"String"
+  },
+  {
+    "section": "S3 complaints",
+    "name": "complaint validation: bad policy number -> 4xx",
+    "status": "PASS",
+    "expected": "4xx",
+    "actual": "422 {\"detail\":[{\"type\":\"string_too_short\",\"loc\":[\"body\",\"policy_number\"],\"msg\":\"Stri"
+  },
+  {
+    "section": "S3 complaints",
+    "name": "complaint validation: unknown company -> 4xx",
+    "status": "PASS",
+    "expected": "4xx",
+    "actual": "422 {\"detail\":\"Company or insurance type is unavailable\"}"
+  },
+  {
+    "section": "S3 complaints",
+    "name": "complaint validation: bad insurance type -> 4xx",
+    "status": "PASS",
+    "expected": "4xx",
+    "actual": "422 {\"detail\":[{\"type\":\"enum\",\"loc\":[\"body\",\"insurance_type\"],\"msg\":\"Input should be"
+  },
+  {
+    "section": "S3 complaints",
+    "name": "guest track with ticket + matching NID -> public metadata only",
+    "status": "PASS",
+    "expected": "200 metadata",
+    "actual": "200 {\"public_ticket\":\"CMP-2026-005011\",\"public_status\":\"new\",\"public_company\":\"Cairo Shield\",\"created\":\"2026-10-18T20:25:04.859990Z\"}"
+  },
+  {
+    "section": "S3 complaints",
+    "name": "my tickets list includes the new ticket",
+    "status": "PASS",
+    "expected": "ticket in list",
+    "actual": "200"
+  },
+  {
+    "section": "S3 complaints",
+    "name": "ticket detail -> 200 with timeline eligibility flags",
+    "status": "PASS",
+    "expected": "200 + can_reopen",
+    "actual": "200 {\"id\":\"b1346385-7a4c-4e09-92e5-60b722616d59\",\"ticket_no\":\"CMP-2026-005011\",\"status\":\"new\",\"company_i"
+  },
+  {
+    "section": "S3 complaints",
+    "name": "counters endpoint -> 200 with totals",
+    "status": "PASS",
+    "expected": "200",
+    "actual": "200"
+  },
+  {
+    "section": "S3 complaints",
+    "name": "[SECURITY] IDOR: other customer's ticket -> 404 (indistinguishable)",
+    "status": "PASS",
+    "expected": "404",
+    "actual": "404 {\"detail\":\"Complaint not found\"}"
+  },
+  {
+    "section": "S3 complaints",
+    "name": "[SECURITY] IDOR: reply to other customer's ticket -> 404",
+    "status": "PASS",
+    "expected": "404",
+    "actual": "404"
+  },
+  {
+    "section": "S3 complaints",
+    "name": "attachment plan -> 200 with one-use signed upload URL",
+    "status": "PASS",
+    "expected": "200 + relative upload_url",
+    "actual": "200 {\"uploads\":[{\"id\":\"cd30261d-1255-47b2-b047-1c6ddc2b2f67\",\"upload_url\":\"/api/customer/attachments/uploads/cd30261d-1255-47b2-b047-1c6ddc2b2f6"
+  },
+  {
+    "section": "S3 complaints",
+    "name": "upload PUT with token+checksum -> 2xx",
+    "status": "PASS",
+    "expected": "2xx",
+    "actual": "200 {\"id\":\"92e79d52-d4e6-4f69-91aa-6c8b2b4f4e4b\",\"scan_status\":\"pending\",\"message\":\"Awaiting virus scan;"
+  },
+  {
+    "section": "S3 complaints",
+    "name": "[SECURITY] upload token is single-use (replay -> 4xx)",
+    "status": "PASS",
+    "expected": "4xx",
+    "actual": "404 {\"detail\":\"Upload reservation unavailable\"}"
+  },
+  {
+    "section": "S3 complaints",
+    "name": "[SECURITY] upload without token -> 4xx",
+    "status": "PASS",
+    "expected": "4xx",
+    "actual": "401"
+  },
+  {
+    "section": "S3 complaints",
+    "name": "attachment stays pending/unscanned (fail-closed, no scanner configured)",
+    "status": "PASS",
+    "expected": "pending",
+    "actual": "200 state=None"
+  },
+  {
+    "section": "S3 complaints",
+    "name": "[SECURITY] checksum mismatch on upload -> 4xx",
+    "status": "PASS",
+    "expected": "4xx",
+    "actual": "413 {\"detail\":\"Attachment exceeds reserved size\"}"
+  },
+  {
+    "section": "S3 complaints",
+    "name": "customer reply on own ticket -> 200/201",
+    "status": "PASS",
+    "expected": "2xx",
+    "actual": "200 {\"id\":\"2ecb40ea-7d42-486e-8e9a-50524b370c7e\",\"created_at\":\"2026-10-18T20:25:05.7"
+  },
+  {
+    "section": "S3 complaints",
+    "name": "worker delivers transactional notice e-mail via outbox (SMTP sink)",
+    "status": "PASS",
+    "expected": "notice .eml mentioning the ticket",
+    "actual": "20261018-202800-02564628.eml"
+  },
+  {
+    "section": "S3 complaints",
+    "name": "[SECURITY] authenticated write without X-CSRF-Token -> 403",
+    "status": "PASS",
+    "expected": "403",
+    "actual": "403"
+  },
+  {
+    "section": "S3 complaints",
+    "name": "[SECURITY] forged X-CSRF-Token -> 403",
+    "status": "PASS",
+    "expected": "403",
+    "actual": "403"
+  },
+  {
+    "section": "S3 complaints",
+    "name": "CSAT on unresolved ticket -> 4xx",
+    "status": "PASS",
+    "expected": "4xx",
+    "actual": "409 {\"detail\":\"Feedback is unavailable\"}"
+  },
+  {
+    "section": "S3 complaints",
+    "name": "reopen on unresolved ticket -> 4xx",
+    "status": "PASS",
+    "expected": "4xx",
+    "actual": "409 {\"detail\":\"Complaint cannot be reopened\"}"
+  },
+  {
+    "section": "S3 complaints",
+    "name": "GET /api/customer/profile -> 200 with preferences",
+    "status": "PASS",
+    "expected": "200",
+    "actual": "200 {\"id\":\"7b01102d-8e52-488e-bd3f-6fd438725092\",\"email\":\"brand.new.330448ad@example.com\",\"mobile\":\"+201"
+  },
+  {
+    "section": "S3 complaints",
+    "name": "PATCH /api/customer/profile -> 200 and persisted",
+    "status": "PASS",
+    "expected": "persisted",
+    "actual": "200 {\"id\":\"7b01102d-8e52-488e-bd3f-6fd438725092\",\"email\":\"brand.new.330448ad@example.com\",\"mobile\":\"+201"
+  },
+  {
+    "section": "S3 complaints",
+    "name": "[FIX L-4] preferences-only PATCH (no full_name) -> 200; name and whatsapp preserved",
+    "status": "PASS",
+    "expected": "name/whatsapp kept, prefs saved",
+    "actual": "200 {\"id\":\"7b01102d-8e52-488e-bd3f-6fd438725092\",\"email\":\"brand.new.330448ad@example.com\",\"mobile\":\"+201155208490\",\"full_name\":\"عميل جديد QA\",\"n"
+  },
+  {
+    "section": "S3 complaints",
+    "name": "[FIX L-4] empty PATCH body -> 422 (cannot reset the profile by accident)",
+    "status": "PASS",
+    "expected": "422",
+    "actual": "422 {\"detail\":[{\"type\":\"value_error\",\"loc\":[\"body\"],\"msg\":\"Value error, Provide at least one profile fie"
+  },
+  {
+    "section": "S4 abuse",
+    "name": "oversized JSON body -> 413",
+    "status": "PASS",
+    "expected": "413",
+    "actual": "413"
+  },
+  {
+    "section": "S4 abuse",
+    "name": "XSS payload stored but JSON-typed (no HTML content-type)",
+    "status": "PASS",
+    "expected": "json response",
+    "actual": "201 ct=application/json"
+  },
+  {
+    "section": "S4 abuse",
+    "name": "SQLi attempt in search -> no 500, table intact",
+    "status": "PASS",
+    "expected": "<500 + ready",
+    "actual": "200"
+  },
+  {
+    "section": "S4 abuse",
+    "name": "[SECURITY] cross-site Origin on public write -> blocked by origin guard",
+    "status": "PASS",
+    "expected": "403 expected",
+    "actual": "403 {\"detail\": \"Cross-origin request blocked\"}"
+  }
+]

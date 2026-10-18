@@ -1,0 +1,226 @@
+[
+  {
+    "section": "R1 smtp-down",
+    "name": "SMTP sink stopped (port 2525 closed)",
+    "status": "PASS",
+    "expected": "port closed",
+    "actual": "open=False"
+  },
+  {
+    "section": "R1 smtp-down",
+    "name": "[CRITICAL-FIX] new registration with mail provider DOWN -> graceful 503 (NOT the old 422 'Email delivery is not configured')",
+    "status": "PASS",
+    "expected": "503 'We could not send your verification code right now. Please try again in a few minutes.'",
+    "actual": "503 {\"detail\":\"We could not send your verification code right now. Please try again in a few minutes.\"}"
+  },
+  {
+    "section": "R1 smtp-down",
+    "name": "[SECURITY] 503 body leaks no infrastructure internals",
+    "status": "PASS",
+    "expected": "no leak words",
+    "actual": "{\"detail\":\"We could not send your verification code right now. Please try again in a few minutes.\"}"
+  },
+  {
+    "section": "R1 smtp-down",
+    "name": "503 carries Retry-After: 120",
+    "status": "PASS",
+    "expected": "Retry-After 120",
+    "actual": "120"
+  },
+  {
+    "section": "R1 smtp-down",
+    "name": "SMTP sink restarted",
+    "status": "PASS",
+    "expected": "port open",
+    "actual": "up=True poll=None"
+  },
+  {
+    "section": "R1 smtp-down",
+    "name": "registration recovers after provider returns -> 202 + real OTP e-mail",
+    "status": "PASS",
+    "expected": "202 + code",
+    "actual": "202 mail=True code=184897"
+  },
+  {
+    "section": "R2 redis-down",
+    "name": "redis stopped (port 6379 closed)",
+    "status": "PASS",
+    "expected": "closed",
+    "actual": "True"
+  },
+  {
+    "section": "R2 redis-down",
+    "name": "/api/health/live stays 200 (process alive)",
+    "status": "PASS",
+    "expected": "200",
+    "actual": "200"
+  },
+  {
+    "section": "R2 redis-down",
+    "name": "/api/health/ready -> 503 'Dependencies unavailable'",
+    "status": "PASS",
+    "expected": "503 Dependencies unavailable",
+    "actual": "503 {\"detail\":\"Dependencies unavailable\"}"
+  },
+  {
+    "section": "R2 redis-down",
+    "name": "[FIX L-7] GET /api/companies during redis outage -> graceful JSON 503 + Retry-After",
+    "status": "PASS",
+    "expected": "503 JSON, no internals",
+    "actual": "503 {\"detail\":\"Service temporarily unavailable; please retry shortly.\"}"
+  },
+  {
+    "section": "R2 redis-down",
+    "name": "[FIX L-7] OTP start during redis outage -> graceful JSON 503 (rate limiter fails safe)",
+    "status": "PASS",
+    "expected": "503 JSON, no internals",
+    "actual": "503 {\"detail\":\"Service temporarily unavailable; please retry shortly.\"}"
+  },
+  {
+    "section": "R2 redis-down",
+    "name": "redis restarted -> /api/health/ready recovers to 200",
+    "status": "PASS",
+    "expected": "200",
+    "actual": "up=True ready=200"
+  },
+  {
+    "section": "R2 redis-down",
+    "name": "full OTP registration works again after redis recovery",
+    "status": "PASS",
+    "expected": "202 + mail",
+    "actual": "202 mail=True"
+  },
+  {
+    "section": "R2 redis-down",
+    "name": "[RESILIENCE] arq worker survives a Redis (broker) outage",
+    "status": "FAIL",
+    "expected": "worker alive",
+    "actual": "DEAD - arq exits on broker ConnectionError; needs supervisor restart"
+  },
+  {
+    "section": "R2 redis-down",
+    "name": "worker self-heal",
+    "status": "INFO",
+    "expected": "",
+    "actual": "worker restarted: alive=True (docker-compose restart-policy covers this in production; the bare process does not reconnect to a lost broker on its own)"
+  },
+  {
+    "section": "R3 postgres-down",
+    "name": "postgres stopped (pg_ctl fast)",
+    "status": "PASS",
+    "expected": "stopped",
+    "actual": "rc=0 down=True "
+  },
+  {
+    "section": "R3 postgres-down",
+    "name": "live stays 200 while DB is down",
+    "status": "PASS",
+    "expected": "200",
+    "actual": "200"
+  },
+  {
+    "section": "R3 postgres-down",
+    "name": "ready -> 503 'Dependencies unavailable' while DB is down",
+    "status": "PASS",
+    "expected": "503",
+    "actual": "503 {\"detail\":\"Dependencies unavailable\"}"
+  },
+  {
+    "section": "R3 postgres-down",
+    "name": "[FIX L-7] GET /api/companies during DB outage -> graceful JSON 503 (middleware-level)",
+    "status": "PASS",
+    "expected": "503 JSON, no internals",
+    "actual": "503 {\"detail\":\"Service temporarily unavailable; please retry shortly.\"}"
+  },
+  {
+    "section": "R3 postgres-down",
+    "name": "postgres restarted -> ready recovers to 200 (pool reconnects)",
+    "status": "PASS",
+    "expected": "200",
+    "actual": "rc=0 up=True ready=200"
+  },
+  {
+    "section": "R3 postgres-down",
+    "name": "API fully recovers after DB outage (companies 200)",
+    "status": "PASS",
+    "expected": "200",
+    "actual": "200"
+  },
+  {
+    "section": "R3 postgres-down",
+    "name": "[RESILIENCE] arq worker survives a Postgres outage (broker stays up)",
+    "status": "PASS",
+    "expected": "worker alive",
+    "actual": "alive"
+  },
+  {
+    "section": "R4 jwt",
+    "name": "baseline customer registered for token tests",
+    "status": "PASS",
+    "expected": "session",
+    "actual": "200 {\"authenticated_as\":\"customer\"} access=True"
+  },
+  {
+    "section": "R4 jwt",
+    "name": "[SECURITY] correctly-signed but EXPIRED access token -> 401",
+    "status": "PASS",
+    "expected": "401",
+    "actual": "401 {\"detail\":\"Invalid or expired token\"}"
+  },
+  {
+    "section": "R4 jwt",
+    "name": "[SECURITY] alg=none forgery -> 401",
+    "status": "PASS",
+    "expected": "401",
+    "actual": "401 {\"detail\":\"Invalid or expired token\"}"
+  },
+  {
+    "section": "R4 jwt",
+    "name": "[SECURITY] HS256 algorithm-confusion (public key as HMAC secret) -> 401",
+    "status": "PASS",
+    "expected": "401",
+    "actual": "401 {\"detail\":\"Invalid or expired token\"}"
+  },
+  {
+    "section": "R4 jwt",
+    "name": "[SECURITY] unknown kid header -> 401",
+    "status": "PASS",
+    "expected": "401",
+    "actual": "401 {\"detail\":\"Invalid or expired token\"}"
+  },
+  {
+    "section": "R4 jwt",
+    "name": "[SECURITY] missing kid header -> 401",
+    "status": "PASS",
+    "expected": "401",
+    "actual": "401 {\"detail\":\"Invalid or expired token\"}"
+  },
+  {
+    "section": "R4 jwt",
+    "name": "[SECURITY] malformed cookie -> 401 (no 500)",
+    "status": "PASS",
+    "expected": "401",
+    "actual": "401 {\"detail\":\"Invalid or expired token\"}"
+  },
+  {
+    "section": "R4 jwt",
+    "name": "[SECURITY] access token used as refresh token -> 401 (typ confusion blocked)",
+    "status": "PASS",
+    "expected": "401",
+    "actual": "401 {\"detail\":\"Invalid or expired token\"}"
+  },
+  {
+    "section": "R4 jwt",
+    "name": "[SECURITY] refresh token used as access token -> 401 (typ confusion blocked)",
+    "status": "PASS",
+    "expected": "401",
+    "actual": "401 {\"detail\":\"Invalid or expired token\"}"
+  },
+  {
+    "section": "R4 jwt",
+    "name": "[SECURITY] payload swap under original signature -> 401",
+    "status": "PASS",
+    "expected": "401",
+    "actual": "401 {\"detail\":\"Invalid or expired token\"}"
+  }
+]

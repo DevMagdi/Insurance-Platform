@@ -32,7 +32,7 @@ describe('complaint wizard', () => {
     renderWizard();
     fireEvent.click(screen.getByText('التالي'));
     await waitFor(() => expect(screen.getByText(/رقم قومي غير صحيح/)).toBeTruthy());
-    expect(screen.getByText(/رقم جوال مصري/)).toBeTruthy();
+    expect(screen.getByText(/رقم موبايل مصري/)).toBeTruthy();
   });
 
   it('walks all steps, autosaves the draft and reaches the review step', async () => {
@@ -41,7 +41,7 @@ describe('complaint wizard', () => {
 
     fireEvent.change(screen.getByLabelText(/الاسم الكامل/), { target: { value: 'Mona Ali' } });
     fireEvent.change(screen.getByLabelText(/الرقم القومي/), { target: { value: '29901010112345' } });
-    fireEvent.change(screen.getByLabelText(/رقم الجوال/), { target: { value: '01123456789' } });
+    fireEvent.change(screen.getByLabelText(/رقم الموبايل/), { target: { value: '01123456789' } });
     fireEvent.click(screen.getByText('التالي'));
 
     await waitFor(() =>
