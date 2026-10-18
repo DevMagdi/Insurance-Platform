@@ -100,7 +100,6 @@ async def world():
     config = Settings(
         _env_file=None,
         DATABASE_URL=runtime,
-        DEV_SMS_MAILBOX=False,  # CI exports development-only mailbox settings.
         TURNSTILE_SITE_KEY=None,
         TURNSTILE_SECRET_KEY=None,
         APP_ENCRYPTION_KEY=base64.urlsafe_b64encode(b"e" * 32).decode(),

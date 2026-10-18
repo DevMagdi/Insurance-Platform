@@ -5,6 +5,7 @@ import { api } from '../lib/api';
 import { navigate, usePathname } from '../lib/router';
 import { hasPermission, type StaffAccess } from '../lib/staffTypes';
 import { useStaffMe } from '../hooks/useStaffMe';
+import { usePlatformBrand } from './Branding';
 import { EmptyState } from './ui';
 import { Icon, type IconName } from './Icon';
 import '../staff-console.css';
@@ -48,6 +49,7 @@ export function StaffShell({ children }: { children: ReactNode }) {
   const path = usePathname();
   const queryClient = useQueryClient();
   const { access, isLoading } = useStaffMe();
+  const brand = usePlatformBrand();
   const theme = useConsoleTheme();
 
   if (isLoading) {
@@ -92,9 +94,9 @@ export function StaffShell({ children }: { children: ReactNode }) {
         <div className="main-shell" style={{ marginInlineStart: 0 }}>
           <header className="topbar">
             <div className="topbar-leading">
-              <span className="brand-mark">و</span>
+              <img className="brand-mark" src={brand.logo_url} alt="" />
               <div className="topbar-breadcrumb">
-                <span>وَثيق</span>
+                <span>{brand.platform_name}</span>
                 <Icon name="chevron" size={13} />
                 <strong>مساحة الشكوى</strong>
               </div>

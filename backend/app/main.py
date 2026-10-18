@@ -38,7 +38,7 @@ from app.api import (
     websocket,
     workflow,
 )
-from app.db import make_engine
+from app.db import make_engine, purpose_transaction
 from app.middleware.body_limit import BodySizeLimitMiddleware
 from app.middleware.origin import OriginGuardMiddleware
 from app.middleware.policy import HttpPolicy
@@ -131,8 +131,15 @@ async def install_state(
         settings.turnstile_secret_key, settings.turnstile_site_key, settings.public_app_url
     )
     app.state.backpressure = QueueBackpressure(redis, settings.queue_backpressure_threshold)
-    delivery = SMTPDelivery(settings)
-    app.state.auth = AuthService(app.state.factory, redis, settings, delivery)
+
+    async def platform_name() -> str:
+        async with purpose_transaction(app.state.factory, "guest") as db:
+            name = await db.scalar(
+                text("SELECT platform_name FROM app_security.public_platform_brand()")
+            )
+        return str(name or "Insurance")
+
+    delivery = SMTPDelivery(settings, brand_loader=platform_name)
     keyring = settings.encryption_keyring()
     # Private binaries (attachments, export artifacts, call recordings) are encrypted
     # with this keyring and stored in PostgreSQL; no object storage is involved.
@@ -143,6 +150,14 @@ async def install_state(
         oauth_redirect_base=settings.public_app_url,
     )
     app.state.integrations = integrations_service
+
+    async def send_staff_sms_otp(mobile: str, code: str) -> None:
+        async with purpose_transaction(app.state.factory, "staff_auth") as db:
+            await integrations_service.send_staff_otp(db, mobile, code)
+
+    app.state.auth = AuthService(
+        app.state.factory, redis, settings, delivery, staff_sms_sender=send_staff_sms_otp
+    )
     protector = NationalIdProtector(keyring, decode_key(settings.app_blind_index_key))
     app.state.complaints = ComplaintService(
         ComplaintRepository(),

@@ -1,13 +1,14 @@
 import { useState, type FormEvent } from 'react';
 import { api, jsonBody } from '../../api';
 import { Icon } from '../../components/Icon';
+import { usePlatformBrand } from '../../components/Branding';
 import { captchaHeaders, useCaptcha } from '../../lib/captcha';
 
 interface AuthPageProps {
   onAuthenticated: () => Promise<void> | void;
 }
 
-type AuthMode = 'login' | 'totp' | 'password-change' | 'totp-setup' | 'invite';
+type AuthMode = 'login' | 'totp' | 'sms-otp' | 'password-change' | 'totp-setup' | 'invite';
 
 interface StaffLoginResult {
   next_step: string | null;
@@ -15,6 +16,7 @@ interface StaffLoginResult {
 }
 
 export function AuthPage({ onAuthenticated }: AuthPageProps) {
+  const brand = usePlatformBrand();
   const inviteToken = new URLSearchParams(window.location.search).get('token');
   const [mode, setMode] = useState<AuthMode>(inviteToken ? 'invite' : 'login');
   const [email, setEmail] = useState('');
@@ -65,6 +67,10 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
         setMode('totp');
         return;
       }
+      if (result.next_step === 'sms_otp') {
+        setMode('sms-otp');
+        return;
+      }
       if (result.next_step === 'password_change') {
         setMode('password-change');
         return;
@@ -80,6 +86,17 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
       }
       await onAuthenticated();
     }));
+  };
+
+  const verifySmsOtp = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    void run(async () => {
+      await api('/api/auth/staff/sms-otp/verify', {
+        method: 'POST',
+        body: jsonBody({ challenge, code }),
+      });
+      await onAuthenticated();
+    });
   };
 
   const verifyTotp = (event: FormEvent<HTMLFormElement>) => {
@@ -138,6 +155,7 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
   const modeTitle: Record<AuthMode, string> = {
     login: 'مرحباً بعودتك',
     totp: 'تحقق من هويتك',
+    'sms-otp': 'تحقق من هاتفك المحمول',
     'password-change': 'اختر كلمة مرور جديدة',
     'totp-setup': 'فعّل المصادقة الثنائية',
     invite: 'انضم إلى مساحة وَثيق',
@@ -149,8 +167,8 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
       <div className="auth-atmosphere auth-atmosphere-two" />
       <div className="auth-layout">
         <section className="auth-story">
-          <div className="brand-mark auth-brand-mark">و</div>
-          <p className="auth-kicker">WASIQ · INSURANCE OPERATIONS</p>
+          <img className="brand-mark auth-brand-mark" src={brand.logo_url} alt="" />
+          <p className="auth-kicker">{brand.platform_name} · INSURANCE OPERATIONS</p>
           <h1>كل شكوى،<br /><span>بمسار أوضح.</span></h1>
           <p className="auth-story-copy">
             مساحة آمنة لفريق الوساطة لمتابعة شكاوى التأمين، وقياس جودة الخدمة، وإدارة الوصول بدقة.
@@ -164,7 +182,7 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
 
         <section className="auth-card">
           <div className="auth-card-top">
-            <div className="auth-card-logo"><span className="brand-mark">و</span><strong>وَثيق</strong></div>
+            <div className="auth-card-logo"><img className="brand-mark" src={brand.logo_url} alt="" /><strong>{brand.platform_name}</strong></div>
             <span className="auth-secure"><Icon name="lock" size={14} /> اتصال آمن</span>
           </div>
           <p className="eyebrow">مساحة فريق الوساطة</p>
@@ -174,7 +192,9 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
               ? 'سجّل الدخول للوصول إلى لوحة العمليات.'
               : mode === 'totp'
                 ? 'أدخل الرمز المكوّن من ٦ أرقام من تطبيق المصادقة.'
-                : mode === 'password-change'
+                : mode === 'sms-otp'
+                  ? 'أدخل رمز الدخول المكوّن من ٦ أرقام الذي أُرسل إلى هاتفك المحمول.'
+                  : mode === 'password-change'
                   ? 'يلزم تحديث كلمة المرور قبل فتح مساحة العمل.'
                   : mode === 'totp-setup'
                     ? 'أضف هذا الرابط إلى تطبيق المصادقة ثم أدخل الرمز.'
@@ -199,6 +219,15 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
           {mode === 'totp' && (
             <form className="auth-form" onSubmit={verifyTotp}>
               <label className="field-label">رمز المصادقة
+                <input autoFocus autoComplete="one-time-code" inputMode="numeric" maxLength={6} required value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, ''))} placeholder="000000" dir="ltr" />
+              </label>
+              <button className="button button-gold auth-submit" disabled={busy || code.length !== 6} type="submit">تحقق ومتابعة</button>
+            </form>
+          )}
+
+          {mode === 'sms-otp' && (
+            <form className="auth-form" onSubmit={verifySmsOtp}>
+              <label className="field-label">رمز الهاتف المحمول
                 <input autoFocus autoComplete="one-time-code" inputMode="numeric" maxLength={6} required value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, ''))} placeholder="000000" dir="ltr" />
               </label>
               <button className="button button-gold auth-submit" disabled={busy || code.length !== 6} type="submit">تحقق ومتابعة</button>

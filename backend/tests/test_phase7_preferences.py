@@ -26,8 +26,9 @@ def delivery_settings() -> Settings:
         APP_BLIND_INDEX_KEY=base64.urlsafe_b64encode(b"b" * 32).decode(),
         JWT_SIGNING_KEY="s" * 64,
         ENVIRONMENT="development",
-        SMTP_HOST="localhost",
-        DEV_SMS_MAILBOX=True,
+        SMTP_HOST="smtp.example.com",
+        SMTP_FROM="notifications@example.com",
+        SMTP_START_TLS=True,
     )
 
 
@@ -50,12 +51,20 @@ async def test_smtp_notice_respects_disabled_email_and_text_channels(
         {"email": False, "whatsapp": False, "sms": False},
     )
     assert sent == []
-    assert await provider.send_notice(
+    assert not await provider.send_notice(
         "+201123456789",
         "customer@example.test",
         "status_changed",
         payload,
         {"email": False, "whatsapp": True, "sms": False},
     )
+    assert sent == []
+    assert await provider.send_notice(
+        "+201123456789",
+        "customer@example.test",
+        "status_changed",
+        payload,
+        {"email": True, "whatsapp": False, "sms": False},
+    )
     assert len(sent) == 1
-    assert "sms-201123456789@sms.local.test" in str(sent[0])
+    assert "customer@example.test" in str(sent[0])

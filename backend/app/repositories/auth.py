@@ -47,6 +47,15 @@ class StaffCredentials:
 
 
 class AuthRepository:
+    async def staff_profile_ciphertext_for_auth(
+        self, db: AsyncSession, user_id: UUID
+    ) -> bytes | None:
+        value = await db.scalar(
+            text("SELECT app_security.staff_profile_ciphertext_for_auth(:user_id)"),
+            {"user_id": user_id},
+        )
+        return bytes(value) if value is not None else None
+
     async def staff_by_email(self, db: AsyncSession, email: str) -> StaffCredentials | None:
         row = (
             await db.execute(
@@ -62,6 +71,15 @@ class AuthRepository:
             )
         ).one_or_none()
         return StaffCredentials.from_row(row) if row else None
+
+    async def customer_email_matches(
+        self, db: AsyncSession, mobile: str, email: str, blind: bytes | None
+    ) -> bool:
+        result = await db.scalar(
+            text("SELECT app_security.customer_email_matches(:mobile, :email, :blind)"),
+            {"mobile": mobile, "email": email.lower().strip(), "blind": blind},
+        )
+        return bool(result)
 
     async def customers_by_mobile(
         self, db: AsyncSession, mobile: str, blind: bytes | None

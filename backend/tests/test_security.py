@@ -80,6 +80,9 @@ def test_runtime_settings_reject_placeholder_or_reused_secrets() -> None:
         "JWT_PRIVATE_KEY_B64": _TEST_JWT_PRIVATE_KEY_B64,
         "JWT_PUBLIC_KEY_B64": _TEST_JWT_PUBLIC_KEY_B64,
         "METRICS_TOKEN": "test-only-metrics-token-32-characters",
+        "SMTP_HOST": "smtp.example.com",
+        "SMTP_FROM": "notifications@example.com",
+        "SMTP_START_TLS": True,
         # Production (the default environment) requires CAPTCHA on public forms.
         "TURNSTILE_SITE_KEY": "1x00000000000000000000AA",
         "TURNSTILE_SECRET_KEY": "1x0000000000000000000000000000000AA",

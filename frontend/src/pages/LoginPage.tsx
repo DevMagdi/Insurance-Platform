@@ -13,6 +13,7 @@ export function LoginPage() {
   const { t, i18n } = useTranslation();
   const queryClient = useQueryClient();
   const [mobile, setMobile] = useState('');
+  const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
   const [fullName, setFullName] = useState('');
   const [nationalId, setNationalId] = useState('');
@@ -24,7 +25,7 @@ export function LoginPage() {
 
   const captcha = useCaptcha('otp_start');
   const start = useMutation({
-    mutationFn: () => api.otpStart(normalizeMobile(mobile), captcha.token),
+    mutationFn: () => api.otpStart(normalizeMobile(mobile), email.trim(), captcha.token),
     onSettled: () => captcha.reset(),
   });
 
@@ -35,6 +36,7 @@ export function LoginPage() {
     mutationFn: () =>
       api.otpVerify({
         mobile: normalizeMobile(mobile),
+        email: email.trim().toLowerCase(),
         code,
         ...(needsRegister
           ? {
@@ -58,6 +60,10 @@ export function LoginPage() {
   });
 
   const sendCode = () => {
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim())) {
+      setErrors({ email: 'errors.emailInvalid' });
+      return;
+    }
     if (!isValidMobile(mobile)) {
       setErrors({ mobile: 'validation.mobile' });
       return;
@@ -73,6 +79,7 @@ export function LoginPage() {
   const submit = (event: React.FormEvent) => {
     event.preventDefault();
     const next: Record<string, string> = {};
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim())) next.email = 'errors.emailInvalid';
     if (!isValidMobile(mobile)) next.mobile = 'validation.mobile';
     if (!/^[0-9]{6}$/.test(code)) next.code = 'validation.otp';
     if (needsRegister) {
@@ -104,6 +111,9 @@ export function LoginPage() {
         </div>
 
         <form onSubmit={submit} noValidate>
+          <Field label={t('wizard.email')} error={errors.email}>
+            <TextInput value={email} onChange={(event) => { setEmail(event.target.value); start.reset(); verify.reset(); setErrors({}); }} type="email" inputMode="email" dir="ltr" autoComplete="email" placeholder="name@example.com" />
+          </Field>
           <Field label={t('wizard.mobile')} error={errors.mobile}>
             <div className="auth-mobile-row">
               <TextInput

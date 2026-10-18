@@ -9,6 +9,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import io
+import json
 import os
 import secrets
 import subprocess
@@ -48,6 +49,7 @@ pytestmark = [pytest.mark.integration, pytest.mark.testcontainers]
 BACKEND = Path(__file__).resolve().parents[1]
 NID = "29901010112345"
 MOBILE = "+201123456789"
+CUSTOMER_EMAIL = "customer@example.test"
 PASSWORD = "integration-Password-123"
 PDF = b"%PDF-1.4\n1 0 obj<</Type /Catalog>>\nendobj\n%%EOF\n"
 
@@ -57,8 +59,8 @@ class Mailbox:
         self.codes: dict[str, str] = {}
         self.invites: dict[str, str] = {}
 
-    async def send_otp(self, mobile: str, code: str) -> None:
-        self.codes[mobile] = code
+    async def send_otp(self, email: str, code: str) -> None:
+        self.codes[email] = code
 
     async def send_invitation(self, email: str, url: str) -> None:
         self.invites[email] = url
@@ -195,7 +197,6 @@ async def test_app(stack: dict, identities: dict):
     settings = Settings(
         _env_file=None,
         DATABASE_URL=stack["runtime"],
-        DEV_SMS_MAILBOX=False,  # CI loads a development .env; test mail is in-memory.
         REDIS_URL=stack["redis"],
         APP_ENCRYPTION_KEY=base64.urlsafe_b64encode(b"e" * 32).decode(),
         APP_BLIND_INDEX_KEY=base64.urlsafe_b64encode(b"b" * 32).decode(),
@@ -250,13 +251,16 @@ async def sign_in_staff(client: AsyncClient, email: str) -> None:
 
 
 async def sign_in_customer(client: AsyncClient, mailbox: Mailbox) -> None:
-    result = await client.post("/api/auth/customer/otp/start", json={"mobile": MOBILE})
+    result = await client.post(
+        "/api/auth/customer/otp/start", json={"mobile": MOBILE, "email": CUSTOMER_EMAIL}
+    )
     assert result.status_code == 202, result.text
     result = await client.post(
         "/api/auth/customer/otp/verify",
         json={
             "mobile": MOBILE,
-            "code": mailbox.codes[MOBILE],
+            "email": CUSTOMER_EMAIL,
+            "code": mailbox.codes[CUSTOMER_EMAIL],
             "national_id": NID,
             "full_name": "Integration Customer",
         },
@@ -274,6 +278,26 @@ def complaint_payload(company: UUID, subject: str) -> dict:
         "subject": subject,
         "description": "Payment was delayed well beyond the expected date.",
     }
+
+
+async def test_staff_auth_reads_only_encrypted_mobile_for_sms_otp(
+    test_app: SimpleNamespace,
+) -> None:
+    from app.security.blobs import STAFF_PROFILE
+
+    ctx = test_app
+    staff_id = ctx.identities["admin"]
+    ciphertext = app.state.auth.staff_profiles.blobs.encrypt(
+        json.dumps({"mobile": MOBILE}).encode(), purpose=STAFF_PROFILE, resource_id=staff_id
+    )
+    with psycopg.connect(ctx.stack["admin"]) as db:
+        db.execute(
+            "INSERT INTO staff_profiles(staff_user_id, personal_ciphertext, "
+            "national_id_blind_index, national_id_last4, avatar_content) "
+            "VALUES (%s,%s,%s,%s,%s)",
+            (staff_id, ciphertext, b"z" * 32, "2345", b"a" * 32),
+        )
+    assert await app.state.auth._staff_mobile(staff_id) == MOBILE
 
 
 async def test_api_ownership_guest_audit_status_and_refresh(test_app: SimpleNamespace) -> None:

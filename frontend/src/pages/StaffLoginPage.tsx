@@ -2,13 +2,15 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ApiError, staffApi } from '../lib/api';
 import { navigate } from '../lib/router';
+import { usePlatformBrand } from '../components/Branding';
 import { ErrorState, Field, TextInput, primaryButton } from '../components/ui';
 import { useCaptcha } from '../lib/captcha';
 
-type Step = 'credentials' | 'password_change' | 'totp_verify' | 'totp_setup';
+type Step = 'credentials' | 'password_change' | 'totp_verify' | 'sms_verify' | 'totp_setup';
 
 export function StaffLoginPage() {
   const { t } = useTranslation();
+  const brand = usePlatformBrand();
   const [step, setStep] = useState<Step>('credentials');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -41,6 +43,7 @@ export function StaffLoginPage() {
       setChallenge(result.challenge);
       if (result.next_step === 'password_change') setStep('password_change');
       else if (result.next_step === 'totp_verify') setStep('totp_verify');
+      else if (result.next_step === 'sms_otp') setStep('sms_verify');
       else if (result.next_step === 'totp_setup') {
         setStep('totp_setup');
         const setup = await staffApi.totpEnrollStart(result.challenge);
@@ -69,6 +72,10 @@ export function StaffLoginPage() {
         await staffApi.totpVerify(challenge, code);
         navigate('/staff');
         window.location.reload();
+      } else if (step === 'sms_verify') {
+        await staffApi.smsOtpVerify(challenge, code);
+        navigate('/staff');
+        window.location.reload();
       } else if (step === 'totp_setup') {
         await staffApi.totpEnrollConfirm(challenge, code);
         setStep('credentials');
@@ -84,7 +91,7 @@ export function StaffLoginPage() {
 
   return (
     <section className="mx-auto max-w-xl rounded-3xl border border-white/40 bg-white/70 p-6 shadow-xl backdrop-blur dark:border-white/10 dark:bg-white/5">
-      <p className="text-xs font-bold uppercase tracking-widest text-amber-600 dark:text-amber-300">{t('brand')}</p>
+      <p className="text-xs font-bold uppercase tracking-widest text-amber-600 dark:text-amber-300">{brand.platform_name}</p>
       <h1 className="mt-2 text-3xl font-black">{t('staff.loginTitle')}</h1>
       <p className="mt-2 text-slate-500 dark:text-slate-300">{t('staff.loginSubtitle')}</p>
       {error && <div className="mt-4"><ErrorState message={error} /></div>}
@@ -127,8 +134,8 @@ export function StaffLoginPage() {
               <code className="mt-2 block break-all text-xs" dir="ltr">{provisioningUri}</code>
             </div>
           )}
-          {(step === 'totp_verify' || step === 'totp_setup') && (
-            <Field label={t('staff.totp')}>
+          {(step === 'totp_verify' || step === 'sms_verify' || step === 'totp_setup') && (
+            <Field label={step === 'sms_verify' ? t('staff.smsOtp') : t('staff.totp')}>
               <TextInput inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" value={code} onChange={(e) => setCode(e.target.value)} required />
             </Field>
           )}

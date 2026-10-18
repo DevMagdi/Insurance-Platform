@@ -116,7 +116,7 @@ Configure each provider in the staff console: **إعدادات مساحة الع
 
 | Provider | Keys (secret keys marked •) | Console/vendor notes |
 | --- | --- | --- |
-| SMTP (send) | `host`, `port`, `start_tls`, `username`, `password`•, `from_email` | Any SMTP relay. Local dev: Mailpit at `mailpit:1025`, no TLS/auth. |
+| SMTP (send) | `host`, `port`, `start_tls`, `username`, `password`•, `from_email` | A public real SMTP relay with a verified sender and TLS; local/sandbox SMTP sinks are rejected. |
 | Gmail (send+inbox) | `client_id`, `client_secret`•, `refresh_token`• (or the OAuth button), `from_email`, `mailbox` | Google Cloud Console → OAuth client (web) + `https://www.googleapis.com/auth/gmail.send` + `gmail.modify` scopes. App-passwords are **not** supported. |
 | Outlook (send+inbox) | `client_id`, `client_secret`•, `refresh_token`• (or the OAuth button), `from_email`, `tenant`, `mailbox` | Entra ID app registration, `Mail.Send` + `Mail.Read` delegated scopes, public-client refresh tokens. |
 | SendGrid | `api_key`•, `from_email` | API key with `mail.send`. |

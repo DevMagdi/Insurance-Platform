@@ -71,7 +71,6 @@ async def test_smtp_adapter_never_claims_unsent_insurer_email() -> None:
             smtp_username=None,
             smtp_password=None,
             smtp_start_tls=False,
-            dev_sms_mailbox=False,
         )
     )
     assert not await delivery.send_insurer("insurer@test.invalid", "CMP-2026-000001", "Reason")

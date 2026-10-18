@@ -38,13 +38,31 @@ Ticket = Field(pattern=r"^CMP-[0-9]{4}-[0-9]{6,}$")
 
 class MobileOTPRequest(StrictModel):
     mobile: str = Mobile
+    email: str = Field(min_length=5, max_length=254, pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
+    @field_validator("email")
+    @classmethod
+    def normalize_otp_email(cls, value: str) -> str:
+        return value.lower()
+
+
+class PlatformBrandRequest(StrictModel):
+    platform_name: str = Field(min_length=2, max_length=80)
+    logo_url: str = Field(min_length=1, max_length=2048)
+
+    @field_validator("logo_url")
+    @classmethod
+    def safe_logo_path(cls, value: str) -> str:
+        if not re.fullmatch(r"/(?!/)[A-Za-z0-9._/-]+", value) or ".." in value.split("/"):
+            raise ValueError("Logo must be a same-origin static asset path")
+        return value
 
 
 class CustomerVerifyRequest(MobileOTPRequest):
     code: str = Field(pattern=r"^[0-9]{6}$")
     national_id: str | None = None
     full_name: str | None = Field(default=None, min_length=2, max_length=120)
-    email: str | None = Field(default=None, max_length=254)
+    email: str = Field(min_length=5, max_length=254, pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
     whatsapp_available: bool = False
 
     @field_validator("national_id")

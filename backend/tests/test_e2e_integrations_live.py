@@ -650,7 +650,6 @@ async def test_full_email_whatsapp_ai_voice_and_inbound_lifecycle(
         smtp_username=None,
         smtp_password=None,
         smtp_start_tls=False,
-        dev_sms_mailbox=True,
     )
     with psycopg.connect(ADMIN, prepare_threshold=None) as conn, conn.cursor() as cur:
         cur.execute(

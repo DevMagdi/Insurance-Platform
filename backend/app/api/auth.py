@@ -63,7 +63,7 @@ async def migrate_csrf_cookie(request: Request, response: Response) -> dict[str,
     dependencies=[Depends(captcha_guard("otp_start"))],
 )
 async def start_otp(item: MobileOTPRequest, request: Request) -> dict[str, str]:
-    await request.app.state.auth.start_customer_otp(item.mobile, client_ip(request))
+    await request.app.state.auth.start_customer_otp(item.mobile, item.email, client_ip(request))
     return {"message": "If delivery is available, a one-time code has been sent"}
 
 
@@ -125,6 +125,18 @@ async def change_password(item: ChangePasswordRequest, request: Request) -> dict
             status_code=422, detail="Password does not meet security requirements"
         ) from None
     return {"next_step": "sign_in_with_new_password"}
+
+
+@router.post("/auth/staff/sms-otp/verify")
+async def verify_staff_sms_otp(
+    item: TotpVerifyRequest, request: Request, response: Response
+) -> dict[str, str]:
+    auth = request.app.state.auth
+    tokens = await auth.verify_staff_sms_otp(
+        item.challenge, item.code, client_ip(request), user_agent(request)
+    )
+    set_auth_cookies(response, tokens.access, tokens.refresh, auth.settings)
+    return {"authenticated_as": "staff"}
 
 
 @router.post("/auth/staff/2fa/verify")

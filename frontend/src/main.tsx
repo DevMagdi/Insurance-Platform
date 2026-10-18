@@ -2,6 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import App from './App';
+import { BrandingProvider } from './components/Branding';
 import i18n, { applyLanguage, initialLanguage } from './i18n';
 // Self-hosted fonts: no third-party requests (CSP `font-src 'self'`, privacy).
 import '@fontsource/cairo/400.css';
@@ -33,7 +34,7 @@ const queryClient = new QueryClient({
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
-      <App />
+      <BrandingProvider><App /></BrandingProvider>
     </QueryClientProvider>
   </React.StrictMode>,
 );

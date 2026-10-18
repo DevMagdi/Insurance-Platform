@@ -37,9 +37,10 @@ describe('customer OTP registration flow', () => {
     vi.stubGlobal('fetch', fetchMock);
     renderLoginPage();
 
+    fireEvent.change(screen.getByLabelText('البريد الإلكتروني'), { target: { value: 'mona@example.test' } });
     fireEvent.change(screen.getByLabelText('رقم الجوال'), { target: { value: '01123456789' } });
     fireEvent.click(screen.getByRole('button', { name: 'إرسال الرمز' }));
-    expect(await screen.findByText(/تم إرسال الرمز/)).toBeTruthy();
+    expect(await screen.findByText(/تم إرسال رمز التحقق إلى بريدك الإلكتروني/)).toBeTruthy();
 
     fireEvent.change(screen.getByLabelText('رمز التحقق'), { target: { value: '123456' } });
     fireEvent.click(screen.getByRole('button', { name: 'تأكيد ودخول' }));
@@ -51,9 +52,10 @@ describe('customer OTP registration flow', () => {
     fireEvent.click(screen.getByRole('button', { name: 'تأكيد ودخول' }));
 
     await waitFor(() => expect(verifyBodies).toHaveLength(2));
-    expect(verifyBodies[0]).toEqual({ mobile: '+201123456789', code: '123456' });
+    expect(verifyBodies[0]).toEqual({ mobile: '+201123456789', email: 'mona@example.test', code: '123456' });
     expect(verifyBodies[1]).toMatchObject({
       mobile: '+201123456789',
+      email: 'mona@example.test',
       code: '123456',
       full_name: 'Mona Ali',
       national_id: '29901010112345',

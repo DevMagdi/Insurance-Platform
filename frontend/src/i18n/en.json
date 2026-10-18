@@ -32,6 +32,6 @@
     "twoFactor": "Two-factor authentication"
   },
   "common": { "loading": "Loading...", "empty": "No data", "error": "Something went wrong", "retry": "Retry", "save": "Save", "cancel": "Cancel", "close": "Close", "search": "Search", "filter": "Filter", "export": "Export", "submit": "Submit" },
-  "errors": { "forbidden": "You do not have permission to access this page", "notFound": "Page not found" },
+  "errors": { "forbidden": "You do not have permission to access this page", "notFound": "Page not found", "emailInvalid": "Enter a valid email address to receive your sign-in code." },
   "permissions": { "denied": "Access denied" }
 }

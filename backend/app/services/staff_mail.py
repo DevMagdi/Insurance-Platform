@@ -89,8 +89,16 @@ class StaffMailService:
             )
             self._validate_transport(config)
             subject, body = render_staff_invitation(url, reset=reset)
+            brand_loader = getattr(self.fallback, "brand_loader", None)
+            brand = (await brand_loader()) if brand_loader is not None else "Insurance"
+            brand = brand.strip()[:80] or "Insurance"
             await build_provider(provider, config).send(
-                EmailSendRequest(recipients=(email,), subject=subject, text_body=body, locale="ar"),
+                EmailSendRequest(
+                    recipients=(email,),
+                    subject=f"{subject} · {brand}",
+                    text_body=f"{body.rstrip()}\n\n— {brand}",
+                    locale="ar",
+                ),
                 # This key is not derived from, and must never disclose, the bearer token.
                 idempotency_key="staff-account-" + secrets.token_urlsafe(16),
             )

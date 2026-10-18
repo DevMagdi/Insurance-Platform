@@ -5,6 +5,7 @@ import { hasPermission } from '../../utils/access';
 import { Icon } from '../../components/Icon';
 import { Modal, SectionTitle } from '../../components/Modal';
 import { IntegrationsSettings } from './IntegrationsSettings';
+import { BrandSettings } from './BrandSettings';
 import { formatDateTime, formatNumber } from '../../utils/date';
 import type { CompanyOption, DateRange, InsuranceType, StaffAccess, StaffDirectoryEntry } from '../../types';
 
@@ -271,6 +272,7 @@ export function OperationsPage({ access, inScopeCompanies }: OperationsPageProps
   const visibleRows = rows.filter((row) => JSON.stringify(row).toLocaleLowerCase().includes(tabSearch.toLocaleLowerCase()));
 
   if (tab === 'integrations') return <div className="page-stack"><SectionTitle eyebrow="إعدادات مساحة العمل" title="العمليات والكتالوج" description="إدارة شركات التأمين، تصنيفات الشكاوى، الفرق، الأتمتة، والتكاملات ضمن صلاحيتك." />
+    <BrandSettings access={access} />
     {toast && <div className="inline-alert success" role="status">{toast}<button className="notice-close" type="button" onClick={() => setToast('')} aria-label="إخفاء"><Icon name="close" size={14} /></button></div>}
     <div className="operation-tabs" role="tablist" aria-label="إعدادات الإدارة">{tabs.map((item) => <button role="tab" aria-selected={tab === item.id} className={tab === item.id ? 'active' : ''} key={item.id} type="button" onClick={() => { setTab(item.id); setTabSearch(''); }}><Icon name={item.icon} size={15} />{item.label}</button>)}</div>
     {error && <div className="inline-alert error" role="alert">{error}<button type="button" onClick={() => { void load(); }}>إعادة المحاولة</button></div>}
@@ -278,6 +280,7 @@ export function OperationsPage({ access, inScopeCompanies }: OperationsPageProps
   </div>;
 
   return <div className="page-stack"><SectionTitle eyebrow="إعدادات مساحة العمل" title="العمليات والكتالوج" description="إدارة شركات التأمين، تصنيفات الشكاوى، الفرق، الأتمتة، والتكاملات ضمن صلاحيتك." action={tab !== 'reports' ? <button className="button button-dark" type="button" onClick={() => setEditor(null)}><Icon name="plus" size={15} /> إضافة {title}</button> : tab === 'reports' ? <button className="button button-dark" type="button" onClick={() => setEditor(null)}><Icon name="plus" size={15} /> تعريف تقرير جديد</button> : undefined} />
+    <BrandSettings access={access} />
     {toast && <div className="inline-alert success" role="status">{toast}<button className="notice-close" type="button" onClick={() => setToast('')} aria-label="إخفاء"><Icon name="close" size={14} /></button></div>}
     <div className="operation-tabs" role="tablist" aria-label="إعدادات الإدارة">{tabs.map((item) => <button role="tab" aria-selected={tab === item.id} className={tab === item.id ? 'active' : ''} key={item.id} type="button" onClick={() => { setTab(item.id); setTabSearch(''); }}><Icon name={item.icon} size={15} />{item.label}</button>)}</div>
     {tab === 'assignment' && <div className="inline-alert info"><Icon name="refresh" size={16} /> التوزيع التلقائي اختياري؛ قواعد التوزيع لا تعمل إلا عند تفعيل العامل الخلفي. سيعيد العامل التحقق من عضوية الفريق ونطاق الشركة.</div>}

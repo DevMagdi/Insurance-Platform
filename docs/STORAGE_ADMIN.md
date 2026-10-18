@@ -19,7 +19,7 @@ with the same database connection that already enforces RLS and scope.
   moves the described bytes into `attachments.content`, `export_jobs.content`
   and `call_logs.recording_content` (AES-256-GCM under `APP_ENCRYPTION_KEY`).
 - No configuration is required: there is no bucket, endpoint, access key or
-  volume to set. Run `make up` (PostgreSQL, Redis and Mailpit only), open the
+  volume to set. Run `make up` (PostgreSQL and Redis; SMTP must be configured separately), open the
   application normally, then visit `http://localhost:8080/staff/storage`.
 
 ## Inventory API

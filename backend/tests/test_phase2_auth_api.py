@@ -166,11 +166,15 @@ async def test_password_errors_do_not_reflect_internal_exception_details(fixture
 
 async def test_otp_verify_and_mfa_challenge_do_not_set_cookies_early(fixture: tuple) -> None:
     client, _ctx, service, _repo, _tokens = fixture
-    result = await client.post("/api/auth/customer/otp/start", json={"mobile": "+201123456789"})
+    result = await client.post(
+        "/api/auth/customer/otp/start",
+        json={"mobile": "+201123456789", "email": "customer@example.test"},
+    )
     assert result.status_code == 202
     assert set(result.json()) == {"message"}
     response = await client.post(
-        "/api/auth/customer/otp/verify", json={"mobile": "+201123456789", "code": "123456"}
+        "/api/auth/customer/otp/verify",
+        json={"mobile": "+201123456789", "email": "customer@example.test", "code": "123456"},
     )
     assert response.status_code == 200 and response.json()["authenticated_as"] == "customer"
     service.staff_login.return_value = StaffLoginResult(None, "limited-challenge", "totp_verify")

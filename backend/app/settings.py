@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import ipaddress
+import re
 from functools import lru_cache
 from urllib.parse import urlsplit
 
@@ -14,6 +16,20 @@ from app.security.jwt_keys import JWTKeyRing
 from app.security.jwt_keys import build_keyring as build_jwt_keyring
 from app.security.keyring import Keyring
 from app.security.proxy import DEFAULT_TRUSTED_PROXIES, ClientIPResolver
+
+
+def _is_real_mail_host(value: str) -> bool:
+    host = value.strip().lower().rstrip(".")
+    if not host or host in {"localhost", "mailpit", "mailhog", "smtp", "testserver"}:
+        return False
+    if host.endswith((".local", ".localhost", ".test", ".invalid")) or any(
+        marker in host for marker in ("mailtrap", "mailpit", "mailhog", "sandbox")
+    ):
+        return False
+    try:
+        return ipaddress.ip_address(host).is_global
+    except ValueError:
+        return "." in host
 
 
 class Settings(BaseSettings):
@@ -41,13 +57,12 @@ class Settings(BaseSettings):
     jwt_public_key_b64: str | None = Field(default=None, validation_alias="JWT_PUBLIC_KEY_B64")
     jwt_previous_public_keys: str = Field(default="", validation_alias="JWT_PREVIOUS_PUBLIC_KEYS")
     smtp_host: str | None = None
-    smtp_port: int = 1025
-    smtp_from: str = "no-reply@insurance.local"
+    smtp_port: int = 587
+    smtp_from: str = ""
     smtp_username: str | None = None
     smtp_password: str | None = None
-    smtp_start_tls: bool = False
+    smtp_start_tls: bool = True
     smtp_use_tls: bool = False
-    dev_sms_mailbox: bool = False
     environment: str = "production"
     public_app_url: str = "http://localhost:8080"
     cookie_secure: bool = True
@@ -101,8 +116,16 @@ class Settings(BaseSettings):
             raise ValueError("Choose SMTP_START_TLS or SMTP_USE_TLS, not both")
         if not 1 <= self.smtp_port <= 65535:
             raise ValueError("SMTP_PORT must be between 1 and 65535")
-        if self.dev_sms_mailbox and (self.environment != "development" or not self.smtp_host):
-            raise ValueError("Dev SMS mailbox requires development mode and SMTP")
+        if self.smtp_host:
+            sender_domain = self.smtp_from.rpartition("@")[2].lower()
+            if self.environment == "production":
+                valid_sender = re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", self.smtp_from)
+                if not valid_sender or not _is_real_mail_host(sender_domain):
+                    raise ValueError("SMTP_FROM must be a real sender address on a public domain")
+            if not (self.smtp_start_tls or self.smtp_use_tls):
+                raise ValueError("SMTP delivery requires STARTTLS or implicit TLS")
+        if self.environment == "production" and not self.smtp_host:
+            raise ValueError("Production requires a real SMTP provider for account and OTP email")
         if self.environment == "production" and not self.cookie_secure:
             raise ValueError("Authentication cookies must be Secure in production")
         if not 1 <= self.access_token_minutes <= 30 or not 1 <= self.refresh_token_days <= 30:

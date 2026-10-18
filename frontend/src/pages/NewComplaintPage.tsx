@@ -163,6 +163,10 @@ export function NewComplaintPage() {
   };
 
   const sendOtp = async () => {
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(draft.email.trim())) {
+      setSubmitError(t('errors.emailInvalid'));
+      return;
+    }
     if (!otpCaptcha.ready) {
       setSubmitError(t(otpCaptcha.failed ? 'security.captchaFailed' : 'security.captchaRequired'));
       return;
@@ -170,7 +174,7 @@ export function NewComplaintPage() {
     setBusy('otp');
     setSubmitError(null);
     try {
-      await api.otpStart(normalizeMobile(draft.mobile), otpCaptcha.token);
+      await api.otpStart(normalizeMobile(draft.mobile), draft.email.trim().toLowerCase(), otpCaptcha.token);
       setOtpSent(true);
     } catch (error) {
       setSubmitError(error instanceof ApiError && error.status === 429 ? t('security.tooMany') : t('errors.generic'));
@@ -237,7 +241,7 @@ export function NewComplaintPage() {
           full_name: draft.full_name.trim(),
           national_id: draft.national_id.replace(/[\s-]/g, ''),
           whatsapp_available: draft.whatsapp_available,
-          email: draft.email.trim() || undefined,
+          email: draft.email.trim().toLowerCase(),
         });
         await queryClient.invalidateQueries({ queryKey: ['me'] });
       }

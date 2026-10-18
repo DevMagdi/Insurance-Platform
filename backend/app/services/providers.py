@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import re
+from collections.abc import Awaitable, Callable
 from contextlib import suppress
 from dataclasses import dataclass
 from email.message import EmailMessage
@@ -23,7 +24,6 @@ class DeliveryConfig(Protocol):
     smtp_password: str | None
     smtp_start_tls: bool
     smtp_use_tls: bool
-    dev_sms_mailbox: bool
 
 
 class ProviderUnavailable(Exception):
@@ -31,7 +31,7 @@ class ProviderUnavailable(Exception):
 
 
 class Delivery(Protocol):
-    async def send_otp(self, mobile: str, code: str) -> None: ...
+    async def send_otp(self, email: str, code: str) -> None: ...
     async def send_invitation(self, email: str, url: str) -> None: ...
     async def send_password_reset(self, email: str, url: str) -> None: ...
     async def send_notice(
@@ -55,23 +55,39 @@ class Delivery(Protocol):
 
 
 class SMTPDelivery:
-    """Local Mailpit sink for SMS in dev; SMTP email for invitations/notices.
+    """Deliver authentication and transactional messages through configured SMTP.
 
-    Production OTP cannot silently fall back to email or logs. Supply a real
-    SMS implementation in production. Unconfigured notices stay pending.
+    There is deliberately no sandbox/local-mailbox fallback: absent SMTP is an
+    explicit delivery failure and OTPs are never written to logs or test sinks.
     """
 
-    def __init__(self, settings: DeliveryConfig) -> None:
+    def __init__(
+        self, settings: DeliveryConfig, brand_loader: Callable[[], Awaitable[str]] | None = None
+    ) -> None:
         self.settings = settings
+        self.brand_loader = brand_loader
 
     async def _mail(self, address: str, subject: str, body: str) -> None:
-        if not self.settings.smtp_host:
-            raise ProviderUnavailable("SMTP is not configured")
+        host = (self.settings.smtp_host or "").strip().lower().rstrip(".")
+        sender_domain = self.settings.smtp_from.rpartition("@")[2].lower()
+        local_or_sandbox = (
+            not host
+            or host in {"localhost", "mailpit", "mailhog", "smtp", "testserver"}
+            or host.endswith((".local", ".localhost", ".test", ".invalid"))
+            or any(marker in host for marker in ("mailtrap", "mailpit", "mailhog", "sandbox"))
+            or sender_domain.endswith((".local", ".localhost", ".test", ".invalid"))
+        )
+        if local_or_sandbox:
+            raise ProviderUnavailable("A real SMTP provider and sender address are required")
+        if not (self.settings.smtp_start_tls or self.settings.smtp_use_tls):
+            raise ProviderUnavailable("SMTP transport must use TLS")
+        brand = (await self.brand_loader()) if self.brand_loader is not None else "Insurance"
+        brand = brand.strip()[:80] or "Insurance"
         message = EmailMessage()
         message["From"] = self.settings.smtp_from
         message["To"] = address
-        message["Subject"] = subject
-        message.set_content(body)
+        message["Subject"] = f"{subject} · {brand}"
+        message.set_content(f"{body.rstrip()}\n\n— {brand}")
         await aiosmtplib.send(
             message,
             hostname=self.settings.smtp_host,
@@ -83,14 +99,12 @@ class SMTPDelivery:
             timeout=20,
         )
 
-    async def send_otp(self, mobile: str, code: str) -> None:
-        if not self.settings.dev_sms_mailbox:
-            raise ProviderUnavailable("An SMS provider is required")
-        # Only in local development; never log the OTP and never send to a real number.
+    async def send_otp(self, email: str, code: str) -> None:
         await self._mail(
-            f"sms-{mobile[1:]}@sms.local.test",
-            "Insurance sign-in code",
-            f"Your one-time sign-in code is {code}. It expires in 5 minutes.",
+            email,
+            "Sign-in code",
+            f"Your one-time sign-in code is {code}. It expires in 5 minutes. "
+            "If you did not request this, ignore this message.",
         )
 
     async def send_invitation(self, email: str, url: str) -> None:
@@ -113,12 +127,7 @@ class SMTPDelivery:
             return False
         preferences = preferences or {}
         email_enabled = preferences.get("email", True) is not False
-        text_enabled = any(
-            preferences.get(channel, True) is not False for channel in ("sms", "whatsapp")
-        )
         address = email if email_enabled else None
-        if address is None and text_enabled and self.settings.dev_sms_mailbox:
-            address = f"sms-{mobile[1:]}@sms.local.test"
         if address is None:
             return False
         subject, body = render_customer_notice(

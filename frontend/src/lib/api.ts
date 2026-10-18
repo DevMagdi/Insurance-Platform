@@ -145,10 +145,10 @@ export const api = {
       headers: captchaHeaders(captcha),
     }),
 
-  otpStart: (mobile: string, captcha?: string | null) =>
+  otpStart: (mobile: string, email: string, captcha?: string | null) =>
     request<{ message: string }>('/api/auth/customer/otp/start', {
       method: 'POST',
-      body: { mobile },
+      body: { mobile, email },
       headers: captchaHeaders(captcha),
     }),
 
@@ -164,7 +164,7 @@ export const api = {
     code: string;
     national_id?: string;
     full_name?: string;
-    email?: string;
+    email: string;
     whatsapp_available?: boolean;
   }) => request<{ authenticated_as: string }>('/api/auth/customer/otp/verify', { method: 'POST', body }),
 
@@ -266,6 +266,12 @@ export const staffApi = {
 
   totpVerify: (challenge: string, code: string) =>
     request<{ authenticated_as: string }>('/api/auth/staff/2fa/verify', {
+      method: 'POST',
+      body: { challenge, code },
+    }),
+
+  smsOtpVerify: (challenge: string, code: string) =>
+    request<{ authenticated_as: string }>('/api/auth/staff/sms-otp/verify', {
       method: 'POST',
       body: { challenge, code },
     }),

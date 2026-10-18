@@ -4,7 +4,10 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import json
+import re
 import secrets
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Any
@@ -50,11 +53,13 @@ class AuthService:
         redis: Redis,
         settings: Settings,
         delivery: Delivery,
+        staff_sms_sender: Callable[[str, str], Awaitable[None]] | None = None,
     ) -> None:
         self.factory = factory
         self.redis = redis
         self.settings = settings
         self.delivery = delivery
+        self.staff_sms_sender = staff_sms_sender
         self.repo = AuthRepository()
         self.staff_mail = StaffMailService(settings, delivery)
         self.staff_profiles = StaffProfileService(BlobCipher(settings.encryption_keyring()))
@@ -68,17 +73,20 @@ class AuthService:
         self.limits = RateLimiter(redis, settings.jwt_signing_key, settings.rate_limit_multiplier)
         self.lockout = LoginLockout(redis, settings.jwt_signing_key)
 
-    async def start_customer_otp(self, mobile: str, ip: str) -> None:
+    async def start_customer_otp(self, mobile: str, email: str, ip: str) -> None:
+        email_identity = email.lower().strip()
         await self.limits.check("otp:mobile", mobile, 3, 600)
+        await self.limits.check("otp:email", email_identity, 3, 600)
         await self.limits.check("otp:ip", ip, 20, 3600)
-        code = await self.otp.start(mobile)
+        otp_identity = f"{mobile}:{email_identity}"
+        code = await self.otp.start(otp_identity)
         try:
-            await self.delivery.send_otp(mobile, code)
+            await self.delivery.send_otp(email, code)
         except ProviderUnavailable as exc:
-            await self.otp.cancel(mobile)
-            raise HTTPException(status_code=503, detail="SMS delivery not configured") from exc
+            await self.otp.cancel(otp_identity)
+            raise HTTPException(status_code=503, detail="Email delivery is not configured") from exc
         except Exception:
-            await self.otp.cancel(mobile)
+            await self.otp.cancel(otp_identity)
             raise HTTPException(status_code=503, detail="OTP delivery unavailable") from None
 
     async def verify_customer(
@@ -89,10 +97,11 @@ class AuthService:
     ) -> SessionTokens:
         await self.limits.check("otp:verify:ip", ip, 30, 3600)
         await self.lockout.ensure_allowed("otp_verify", item.mobile)
+        otp_identity = f"{item.mobile}:{item.email.lower().strip()}"
         try:
             # A successful code check may still need an identity step (new or
             # shared-mobile customer). Preserve it until login/registration completes.
-            await self.otp.verify(item.mobile, item.code, consume=False)
+            await self.otp.verify(otp_identity, item.code, consume=False)
         except HTTPException as exc:
             if exc.status_code in (401, 429):
                 await self.lockout.failure("otp_verify", item.mobile)
@@ -102,15 +111,19 @@ class AuthService:
         try:
             async with purpose_transaction(self.factory, "customer_auth") as db:
                 matches = await self.repo.customers_by_mobile(db, item.mobile, blind)
+                if matches and not await self.repo.customer_email_matches(
+                    db, item.mobile, item.email, blind
+                ):
+                    raise HTTPException(status_code=401, detail="Invalid or expired code")
                 if len(matches) == 1:
-                    await self.otp.verify(item.mobile, item.code)
+                    await self.otp.verify(otp_identity, item.code)
                     customer_id, version = matches[0]
                 elif len(matches) > 1:
                     raise HTTPException(
                         status_code=409, detail="Provide national ID to identify the customer"
                     )
                 elif item.national_id is not None and item.full_name is not None:
-                    await self.otp.verify(item.mobile, item.code)
+                    await self.otp.verify(otp_identity, item.code)
                     customer_id = await self.repo.register_customer(
                         db,
                         full_name=item.full_name,
@@ -158,12 +171,19 @@ class AuthService:
             return StaffLoginResult(
                 None, await self._challenge(staff, "password_change"), "password_change"
             )
+        mobile_login = bool(
+            re.search(r"android|iphone|ipad|ipod|mobile", user_agent, re.IGNORECASE)
+        )
+        if (
+            staff.two_factor_required or staff.global_2fa_required
+        ) and not staff.two_factor_enabled:
+            return StaffLoginResult(None, await self._challenge(staff, "totp_setup"), "totp_setup")
+        if mobile_login:
+            return await self._start_staff_sms_otp(staff)
         if staff.two_factor_enabled:
             return StaffLoginResult(
                 None, await self._challenge(staff, "totp_verify"), "totp_verify"
             )
-        if staff.two_factor_required or staff.global_2fa_required:
-            return StaffLoginResult(None, await self._challenge(staff, "totp_setup"), "totp_setup")
         return StaffLoginResult(
             await self.issue_session(Actor(staff.id, "staff"), staff.token_version, ip, user_agent),
             None,
@@ -205,6 +225,64 @@ class AuthService:
         if staff is None or staff.status != "active" or staff.token_version != claims.token_version:
             raise HTTPException(status_code=401, detail="Authentication challenge expired")
         return staff
+
+    async def _staff_mobile(self, staff_id: UUID) -> str:
+        async with purpose_transaction(self.factory, "staff_auth") as db:
+            ciphertext = await self.repo.staff_profile_ciphertext_for_auth(db, staff_id)
+        if ciphertext is None:
+            raise HTTPException(status_code=503, detail="Staff mobile profile is unavailable")
+        try:
+            profile = json.loads(
+                self.staff_profiles.blobs.decrypt(
+                    ciphertext, purpose=STAFF_PROFILE, resource_id=staff_id
+                )
+            )
+            mobile = str(profile["mobile"])
+        except (KeyError, TypeError, ValueError):
+            raise HTTPException(
+                status_code=503, detail="Staff mobile profile is unavailable"
+            ) from None
+        if not re.fullmatch(r"\+201[0-9]{9}", mobile):
+            raise HTTPException(status_code=503, detail="Staff mobile profile is invalid")
+        return mobile
+
+    async def _start_staff_sms_otp(self, staff: StaffCredentials) -> StaffLoginResult:
+        if self.staff_sms_sender is None:
+            raise HTTPException(status_code=503, detail="Staff SMS delivery is not configured")
+        mobile = await self._staff_mobile(staff.id)
+        challenge = await self._challenge(staff, "staff_sms_otp")
+        claims = self.tokens.parse(challenge, "challenge")
+        otp_identity = f"staff-sms:{claims.jti}"
+        try:
+            code = await self.otp.start(otp_identity)
+            await self.staff_sms_sender(mobile, code)
+        except Exception as exc:
+            await self.otp.cancel(otp_identity)
+            await self.redis.delete(f"auth:challenge:{claims.jti}")
+            if isinstance(exc, ProviderUnavailable):
+                raise HTTPException(
+                    status_code=503, detail="SMS delivery is not configured"
+                ) from exc
+            raise HTTPException(
+                status_code=503, detail="Staff SMS OTP delivery unavailable"
+            ) from None
+        return StaffLoginResult(None, challenge, "sms_otp")
+
+    async def verify_staff_sms_otp(
+        self, challenge: str, code: str, ip: str, user_agent: str
+    ) -> SessionTokens:
+        claims = await self._check_challenge(challenge, "staff_sms_otp")
+        identity = f"staff-sms:{claims.jti}"
+        await self.lockout.ensure_allowed("staff_sms_otp", identity)
+        try:
+            await self.otp.verify(identity, code)
+        except HTTPException:
+            await self.lockout.failure("staff_sms_otp", identity)
+            raise
+        await self.lockout.success("staff_sms_otp", identity)
+        await self._challenge_staff(claims)
+        await self._consume_challenge(claims, "staff_sms_otp")
+        return await self.issue_session(claims.subject, claims.token_version, ip, user_agent)
 
     async def verify_staff_totp(
         self,

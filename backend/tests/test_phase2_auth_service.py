@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import json
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from types import SimpleNamespace
@@ -19,6 +20,7 @@ from fastapi import HTTPException
 from app.db import Actor
 from app.domain.schemas import CustomerVerifyRequest
 from app.repositories.auth import AuthRepository, StaffCredentials
+from app.security.blobs import STAFF_PROFILE
 from app.services.auth import AuthService
 from app.services.providers import ProviderUnavailable
 from app.settings import Settings
@@ -35,10 +37,10 @@ class CapturingDelivery:
         self.fail_otp = False
         self.fail_invite = False
 
-    async def send_otp(self, mobile: str, code: str) -> None:
+    async def send_otp(self, email: str, code: str) -> None:
         if self.fail_otp:
             raise ProviderUnavailable("No SMS provider")
-        self.codes[mobile] = code
+        self.codes[email] = code
 
     async def send_invitation(self, email: str, url: str) -> None:
         if self.fail_invite:
@@ -75,7 +77,9 @@ async def fixture(
     for name in (
         "staff_by_email",
         "staff_by_id",
+        "staff_profile_ciphertext_for_auth",
         "customers_by_mobile",
+        "customer_email_matches",
         "register_customer",
         "current_version",
         "create_session",
@@ -109,6 +113,7 @@ async def fixture(
     monkeypatch.setattr("app.services.auth.scoped_transaction", fake_scoped)
     repo.current_version.return_value = 0
     repo.customers_by_mobile.return_value = [(uuid4(), 0)]
+    repo.customer_email_matches.return_value = True
     repo.invite.return_value = uuid4()
     repo.register_customer.return_value = uuid4()
     repo.accept_invite.return_value = uuid4()
@@ -141,12 +146,12 @@ def staff(**overrides: object) -> StaffCredentials:
 
 async def test_otp_login_new_registration_and_replay(fixture: tuple) -> None:
     auth, repo, delivery, scopes, _redis = fixture
-    await auth.start_customer_otp(MOBILE, "127.0.0.1")
-    code = delivery.codes[MOBILE]
+    await auth.start_customer_otp(MOBILE, "customer@example.test", "127.0.0.1")
+    code = delivery.codes["customer@example.test"]
     with pytest.raises(HTTPException) as exc:
-        await auth.start_customer_otp(MOBILE, "127.0.0.1")
+        await auth.start_customer_otp(MOBILE, "customer@example.test", "127.0.0.1")
     assert exc.value.status_code == 429
-    item = CustomerVerifyRequest(mobile=MOBILE, code=code)
+    item = CustomerVerifyRequest(mobile=MOBILE, email="customer@example.test", code=code)
     tokens = await auth.verify_customer(item, "127.0.0.1", "Browser")
     assert auth.tokens.parse(tokens.access, "access").subject.scope == "customer"
     assert scopes["purpose"] == ["customer_auth"]
@@ -154,21 +159,24 @@ async def test_otp_login_new_registration_and_replay(fixture: tuple) -> None:
     with pytest.raises(HTTPException):
         await auth.verify_customer(item, "127.0.0.1", "Browser")
     next_mobile = "+201155555555"
-    await auth.start_customer_otp(next_mobile, "127.0.0.1")
+    await auth.start_customer_otp(next_mobile, "new@example.test", "127.0.0.1")
     repo.customers_by_mobile.return_value = []
-    registration_code = delivery.codes[next_mobile]
+    registration_code = delivery.codes["new@example.test"]
     with pytest.raises(HTTPException) as exc:
         await auth.verify_customer(
-            CustomerVerifyRequest(mobile=next_mobile, code=registration_code),
+            CustomerVerifyRequest(
+                mobile=next_mobile, email="new@example.test", code=registration_code
+            ),
             "127.0.0.1",
             "Browser",
         )
     assert exc.value.status_code == 409
-    assert await _redis.exists(auth.otp._key(next_mobile))
+    assert await _redis.exists(auth.otp._key(f"{next_mobile}:new@example.test"))
 
     registration = CustomerVerifyRequest(
         mobile=next_mobile,
         code=registration_code,
+        email="new@example.test",
         national_id=NID,
         full_name="New Customer",
     )
@@ -176,36 +184,54 @@ async def test_otp_login_new_registration_and_replay(fixture: tuple) -> None:
     assert repo.register_customer.await_count == 1
     assert repo.register_customer.call_args.kwargs["last4"] == NID[-4:]
     assert len(repo.register_customer.call_args.kwargs["blind"]) == 32
-    assert not await _redis.exists(auth.otp._key(next_mobile))
+    assert not await _redis.exists(auth.otp._key(f"{next_mobile}:new@example.test"))
+
+
+async def test_customer_otp_is_rate_limited_by_email(fixture: tuple) -> None:
+    auth, _repo, _delivery, _scopes, _redis = fixture
+    email = "customer@example.test"
+    for mobile in ("+201155555555", "+201166666666", "+201177777777"):
+        await auth.start_customer_otp(mobile, email, "127.0.0.1")
+    with pytest.raises(HTTPException) as exc:
+        await auth.start_customer_otp("+201188888888", email, "127.0.0.1")
+    assert exc.value.status_code == 429
 
 
 async def test_otp_multi_profile_and_provider_failure(fixture: tuple) -> None:
     auth, repo, delivery, _scopes, redis = fixture
     delivery.fail_otp = True
     with pytest.raises(HTTPException) as exc:
-        await auth.start_customer_otp(MOBILE, "127.0.0.1")
+        await auth.start_customer_otp(MOBILE, "customer@example.test", "127.0.0.1")
     assert exc.value.status_code == 503
-    assert not await redis.exists(auth.otp._key(MOBILE))
+    assert not await redis.exists(auth.otp._key(f"{MOBILE}:customer@example.test"))
     delivery.fail_otp = False
-    await auth.start_customer_otp(MOBILE, "127.0.0.1")
+    await auth.start_customer_otp(MOBILE, "customer@example.test", "127.0.0.1")
     customer_id = uuid4()
     repo.customers_by_mobile.return_value = [(customer_id, 0), (uuid4(), 0)]
-    code = delivery.codes[MOBILE]
+    code = delivery.codes["customer@example.test"]
     with pytest.raises(HTTPException) as exc:
         await auth.verify_customer(
-            CustomerVerifyRequest(mobile=MOBILE, code=code), "127.0.0.1", "Agent"
+            CustomerVerifyRequest(mobile=MOBILE, email="customer@example.test", code=code),
+            "127.0.0.1",
+            "Agent",
         )
     assert exc.value.status_code == 409
-    assert await redis.exists(auth.otp._key(MOBILE))
+    assert await redis.exists(auth.otp._key(f"{MOBILE}:customer@example.test"))
 
     repo.customers_by_mobile.return_value = [(customer_id, 0)]
     tokens = await auth.verify_customer(
-        CustomerVerifyRequest(mobile=MOBILE, code=code, national_id=NID, full_name="Customer"),
+        CustomerVerifyRequest(
+            mobile=MOBILE,
+            email="customer@example.test",
+            code=code,
+            national_id=NID,
+            full_name="Customer",
+        ),
         "127.0.0.1",
         "Agent",
     )
     assert auth.tokens.parse(tokens.access, "access").subject.id == customer_id
-    assert not await redis.exists(auth.otp._key(MOBILE))
+    assert not await redis.exists(auth.otp._key(f"{MOBILE}:customer@example.test"))
 
 
 async def test_staff_unknown_disabled_forced_password_and_login(fixture: tuple) -> None:
@@ -235,6 +261,34 @@ async def test_staff_unknown_disabled_forced_password_and_login(fixture: tuple) 
     assert outcome.tokens and outcome.next_step is None
     assert scopes["scoped"][-1] == Actor(fresh.id, "staff")
     repo.record_login.assert_awaited_once()
+
+
+async def test_mobile_staff_login_sends_sms_otp_and_verifies_once(fixture: tuple) -> None:
+    auth, repo, _delivery, _scopes, _redis = fixture
+    hashed = await auth.passwords.hash(PASSWORD)
+    account = staff(password_hash=hashed)
+    repo.staff_by_email.return_value = account
+    repo.staff_by_id.return_value = account
+    repo.current_version.return_value = account.token_version
+    repo.staff_profile_ciphertext_for_auth.return_value = auth.staff_profiles.blobs.encrypt(
+        json.dumps({"mobile": MOBILE}).encode(), purpose=STAFF_PROFILE, resource_id=account.id
+    )
+    sender = AsyncMock()
+    auth.staff_sms_sender = sender
+
+    login = await auth.staff_login(
+        account.email, PASSWORD, "127.0.0.1", "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0)"
+    )
+    assert login.next_step == "sms_otp" and login.tokens is None
+    sender.assert_awaited_once()
+    assert sender.await_args.args[0] == MOBILE
+    code = sender.await_args.args[1]
+    tokens = await auth.verify_staff_sms_otp(
+        login.challenge, code, "127.0.0.1", "Mozilla/5.0 (iPhone)"
+    )
+    assert auth.tokens.parse(tokens.access, "access").subject.id == account.id
+    with pytest.raises(HTTPException):
+        await auth.verify_staff_sms_otp(login.challenge, code, "127.0.0.1", "Mozilla/5.0 (iPhone)")
 
 
 async def test_totp_policy_required_enroll_confirm_verify(fixture: tuple) -> None:

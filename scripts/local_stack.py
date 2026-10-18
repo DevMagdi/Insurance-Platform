@@ -9,7 +9,7 @@ server — and then runs the API, the worker and the Vite dev server directly.
 
     pip install -e './backend[localstack]'
     make init            # only once: creates the git-ignored .env
-    make local-up        # postgres + redis + smtp + api + worker + vite
+    make local-up        # postgres + redis + api + worker + vite
     make local-down
 
 The services keep the same ports and credentials as the Compose stack, so the
@@ -32,18 +32,16 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 STATE = ROOT / ".local-stack"
 LOGS = STATE / "logs"
-MAILDIR = STATE / "mail"
 PGDATA = STATE / "pgdata"
 PGSOCK = STATE / "pgsock"
 REDISDIR = STATE / "redis"
 
 POSTGRES_PORT = 5432
 REDIS_PORT = 6379
-SMTP_PORT = 1025
 API_PORT = 8000
 VITE_PORT = 5173
 
-SERVICES = ("postgres", "redis", "smtp", "api", "worker", "vite")
+SERVICES = ("postgres", "redis", "api", "worker", "vite")
 
 
 # --------------------------------------------------------------------------- #
@@ -326,24 +324,6 @@ def start_redis(env: dict[str, str]) -> None:
     wait_for_port(REDIS_PORT, "redis")
 
 
-def start_smtp(env: dict[str, str]) -> None:
-    MAILDIR.mkdir(parents=True, exist_ok=True)
-    spawn(
-        "smtp",
-        [
-            sys.executable,
-            str(ROOT / "scripts" / "local_smtp.py"),
-            "--port",
-            str(SMTP_PORT),
-            "--maildir",
-            str(MAILDIR),
-        ],
-        env={**os.environ},
-        cwd=ROOT,
-    )
-    wait_for_port(SMTP_PORT, "smtp")
-
-
 def service_env(env: dict[str, str]) -> dict[str, str]:
     """Shared runtime environment for the API and the worker."""
     return {
@@ -351,9 +331,6 @@ def service_env(env: dict[str, str]) -> dict[str, str]:
         **env,
         "ENVIRONMENT": "development",
         "REDIS_URL": f"redis://127.0.0.1:{REDIS_PORT}/0",
-        "SMTP_HOST": "127.0.0.1",
-        "SMTP_PORT": str(SMTP_PORT),
-        "DEV_SMS_MAILBOX": "true",
         "LOG_JSON": "false",
     }
 
@@ -427,21 +404,20 @@ def command_up() -> int:
     run_migrations(env)
     ensure_worker_role(env)
     start_redis(env)
-    start_smtp(env)
     start_api(env)
     start_worker(env)
     start_vite(env)
     log("")
     log(f"app      -> http://localhost:{VITE_PORT}/")
     log(f"api      -> http://127.0.0.1:{API_PORT}/api/health/ready")
-    log(f"mailbox  -> {MAILDIR}")
+    log("email    -> configured SMTP only (no local sink)")
     log("run `make local-bootstrap-admin` for the first admin (no demo data)")
     log("or `make local-seed` to load the demo dataset")
     return 0
 
 
 def command_down() -> int:
-    for name in ("vite", "worker", "api", "smtp", "redis"):
+    for name in ("vite", "worker", "api", "redis"):
         stop(name)
     binaries = pg_bin()
     if (PGDATA / "PG_VERSION").exists():
