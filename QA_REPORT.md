@@ -22,7 +22,7 @@
 | Bootstrap admin + seed | ✅ `make local-bootstrap-admin`, `make local-seed`: 4 companies, 6 categories, SLA rules, teams (Nile/Regional claims), 4 demo staff (`admin@/supervisor@/agent@/analyst@demo.example`, `must_change_password=true`), 5 000 complaints (`CMP-2026-000001…005000`; QA-created tickets start at `005001`) |
 | Health endpoints | ✅ `/api/health/live` 200, `/api/health/ready` 200 (and correct 503 `Dependencies unavailable` under dependency kills — §8), `/api/public/config` 200 `no-store`, captcha config `null` locally |
 | Real e-mail delivery | ✅ `SMTPDelivery` **rejects hostname-based local sinks and plaintext by design**, so a QA sink was built: `aiosmtpd` with STARTTLS on `169.254.0.21:2525`, IP-SAN certificate, CA pinned through `SSL_CERT_FILE`. **1 582 real `.eml` files** were delivered and inspected during the campaign (OTP codes, invitation tokens, status notices, insurer escalations). |
-| Playwright (real browser) | ❌ **Blocked in this environment**: playwright 1.64.1 is present in `frontend/node_modules`, but no browser is cached (`~/.cache/ms-playwright` empty), no system browser exists, and `npx playwright install chromium` fails (`Failed to download Chrome for Testing 156.0.8078.4 … Download failure, code=1` — the browser CDN is outside the sandbox network allowlist). UI coverage therefore = 148 vitest component/i18n tests + live HTTP E2E against the actually-served SPA + bundle audits. Every affected area is flagged in §6/§7. |
+| Playwright (real browser) | ⚠️ **Blocked inside the sandbox, executed in CI instead**: playwright 1.64.1 is present in `frontend/node_modules`, but no browser is cached, no system browser exists, and `npx playwright install chromium` fails (`Failed to download Chrome for Testing 156.0.8078.4 … Download failure, code=1` — the browser CDN is outside the sandbox network allowlist). The repo ships a **mocked-API Playwright suite** (`frontend/e2e/`, 36 tests over `chromium-desktop` + `chromium-mobile`) which GitHub Actions runs on every push: on this branch it flagged exactly one stale assertion — the intentional H-1 label change (`رقم الهاتف` → `رقم الموبايل` in the invite form) — which was updated in `e2e/onboarding.spec.ts`; all other browser tests passed unchanged. Local UI coverage = 148 vitest component/i18n tests + live HTTP E2E against the served SPA + bundle audits. |
 
 Stack state at report time: all services healthy, worker draining the seeded SLA-notice
 backlog, zero uncommitted regressions.
@@ -37,6 +37,7 @@ backlog, zero uncommitted regressions.
 | `tsc --noEmit` / `npm run build` | ✅ clean / ✅ built |
 | `ruff check` + `ruff format --check` + `mypy` (backend) | ✅ All checks passed; 186 files formatted; mypy clean on 108 files |
 | OpenAPI drift (`scripts/export_openapi.py` vs `docs/openapi.yaml`) | ✅ **zero drift** (byte-identical re-export) |
+| GitHub Actions CI on this branch (backend, frontend incl. **36 Playwright browser tests**, containers + Trivy, helm, postgres-rls, security) | ✅ all jobs green after the e2e spec label update (see §1 Playwright row) |
 | **Live E2E part 1 — core** (`qa-live/e2e_core.py`, S1–S4) | ✅ **76 / 76 PASS** (`results_core.json`) — incl. two live checks for the L-4 partial-PATCH fix |
 | **Live E2E part 2 — staff** (`qa-live/e2e_staff.py`, S5–S12) | ✅ **85 / 85 PASS** (`results_staff.json`) |
 | **Live E2E part 3 — resilience + JWT** (`qa-live/e2e_resilience.py`, R1–R4) | ✅ **31 / 32 PASS** (incl. three `[FIX L-7]` graceful-503 checks); the single FAIL is deliberate evidence of finding **L-8** (worker does not survive a broker outage) |
@@ -186,7 +187,7 @@ below behaved correctly (evidence: `[SECURITY]`-tagged entries in `qa-live/resul
 ## 6. Missing Coverage (gaps, honestly stated)
 
 **Cannot be exercised in this environment:**
-1. **Real-browser UI automation (Playwright)** — blocked (§1). Consequences: no click-through of every button/modal, no visual RTL/Arabic rendering check, no mobile-viewport/keyboard/a11y pass, no real-time UI update observation (the WS protocol itself **was** verified live at the socket level). Mitigation used: 148 vitest component tests (incl. label regression on the actual i18n bundles), live HTTP E2E against the served SPA, vite proxy/SPA delivery checks.
+1. **Real-browser UI automation (Playwright) inside the sandbox** — blocked (§1); the repo's mocked-API Playwright suite (36 tests, desktop + mobile chromium) **did run in GitHub Actions** on this branch and is green after one stale-label assertion was updated to match the intentional H-1 fix. Still not covered anywhere: a browser pass against the **real backend** (the CI suite mocks the API at the network layer), visual RTL polish, and screen-reader/keyboard audits. Mitigation used: 148 vitest component tests (incl. label regression on the actual i18n bundles), live HTTP E2E against the served SPA, CI Playwright suite.
 2. **Docker path** (`make up`, nginx `:8080`, backup/restore drills, partitioning job) — no docker daemon.
 3. **External providers** — Twilio (SMS), WhatsApp, voice, AI insight providers are unconfigured locally; only their **fail-closed/graceful-degradation** behavior was tested (503s, queued jobs, `pending_provider` states).
 4. **78 integration-marked backend tests** deselected (they need docker/providers).
@@ -208,8 +209,12 @@ Fixed in 14 files (registration `NewComplaintPage`, `LoginPage`, `InvitePage`,
 `i18n/extra.ts`, `apiErrors.ts` + tests). Verification:
 - `grep -r "جوال" frontend/src` → the **only** remaining hits are inside the regression test
   itself (`i18n.test.ts` asserts no bundle ever contains the deprecated wording).
-- English consistency: "Mobile number" used uniformly; format hint `+201…` present; vitest
+- English consistency: "Mobile number" used uniformly (the invite form's English label moved
+  `Phone number` → `Mobile number` for consistency); format hint `+201…` present; vitest
   asserts EN/AR parity of the field labels.
+- The repo's Playwright onboarding spec asserted the old invite-form label
+  (`getByLabel('رقم الهاتف', { exact: true })`) — updated to `رقم الموبايل`; the CI browser
+  suite (36 tests, desktop + mobile) is green with the new wording.
 - The OTP-delivery failure message now renders in Arabic (`apiErrors.ts` mapping, §3.1) and the
   `LoginPage` surfaces it as an alert rather than a raw detail string.
 

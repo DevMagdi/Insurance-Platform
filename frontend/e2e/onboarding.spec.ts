@@ -71,7 +71,7 @@ test('department invitation → full profile/photo → clickable dashboard profi
   await expect(page.getByRole('heading', { name: 'إنشاء الحساب والبروفايل' })).toBeVisible();
   await page.getByLabel('الاسم الكامل').fill('Mona Ahmed Ali');
   await page.getByLabel('الرقم القومي').fill('29901010112345');
-  await page.getByLabel('رقم الهاتف', { exact: true }).fill('+201123456789');
+  await page.getByLabel('رقم الموبايل', { exact: true }).fill('+201123456789');
   await page.getByLabel('العنوان', { exact: true }).fill('12 Nile Street, Dokki');
   await page.getByLabel('المدينة / المحافظة').fill('Giza');
   await page.getByLabel('المسمى الوظيفي (اختياري)').fill('Claims specialist');
