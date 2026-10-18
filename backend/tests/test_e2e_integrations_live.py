@@ -602,7 +602,14 @@ async def test_full_email_whatsapp_ai_voice_and_inbound_lifecycle(
         async def mark_seen(self, sequence_id: str) -> None:
             return None
 
-    monkeypatch.setattr("app.worker.IMAPMailProvider", FakeIMAPProvider)
+    monkeypatch.setattr(
+        "app.worker.INBOUND_EMAIL_PROVIDER_CLASSES",
+        {
+            "imap": FakeIMAPProvider,
+            "gmail_oauth": FakeIMAPProvider,
+            "outlook_oauth": FakeIMAPProvider,
+        },
+    )
     await _configure(
         runtime,
         world,

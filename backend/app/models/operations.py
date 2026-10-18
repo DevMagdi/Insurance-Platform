@@ -76,6 +76,9 @@ class IntegrationConfig(Base):
     config_ciphertext: Mapped[bytes | None] = mapped_column(LargeBinary)
     secret_ref: Mapped[str | None] = mapped_column(Text)
     is_enabled: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
+    connection_status: Mapped[str] = mapped_column(Text, server_default="unconfigured")
+    last_test_at: Mapped[datetime | None]
+    last_error_code: Mapped[str | None] = mapped_column(Text)
     updated_at: Mapped[datetime] = mapped_column(server_default=func.now())
 
 
