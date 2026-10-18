@@ -106,11 +106,13 @@ jobs:
           smoke_stage='verify production API health through edge'
           curl --retry 10 --retry-connrefused --retry-delay 1 -fsS http://127.0.0.1:18080/api/health/live
           smoke_stage='verify production SPA shell'
-          curl --retry 10 --retry-connrefused --retry-delay 1 -fsS http://127.0.0.1:18080/ | grep -qi '<div id="root"'
+          curl --retry 10 --retry-connrefused --retry-delay 1 -fsS -o /tmp/ci-production-index.html http://127.0.0.1:18080/
+          grep -qi '<div id="root"' /tmp/ci-production-index.html
           # The staff console and CAPTCHA bootstrap both rely on the same-origin API proxy.
           smoke_stage='check /api/me and CAPTCHA config through production edge'
           test "$(curl -sS -o /dev/null -w '%{http_code}' http://127.0.0.1:18080/api/me)" = 401
-          curl -fsS http://127.0.0.1:18080/api/public/config | grep -q 'privacy_policy_version'
+          curl -fsS -o /tmp/ci-production-config.json http://127.0.0.1:18080/api/public/config
+          grep -q 'privacy_policy_version' /tmp/ci-production-config.json
           # Exercise the dev edge too: it uses Docker DNS at request time and must
           # recover after the API container is replaced with a new container/IP.
           smoke_stage='start dev edge and check its API proxy'
@@ -121,7 +123,8 @@ jobs:
             if curl -fsS http://127.0.0.1:18081/api/health/live >/dev/null; then break; fi
             sleep 2
           done
-          curl -fsS http://127.0.0.1:18081/api/public/config | grep -q 'privacy_policy_version'
+          curl -fsS -o /tmp/ci-dev-config.json http://127.0.0.1:18081/api/public/config
+          grep -q 'privacy_policy_version' /tmp/ci-dev-config.json
           # Keep both containers allocated briefly so Docker assigns the replacement
           # a different IP, then remove the old target and let the resolver TTL expire.
           smoke_stage='replace API container and verify dev DNS refresh'
@@ -136,7 +139,8 @@ jobs:
             if curl -fsS http://127.0.0.1:18081/api/health/live >/dev/null; then break; fi
             sleep 2
           done
-          curl -fsS http://127.0.0.1:18081/api/public/config | grep -q 'privacy_policy_version'
+          curl -fsS -o /tmp/ci-dev-config.json http://127.0.0.1:18081/api/public/config
+          grep -q 'privacy_policy_version' /tmp/ci-dev-config.json
           test "$(curl -sS -o /dev/null -w '%{http_code}' http://127.0.0.1:18081/api/me)" = 401
       - name: Fail if the image contract drifted from docs/openapi.yaml
         run: |
