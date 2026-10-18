@@ -12,6 +12,7 @@ from app.api.deps import RequestContext, integration_service, require_permission
 from app.domain.schemas import (
     AIAnalysisRequest,
     AIReviewRequest,
+    CustomerSmsRequest,
     ReplyRequest,
     SendComplaintEmailRequest,
     VoiceFollowupRequest,
@@ -63,6 +64,26 @@ async def send_customer_email_reply(
 ) -> dict[str, Any]:
     return await integration_service(request).send_customer_email(
         ctx.db, ctx.scope, complaint_id, item.body, locale, idempotency_key
+    )
+
+
+@router.post(
+    "/complaints/{complaint_id}/sms",
+    status_code=202,
+    dependencies=[Depends(backpressure("integration"))],
+)
+async def send_customer_sms_message(
+    complaint_id: UUID,
+    item: CustomerSmsRequest,
+    request: Request,
+    idempotency_key: str = Header(
+        alias="Idempotency-Key", min_length=8, max_length=128, pattern=r"^[A-Za-z0-9._:-]+$"
+    ),
+    ctx: RequestContext = Depends(require_permission("integrations.send_sms")),
+    _: None = Depends(csrf_required),
+) -> dict[str, Any]:
+    return await integration_service(request).send_customer_sms(
+        ctx.db, ctx.scope, complaint_id, item.body, idempotency_key
     )
 
 

@@ -18,7 +18,12 @@ from app.api.deps import RequestContext, authenticated_context
 from app.db import Actor
 from app.domain.access import AccessScope
 from app.domain.enums import OwnershipLevel
-from app.domain.schemas import AssignmentRuleSpec, IntegrationSpec, ReportScheduleSpec, TeamSpec
+from app.domain.schemas import (
+    AssignmentRuleSpec,
+    IntegrationConfigSpec,
+    ReportScheduleSpec,
+    TeamSpec,
+)
 from app.main import app
 from app.repositories.admin import AdminRepository
 from app.services.reports import ReportService
@@ -240,9 +245,14 @@ def test_phase7_schemas_reject_unsafe_or_absolute_scheduled_report_filters() -> 
     with pytest.raises(ValidationError):
         AssignmentRuleSpec.model_validate({"strategy": "least_workload"})
     with pytest.raises(ValidationError):
-        IntegrationSpec.model_validate({"provider": "email", "is_enabled": True})
+        IntegrationConfigSpec.model_validate({"provider": "email", "enabled": True})
     with pytest.raises(ValidationError):
-        IntegrationSpec.model_validate({"provider": "email", "secret_ref": "secret with spaces"})
+        IntegrationConfigSpec.model_validate({"provider": "not_a_provider", "enabled": False})
+    # Partial credential updates never echo secrets; unknown keys stay rejected.
+    patch = IntegrationConfigSpec.model_validate(
+        {"provider": "openai", "enabled": False, "credentials": {"model": "gpt-4o-mini"}}
+    )
+    assert patch.credentials == {"model": "gpt-4o-mini"}
 
     schedule = ReportScheduleSpec.model_validate(
         {

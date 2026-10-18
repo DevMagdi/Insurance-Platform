@@ -3,6 +3,13 @@
 Runs only with the TEST_* database URLs (pytest -m integration). External
 providers (SMTP/HTTP/IMAP) are replaced with in-memory fakes; every database
 function, claim, finish, inbound event and AI/voice path is the production code.
+NOTE: as of the Phase-5.4 integrations work these live probes were NOT run
+against real Google/Microsoft/Meta/Twilio/OpenAI/ClamAV endpoints - the
+sandbox has no real provider accounts. Provider behaviour is verified
+through mocked transports in ``test_integration_connections.py`` and
+``test_phase4_integrations.py``. To run this file, export the documented
+LIVE_INTEGRATION_* credentials and execute ``pytest -m integration``.
+
 """
 
 from __future__ import annotations
@@ -595,7 +602,14 @@ async def test_full_email_whatsapp_ai_voice_and_inbound_lifecycle(
         async def mark_seen(self, sequence_id: str) -> None:
             return None
 
-    monkeypatch.setattr("app.worker.IMAPMailProvider", FakeIMAPProvider)
+    monkeypatch.setattr(
+        "app.worker.INBOUND_EMAIL_PROVIDER_CLASSES",
+        {
+            "imap": FakeIMAPProvider,
+            "gmail_oauth": FakeIMAPProvider,
+            "outlook_oauth": FakeIMAPProvider,
+        },
+    )
     await _configure(
         runtime,
         world,

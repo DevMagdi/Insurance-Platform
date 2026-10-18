@@ -5181,6 +5181,60 @@ paths:
       security:
       - AccessCookie: []
       x-required-permission: integrations.send_email
+  /api/staff/complaints/{complaint_id}/sms:
+    post:
+      tags:
+      - integrations
+      summary: Send Customer Sms Message
+      operationId: send_customer_sms_message_api_staff_complaints__complaint_id__sms_post
+      parameters:
+      - name: complaint_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Complaint Id
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          minLength: 8
+          maxLength: 128
+          pattern: ^[A-Za-z0-9._:-]+$
+          title: Idempotency-Key
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomerSmsRequest'
+      responses:
+        '202':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Send Customer Sms Message Api Staff Complaints  Complaint
+                  Id  Sms Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: integrations.send_sms
   /api/staff/complaints/{complaint_id}/whatsapp:
     post:
       tags:
@@ -5643,6 +5697,11 @@ paths:
       tags:
       - integration-admin
       summary: Integrations
+      description: 'Stored configurations: provider, scope, enablement and connection
+        status.
+
+
+        Credential values are never included; only ``has_credentials`` is returned.'
       operationId: integrations_api_staff_admin_integration_connections_get
       responses:
         '200':
@@ -5696,6 +5755,177 @@ paths:
         description: Must equal the csrf_token cookie (double-submit).
         schema:
           type: string
+  /api/staff/admin/integration-connections/test:
+    post:
+      tags:
+      - integration-admin
+      summary: Test Integration Connection
+      description: Non-mutating credential probe; records the status and last test
+        time.
+      operationId: test_integration_connection_api_staff_admin_integration_connections_test_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConnectionTestRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response Test Integration Connection Api Staff Admin Integration
+                  Connections Test Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: integrations.manage
+      parameters:
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
+  /api/staff/admin/integration-connections/sandbox-test:
+    post:
+      tags:
+      - integration-admin
+      summary: Sandbox Integration Send
+      description: Send the fixed sandbox template to the stored sandbox address only.
+      operationId: sandbox_integration_send_api_staff_admin_integration_connections_sandbox_test_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SandboxSendRequest'
+        required: true
+      responses:
+        '202':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response Sandbox Integration Send Api Staff Admin Integration
+                  Connections Sandbox Test Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: integrations.manage
+      parameters:
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
+  /api/staff/admin/integration-connections/oauth/{provider}/authorize:
+    post:
+      tags:
+      - integration-admin
+      summary: Oauth Authorize
+      operationId: oauth_authorize_api_staff_admin_integration_connections_oauth__provider__authorize_post
+      parameters:
+      - name: provider
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Provider
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OAuthStartRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Oauth Authorize Api Staff Admin Integration Connections
+                  Oauth  Provider  Authorize Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: integrations.manage
+  /api/staff/admin/integration-connections/oauth/{provider}/callback:
+    get:
+      tags:
+      - integration-admin
+      summary: Oauth Callback
+      description: 'Browser return leg: validates the signed state, stores tokens
+        and redirects.'
+      operationId: oauth_callback_api_staff_admin_integration_connections_oauth__provider__callback_get
+      parameters:
+      - name: provider
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Provider
+      - name: code
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            maxLength: 2048
+          - type: 'null'
+          title: Code
+      - name: state
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            maxLength: 2048
+          - type: 'null'
+          title: State
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: integrations.manage
   /api/staff/admin/webhooks:
     get:
       tags:
@@ -5965,6 +6195,7 @@ paths:
           - whatsapp_cloud
           - mock_voice
           - twilio
+          - twilio_sms
           - vonage
           type: string
           title: Provider
@@ -6451,142 +6682,6 @@ paths:
       security:
       - AccessCookie: []
       x-required-permission: settings.manage
-  /api/staff/admin/integrations:
-    get:
-      tags:
-      - administration
-      summary: Integrations
-      operationId: integrations_api_staff_admin_integrations_get
-      responses:
-        '200':
-          description: Successful Response
-          content:
-            application/json:
-              schema:
-                items:
-                  additionalProperties: true
-                  type: object
-                type: array
-                title: Response Integrations Api Staff Admin Integrations Get
-      security:
-      - AccessCookie: []
-      x-required-permission: integrations.manage
-    post:
-      tags:
-      - administration
-      summary: Save Integration
-      operationId: save_integration_api_staff_admin_integrations_post
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/IntegrationSpec'
-        required: true
-      responses:
-        '201':
-          description: Successful Response
-          content:
-            application/json:
-              schema:
-                additionalProperties:
-                  type: string
-                  format: uuid
-                type: object
-                title: Response Save Integration Api Staff Admin Integrations Post
-        '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
-      security:
-      - AccessCookie: []
-      x-required-permission: integrations.manage
-      parameters:
-      - name: X-CSRF-Token
-        in: header
-        required: true
-        description: Must equal the csrf_token cookie (double-submit).
-        schema:
-          type: string
-  /api/staff/admin/integrations/{item_id}:
-    put:
-      tags:
-      - administration
-      summary: Update Integration
-      operationId: update_integration_api_staff_admin_integrations__item_id__put
-      parameters:
-      - name: item_id
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-          title: Item Id
-      - name: X-CSRF-Token
-        in: header
-        required: true
-        description: Must equal the csrf_token cookie (double-submit).
-        schema:
-          type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/IntegrationSpec'
-      responses:
-        '200':
-          description: Successful Response
-          content:
-            application/json:
-              schema:
-                type: object
-                additionalProperties:
-                  type: string
-                  format: uuid
-                title: Response Update Integration Api Staff Admin Integrations  Item
-                  Id  Put
-        '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
-      security:
-      - AccessCookie: []
-      x-required-permission: integrations.manage
-    delete:
-      tags:
-      - administration
-      summary: Delete Integration
-      operationId: delete_integration_api_staff_admin_integrations__item_id__delete
-      parameters:
-      - name: item_id
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-          title: Item Id
-      - name: X-CSRF-Token
-        in: header
-        required: true
-        description: Must equal the csrf_token cookie (double-submit).
-        schema:
-          type: string
-      responses:
-        '204':
-          description: Successful Response
-        '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
-      security:
-      - AccessCookie: []
-      x-required-permission: integrations.manage
   /api/staff/admin/assignment-rules:
     get:
       tags:
@@ -7542,6 +7637,7 @@ components:
       - whatsapp
       - phone
       - ai_voice
+      - sms
       title: CommunicationChannel
     CompanySpec:
       properties:
@@ -7737,6 +7833,39 @@ components:
       - reopened
       - transferred
       title: ComplaintStatus
+    ConnectionTestRequest:
+      properties:
+        company_id:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Company Id
+        provider:
+          type: string
+          enum:
+          - smtp
+          - sendgrid
+          - ses
+          - gmail_oauth
+          - outlook_oauth
+          - whatsapp_cloud
+          - email_webhook
+          - imap
+          - twilio_sms
+          - mock_llm
+          - openai
+          - mock_voice
+          - twilio
+          - vonage
+          - openai_speech
+          - clamav
+          title: Provider
+      additionalProperties: false
+      type: object
+      required:
+      - provider
+      title: ConnectionTestRequest
     ConsentPurpose:
       type: string
       enum:
@@ -7804,6 +7933,18 @@ components:
       title: CustomerProfileUpdate
       description: Self-service profile edit; identity fields (mobile, national ID)
         are immutable here.
+    CustomerSmsRequest:
+      properties:
+        body:
+          type: string
+          maxLength: 480
+          minLength: 1
+          title: Body
+      additionalProperties: false
+      type: object
+      required:
+      - body
+      title: CustomerSmsRequest
     CustomerVerifyRequest:
       properties:
         mobile:
@@ -7923,14 +8064,19 @@ components:
           - smtp
           - sendgrid
           - ses
+          - gmail_oauth
+          - outlook_oauth
           - whatsapp_cloud
           - email_webhook
           - imap
+          - twilio_sms
           - mock_llm
           - openai
           - mock_voice
           - twilio
           - vonage
+          - openai_speech
+          - clamav
           title: Provider
         enabled:
           type: boolean
@@ -7945,7 +8091,7 @@ components:
           - additionalProperties:
               type: string
             type: object
-            maxProperties: 20
+            maxProperties: 40
           - type: 'null'
           title: Credentials
       additionalProperties: false
@@ -7953,50 +8099,15 @@ components:
       required:
       - provider
       title: IntegrationConfigSpec
-    IntegrationSpec:
-      properties:
-        company_id:
-          anyOf:
-          - type: string
-            format: uuid
-          - type: 'null'
-          title: Company Id
-        provider:
-          type: string
-          enum:
-          - email
-          - whatsapp
-          - sms
-          - ai_voice
-          - virus_scan
-          title: Provider
-        config:
-          additionalProperties:
-            anyOf:
-            - type: string
-            - type: integer
-            - type: number
-            - type: boolean
-          type: object
-          maxProperties: 20
-          title: Config
-        secret_ref:
-          anyOf:
-          - type: string
-            pattern: ^[A-Za-z0-9_.:/-]{3,200}$
-          - type: 'null'
-          title: Secret Ref
-        is_enabled:
-          type: boolean
-          title: Is Enabled
-          default: false
-      additionalProperties: false
-      type: object
-      required:
-      - provider
-      title: IntegrationSpec
-      description: Provider settings; secrets are referenced by vault name, never
-        inlined.
+      description: 'One encrypted provider configuration.
+
+
+        ``credentials`` is a partial update: absent keys keep their stored value,
+        so
+
+        an operator can change a hostname without re-entering every secret. Stored
+
+        values are never echoed back to the client.'
     InviteAcceptRequest:
       properties:
         token:
@@ -8056,6 +8167,30 @@ components:
       title: NotificationPreferences
       description: Customer delivery choices; channels stay opt-out, never opt-in
         by surprise.
+    OAuthStartRequest:
+      properties:
+        company_id:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Company Id
+        provider:
+          type: string
+          enum:
+          - gmail_oauth
+          - outlook_oauth
+          title: Provider
+        redirect_path:
+          type: string
+          pattern: ^/[A-Za-z0-9_\-./]{0,200}(\?[A-Za-z0-9_\-=&%]{0,100})?$
+          title: Redirect Path
+          default: /staff/operations
+      additionalProperties: false
+      type: object
+      required:
+      - provider
+      title: OAuthStartRequest
     OwnershipLevel:
       type: string
       enum:
@@ -8391,6 +8526,32 @@ components:
       required:
       - name
       title: RoleSpec
+    SandboxSendRequest:
+      properties:
+        company_id:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Company Id
+        provider:
+          type: string
+          enum:
+          - smtp
+          - gmail_oauth
+          - outlook_oauth
+          - twilio_sms
+          title: Provider
+        confirm:
+          type: boolean
+          title: Confirm
+          default: false
+      additionalProperties: false
+      type: object
+      required:
+      - provider
+      title: SandboxSendRequest
+      description: Deliberate, confirmed send to the stored sandbox address only.
     SavedViewCreate:
       properties:
         name:

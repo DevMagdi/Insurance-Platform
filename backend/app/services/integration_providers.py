@@ -12,6 +12,7 @@ import imaplib
 import json
 import re
 import ssl
+import time
 import uuid
 from contextlib import suppress
 from dataclasses import dataclass, field
@@ -21,6 +22,7 @@ from email.message import EmailMessage
 from email.policy import default as email_policy
 from email.utils import formatdate, make_msgid, parseaddr
 from typing import Any, Protocol
+from urllib.parse import urlencode
 from xml.sax.saxutils import escape
 
 import aiosmtplib
@@ -84,6 +86,12 @@ class WhatsAppSendRequest:
     template_name: str | None = None
     language: str = "en"
     parameters: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class SMSProviderRequest:
+    recipient: str
+    body: str
 
 
 @dataclass(frozen=True)
@@ -198,6 +206,28 @@ class SMTPEmailProvider:
         except (OSError, aiosmtplib.SMTPException, TimeoutError) as exc:
             raise IntegrationProviderError("smtp_delivery_failed") from exc
         return ProviderResult(provider_id=message["Message-ID"])
+
+    async def test_connection(self) -> None:
+        host = str(self.config.get("host", ""))
+        from_email = str(self.config.get("from_email", ""))
+        if not host or not from_email:
+            raise IntegrationProviderError("email_configuration_missing", retryable=False)
+        try:
+            client = aiosmtplib.SMTP(
+                hostname=host,
+                port=int(self.config.get("port", 587)),
+                timeout=20,
+                start_tls=_config_bool(self.config.get("start_tls"), True),
+            )
+            await client.connect()
+            if self.config.get("username"):
+                await client.login(
+                    str(self.config["username"]), str(self.config.get("password") or "")
+                )
+            await client.noop()
+            await client.quit()
+        except (OSError, aiosmtplib.SMTPException, TimeoutError) as exc:
+            raise IntegrationProviderError("smtp_connection_failed") from exc
 
 
 class IMAPMailProvider:
@@ -316,6 +346,24 @@ class IMAPMailProvider:
             with suppress(OSError, imaplib.IMAP4.error):
                 client.logout()
 
+    async def test_connection(self) -> None:
+        def _probe() -> None:
+            client = self._connect()
+            try:
+                status, _ = client.select(str(self.config.get("mailbox", "INBOX")), readonly=True)
+                if status != "OK":
+                    raise IntegrationProviderError("imap_mailbox_unavailable")
+            finally:
+                with suppress(OSError, imaplib.IMAP4.error):
+                    client.logout()
+
+        try:
+            await asyncio.to_thread(_probe)
+        except IntegrationProviderError:
+            raise
+        except (OSError, imaplib.IMAP4.error) as exc:
+            raise IntegrationProviderError("imap_connection_failed") from exc
+
 
 class SendGridEmailProvider:
     """SendGrid REST adapter; API credentials are supplied from encrypted settings."""
@@ -363,6 +411,22 @@ class SendGridEmailProvider:
             "sendgrid_rejected",
             retryable=response.status_code >= 500 or response.status_code == 429,
         )
+
+    async def test_connection(self) -> None:
+        api_key = str(self.config.get("api_key", ""))
+        sender = str(self.config.get("from_email", ""))
+        if not api_key or not sender:
+            raise IntegrationProviderError("sendgrid_configuration_missing", retryable=False)
+        try:
+            async with httpx.AsyncClient(timeout=15, follow_redirects=False) as client:
+                response = await client.get(
+                    "https://api.sendgrid.com/v3/scopes",
+                    headers={"Authorization": f"Bearer {api_key}"},
+                )
+        except httpx.HTTPError as exc:
+            raise IntegrationProviderError("sendgrid_unreachable") from exc
+        if response.status_code != 200:
+            raise IntegrationProviderError("sendgrid_auth_failed", retryable=False)
 
 
 class SESEmailProvider:
@@ -419,6 +483,27 @@ class SESEmailProvider:
             raise IntegrationProviderError("ses_delivery_failed") from exc
         # SES' SMTP interface does not return a message id; the queue keeps its own.
         return ProviderResult(provider_id=None)
+
+    async def test_connection(self) -> None:
+        sender = str(self.config.get("from_email", ""))
+        region = str(self.config.get("region", ""))
+        if not sender or not region:
+            raise IntegrationProviderError("ses_configuration_missing", retryable=False)
+        username, password = self._credentials()
+        try:
+            client = aiosmtplib.SMTP(
+                hostname=str(self.config.get("host") or f"email-smtp.{region}.amazonaws.com"),
+                port=int(self.config.get("port") or 587),
+                timeout=20,
+                start_tls=True,
+            )
+            await client.connect()
+            if username:
+                await client.login(username, password or "")
+            await client.noop()
+            await client.quit()
+        except (OSError, aiosmtplib.SMTPException, TimeoutError) as exc:
+            raise IntegrationProviderError("ses_connection_failed") from exc
 
 
 class WhatsAppCloudProvider:
@@ -483,9 +568,30 @@ class WhatsAppCloudProvider:
             provider_id = None
         return ProviderResult(provider_id=str(provider_id) if provider_id else None)
 
+    async def test_connection(self) -> None:
+        token = str(self.config.get("access_token", ""))
+        phone_id = str(self.config.get("phone_number_id", ""))
+        version = str(self.config.get("api_version", "v21.0"))
+        if not token or not phone_id or not re.fullmatch(r"v\d+\.\d+", version):
+            raise IntegrationProviderError("whatsapp_configuration_missing", retryable=False)
+        try:
+            async with httpx.AsyncClient(timeout=15, follow_redirects=False) as client:
+                response = await client.get(
+                    f"https://graph.facebook.com/{version}/{phone_id}",
+                    params={"fields": "id,display_phone_number,verified_name"},
+                    headers={"Authorization": f"Bearer {token}"},
+                )
+        except httpx.HTTPError as exc:
+            raise IntegrationProviderError("whatsapp_unreachable") from exc
+        if response.status_code != 200:
+            raise IntegrationProviderError("whatsapp_auth_failed", retryable=False)
+
 
 class MockLLMProvider:
     """Deterministic local provider; output is always stored as a suggestion."""
+
+    def __init__(self, config: dict[str, Any] | None = None) -> None:
+        self.config = config or {}
 
     async def analyze(self, text: str, *, locale: str) -> AIAnalysisResult:
         normalized = text.lower()
@@ -513,12 +619,35 @@ class MockLLMProvider:
         )
         return AIAnalysisResult(items, "mock-llm-v1")
 
+    async def test_connection(self) -> None:
+        # Deterministic in-process adapter; nothing remote to probe. The worker
+        # refuses mock providers whenever ENVIRONMENT=production.
+        return None
+
 
 class OpenAICompatibleProvider:
-    """OpenAI-compatible chat completions adapter with strict JSON result parsing."""
+    """OpenAI-compatible chat completions adapter with strict JSON result parsing.
+
+    Supports model selection plus bounded ``timeout_seconds`` (5-120),
+    ``max_retries`` (0-5, exponential backoff on 429/5xx/network) and
+    ``max_tokens`` (64-4096) cost limits from the encrypted provider config.
+    """
 
     def __init__(self, config: dict[str, Any]) -> None:
         self.config = config
+
+    def _budget(self) -> tuple[float, int, int]:
+        timeout = str(self.config.get("timeout_seconds", "")).strip()
+        retries = str(self.config.get("max_retries", "")).strip()
+        max_tokens = str(self.config.get("max_tokens", "")).strip()
+        timeout_value = float(timeout) if timeout.isdigit() else 30.0
+        retry_value = int(retries) if retries.isdigit() else 2
+        token_value = int(max_tokens) if max_tokens.isdigit() else 1024
+        return (
+            min(max(timeout_value, 5.0), 120.0),
+            min(max(retry_value, 0), 5),
+            min(max(token_value, 64), 4096),
+        )
 
     async def analyze(self, text: str, *, locale: str) -> AIAnalysisResult:
         api_key = str(self.config.get("api_key", ""))
@@ -532,6 +661,7 @@ class OpenAICompatibleProvider:
             await pin_public_url(base_url)
         except UnsafeDestination as exc:
             raise IntegrationProviderError("llm_endpoint_blocked", retryable=False) from exc
+        timeout, retries, max_tokens = self._budget()
         prompt = (
             "Return one JSON object with classification {category,priority}, "
             "sentiment {sentiment}, summary {summary}, and reply {reply,locale}. "
@@ -542,28 +672,40 @@ class OpenAICompatibleProvider:
             + "\nComplaint text:\n"
             + text[:6000]
         )
-        try:
-            async with httpx.AsyncClient(timeout=30, follow_redirects=False) as client:
-                response = await client.post(
-                    f"{base_url.rstrip('/')}/chat/completions",
-                    headers={"Authorization": f"Bearer {api_key}"},
-                    json={
-                        "model": model,
-                        "temperature": 0,
-                        "response_format": {"type": "json_object"},
-                        "messages": [
-                            {"role": "system", "content": "You classify insurance complaints."},
-                            {"role": "user", "content": prompt},
-                        ],
-                    },
-                )
-        except httpx.HTTPError as exc:
-            raise IntegrationProviderError("llm_unreachable") from exc
-        if response.status_code != 200:
+        response: httpx.Response | None = None
+        for attempt in range(retries + 1):
+            try:
+                async with httpx.AsyncClient(timeout=timeout, follow_redirects=False) as client:
+                    response = await client.post(
+                        f"{base_url.rstrip('/')}/chat/completions",
+                        headers={"Authorization": f"Bearer {api_key}"},
+                        json={
+                            "model": model,
+                            "temperature": 0,
+                            "max_tokens": max_tokens,
+                            "response_format": {"type": "json_object"},
+                            "messages": [
+                                {"role": "system", "content": "You classify insurance complaints."},
+                                {"role": "user", "content": prompt},
+                            ],
+                        },
+                    )
+            except httpx.HTTPError as exc:
+                if attempt < retries:
+                    await asyncio.sleep(min(2**attempt, 8))
+                    continue
+                raise IntegrationProviderError("llm_unreachable") from exc
+            if response.status_code < 400:
+                break
+            if (response.status_code >= 500 or response.status_code == 429) and attempt < retries:
+                await asyncio.sleep(min(2**attempt, 8))
+                continue
             raise IntegrationProviderError(
                 "llm_request_failed",
                 retryable=response.status_code >= 500 or response.status_code == 429,
             )
+        if response is None or response.status_code != 200:
+            raise IntegrationProviderError("llm_request_failed")
         try:
             result = response.json()["choices"][0]["message"]["content"]
             value = json.loads(result)
@@ -579,9 +721,51 @@ class OpenAICompatibleProvider:
             raise IntegrationProviderError("llm_response_invalid", retryable=False)
         return AIAnalysisResult(drafts, model)
 
+    async def test_connection(self) -> None:
+        api_key = str(self.config.get("api_key", ""))
+        base_url = str(self.config.get("base_url", "https://api.openai.com/v1"))
+        if not api_key:
+            raise IntegrationProviderError("llm_configuration_missing", retryable=False)
+        if not base_url.startswith("https://"):
+            raise IntegrationProviderError("llm_endpoint_must_use_https", retryable=False)
+        try:
+            await pin_public_url(base_url)
+        except UnsafeDestination as exc:
+            raise IntegrationProviderError("llm_endpoint_blocked", retryable=False) from exc
+        try:
+            async with httpx.AsyncClient(timeout=15, follow_redirects=False) as client:
+                response = await client.get(
+                    f"{base_url.rstrip('/')}/models",
+                    headers={"Authorization": f"Bearer {api_key}"},
+                )
+        except httpx.HTTPError as exc:
+            raise IntegrationProviderError("llm_unreachable") from exc
+        if response.status_code != 200:
+            raise IntegrationProviderError("llm_auth_failed", retryable=False)
+
+
+def normalize_inbound_voice_event(event: dict[str, Any]) -> VoiceCallResult:
+    """Map a signed inbound voice event (e.g. Twilio SpeechResult) to a result.
+
+    Pure local transformation of webhook data; the transcript already comes from
+    the provider's real speech recognition, so no mock is involved in production.
+    """
+    call_id = str(event.get("provider_call_id") or event.get("call_id") or "inbound")[:100]
+    if not bool(event.get("consent_confirmed")):
+        return VoiceCallResult(call_id, None, "human_fallback_no_consent")
+    transcript = str(event.get("text") or "")[:8000] or None
+    return VoiceCallResult(
+        call_id,
+        transcript,
+        "human_handoff" if event.get("request_human") else "completed",
+    )
+
 
 class MockVoiceProvider:
     """Working mock that models scheduled calls, consent and human fallback."""
+
+    def __init__(self, config: dict[str, Any] | None = None) -> None:
+        self.config = config or {}
 
     async def follow_up(
         self, request: VoiceCallRequest, *, idempotency_key: str
@@ -599,22 +783,12 @@ class MockVoiceProvider:
         )
 
     async def answer_inbound(self, event: dict[str, Any]) -> VoiceCallResult:
-        call_id = str(event.get("provider_call_id", "mock-inbound"))[:100]
-        if not bool(event.get("consent_confirmed")):
-            return VoiceCallResult(call_id, None, "human_fallback_no_consent")
-        transcript = str(
-            event.get("text")
-            or (
-                "Caller consented to an AI assistant. "
-                "The assistant provided a complaint status update."
-            )
-        )[:8000]
-        return VoiceCallResult(
-            call_id,
-            transcript,
-            "human_handoff" if event.get("request_human") else "completed",
-            recording=b"mock-audio-recording",
-        )
+        return normalize_inbound_voice_event(event)
+
+    async def test_connection(self) -> None:
+        # Deterministic in-process adapter; nothing remote to probe. The worker
+        # refuses mock providers whenever ENVIRONMENT=production.
+        return None
 
 
 class TwilioVoiceProvider:
@@ -679,7 +853,32 @@ class TwilioVoiceProvider:
         return VoiceCallResult(call_id, None, "initiated")
 
     async def answer_inbound(self, event: dict[str, Any]) -> VoiceCallResult:
-        return await MockVoiceProvider().answer_inbound(event)
+        return normalize_inbound_voice_event(event)
+
+    async def test_connection(self) -> None:
+        sid = str(self.config.get("account_sid", ""))
+        token = str(self.config.get("auth_token", ""))
+        from_number = str(self.config.get("from_number", ""))
+        callback = str(self.config.get("status_callback_url", ""))
+        if not sid or not token or not from_number or not callback:
+            raise IntegrationProviderError("twilio_voice_configuration_missing", retryable=False)
+        try:
+            async with httpx.AsyncClient(timeout=15, follow_redirects=False) as client:
+                response = await client.get(
+                    f"https://api.twilio.com/2010-04-01/Accounts/{sid}.json", auth=(sid, token)
+                )
+        except httpx.HTTPError as exc:
+            raise IntegrationProviderError("twilio_voice_unreachable") from exc
+        if response.status_code == 401:
+            raise IntegrationProviderError("twilio_auth_failed", retryable=False)
+        if response.status_code != 200:
+            raise IntegrationProviderError("twilio_account_unavailable")
+        try:
+            status = str(response.json().get("status", ""))
+        except (ValueError, TypeError):
+            raise IntegrationProviderError("twilio_response_invalid") from None
+        if status != "active":
+            raise IntegrationProviderError("twilio_account_inactive", retryable=False)
 
 
 class VonageVoiceProvider:
@@ -758,11 +957,30 @@ class VonageVoiceProvider:
         return VoiceCallResult(call_id, None, "initiated")
 
     async def answer_inbound(self, event: dict[str, Any]) -> VoiceCallResult:
-        return await MockVoiceProvider().answer_inbound(event)
+        return normalize_inbound_voice_event(event)
+
+    async def test_connection(self) -> None:
+        try:
+            token = self._jwt()
+        except IntegrationProviderError:
+            raise
+        try:
+            async with httpx.AsyncClient(timeout=15, follow_redirects=False) as client:
+                response = await client.get(
+                    "https://api.nexmo.com/v1/account",
+                    headers={"Authorization": f"Bearer {token}"},
+                )
+        except httpx.HTTPError as exc:
+            raise IntegrationProviderError("vonage_voice_unreachable") from exc
+        if response.status_code != 200:
+            raise IntegrationProviderError("vonage_auth_failed", retryable=False)
 
 
 class MockSpeechProvider:
     """Lightweight STT/TTS/LLM seam for voice-flow tests; it never records audio."""
+
+    def __init__(self, config: dict[str, Any] | None = None) -> None:
+        self.config = config or {}
 
     async def transcribe(self, audio: bytes, *, language: str) -> str:
         return "Mock transcription omitted audio content."
@@ -776,6 +994,11 @@ class MockSpeechProvider:
             if language == "ar"
             else "A human agent will follow up."
         )
+
+    async def test_connection(self) -> None:
+        # Deterministic in-process adapter; nothing remote to probe. The worker
+        # refuses mock providers whenever ENVIRONMENT=production.
+        return None
 
 
 class SignedWebhookProvider:
@@ -812,3 +1035,677 @@ class SignedWebhookProvider:
                 "webhook_rejected",
                 retryable=response.status_code >= 500 or response.status_code == 429,
             )
+
+
+# ---------------------------------------------------------------------------
+# OAuth 2.0 (Gmail / Microsoft 365) -------------------------------------------
+# ---------------------------------------------------------------------------
+
+
+class OAuthTokenBroker:
+    """Exchange and refresh OAuth tokens without ever logging them.
+
+    Access tokens are cached in memory until shortly before expiry. Rotated
+    refresh tokens are used for the current process only; the stored refresh
+    token stays valid on both Google and Microsoft unless the operator revokes
+    it, so no credential write-back path is required from the worker.
+    """
+
+    _EXPIRY_SLACK_SECONDS = 60
+
+    def __init__(self, config: dict[str, Any], *, provider: str) -> None:
+        self.config = config
+        self.provider = provider
+        self._access_token: str | None = None
+        self._expires_at: float = 0.0
+
+    def _token_url(self) -> str:
+        if self.provider == "gmail_oauth":
+            return "https://oauth2.googleapis.com/token"
+        tenant = str(self.config.get("tenant") or "common")
+        if not re.fullmatch(r"[A-Za-z0-9._-]{1,64}", tenant):
+            raise IntegrationProviderError("oauth_tenant_invalid", retryable=False)
+        return f"https://login.microsoftonline.com/{tenant}/oauth2/v2.0/token"
+
+    def _client(self) -> tuple[str, str]:
+        client_id = str(self.config.get("client_id", ""))
+        client_secret = str(self.config.get("client_secret", ""))
+        if not client_id or not client_secret:
+            raise IntegrationProviderError("oauth_client_configuration_missing", retryable=False)
+        return client_id, client_secret
+
+    @staticmethod
+    def authorize_url(provider: str, config: dict[str, Any], redirect_uri: str, state: str) -> str:
+        if provider == "gmail_oauth":
+            scopes = (
+                "https://www.googleapis.com/auth/gmail.send "
+                "https://www.googleapis.com/auth/gmail.modify "
+                "openid email"
+            )
+            query = urlencode(
+                {
+                    "client_id": str(config.get("client_id", "")),
+                    "redirect_uri": redirect_uri,
+                    "response_type": "code",
+                    "scope": scopes,
+                    "access_type": "offline",
+                    "prompt": "consent",
+                    "state": state,
+                }
+            )
+            return "https://accounts.google.com/o/oauth2/v2/auth?" + query
+        tenant = str(config.get("tenant") or "common")
+        if not re.fullmatch(r"[A-Za-z0-9._-]{1,64}", tenant):
+            raise IntegrationProviderError("oauth_tenant_invalid", retryable=False)
+        scopes = (
+            "https://graph.microsoft.com/Mail.Send "
+            "https://graph.microsoft.com/Mail.Read "
+            "offline_access openid email"
+        )
+        query = urlencode(
+            {
+                "client_id": str(config.get("client_id", "")),
+                "redirect_uri": redirect_uri,
+                "response_type": "code",
+                "scope": scopes,
+                "state": state,
+            }
+        )
+        return f"https://login.microsoftonline.com/{tenant}/oauth2/v2.0/authorize?" + query
+
+    async def _token_request(self, data: dict[str, str]) -> dict[str, Any]:
+        client_id, client_secret = self._client()
+        payload = {**data, "client_id": client_id, "client_secret": client_secret}
+        try:
+            async with httpx.AsyncClient(timeout=20, follow_redirects=False) as client:
+                response = await client.post(self._token_url(), data=payload)
+        except httpx.HTTPError as exc:
+            raise IntegrationProviderError("oauth_token_endpoint_unreachable") from exc
+        if response.status_code != 200:
+            raise IntegrationProviderError(
+                "oauth_token_request_rejected", retryable=response.status_code >= 500
+            )
+        try:
+            value = response.json()
+            token = str(value["access_token"])
+            expires_in = int(value.get("expires_in", 3600))
+        except (ValueError, KeyError, TypeError) as exc:
+            raise IntegrationProviderError("oauth_token_response_invalid") from exc
+        if not token or expires_in <= 0:
+            raise IntegrationProviderError("oauth_token_response_invalid", retryable=False)
+        self._access_token = token
+        self._expires_at = time.monotonic() + max(30, expires_in - self._EXPIRY_SLACK_SECONDS)
+        if value.get("refresh_token"):
+            self.config["refresh_token"] = str(value["refresh_token"])
+        return dict(value)
+
+    async def exchange_code(self, code: str, redirect_uri: str) -> dict[str, Any]:
+        if not code or len(code) > 2048:
+            raise IntegrationProviderError("oauth_code_invalid", retryable=False)
+        return await self._token_request(
+            {
+                "grant_type": "authorization_code",
+                "code": code,
+                "redirect_uri": redirect_uri,
+            }
+        )
+
+    async def access_token(self) -> str:
+        if self._access_token and time.monotonic() < self._expires_at:
+            return self._access_token
+        refresh_token = str(self.config.get("refresh_token", ""))
+        if not refresh_token:
+            raise IntegrationProviderError("oauth_refresh_token_missing", retryable=False)
+        await self._token_request({"grant_type": "refresh_token", "refresh_token": refresh_token})
+        assert self._access_token is not None
+        return self._access_token
+
+
+class GmailEmailProvider:
+    """Google Gmail REST API (users.messages.send) with OAuth 2.0 refresh tokens."""
+
+    def __init__(self, config: dict[str, Any]) -> None:
+        self.config = config
+        self.tokens = OAuthTokenBroker(config, provider="gmail_oauth")
+
+    async def send(self, request: EmailSendRequest, *, idempotency_key: str) -> ProviderResult:
+        if not self.config.get("from_email"):
+            raise IntegrationProviderError("gmail_configuration_missing", retryable=False)
+        message = EmailMessage()
+        message["From"] = str(self.config["from_email"])
+        message["To"] = ", ".join(request.recipients)
+        message["Subject"] = request.subject
+        message["Date"] = formatdate(localtime=False, usegmt=True)
+        message["Message-ID"] = make_msgid(idstring=idempotency_key[:24])
+        message["X-Idempotency-Key"] = idempotency_key[:128]
+        message.set_content(request.text_body)
+        for item in request.attachments:
+            maintype, _, subtype = item.mime_type.partition("/")
+            if not maintype or not subtype:
+                raise IntegrationProviderError("attachment_mime_invalid", retryable=False)
+            message.add_attachment(
+                item.content, maintype=maintype, subtype=subtype, filename=item.filename
+            )
+        raw = base64.urlsafe_b64encode(message.as_bytes(policy=email_policy)).decode("ascii")
+        token = await self.tokens.access_token()
+        try:
+            async with httpx.AsyncClient(timeout=30, follow_redirects=False) as client:
+                response = await client.post(
+                    "https://gmail.googleapis.com/gmail/v1/users/me/messages/send",
+                    headers={"Authorization": f"Bearer {token}"},
+                    json={"raw": raw},
+                )
+        except httpx.HTTPError as exc:
+            raise IntegrationProviderError("gmail_unreachable") from exc
+        if response.status_code != 200:
+            raise IntegrationProviderError(
+                "gmail_rejected",
+                retryable=response.status_code >= 500 or response.status_code == 429,
+            )
+        try:
+            provider_id = str(response.json()["id"])
+        except (ValueError, KeyError, TypeError):
+            provider_id = None
+        return ProviderResult(provider_id=provider_id)
+
+    async def test_connection(self) -> None:
+        token = await self.tokens.access_token()
+        try:
+            async with httpx.AsyncClient(timeout=15, follow_redirects=False) as client:
+                response = await client.get(
+                    "https://gmail.googleapis.com/gmail/v1/users/me/profile",
+                    headers={"Authorization": f"Bearer {token}"},
+                )
+        except httpx.HTTPError as exc:
+            raise IntegrationProviderError("gmail_unreachable") from exc
+        if response.status_code != 200:
+            raise IntegrationProviderError("gmail_auth_failed", retryable=False)
+
+
+class GmailInboxProvider:
+    """Inbound Gmail polling over the Gmail API (UNSEEN -> message list -> modify)."""
+
+    def __init__(self, config: dict[str, Any]) -> None:
+        self.config = config
+        self.tokens = OAuthTokenBroker(config, provider="gmail_oauth")
+
+    @staticmethod
+    def _text_body(payload: dict[str, Any]) -> str:
+        chunks: list[str] = []
+
+        def walk(node: dict[str, Any]) -> None:
+            body = node.get("body", {})
+            if node.get("mimeType") == "text/plain" and body.get("data"):
+                with suppress(ValueError, UnicodeDecodeError):
+                    chunks.append(
+                        base64.urlsafe_b64decode(str(body["data"])).decode("utf-8", "replace")
+                    )
+            for part in node.get("parts", [])[:40]:
+                if isinstance(part, dict):
+                    walk(part)
+
+        walk(payload.get("payload", {}) if isinstance(payload.get("payload"), dict) else {})
+        return "\n".join(chunks).strip()[:5000]
+
+    async def fetch_unseen(self, *, limit: int = 20) -> list[IncomingEmail]:
+        token = await self.tokens.access_token()
+        headers = {"Authorization": f"Bearer {token}"}
+        try:
+            async with httpx.AsyncClient(timeout=30, follow_redirects=False) as client:
+                listing = await client.get(
+                    "https://gmail.googleapis.com/gmail/v1/users/me/messages",
+                    headers=headers,
+                    params={"q": "is:unread", "maxResults": max(1, min(limit, 50))},
+                )
+                if listing.status_code != 200:
+                    raise IntegrationProviderError(
+                        "gmail_inbox_unavailable", retryable=listing.status_code >= 500
+                    )
+                messages: list[IncomingEmail] = []
+                for item in listing.json().get("messages", [])[:50]:
+                    message_id = str(item.get("id") or "")[:256]
+                    if not message_id:
+                        continue
+                    detail = await client.get(
+                        f"https://gmail.googleapis.com/gmail/v1/users/me/messages/{message_id}",
+                        headers=headers,
+                        params={"format": "full"},
+                    )
+                    if detail.status_code != 200:
+                        continue
+                    value = detail.json()
+                    headers_list = {
+                        str(h.get("name", "")).lower(): str(h.get("value", ""))
+                        for h in value.get("payload", {}).get("headers", [])[:60]
+                        if isinstance(h, dict)
+                    }
+                    messages.append(
+                        IncomingEmail(
+                            message_id,
+                            str(value.get("id") or message_id)[:256],
+                            parseaddr(headers_list.get("from", ""))[1][:254],
+                            headers_list.get("subject", "")[:500],
+                            self._text_body(value),
+                        )
+                    )
+                return messages
+        except httpx.HTTPError as exc:
+            raise IntegrationProviderError("gmail_inbox_unreachable") from exc
+
+    async def mark_seen(self, sequence_id: str) -> None:
+        if not re.fullmatch(r"[A-Za-z0-9_-]{1,128}", sequence_id):
+            raise IntegrationProviderError("gmail_sequence_invalid", retryable=False)
+        token = await self.tokens.access_token()
+        try:
+            async with httpx.AsyncClient(timeout=20, follow_redirects=False) as client:
+                response = await client.post(
+                    f"https://gmail.googleapis.com/gmail/v1/users/me/messages/{sequence_id}/modify",
+                    headers={"Authorization": f"Bearer {token}"},
+                    json={"removeLabelIds": ["UNSEEN"]},
+                )
+        except httpx.HTTPError as exc:
+            raise IntegrationProviderError("gmail_ack_unreachable") from exc
+        if response.status_code != 200:
+            raise IntegrationProviderError("gmail_ack_failed")
+
+
+class OutlookEmailProvider:
+    """Microsoft 365 / Outlook through Microsoft Graph (sendMail) with OAuth 2.0."""
+
+    def __init__(self, config: dict[str, Any]) -> None:
+        self.config = config
+        self.tokens = OAuthTokenBroker(config, provider="outlook_oauth")
+
+    async def send(self, request: EmailSendRequest, *, idempotency_key: str) -> ProviderResult:
+        sender = str(self.config.get("from_email", ""))
+        if not sender:
+            raise IntegrationProviderError("outlook_configuration_missing", retryable=False)
+        attachments = [
+            {
+                "@odata.type": "#microsoft.graph.fileAttachment",
+                "name": item.filename,
+                "contentType": item.mime_type,
+                "contentBytes": base64.b64encode(item.content).decode("ascii"),
+            }
+            for item in request.attachments
+        ]
+        token = await self.tokens.access_token()
+        payload: dict[str, Any] = {
+            "message": {
+                "subject": request.subject[:300],
+                "body": {"contentType": "Text", "content": request.text_body[:20_000]},
+                "toRecipients": [
+                    {"emailAddress": {"address": email}} for email in request.recipients
+                ],
+                "internetMessageId": f"<{idempotency_key[:64]}@insurance-platform>",
+                **({"attachments": attachments} if attachments else {}),
+            },
+            "saveToSentItems": True,
+        }
+        try:
+            async with httpx.AsyncClient(timeout=30, follow_redirects=False) as client:
+                response = await client.post(
+                    "https://graph.microsoft.com/v1.0/me/sendMail",
+                    headers={"Authorization": f"Bearer {token}"},
+                    json=payload,
+                )
+        except httpx.HTTPError as exc:
+            raise IntegrationProviderError("outlook_unreachable") from exc
+        if response.status_code not in (202, 200):
+            raise IntegrationProviderError(
+                "outlook_rejected",
+                retryable=response.status_code >= 500 or response.status_code == 429,
+            )
+        return ProviderResult(provider_id=None)
+
+    async def test_connection(self) -> None:
+        token = await self.tokens.access_token()
+        try:
+            async with httpx.AsyncClient(timeout=15, follow_redirects=False) as client:
+                response = await client.get(
+                    "https://graph.microsoft.com/v1.0/me",
+                    params={"$select": "mail,userPrincipalName"},
+                    headers={"Authorization": f"Bearer {token}"},
+                )
+        except httpx.HTTPError as exc:
+            raise IntegrationProviderError("outlook_unreachable") from exc
+        if response.status_code != 200:
+            raise IntegrationProviderError("outlook_auth_failed", retryable=False)
+
+
+class OutlookInboxProvider:
+    """Inbound Microsoft 365 mail polling over Microsoft Graph."""
+
+    def __init__(self, config: dict[str, Any]) -> None:
+        self.config = config
+        self.tokens = OAuthTokenBroker(config, provider="outlook_oauth")
+
+    async def fetch_unseen(self, *, limit: int = 20) -> list[IncomingEmail]:
+        token = await self.tokens.access_token()
+        try:
+            async with httpx.AsyncClient(timeout=30, follow_redirects=False) as client:
+                listing = await client.get(
+                    "https://graph.microsoft.com/v1.0/me/messages",
+                    headers={"Authorization": f"Bearer {token}"},
+                    params={
+                        "$filter": "isRead eq false",
+                        "$top": max(1, min(limit, 50)),
+                        "$select": "id,subject,from,body,internetMessageId",
+                    },
+                )
+                if listing.status_code != 200:
+                    raise IntegrationProviderError(
+                        "outlook_inbox_unavailable", retryable=listing.status_code >= 500
+                    )
+                messages: list[IncomingEmail] = []
+                for item in listing.json().get("value", [])[:50]:
+                    message_id = str(item.get("id") or "")[:256]
+                    if not message_id:
+                        continue
+                    body = item.get("body", {})
+                    content = re.sub(r"<[^>]+>", " ", str(body.get("content", "")))[:5000]
+                    messages.append(
+                        IncomingEmail(
+                            message_id,
+                            str(item.get("internetMessageId") or message_id).strip("<>")[:256],
+                            str(item.get("from", {}).get("emailAddress", {}).get("address", ""))[
+                                :254
+                            ],
+                            str(item.get("subject", ""))[:500],
+                            content,
+                        )
+                    )
+                return messages
+        except httpx.HTTPError as exc:
+            raise IntegrationProviderError("outlook_inbox_unreachable") from exc
+
+    async def mark_seen(self, sequence_id: str) -> None:
+        if not re.fullmatch(r"[A-Za-z0-9=._+-]{1,512}", sequence_id):
+            raise IntegrationProviderError("outlook_sequence_invalid", retryable=False)
+        token = await self.tokens.access_token()
+        try:
+            async with httpx.AsyncClient(timeout=20, follow_redirects=False) as client:
+                response = await client.patch(
+                    f"https://graph.microsoft.com/v1.0/me/messages/{sequence_id}",
+                    headers={"Authorization": f"Bearer {token}"},
+                    json={"isRead": True},
+                )
+        except httpx.HTTPError as exc:
+            raise IntegrationProviderError("outlook_ack_unreachable") from exc
+        if response.status_code not in (200, 204):
+            raise IntegrationProviderError("outlook_ack_failed")
+
+
+class TwilioSMSProvider:
+    """Twilio Programmable SMS with a country allowlist and delivery callbacks.
+
+    Sending is fail-closed: the destination country code must appear in the
+    operator-verified ``allowed_country_codes`` list (for example ``+20`` for
+    Egypt) before any message is queued to Twilio.
+    """
+
+    endpoint = "https://api.twilio.com/2010-04-01/Accounts/{account_sid}/Messages.json"
+
+    def __init__(self, config: dict[str, Any]) -> None:
+        self.config = config
+
+    def _allowed(self, recipient: str) -> None:
+        raw = str(self.config.get("allowed_country_codes", "")).strip()
+        codes = [part.strip() for part in raw.split(",") if part.strip()]
+        if not codes:
+            raise IntegrationProviderError("sms_country_allowlist_missing", retryable=False)
+        for code in codes:
+            if not re.fullmatch(r"\+\d{1,4}", code):
+                raise IntegrationProviderError("sms_country_allowlist_invalid", retryable=False)
+        if not recipient.startswith(tuple(codes)):
+            raise IntegrationProviderError("sms_destination_country_not_allowed", retryable=False)
+
+    def _credentials(self) -> tuple[str, str, str]:
+        sid = str(self.config.get("account_sid", ""))
+        token = str(self.config.get("auth_token", ""))
+        from_number = str(self.config.get("from_number", ""))
+        if not sid or not token or not from_number:
+            raise IntegrationProviderError("twilio_sms_configuration_missing", retryable=False)
+        return sid, token, from_number
+
+    async def send(self, request: SMSProviderRequest, *, idempotency_key: str) -> ProviderResult:
+        sid, token, from_number = self._credentials()
+        self._allowed(request.recipient)
+        fields = {
+            "To": request.recipient,
+            "From": from_number,
+            "Body": request.body[:1600],
+        }
+        callback = str(self.config.get("status_callback_url", ""))
+        if callback:
+            fields["StatusCallback"] = callback
+        try:
+            async with httpx.AsyncClient(timeout=20, follow_redirects=False) as client:
+                response = await client.post(
+                    self.endpoint.format(account_sid=sid),
+                    auth=(sid, token),
+                    data=fields,
+                    headers={"Idempotency-Key": idempotency_key[:128]},
+                )
+        except httpx.HTTPError as exc:
+            raise IntegrationProviderError("twilio_sms_unreachable") from exc
+        if response.status_code not in (200, 201):
+            raise IntegrationProviderError(
+                "twilio_sms_rejected",
+                retryable=response.status_code >= 500 or response.status_code == 429,
+            )
+        try:
+            message_sid = str(response.json()["sid"])
+        except (ValueError, KeyError, TypeError) as exc:
+            raise IntegrationProviderError("twilio_sms_response_invalid") from exc
+        return ProviderResult(provider_id=message_sid)
+
+    async def test_connection(self) -> None:
+        sid, token, _ = self._credentials()
+        try:
+            async with httpx.AsyncClient(timeout=15, follow_redirects=False) as client:
+                response = await client.get(
+                    f"https://api.twilio.com/2010-04-01/Accounts/{sid}.json", auth=(sid, token)
+                )
+        except httpx.HTTPError as exc:
+            raise IntegrationProviderError("twilio_unreachable") from exc
+        if response.status_code == 401:
+            raise IntegrationProviderError("twilio_auth_failed", retryable=False)
+        if response.status_code != 200:
+            raise IntegrationProviderError("twilio_account_unavailable")
+        try:
+            status = str(response.json().get("status", ""))
+        except (ValueError, TypeError):
+            raise IntegrationProviderError("twilio_response_invalid") from None
+        if status != "active":
+            raise IntegrationProviderError("twilio_account_inactive", retryable=False)
+
+
+class OpenAISpeechProvider:
+    """Real STT (Whisper transcription) and TTS (OpenAI audio speech)."""
+
+    def __init__(self, config: dict[str, Any]) -> None:
+        self.config = config
+
+    def _headers(self) -> dict[str, str]:
+        api_key = str(self.config.get("api_key", ""))
+        if not api_key:
+            raise IntegrationProviderError("speech_configuration_missing", retryable=False)
+        return {"Authorization": f"Bearer {api_key}"}
+
+    def _base_url(self) -> str:
+        base_url = str(self.config.get("base_url", "https://api.openai.com/v1"))
+        if not base_url.startswith("https://"):
+            raise IntegrationProviderError("speech_endpoint_must_use_https", retryable=False)
+        return base_url.rstrip("/")
+
+    async def transcribe(self, audio: bytes, *, language: str) -> str:
+        if not audio:
+            raise IntegrationProviderError("speech_audio_empty", retryable=False)
+        stt_model = str(self.config.get("stt_model") or "whisper-1")
+        if not re.fullmatch(r"[A-Za-z0-9._-]{1,64}", stt_model):
+            raise IntegrationProviderError("speech_model_invalid", retryable=False)
+        try:
+            async with httpx.AsyncClient(timeout=60, follow_redirects=False) as client:
+                response = await client.post(
+                    f"{self._base_url()}/audio/transcriptions",
+                    headers=self._headers(),
+                    files={"file": ("audio.mp3", audio, "application/octet-stream")},
+                    data={"model": stt_model, "language": language[:8]},
+                )
+        except httpx.HTTPError as exc:
+            raise IntegrationProviderError("speech_unreachable") from exc
+        if response.status_code != 200:
+            raise IntegrationProviderError(
+                "speech_transcription_failed",
+                retryable=response.status_code >= 500 or response.status_code == 429,
+            )
+        try:
+            return str(response.json()["text"])[:8000]
+        except (ValueError, KeyError, TypeError) as exc:
+            raise IntegrationProviderError("speech_response_invalid") from exc
+
+    async def synthesize(self, text: str, *, language: str) -> bytes:
+        tts_model = str(self.config.get("tts_model") or "gpt-4o-mini-tts")
+        voice = str(self.config.get("voice") or "alloy")
+        if not re.fullmatch(r"[A-Za-z0-9._-]{1,64}", tts_model) or not re.fullmatch(
+            r"[A-Za-z0-9._-]{1,64}", voice
+        ):
+            raise IntegrationProviderError("speech_model_invalid", retryable=False)
+        try:
+            async with httpx.AsyncClient(timeout=60, follow_redirects=False) as client:
+                response = await client.post(
+                    f"{self._base_url()}/audio/speech",
+                    headers=self._headers(),
+                    json={
+                        "model": tts_model,
+                        "voice": voice,
+                        "input": text[:4096],
+                        "response_format": "mp3",
+                    },
+                )
+        except httpx.HTTPError as exc:
+            raise IntegrationProviderError("speech_unreachable") from exc
+        if response.status_code != 200:
+            raise IntegrationProviderError(
+                "speech_synthesis_failed",
+                retryable=response.status_code >= 500 or response.status_code == 429,
+            )
+        return response.content[: 5 * 1024 * 1024]
+
+    async def test_connection(self) -> None:
+        try:
+            async with httpx.AsyncClient(timeout=15, follow_redirects=False) as client:
+                response = await client.get(f"{self._base_url()}/models", headers=self._headers())
+        except httpx.HTTPError as exc:
+            raise IntegrationProviderError("speech_unreachable") from exc
+        if response.status_code != 200:
+            raise IntegrationProviderError("speech_auth_failed", retryable=False)
+
+
+# ---------------------------------------------------------------------------
+# Registries used by the worker, the connection-test service and the admin UI ---
+# ---------------------------------------------------------------------------
+
+EMAIL_PROVIDER_CLASSES: dict[str, type] = {
+    "smtp": SMTPEmailProvider,
+    "sendgrid": SendGridEmailProvider,
+    "ses": SESEmailProvider,
+    "gmail_oauth": GmailEmailProvider,
+    "outlook_oauth": OutlookEmailProvider,
+}
+
+INBOUND_EMAIL_PROVIDER_CLASSES: dict[str, type] = {
+    "imap": IMAPMailProvider,
+    "gmail_oauth": GmailInboxProvider,
+    "outlook_oauth": OutlookInboxProvider,
+}
+
+SMS_PROVIDER_CLASSES: dict[str, type] = {"twilio_sms": TwilioSMSProvider}
+
+VOICE_PROVIDER_CLASSES: dict[str, type] = {
+    "mock_voice": MockVoiceProvider,
+    "twilio": TwilioVoiceProvider,
+    "vonage": VonageVoiceProvider,
+}
+
+LLM_PROVIDER_CLASSES: dict[str, type] = {
+    "mock_llm": MockLLMProvider,
+    "openai": OpenAICompatibleProvider,
+}
+
+# Providers that can be probed without sending any message or placing any call.
+CONNECTION_TESTERS: dict[str, type] = {
+    **EMAIL_PROVIDER_CLASSES,
+    "imap": IMAPMailProvider,
+    "whatsapp_cloud": WhatsAppCloudProvider,
+    **SMS_PROVIDER_CLASSES,
+    **LLM_PROVIDER_CLASSES,
+    **VOICE_PROVIDER_CLASSES,
+    "openai_speech": OpenAISpeechProvider,
+}
+
+# Fields that must exist in the merged (stored + submitted) credential blob
+# before a provider may be enabled. Empty sets are valid (e.g. mock adapters).
+PROVIDER_REQUIRED_FIELDS: dict[str, frozenset[str]] = {
+    "smtp": frozenset({"host", "from_email"}),
+    "sendgrid": frozenset({"api_key", "from_email"}),
+    "ses": frozenset({"region", "from_email"}),
+    "gmail_oauth": frozenset({"client_id", "client_secret", "refresh_token", "from_email"}),
+    "outlook_oauth": frozenset({"client_id", "client_secret", "refresh_token", "from_email"}),
+    "whatsapp_cloud": frozenset({"access_token", "phone_number_id", "app_secret"}),
+    "email_webhook": frozenset({"webhook_secret"}),
+    "imap": frozenset({"host", "username", "password"}),
+    "twilio_sms": frozenset({"account_sid", "auth_token", "from_number"}),
+    "mock_llm": frozenset(),
+    "openai": frozenset({"api_key"}),
+    "mock_voice": frozenset(),
+    "twilio": frozenset({"account_sid", "auth_token", "from_number", "status_callback_url"}),
+    "vonage": frozenset({"application_id", "private_key", "from_number", "status_callback_url"}),
+    "openai_speech": frozenset({"api_key"}),
+    "clamav": frozenset({"host"}),
+}
+
+# Providers that must never run in production (development/tests only).
+MOCK_PROVIDERS = frozenset({"mock_llm", "mock_voice"})
+
+
+def build_provider(provider: str, config: dict[str, Any]) -> Any:
+    """Instantiate the adapter for ``provider``; unknown names fail closed."""
+    if provider in EMAIL_PROVIDER_CLASSES:
+        return EMAIL_PROVIDER_CLASSES[provider](config)
+    if provider in SMS_PROVIDER_CLASSES:
+        return SMS_PROVIDER_CLASSES[provider](config)
+    if provider in LLM_PROVIDER_CLASSES:
+        return LLM_PROVIDER_CLASSES[provider](config)
+    if provider in VOICE_PROVIDER_CLASSES:
+        return VOICE_PROVIDER_CLASSES[provider](config)
+    if provider == "whatsapp_cloud":
+        return WhatsAppCloudProvider(config)
+    if provider == "openai_speech":
+        return OpenAISpeechProvider(config)
+    raise IntegrationProviderError("provider_unsupported", retryable=False)
+
+
+async def probe_provider(provider: str, config: dict[str, Any]) -> None:
+    """Run a non-mutating credential/connection probe.
+
+    Never sends a message or places a call; raises
+    :class:`IntegrationProviderError` with a log-safe code on any failure.
+    """
+    if provider == "clamav":
+        from app.services.providers import ClamAVScanner, ProviderUnavailable
+
+        try:
+            await ClamAVScanner(config).ping()
+        except ProviderUnavailable as exc:
+            raise IntegrationProviderError("clamav_unreachable") from exc
+        return
+    tester_class = CONNECTION_TESTERS.get(provider)
+    if tester_class is None:
+        raise IntegrationProviderError("provider_connection_test_unsupported", retryable=False)
+    tester = tester_class(config)
+    probe = getattr(tester, "test_connection", None)
+    if probe is None:
+        raise IntegrationProviderError("provider_connection_test_unsupported", retryable=False)
+    await probe()

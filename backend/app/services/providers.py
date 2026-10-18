@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import asyncio
+import re
+from contextlib import suppress
 from dataclasses import dataclass
 from email.message import EmailMessage
 from typing import Any, Protocol
@@ -192,6 +195,92 @@ class VirusScanner(Protocol):
 
 
 class UnconfiguredVirusScanner:
+    """Fail-closed placeholder: returns ``None`` so uploads stay untrusted."""
+
     async def scan(self, target: ScanTarget) -> str | None:
         # Never treat unscanned content as clean.
+        return None
+
+
+class ClamAVScanner:
+    """ClamAV clamd INSTREAM scanner; only an explicit ``OK`` verdict is clean.
+
+    ``scan`` returns ``"clean"``, ``"infected"`` or ``None``. ``None`` means the
+    scanner could not give a verdict (daemon down, timeout, protocol error) and
+    the attachment must stay untrusted; it is never a pass.
+    """
+
+    def __init__(self, config: dict[str, Any]) -> None:
+        self.config = config
+
+    def _endpoint(self) -> tuple[str, int, float]:
+        host = str(self.config.get("host", "")).strip()
+        if not host or not re.fullmatch(r"[A-Za-z0-9._:-]{1,253}", host):
+            raise ProviderUnavailable("ClamAV host is not configured")
+        port = int(self.config.get("port") or 3310)
+        if not 1 <= port <= 65535:
+            raise ProviderUnavailable("ClamAV port is invalid")
+        timeout = float(self.config.get("timeout_seconds") or 30)
+        return host, port, min(max(timeout, 1.0), 300.0)
+
+    @staticmethod
+    async def _command(writer: asyncio.StreamWriter, chunk: bytes) -> None:
+        writer.write(len(chunk).to_bytes(4, "big") + chunk)
+        await writer.drain()
+
+    async def ping(self) -> str:
+        """Connection probe used by the admin connection test (no scan)."""
+        host, port, timeout = self._endpoint()
+        try:
+            reader, writer = await asyncio.wait_for(
+                asyncio.open_connection(host, port), timeout=timeout
+            )
+            try:
+                writer.write(b"zPING\0")
+                await writer.drain()
+                reply = await asyncio.wait_for(reader.readuntil(b"\0"), timeout=timeout)
+            finally:
+                writer.close()
+                with suppress(OSError, TimeoutError):
+                    await writer.wait_closed()
+        except (
+            TimeoutError,
+            OSError,
+            asyncio.IncompleteReadError,
+            asyncio.LimitOverrunError,
+        ) as exc:
+            raise ProviderUnavailable("ClamAV daemon is unreachable") from exc
+        if not reply.startswith(b"PONG"):
+            raise ProviderUnavailable("ClamAV daemon rejected the probe")
+        return reply.decode("ascii", "replace").rstrip("\0")
+
+    async def scan(self, target: ScanTarget) -> str | None:
+        if not target.content:
+            return None
+        try:
+            host, port, timeout = self._endpoint()
+        except ProviderUnavailable:
+            return None
+        try:
+            reader, writer = await asyncio.wait_for(
+                asyncio.open_connection(host, port), timeout=timeout
+            )
+            try:
+                writer.write(b"zINSTREAM\0")
+                await writer.drain()
+                for start in range(0, len(target.content), 64 * 1024):
+                    await self._command(writer, target.content[start : start + 64 * 1024])
+                await self._command(writer, b"")
+                reply = await asyncio.wait_for(reader.readuntil(b"\0"), timeout=timeout)
+            finally:
+                writer.close()
+                with suppress(OSError, TimeoutError):
+                    await writer.wait_closed()
+        except (TimeoutError, OSError, asyncio.IncompleteReadError, asyncio.LimitOverrunError):
+            return None
+        verdict = reply.decode("ascii", "replace").rstrip("\0").strip()
+        if verdict.endswith("OK"):
+            return "clean"
+        if "FOUND" in verdict:
+            return "infected"
         return None

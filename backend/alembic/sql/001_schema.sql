@@ -9,7 +9,7 @@ CREATE TYPE staff_status AS ENUM ('invited', 'active', 'disabled');
 CREATE TYPE permission_effect AS ENUM ('allow', 'deny');
 CREATE TYPE ownership_level AS ENUM ('own', 'team', 'all');
 CREATE TYPE message_visibility AS ENUM ('public', 'internal');
-CREATE TYPE communication_channel AS ENUM ('portal', 'email', 'whatsapp', 'phone', 'ai_voice');
+CREATE TYPE communication_channel AS ENUM ('portal', 'email', 'whatsapp', 'phone', 'ai_voice', 'sms');
 CREATE TYPE message_direction AS ENUM ('inbound', 'outbound');
 CREATE TYPE attachment_scan_status AS ENUM ('pending', 'clean', 'infected', 'error');
 

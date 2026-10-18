@@ -261,36 +261,6 @@ class ReportScheduleView(StrictModel):
         return self
 
 
-class IntegrationSpec(StrictModel):
-    """Provider settings; secrets are referenced by vault name, never inlined."""
-
-    company_id: UUID | None = None
-    provider: Literal["email", "whatsapp", "sms", "ai_voice", "virus_scan"]
-    config: dict[str, str | int | float | bool] = Field(default_factory=dict, max_length=20)
-    secret_ref: str | None = Field(default=None, pattern=r"^[A-Za-z0-9_.:/-]{3,200}$")
-    is_enabled: bool = False
-
-    @field_validator("config")
-    @classmethod
-    def reference_not_secret(
-        cls, value: dict[str, str | int | float | bool]
-    ) -> dict[str, str | int | float | bool]:
-        for key, setting in value.items():
-            if not re.fullmatch(r"[a-z][a-z0-9_]{1,40}", key):
-                raise ValueError("Config keys are lower_snake_case")
-            if re.search(r"(secret|token|password|api_key|private|credential|key)", key):
-                raise ValueError("Credentials belong in the secret manager, not in config")
-            if isinstance(setting, str) and len(setting) > 500:
-                raise ValueError("Config values are limited to 500 characters")
-        return value
-
-    @model_validator(mode="after")
-    def enabled_needs_secret(self) -> IntegrationSpec:
-        if self.is_enabled and not self.secret_ref:
-            raise ValueError("An enabled integration must reference a stored secret")
-        return self
-
-
 class AssignmentRuleSpec(StrictModel):
     company_id: UUID | None = None
     insurance_type: InsuranceType | None = None
@@ -597,23 +567,43 @@ IntegrationProviderName = Literal[
     "smtp",
     "sendgrid",
     "ses",
+    "gmail_oauth",
+    "outlook_oauth",
     "whatsapp_cloud",
     "email_webhook",
     "imap",
+    "twilio_sms",
     "mock_llm",
     "openai",
     "mock_voice",
     "twilio",
     "vonage",
+    "openai_speech",
+    "clamav",
 ]
+
+OAuthProviderName = Literal["gmail_oauth", "outlook_oauth"]
+
+ConnectionStatus = Literal["unconfigured", "configured", "connected", "failed"]
+
+# Providers that require a company scope (inbound-only or company-bound).
+COMPANY_ONLY_PROVIDERS = frozenset({"email_webhook", "imap"})
+GLOBAL_ONLY_PROVIDERS = frozenset({"clamav"})
 
 
 class IntegrationConfigSpec(StrictModel):
+    """One encrypted provider configuration.
+
+    ``credentials`` is a partial update: absent keys keep their stored value, so
+    an operator can change a hostname without re-entering every secret. Stored
+    values are never echoed back to the client.
+    """
+
     company_id: UUID | None = None
     provider: IntegrationProviderName
     enabled: bool = True
     clear_credentials: bool = False
-    credentials: dict[str, str] | None = Field(default=None, max_length=20)
+    credentials: dict[str, str] | None = Field(default=None, max_length=40)
 
     @field_validator("credentials")
     @classmethod
@@ -650,47 +640,42 @@ class IntegrationConfigSpec(StrictModel):
             "application_id",
             "private_key",
             "status_callback_url",
+            "client_id",
+            "client_secret",
+            "refresh_token",
+            "tenant",
+            "sms_status_callback_url",
+            "incoming_url",
+            "sandbox_recipient",
+            "allowed_country_codes",
+            "timeout_seconds",
+            "max_retries",
+            "max_tokens",
+            "daily_request_limit",
+            "stt_model",
+            "tts_model",
+            "voice",
         }
-        if not value.keys() <= allowed or any(not k or len(v) > 4096 for k, v in value.items()):
+        if not value.keys() <= allowed or any(not k or len(v) > 8192 for k, v in value.items()):
             raise ValueError("Unsupported or oversized integration credential")
+        for key, setting in value.items():
+            if not re.fullmatch(r"[a-z][a-z0-9_]{1,40}", key):
+                raise ValueError("Credential keys are lower_snake_case")
+            if key == "sandbox_recipient" and not re.fullmatch(
+                r"[^@\s]+@[^@\s]+\.[^@\s]+|\+?[1-9]\d{6,14}", setting
+            ):
+                raise ValueError("Sandbox recipient must be an email address or E.164 number")
         return value
 
     @model_validator(mode="after")
     def provider_configuration(self) -> IntegrationConfigSpec:
-        required = {
-            "smtp": {"host", "from_email"},
-            "sendgrid": {"api_key", "from_email"},
-            "ses": {"region", "from_email"},
-            "whatsapp_cloud": {"access_token", "phone_number_id", "app_secret"},
-            "email_webhook": {"webhook_secret"},
-            "imap": {"host", "username", "password"},
-            "mock_llm": set(),
-            "openai": {"api_key"},
-            "mock_voice": set(),
-            "twilio": {
-                "account_sid",
-                "auth_token",
-                "from_number",
-                "webhook_secret",
-                "status_callback_url",
-            },
-            "vonage": {
-                "application_id",
-                "private_key",
-                "from_number",
-                "webhook_secret",
-                "status_callback_url",
-            },
-        }[self.provider]
-        credentials = self.credentials or {}
         if self.clear_credentials and (self.enabled or self.credentials is not None):
             raise ValueError("Disconnecting must disable the provider and omit credentials")
-        if self.enabled and not required <= credentials.keys() and self.credentials is not None:
-            raise ValueError("Required credentials are missing for this provider")
-        if self.enabled and required and self.credentials is None:
-            raise ValueError("Credentials are required to connect this provider")
-        if self.provider in {"email_webhook", "imap"} and self.company_id is None:
-            raise ValueError("Inbound email integrations must be company-scoped")
+        if self.provider in COMPANY_ONLY_PROVIDERS and self.company_id is None:
+            raise ValueError("This integration must be configured for a specific company")
+        if self.provider in GLOBAL_ONLY_PROVIDERS and self.company_id is not None:
+            raise ValueError("File scanning is a platform-wide setting (all companies)")
+        credentials = self.credentials or {}
         if "port" in credentials and (
             not credentials["port"].isdigit() or not 1 <= int(credentials["port"]) <= 65535
         ):
@@ -700,23 +685,84 @@ class IntegrationConfigSpec(StrictModel):
         ):
             raise ValueError("Provider sender email is invalid")
         if credentials.get("base_url") and not credentials["base_url"].startswith("https://"):
-            raise ValueError("AI provider endpoint must use HTTPS")
-        if credentials.get("status_callback_url"):
-            callback = urlsplit(credentials["status_callback_url"])
-            if (
-                callback.scheme != "https"
-                or not callback.hostname
-                or callback.username
-                or callback.password
-                or callback.hostname.lower() in {"localhost", "metadata.google.internal"}
-                or callback.hostname.lower().endswith((".local", ".internal"))
-            ):
-                raise ValueError("Voice status callback must be a public HTTPS URL")
+            raise ValueError("Provider endpoint must use HTTPS")
+        for url_key in ("status_callback_url",):
+            if credentials.get(url_key):
+                callback = urlsplit(credentials[url_key])
+                if (
+                    callback.scheme != "https"
+                    or not callback.hostname
+                    or callback.username
+                    or callback.password
+                    or callback.hostname.lower() in {"localhost", "metadata.google.internal"}
+                    or callback.hostname.lower().endswith((".local", ".internal"))
+                ):
+                    raise ValueError("Status callback must be a public HTTPS URL")
         if credentials.get("mailbox") and not re.fullmatch(
             r"[A-Za-z0-9_./ -]{1,128}", credentials["mailbox"]
         ):
             raise ValueError("IMAP mailbox name is invalid")
+        if credentials.get("allowed_country_codes") and not re.fullmatch(
+            r"\+\d{1,4}(,\+\d{1,4}){0,24}", credentials["allowed_country_codes"]
+        ):
+            raise ValueError("Country allowlist must look like +20,+966")
+        if self.provider == "imap" and re.fullmatch(
+            r".*@(gmail|googlemail|outlook|hotmail|live|office365)\.(com|[a-z]{2,})",
+            credentials.get("username", ""),
+            flags=re.IGNORECASE,
+        ):
+            raise ValueError(
+                "Gmail and Microsoft mailboxes require OAuth (gmail_oauth / outlook_oauth), "
+                "not IMAP passwords"
+            )
         return self
+
+
+class ConnectionTestRequest(StrictModel):
+    company_id: UUID | None = None
+    provider: IntegrationProviderName
+
+
+class ConnectionTestResult(StrictModel):
+    provider: str
+    company_id: UUID | None
+    connection_status: ConnectionStatus
+    tested_at: datetime | None
+    error_code: str | None
+    message: str
+
+
+class SandboxSendRequest(StrictModel):
+    """Deliberate, confirmed send to the stored sandbox address only."""
+
+    company_id: UUID | None = None
+    provider: Literal["smtp", "gmail_oauth", "outlook_oauth", "twilio_sms"]
+    confirm: bool = False
+
+
+class SandboxSendResult(StrictModel):
+    provider: str
+    queued: bool
+    recipient_masked: str
+    message: str
+
+
+class OAuthStartRequest(StrictModel):
+    company_id: UUID | None = None
+    provider: OAuthProviderName
+    redirect_path: str = Field(
+        default="/staff/operations",
+        pattern=r"^/[A-Za-z0-9_\-./]{0,200}(\?[A-Za-z0-9_\-=&%]{0,100})?$",
+    )
+
+
+class OAuthStartResponse(StrictModel):
+    authorization_url: str
+    expires_at: datetime
+
+
+class CustomerSmsRequest(StrictModel):
+    body: str = Field(min_length=1, max_length=480)
 
 
 class SendComplaintEmailRequest(StrictModel):

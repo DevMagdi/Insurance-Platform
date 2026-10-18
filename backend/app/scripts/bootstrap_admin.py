@@ -24,6 +24,25 @@ Usage (automation; never put a real password in a shell history or CI log)::
 The command reads ``DATABASE_ADMIN_URL`` (the migrator/superuser URL, exactly
 like the seed command). Afterwards sign in at ``/staff/login`` with the chosen
 credentials; the API records the session and the login timestamp on first use.
+
+
+PowerShell usage (no make involved)::
+
+    # interactive
+    docker compose run --rm -T bootstrap_admin
+    # or from a configured virtual environment
+    python -m app.scripts.bootstrap_admin
+
+    # automation: supply credentials through the environment only
+    $env:BOOTSTRAP_ADMIN_NAME   = 'Platform Administrator'
+    $env:BOOTSTRAP_ADMIN_EMAIL  = 'admin@example.com'
+    $env:BOOTSTRAP_ADMIN_PASSWORD = Read-Host -AsSecureString 'Bootstrap password' |
+      ForEach-Object { [Runtime.InteropServices.Marshal]::PtrToStringAuto(
+        [Runtime.InteropServices.Marshal]::SecureStringToBSTR($_)) }
+    docker compose run --rm -T bootstrap_admin --non-interactive
+    Remove-Item Env:BOOTSTRAP_ADMIN_PASSWORD
+
+Never commit, paste or log the password. See docs/INTEGRATIONS.md section 3.
 """
 
 from __future__ import annotations
