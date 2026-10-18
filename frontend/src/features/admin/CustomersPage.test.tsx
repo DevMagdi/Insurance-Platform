@@ -13,20 +13,50 @@ const access: StaffAccess = {
   overrides: {}, all_companies: true, company_ids: [], insurance_types: [], ownership: 'all', team_ids: [],
 };
 
+const company = { id: 'company-1', name_en: 'Nile Insurance', name_ar: 'النيل للتأمين' };
+const otherCompany = { id: 'company-2', name_en: 'Delta Insurance', name_ar: 'الدلتا للتأمين' };
 const customer = {
   id: 'customer-1', full_name: 'منى أحمد', email: 'mona@example.test', mobile: '+201123456789',
-  whatsapp_available: true, created_at: '2026-10-18T10:00:00Z',
-  companies: [{ id: 'company-1', name_en: 'Nile Insurance', name_ar: 'النيل للتأمين' }],
-  policies: [{ company_name_en: 'Nile Insurance', company_name_ar: 'النيل للتأمين', insurance_type: 'motor', policy_number: 'POL-321', effective_from: '2026-01-01', expires_at: '2027-01-01' }],
+  whatsapp_available: true, created_at: '2026-10-18T10:00:00Z', companies: [company],
+  policies: [{ company_name_en: company.name_en, company_name_ar: company.name_ar, insurance_type: 'motor', policy_number: 'POL-321', effective_from: '2026-01-01', expires_at: '2027-01-01' }],
   complaints_count: 1,
-  complaints: [{ ticket_no: 'CMP-2026-000001', subject: 'تأخر التعويض', status: 'in_review', created_at: '2026-10-10T10:00:00Z', company_name_en: 'Nile Insurance', company_name_ar: 'النيل للتأمين', insurance_type: 'motor' }],
+  complaints: [{ ticket_no: 'CMP-2026-000001', subject: 'تأخر التعويض', status: 'in_review', created_at: '2026-10-10T10:00:00Z', company_name_en: company.name_en, company_name_ar: company.name_ar, insurance_type: 'motor' }],
 };
+const secondCustomer = {
+  ...customer,
+  id: 'customer-2',
+  full_name: 'أحمد محمد',
+  email: 'ahmed@example.test',
+  companies: [otherCompany],
+  policies: [{ ...customer.policies[0], company_name_en: otherCompany.name_en, company_name_ar: otherCompany.name_ar, policy_number: 'POL-654' }],
+  complaints_count: 0,
+  complaints: [],
+};
+const unassociatedCustomer = {
+  ...customer,
+  id: 'customer-3',
+  full_name: 'عميل غير مرتبط',
+  companies: [],
+  policies: [],
+  complaints_count: 0,
+  complaints: [],
+};
+
+function mockDirectory(customers: unknown[], companies: unknown[] = [company]) {
+  vi.mocked(api).mockImplementation(async (path: string) => {
+    if (path === '/api/staff/customers') return customers as never;
+    if (path === '/api/companies') return companies as never;
+    return [] as never;
+  });
+}
 
 describe('CustomersPage', () => {
   it('filters across client and policy details and opens a complete profile', async () => {
-    vi.mocked(api).mockResolvedValue([customer] as never);
+    mockDirectory([customer]);
     render(<CustomersPage access={access} />);
     expect(await screen.findByText('منى أحمد')).toBeTruthy();
+    expect(vi.mocked(api)).toHaveBeenCalledWith('/api/companies');
+
     fireEvent.change(screen.getByRole('textbox', { name: 'فلترة العملاء' }), { target: { value: 'POL-321' } });
     expect(screen.getByText('منى أحمد')).toBeTruthy();
     fireEvent.change(screen.getByRole('textbox', { name: 'فلترة العملاء' }), { target: { value: 'CMP-2026-000001' } });
@@ -35,5 +65,36 @@ describe('CustomersPage', () => {
     expect(screen.getByText('ملف العميل الكامل')).toBeTruthy();
     expect(screen.getByText('POL-321')).toBeTruthy();
     expect(screen.getByText(/تأخر التعويض/)).toBeTruthy();
+  });
+
+  it('loads company filter options even when no listed customer is associated with them', async () => {
+    mockDirectory([unassociatedCustomer], [company]);
+    render(<CustomersPage access={access} />);
+
+    expect(await screen.findByText('عميل غير مرتبط')).toBeTruthy();
+    const companySelect = screen.getByRole('combobox', { name: 'شركة التأمين' }) as HTMLSelectElement;
+    expect(companySelect.options).toHaveLength(2);
+    expect(companySelect.options[1].value).toBe(company.id);
+    expect(companySelect.options[1].textContent).toBe(company.name_ar);
+
+    fireEvent.change(companySelect, { target: { value: company.id } });
+    expect(screen.getByText('لا يوجد عملاء مطابقون')).toBeTruthy();
+  });
+
+  it('filters by the selected company and restores all clients with the all-companies option', async () => {
+    mockDirectory([customer, secondCustomer], [company, otherCompany]);
+    render(<CustomersPage access={access} />);
+
+    expect(await screen.findByText('منى أحمد')).toBeTruthy();
+    expect(screen.getByText('أحمد محمد')).toBeTruthy();
+    const companySelect = screen.getByRole('combobox', { name: 'شركة التأمين' });
+
+    fireEvent.change(companySelect, { target: { value: otherCompany.id } });
+    expect(screen.getByText('أحمد محمد')).toBeTruthy();
+    expect(screen.queryByText('منى أحمد')).toBeNull();
+
+    fireEvent.change(companySelect, { target: { value: '' } });
+    expect(screen.getByText('منى أحمد')).toBeTruthy();
+    expect(screen.getByText('أحمد محمد')).toBeTruthy();
   });
 });

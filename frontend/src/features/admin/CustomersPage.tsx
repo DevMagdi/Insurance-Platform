@@ -14,6 +14,7 @@ interface Customer { id: string; full_name: string; email: string | null; mobile
 
 export function CustomersPage({ access }: { access: StaffAccess }) {
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
@@ -23,25 +24,50 @@ export function CustomersPage({ access }: { access: StaffAccess }) {
   const [hasComplaintsFilter, setHasComplaintsFilter] = useState<string>('');
   const [dateFrom, setDateFrom] = useState<string>('');
   const [dateTo, setDateTo] = useState<string>('');
+  const [reloadToken, setReloadToken] = useState(0);
+
   useEffect(() => {
     let active = true;
-    api<Customer[]>('/api/staff/customers').then((rows) => { if (active) setCustomers(rows); })
-      .catch((cause: unknown) => { if (active) setError(cause instanceof Error ? cause.message : 'تعذر تحميل العملاء.'); })
-      .finally(() => { if (active) setLoading(false); });
+
+    const load = async () => {
+      const [customersResult, companiesResult] = await Promise.allSettled([
+        api<Customer[]>('/api/staff/customers'),
+        api<Company[]>('/api/companies'),
+      ]);
+      if (!active) return;
+
+      const errors: string[] = [];
+      if (customersResult.status === 'fulfilled') {
+        setCustomers(customersResult.value);
+      } else {
+        errors.push(customersResult.reason instanceof Error ? customersResult.reason.message : 'تعذر تحميل العملاء.');
+      }
+      if (companiesResult.status === 'fulfilled') {
+        setCompanies(companiesResult.value);
+      } else {
+        errors.push(companiesResult.reason instanceof Error ? companiesResult.reason.message : 'تعذر تحميل شركات التأمين.');
+      }
+      setError(errors.join(' '));
+      setLoading(false);
+    };
+
+    void load();
     return () => { active = false; };
-  }, []);
-  
+  }, [reloadToken]);
+
+  // Load the insurer catalog independently of the current client directory so
+  // companies with no associated clients are still available as filter options.
   const availableCompanies = useMemo(() => {
-    const companiesMap = new Map<string, { id: string; name_ar: string; name_en: string }>();
-    customers.forEach((customer) => {
-      customer.companies.forEach((company) => {
-        if (!companiesMap.has(company.id)) {
-          companiesMap.set(company.id, company);
-        }
-      });
-    });
-    return Array.from(companiesMap.values()).sort((a, b) => a.name_ar.localeCompare(b.name_ar));
-  }, [customers]);
+    const byId = new Map(companies.map((company) => [company.id, company]));
+    // Keep historical insurers from existing client policies as well; the public
+    // catalog intentionally contains active insurers only.
+    customers.forEach((customer) => customer.companies.forEach((company) => {
+      if (!byId.has(company.id)) byId.set(company.id, company);
+    }));
+    return [...byId.values()].sort(
+      (a, b) => (a.name_ar || a.name_en).localeCompare(b.name_ar || b.name_en, 'ar'),
+    );
+  }, [companies, customers]);
   
   const filtered = useMemo(() => {
     let result = customers;
@@ -50,9 +76,7 @@ export function CustomersPage({ access }: { access: StaffAccess }) {
       result = result.filter((customer) => JSON.stringify(customer).toLocaleLowerCase().includes(searchNeedle));
     }
     if (companyFilter) {
-      result = result.filter((customer) => 
-        customer.companies.some((company) => company.id === companyFilter || company.name_ar.includes(companyFilter) || company.name_en.includes(companyFilter))
-      );
+      result = result.filter((customer) => customer.companies.some((company) => company.id === companyFilter));
     }
     if (hasPoliciesFilter === 'yes') {
       result = result.filter((customer) => customer.policies.length > 0);
@@ -77,7 +101,7 @@ export function CustomersPage({ access }: { access: StaffAccess }) {
 
   return <div className="page-stack">
     <SectionTitle eyebrow="إدارة الهوية والوصول" title="العملاء" description="ملفات العملاء وشركات التأمين المرتبطة بوثائقهم؛ ابحث عبر كل بيانات الملف والسياسات." />
-    {error && <div className="inline-alert error" role="alert">{error}<button type="button" onClick={() => { setLoading(true); setError(''); api<Customer[]>('/api/staff/customers').then(setCustomers).catch((e: unknown) => setError(e instanceof Error ? e.message : 'تعذر التحميل.')).finally(() => setLoading(false)); }}>إعادة المحاولة</button></div>}
+    {error && <div className="inline-alert error" role="alert">{error}<button type="button" onClick={() => { setLoading(true); setError(''); setReloadToken((value) => value + 1); }}>إعادة المحاولة</button></div>}
     <section className="surface-card user-summary-strip"><div className="summary-stat"><span className="summary-stat-icon"><Icon name="users" size={17} /></span><div><strong>{formatNumber(customers.length)}</strong><small>إجمالي العملاء</small></div></div><div className="summary-stat"><span className="summary-stat-icon summary-stat-green"><Icon name="building" size={17} /></span><div><strong>{formatNumber(new Set(customers.flatMap((customer) => customer.companies.map((company) => company.id))).size)}</strong><small>شركات مرتبطة</small></div></div><div className="summary-stat"><span className="summary-stat-icon summary-stat-gold"><Icon name="inbox" size={17} /></span><div><strong>{formatNumber(customers.reduce((count, customer) => count + customer.complaints_count, 0))}</strong><small>إجمالي الشكاوى</small></div></div></section>
     
     <section className="surface-card admin-table-card" style={{ marginBottom: 16 }}>
