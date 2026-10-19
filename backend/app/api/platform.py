@@ -6,6 +6,7 @@ import hmac
 import logging
 from io import BytesIO
 from typing import Any
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
@@ -15,7 +16,7 @@ from sqlalchemy import text
 
 from app.api.deps import RequestContext, require_permission
 from app.db import purpose_transaction
-from app.domain.schemas import PlatformBrandRequest
+from app.domain.schemas import PlatformBrandRequest, RevealReason
 from app.observability.metrics import render_latest
 from app.security.captcha import CaptchaVerifier
 from app.security.tokens import csrf_required
@@ -178,6 +179,33 @@ async def customer_directory(
 
         result = json.loads(result)
     return result or []
+
+
+@router.post("/api/staff/customers/{customer_id}/national-id:reveal")
+async def reveal_customer_national_id(
+    customer_id: UUID,
+    item: RevealReason,
+    response: Response,
+    ctx: RequestContext = Depends(require_permission("complaints.view_full_national_id")),
+    _: None = Depends(csrf_required),
+) -> dict[str, str]:
+    """Reveal a customer's full national ID in the admin full profile.
+
+    Requires the dedicated reveal permission (route gate) plus, in SQL,
+    ``users.view`` with a global scope; every success is audit-logged.
+    """
+    if (
+        not ctx.scope.all_companies
+        or ctx.scope.company_ids
+        or ctx.scope.insurance_types
+        or ctx.scope.ownership != "all"
+    ):
+        raise HTTPException(status_code=403, detail="Global administrator scope required")
+    value = await ctx.complaints.reveal_customer_national_id(
+        ctx.db, ctx.scope, customer_id, item.reason
+    )
+    response.headers["Cache-Control"] = "no-store"
+    return {"national_id": value}
 
 
 @router.get("/metrics", include_in_schema=False)

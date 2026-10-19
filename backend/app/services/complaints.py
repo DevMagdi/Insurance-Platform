@@ -249,6 +249,32 @@ class ComplaintService:
         )
         return value
 
+    async def reveal_customer_national_id(
+        self,
+        db: AsyncSession,
+        scope: AccessScope,
+        customer_id: UUID,
+        reason: str,
+    ) -> str:
+        """Full national ID for the admin customer profile, with audit.
+
+        The SQL gate additionally requires ``users.view`` with a global
+        scope plus ``complaints.view_full_national_id``; the route enforces
+        the same permission before this is reached.
+        """
+        if scope.actor.scope != "staff" or len(reason.strip()) < 10:
+            raise HTTPException(
+                status_code=400, detail="A reason of at least 10 characters is required"
+            )
+        ciphertext = await self.repository.reveal_customer_national_id(db, customer_id)
+        if ciphertext is None:
+            raise HTTPException(status_code=403, detail="National ID reveal not permitted")
+        value = self.protector.decrypt(ciphertext)
+        await self.repository.audit_customer_reveal(
+            db, staff_id=scope.actor.id, customer_id=customer_id, reason=reason.strip()[:200]
+        )
+        return value
+
     async def export(
         self,
         db: AsyncSession,
