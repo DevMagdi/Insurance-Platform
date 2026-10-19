@@ -177,6 +177,15 @@ def decorate_spec(app: FastAPI, spec: dict[str, Any]) -> dict[str, Any]:
     ]
     spec["x-event-streams"] = [
         {
+            "path": "/api/staff/complaints/{complaint_id}/stream",
+            "description": (
+                "Server-Sent Events; same-origin AccessCookie for staff with "
+                "complaints.view. Emits snapshot/update events (status + signature "
+                "only, never message bodies) and revalidates session, token version, "
+                "permission and AccessScope per poll."
+            ),
+        },
+        {
             "path": "/api/customer/complaints/{complaint_id}/stream",
             "description": (
                 "Server-Sent Events; same-origin AccessCookie for the owning customer. "

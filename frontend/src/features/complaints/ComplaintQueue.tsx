@@ -156,6 +156,35 @@ export function ComplaintQueue({ access, range, options, companyNames, onOpenTic
     void api<SavedView[]>('/api/staff/views').then((views) => setSavedViews(Array.isArray(views) ? views : [])).catch(() => setSavedViews([]));
   }, [access]);
 
+  // Live queue: the staff complaints WebSocket pushes a fresh scoped
+  // snapshot whenever tickets change; a quiet poll covers WS outages.
+  useEffect(() => {
+    if (!hasPermission(access, 'complaints.view')) return;
+    let socket: WebSocket | null = null;
+    try {
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      socket = new WebSocket(`${protocol}//${window.location.host}/api/staff/complaints/stream${params}`);
+      socket.onmessage = (event: MessageEvent<string>) => {
+        try {
+          const data = JSON.parse(event.data) as ComplaintListResponse;
+          if (Array.isArray(data.items)) {
+            setResult({ ...data, items: data.items });
+            setError('');
+            setSelected((current) => current.filter((id) => data.items.some((item) => item.id === id)));
+          }
+        } catch { /* Malformed frames are ignored; REST remains the fallback. */ }
+      };
+    } catch { socket = null; }
+    const timer = window.setInterval(() => {
+      if (socket?.readyState === WebSocket.OPEN) socket.send('refresh');
+      else if (document.visibilityState === 'visible') void load();
+    }, 20_000);
+    return () => {
+      window.clearInterval(timer);
+      socket?.close();
+    };
+  }, [access, params, load]);
+
   if (!hasPermission(access, 'complaints.view')) return <AccessDenied title="قائمة الشكاوى غير متاحة" />;
 
   const setFilter = <Key extends keyof QueueFilters>(key: Key, value: QueueFilters[Key]) => {

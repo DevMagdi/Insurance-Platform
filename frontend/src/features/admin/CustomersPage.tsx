@@ -39,12 +39,13 @@ export function CustomersPage({ access }: { access: StaffAccess }) {
     return () => window.clearInterval(timer);
   }, []);
 
-  useEffect(() => {
+  const openCustomer = (customer: Customer) => {
     setNationalId('');
     setRevealReason('');
     setRevealError('');
     setShowRevealForm(false);
-  }, [selected?.id]);
+    setSelected(customer);
+  };
 
   const canRevealNationalId = hasPermission(access, 'complaints.view_full_national_id');
   const revealNationalId = async () => {
@@ -205,8 +206,8 @@ export function CustomersPage({ access }: { access: StaffAccess }) {
           : (customer.policies.length > 0 
               ? customer.policies.map((p) => p.company_name_ar || p.company_name_en).join('، ')
               : 'غير مرتبطة');
-        return <tr key={customer.id} onClick={() => setSelected(customer)} style={{ cursor: 'pointer' }} tabIndex={0} onKeyDown={(event) => { if (event.key === 'Enter') setSelected(customer); }}>
-          <td><button type="button" className="link-button" onClick={(event) => { event.stopPropagation(); setSelected(customer); }}><strong>{customer.full_name}</strong></button><small className="cell-secondary" dir="ltr">{customer.id}</small></td>
+        return <tr key={customer.id} onClick={() => openCustomer(customer)} style={{ cursor: 'pointer' }} tabIndex={0} onKeyDown={(event) => { if (event.key === 'Enter') openCustomer(customer); }}>
+          <td><button type="button" className="link-button" onClick={(event) => { event.stopPropagation(); openCustomer(customer); }}><strong>{customer.full_name}</strong></button><small className="cell-secondary" dir="ltr">{customer.id}</small></td>
           <td><span dir="ltr">{customer.mobile}</span><small className="cell-secondary" dir="ltr">{customer.email || '—'}</small></td>
           <td>{companyNames}</td>
           <td>{formatNumber(customer.policies.length)}</td>

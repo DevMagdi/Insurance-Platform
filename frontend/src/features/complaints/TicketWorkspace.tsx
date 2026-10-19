@@ -77,13 +77,15 @@ export function TicketWorkspace({ id, access, options, onBack, onOpenTicket, onR
   const [actionBusy, setActionBusy] = useState(false);
   const [notice, setNotice] = useState('');
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (silent = false) => {
     if (!hasPermission(access, 'complaints.view')) {
       setLoading(false);
       return;
     }
-    setLoading(true);
-    setError('');
+    if (!silent) {
+      setLoading(true);
+      setError('');
+    }
     try {
       const detail = await api<Complaint>(`/api/staff/complaints/${encodeURIComponent(id)}`);
       setTicket(detail);
@@ -115,13 +117,15 @@ export function TicketWorkspace({ id, access, options, onBack, onOpenTicket, onR
         if (item?.status === 'fulfilled') setAudit(item.value as AuditEvent[]);
       } else setAudit([]);
     } catch (cause) {
-      setTicket(null);
-      setError(cause instanceof Error ? cause.message : 'هذه الشكوى غير متاحة ضمن نطاق صلاحيتك.');
+      if (!silent) {
+        setTicket(null);
+        setError(cause instanceof Error ? cause.message : 'هذه الشكوى غير متاحة ضمن نطاق صلاحيتك.');
+      }
       if (cause && typeof cause === 'object' && 'status' in cause && (cause as { status: number }).status === 403) {
         await onRefreshAccess();
       }
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, [access, id, onRefreshAccess]);
 
@@ -130,6 +134,39 @@ export function TicketWorkspace({ id, access, options, onBack, onOpenTicket, onR
     queueMicrotask(() => { if (active) void refresh(); });
     return () => { active = false; };
   }, [refresh]);
+
+  const refreshRef = useRef(refresh);
+  useEffect(() => { refreshRef.current = refresh; }, [refresh]);
+
+  // Live ticket: SSE pushes a new signature when the customer replies (or
+  // status/attachments change); a quiet poll covers SSE outages. Neither
+  // path needs a manual page refresh.
+  useEffect(() => {
+    if (!hasPermission(access, 'complaints.view')) return;
+    let lastSignature = '';
+    const onEvent = (event: MessageEvent<string>) => {
+      try {
+        const payload = JSON.parse(event.data) as { signature?: string };
+        if (payload.signature && payload.signature !== lastSignature) {
+          lastSignature = payload.signature;
+          void refreshRef.current(true);
+        }
+      } catch { /* Heartbeats and malformed frames need no action. */ }
+    };
+    let source: EventSource | null = null;
+    try {
+      source = new EventSource(`/api/staff/complaints/${encodeURIComponent(id)}/stream`);
+      source.addEventListener('snapshot', onEvent as EventListener);
+      source.addEventListener('update', onEvent as EventListener);
+    } catch { source = null; }
+    const fallback = window.setInterval(() => {
+      if (document.visibilityState === 'visible') void refreshRef.current(true);
+    }, 15_000);
+    return () => {
+      source?.close();
+      window.clearInterval(fallback);
+    };
+  }, [access, id]);
 
   const companyName = ticket ? options.companies.find((company) => company.id === ticket.company_id)?.name_ar
     ?? options.companies.find((company) => company.id === ticket.company_id)?.name_en

@@ -71,7 +71,7 @@ export function AdminDashboard({ access, range, onNavigate }: Props) {
   useEffect(() => {
     const controller = new AbortController();
     queueMicrotask(() => { if (!controller.signal.aborted) void load(controller.signal); });
-    const interval = window.setInterval(() => { void load(controller.signal); }, 60_000);
+    const interval = window.setInterval(() => { if (document.visibilityState === 'visible') void load(controller.signal); }, 30_000);
     return () => { controller.abort(); window.clearInterval(interval); };
   }, [load]);
 
