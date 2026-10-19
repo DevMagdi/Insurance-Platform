@@ -32,6 +32,7 @@ from app.security.blobs import ATTACHMENT, EXPORT, RECORDING, BlobCipher
 from app.security.crypto import build_keyring, idempotency_root
 from app.security.integration_crypto import SecretCipher, derive_idempotency_key
 from app.services.backpressure import DEPTH_KEY
+from app.services.email_templates import branded_email
 from app.services.exports import MAX_EXPORT_BYTES, render_export
 from app.services.integration_providers import (
     EMAIL_PROVIDER_CLASSES,
@@ -93,6 +94,8 @@ class WorkerConfig(BaseSettings):
     smtp_host: str | None = None
     smtp_port: int = 587
     smtp_from: str = ""
+    support_email: str = "support@example.invalid"
+    public_app_url: str = "http://localhost:8080"
     smtp_username: str | None = None
     smtp_password: str | None = None
     smtp_start_tls: bool = True
@@ -331,10 +334,21 @@ async def _process_integration_job(ctx: dict[str, Any], row: Any) -> None:
             brand_loader = ctx.get("platform_name")
             brand = (await brand_loader()) if brand_loader is not None else "Insurance"
             brand = brand.strip()[:80] or "Insurance"
+            text, html = branded_email(
+                str(payload.get("subject", "")),
+                str(payload.get("body", ""))[:19_900],
+                brand=brand,
+                public_url=getattr(ctx.get("config"), "public_app_url", ""),
+                support_email=getattr(
+                    ctx.get("config"), "support_email", "support@example.invalid"
+                ),
+                locale=str(payload.get("locale", "en")),
+            )
             email_request = EmailSendRequest(
                 recipients=tuple(str(value) for value in payload.get("recipients", [])),
                 subject=f"{str(payload.get('subject', ''))[:210]} · {brand}",
-                text_body=f"{str(payload.get('body', '')).rstrip()[:19_900]}\n\n— {brand}",
+                text_body=text,
+                html_body=html,
                 locale=str(payload.get("locale", "en")),
                 attachments=tuple(outbound_attachments),
             )

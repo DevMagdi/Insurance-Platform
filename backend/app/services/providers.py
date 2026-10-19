@@ -13,7 +13,12 @@ from uuid import UUID
 
 import aiosmtplib
 
-from app.services.email_templates import render_customer_notice, render_staff_invitation
+from app.services.email_templates import (
+    branded_email,
+    render_customer_notice,
+    render_insurer_forward,
+    render_staff_invitation,
+)
 
 
 class DeliveryConfig(Protocol):
@@ -87,7 +92,15 @@ class SMTPDelivery:
         message["From"] = self.settings.smtp_from
         message["To"] = address
         message["Subject"] = f"{subject} · {brand}"
-        message.set_content(f"{body.rstrip()}\n\n— {brand}")
+        text, html = branded_email(
+            subject,
+            body,
+            brand=brand,
+            public_url=getattr(self.settings, "public_app_url", ""),
+            support_email=getattr(self.settings, "support_email", "support@example.invalid"),
+        )
+        message.set_content(text)
+        message.add_alternative(html, subtype="html")
         await aiosmtplib.send(
             message,
             hostname=self.settings.smtp_host,
@@ -154,7 +167,16 @@ class SMTPDelivery:
         message["From"] = self.settings.smtp_from
         message["To"] = ", ".join(recipients)
         message["Subject"] = subject
-        message.set_content(body)
+        brand = (await self.brand_loader()) if self.brand_loader is not None else "Insurance"
+        text, html = branded_email(
+            subject,
+            body,
+            brand=brand,
+            public_url=getattr(self.settings, "public_app_url", ""),
+            support_email=getattr(self.settings, "support_email", "support@example.invalid"),
+        )
+        message.set_content(text)
+        message.add_alternative(html, subtype="html")
         maintype, _, subtype = content_type.partition("/")
         message.add_attachment(
             data,
@@ -177,12 +199,18 @@ class SMTPDelivery:
     async def send_insurer(self, email: str, ticket: str, reason: str) -> bool:
         if not self.settings.smtp_host:
             return False
-        # Do not send national IDs, attachments or unreviewed complaint bodies.
-        await self._mail(
-            email,
-            f"Insurance complaint {ticket}",
-            f"Ticket {ticket} was escalated. Reason: {reason}",
+        from app.services.integrations import minimize_pii
+
+        # Legacy escalation notices carry no policy/customer details; never invent them.
+        subject, body = render_insurer_forward(
+            ticket_no=ticket,
+            subject="Escalation for review",
+            policy_number="Not provided in this escalation notice",
+            insurance_type="Not provided",
+            details=minimize_pii(reason),
+            locale="en",
         )
+        await self._mail(email, subject, body)
         return True
 
 

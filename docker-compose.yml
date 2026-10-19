@@ -84,6 +84,7 @@ services:
       METRICS_TOKEN: ${METRICS_TOKEN:-}
       SMTP_HOST: ${SMTP_HOST:-}
       SMTP_PORT: ${SMTP_PORT:-587}
+      SUPPORT_EMAIL: ${SUPPORT_EMAIL:-support@example.invalid}
       SMTP_FROM: ${SMTP_FROM:-}
       SMTP_USERNAME: ${SMTP_USERNAME:-}
       SMTP_PASSWORD: ${SMTP_PASSWORD:-}
@@ -124,11 +125,13 @@ services:
       REDIS_URL: redis://redis:6379/0
       SMTP_HOST: ${SMTP_HOST:-}
       SMTP_PORT: ${SMTP_PORT:-587}
+      SUPPORT_EMAIL: ${SUPPORT_EMAIL:-support@example.invalid}
       SMTP_FROM: ${SMTP_FROM:-}
       SMTP_USERNAME: ${SMTP_USERNAME:-}
       SMTP_PASSWORD: ${SMTP_PASSWORD:-}
       SMTP_START_TLS: ${SMTP_START_TLS:-true}
       SMTP_USE_TLS: ${SMTP_USE_TLS:-false}
+      PUBLIC_APP_URL: ${PUBLIC_APP_URL:-http://localhost:8080}
       ENVIRONMENT: development
     command: ['arq', 'app.worker.WorkerSettings']
     restart: unless-stopped

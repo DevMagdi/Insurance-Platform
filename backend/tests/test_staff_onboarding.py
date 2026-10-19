@@ -169,6 +169,9 @@ async def test_workplace_provider_uses_actual_address_never_sandbox(
         assert request.recipients == (recipient,)
         assert url in request.text_body and "48 hours" in request.text_body
         assert "sandbox@example.test" not in request.text_body
+        assert "This is an automated message" in request.text_body
+        assert "/api/public/brand/logo" in request.html_body
+        assert 'dir="rtl"' in request.html_body
         assert "a" * 43 not in sender.send.call_args.kwargs["idempotency_key"]
     mail.fallback.send_invitation.assert_not_awaited()
     sender.send.side_effect = RuntimeError("provider rejected")

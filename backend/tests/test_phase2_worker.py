@@ -53,9 +53,9 @@ async def test_mail_adapter_real_email_otp_invite_and_notices(
     await provider.send_otp("customer@example.com", "123456")
     message = sent.call_args.args[0]
     assert "customer@example.com" in message["To"]
-    assert "123456" in message.get_content()
+    assert "123456" in message.get_body(preferencelist=("plain",)).get_content()
     assert "Acme Insurance" in message["Subject"]
-    assert "Acme Insurance" in message.get_content()
+    assert "Acme Insurance" in message.get_body(preferencelist=("plain",)).get_content()
     await provider.send_invitation("staff@example.test", "https://example.test/invite?token=secret")
     assert sent.call_args.args[0]["To"] == "staff@example.test"
     assert not await provider.send_notice(

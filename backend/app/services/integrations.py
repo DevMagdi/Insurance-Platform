@@ -352,6 +352,7 @@ class IntegrationService:
             subject=minimize_pii(complaint.subject, max_chars=160),
             details=minimize_pii(complaint.description, max_chars=12_000),
             policy_number=complaint.policy_number,
+            insurance_type=complaint.insurance_type.value,
             locale=request.locale,
             agent_note=(
                 minimize_pii(request.agent_note, max_chars=2000) if request.agent_note else None
