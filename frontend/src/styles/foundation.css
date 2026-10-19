@@ -1162,6 +1162,31 @@ html[dir='rtl'] .switch[aria-checked='true'] .switch-thumb {
   color: var(--info);
 }
 
+/* Shared async and notification surfaces. Inline action spinners remain compact. */
+.loading-block:has(.loading-skeleton) {
+  flex-direction: column;
+  align-items: stretch;
+  padding: 28px;
+  gap: 18px;
+}
+.loading-skeleton { display: grid; gap: 12px; width: min(100%, 480px); margin-inline: auto; }
+.loading-skeleton .skeleton { height: 12px; }
+.loading-skeleton .loading-skeleton-title { width: 48%; height: 20px; margin-bottom: 8px; }
+.loading-skeleton .loading-skeleton-short { width: 72%; }
+.loading-block:has(.loading-skeleton) > span { text-align: center; }
+[data-sonner-toaster] [data-sonner-toast] {
+  font-family: inherit;
+  background: var(--surface-1);
+  color: var(--ink-900);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-lg);
+}
+[data-sonner-toast] [data-description] { color: var(--ink-600); }
+.btn:focus-visible { outline-color: var(--focus); box-shadow: var(--focus-ring); }
+.btn:active:not(:disabled) { filter: brightness(.97); }
+.chip, .status-chip { transition: background-color var(--dur-base) var(--ease-out), color var(--dur-base) var(--ease-out); }
+
 /* --------------------------------------------------------------------------
    Motion preferences
    -------------------------------------------------------------------------- */

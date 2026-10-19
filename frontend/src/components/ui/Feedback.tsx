@@ -7,7 +7,11 @@ export function LoadingState({ label }: { label?: string }) {
   const { t } = useTranslation();
   return (
     <div className="loading-block" role="status" aria-live="polite">
-      <span className="spinner" aria-hidden="true" />
+      <div className="loading-skeleton" aria-hidden="true">
+        <Skeleton className="loading-skeleton-title" />
+        <Skeleton />
+        <Skeleton className="loading-skeleton-short" />
+      </div>
       <span>{label ?? t('common.loading')}</span>
     </div>
   );
