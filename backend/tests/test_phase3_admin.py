@@ -205,6 +205,7 @@ async def test_staff_notifications_include_null_complaint_without_scope_bypass(
         id=uuid4(),
         kind="access_changed",
         payload={},
+        complaint_id=None,
         created_at=datetime.now(UTC),
         read_at=None,
     )
@@ -230,6 +231,9 @@ async def test_staff_notifications_include_null_complaint_without_scope_bypass(
             response = await client.get("/api/me/notifications")
             assert response.status_code == 200
             assert response.json()[0]["kind"] == "access_changed"
+            # Access-change notices carry no ticket; the console must not
+            # invent a complaint link for them.
+            assert response.json()[0]["complaint_id"] is None
     finally:
         app.dependency_overrides.clear()
 

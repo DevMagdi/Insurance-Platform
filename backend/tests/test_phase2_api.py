@@ -330,6 +330,7 @@ async def test_staff_workflows_timeline_and_notifications_scoped(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     client, current, service, _auth = api
+    target = uuid4()
     repo = SimpleNamespace(
         timeline=AsyncMock(return_value={"events": [], "messages": [], "page": 1}),
         counters=AsyncMock(return_value={"new": 1}),
@@ -349,7 +350,8 @@ async def test_staff_workflows_timeline_and_notifications_scoped(
                 SimpleNamespace(
                     id=uuid4(),
                     kind="created",
-                    payload={"ticket_no": "CMP-2026-000001"},
+                    payload={"ticket_no": "CMP-2026-000001", "complaint_id": str(target)},
+                    complaint_id=target,
                     created_at=datetime.now(UTC),
                     read_at=None,
                 )
@@ -366,13 +368,13 @@ async def test_staff_workflows_timeline_and_notifications_scoped(
             "complaints.view_attachments",
         }
     )
-    target = uuid4()
     assert (await client.get("/api/staff/complaints/counters")).json()["new"] == 1
     assert (await client.get(f"/api/staff/complaints/{target}/timeline")).status_code == 200
     assert repo.timeline.call_args.args[1] == current["ctx"].scope
     assert (await client.get(f"/api/staff/complaints/{target}/timeline?page=0")).status_code == 422
     assert (await client.get(f"/api/staff/complaints/{target}/attachments")).status_code == 200
-    assert (await client.get("/api/staff/notifications")).status_code == 200
+    notices = (await client.get("/api/staff/notifications")).json()
+    assert notices[0]["complaint_id"] == str(target)
     assert (
         await client.post(
             f"/api/staff/complaints/{target}/reply",

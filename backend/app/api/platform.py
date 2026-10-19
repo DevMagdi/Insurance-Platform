@@ -181,6 +181,26 @@ async def customer_directory(
     return result or []
 
 
+@router.get("/api/staff/customers/revision")
+async def customer_directory_revision(
+    ctx: RequestContext = Depends(require_permission("users.view")),
+) -> dict[str, str]:
+    """Cheap change signature for the customer directory (live console polling).
+
+    Mirrors the ``customer_directory()`` gate: an empty revision means the
+    caller cannot read the directory, so the console must not refetch on it.
+    """
+    if (
+        not ctx.scope.all_companies
+        or ctx.scope.company_ids
+        or ctx.scope.insurance_types
+        or ctx.scope.ownership != "all"
+    ):
+        raise HTTPException(status_code=403, detail="Global administrator scope required")
+    revision = await ctx.db.scalar(text("SELECT app_security.customer_directory_revision()"))
+    return {"revision": str(revision or "")}
+
+
 @router.post("/api/staff/customers/{customer_id}/national-id:reveal")
 async def reveal_customer_national_id(
     customer_id: UUID,
