@@ -179,6 +179,7 @@ async def install_state(
         settings.jwt_signing_key,
         integration_events=integrations_service,
     )
+
     async def virus_scanner_configured(db: Any) -> bool:
         return bool(await db.scalar(text("SELECT app_security.virus_scanner_configured()")))
 

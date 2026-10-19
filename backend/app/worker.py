@@ -140,9 +140,7 @@ async def startup(ctx: dict[str, Any]) -> None:
         return detect_logo(bytes(rows[0].logo_content), str(rows[0].logo_mime_type))
 
     ctx["platform_logo"] = platform_logo
-    ctx["delivery"] = SMTPDelivery(
-        config, brand_loader=platform_name, logo_loader=platform_logo
-    )
+    ctx["delivery"] = SMTPDelivery(config, brand_loader=platform_name, logo_loader=platform_logo)
     ctx["scanner"] = UnconfiguredVirusScanner()
     keyring = build_keyring(
         config.app_encryption_key,
@@ -842,9 +840,7 @@ async def scan_pending(ctx: dict[str, Any]) -> str:
             verdict: str | None = "error"
         else:
             try:
-                plain = blobs.decrypt(
-                    content, purpose=ATTACHMENT, resource_id=row.attachment_id
-                )
+                plain = blobs.decrypt(content, purpose=ATTACHMENT, resource_id=row.attachment_id)
             except ValueError:
                 verdict = "error"
             else:

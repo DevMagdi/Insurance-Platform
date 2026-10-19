@@ -50,15 +50,19 @@ async def test_staff_stream_emits_update_when_customer_replies(
 ) -> None:
     complaint_id = uuid4()
     states = [
-        ({"status": "new", "ticket_no": "CMP-1", "updated_at": "t1", "assigned_agent_id": None},
-         {"events": [], "messages": [{"id": "m1"}]}),
-        ({"status": "new", "ticket_no": "CMP-1", "updated_at": "t2", "assigned_agent_id": None},
-         {"events": [], "messages": [{"id": "m1"}, {"id": "m2"}]}),
+        (
+            {"status": "new", "ticket_no": "CMP-1", "updated_at": "t1", "assigned_agent_id": None},
+            {"events": [], "messages": [{"id": "m1"}]},
+        ),
+        (
+            {"status": "new", "ticket_no": "CMP-1", "updated_at": "t2", "assigned_agent_id": None},
+            {"events": [], "messages": [{"id": "m1"}, {"id": "m2"}]},
+        ),
     ]
     calls = {"n": 0}
 
     @asynccontextmanager
-    async def fake_transaction(factory: object, actor: object):  # noqa: ARG001
+    async def fake_transaction(factory: object, actor: object):
         yield SimpleNamespace()
 
     async def fake_load_context(db: object, claims: object, redis: object, complaints: object):
@@ -73,7 +77,9 @@ async def test_staff_stream_emits_update_when_customer_replies(
 
     timeline_calls = {"n": 0}
 
-    async def fake_timeline(self: object, db: object, scope: object, parent: object, page: int, size: int):
+    async def fake_timeline(
+        self: object, db: object, scope: object, parent: object, page: int, size: int
+    ):
         index = min(timeline_calls["n"], 1)
         timeline_calls["n"] += 1
         calls["n"] = timeline_calls["n"] - 1
@@ -109,7 +115,7 @@ async def test_staff_stream_rechecks_permission_each_poll(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     @asynccontextmanager
-    async def fake_transaction(factory: object, actor: object):  # noqa: ARG001
+    async def fake_transaction(factory: object, actor: object):
         yield SimpleNamespace()
 
     async def fake_load_context(db: object, claims: object, redis: object, complaints: object):

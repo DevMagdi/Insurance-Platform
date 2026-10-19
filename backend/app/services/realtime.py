@@ -44,9 +44,7 @@ def complaint_signature(
             "messages": len(timeline.get("messages", [])),
             "last_event": str(last_event),
             "last_message": str(last_message),
-            "attachments": [
-                [str(item.id), str(item.scan_status)] for item in attachments or ()
-            ],
+            "attachments": [[str(item.id), str(item.scan_status)] for item in attachments or ()],
         },
         sort_keys=True,
     )

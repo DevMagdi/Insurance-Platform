@@ -13,13 +13,17 @@ from fastapi import HTTPException
 
 from app.db import Actor
 from app.domain.access import AccessScope
-from app.repositories.complaints import ComplaintRepository
 from app.security.crypto import NationalIdProtector
 from app.services.complaints import ComplaintService
 from app.settings import Settings
 
 VALID_NID = "29901010112345"
-SQL = Path(__file__).resolve().parents[1] / "alembic" / "sql" / "034_customer_national_id_and_scanner.sql"
+SQL = (
+    Path(__file__).resolve().parents[1]
+    / "alembic"
+    / "sql"
+    / "034_customer_national_id_and_scanner.sql"
+)
 
 
 def make_service() -> tuple[ComplaintService, Mock, SimpleNamespace, AccessScope]:

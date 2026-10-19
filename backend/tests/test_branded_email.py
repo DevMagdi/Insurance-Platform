@@ -232,11 +232,7 @@ async def test_smtp_message_embeds_logo_as_inline_cid_part(monkeypatch: pytest.M
     html = message.get_body(preferencelist=("html",)).get_content()
     assert 'src="cid:logo@brand"' in html
     assert "/api/public/brand/logo" not in html
-    images = [
-        part
-        for part in message.walk()
-        if part.get_content_type() == "image/png"
-    ]
+    images = [part for part in message.walk() if part.get_content_type() == "image/png"]
     assert len(images) == 1
     assert images[0]["Content-ID"] == "<logo@brand>"
     assert images[0].get_content_disposition() == "inline"

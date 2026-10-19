@@ -192,6 +192,6 @@ def decorate_spec(app: FastAPI, spec: dict[str, Any]) -> dict[str, Any]:
                 "Emits snapshot/update events (status + signature only, never message "
                 "bodies) and revalidates session, token version and ownership per poll."
             ),
-        }
+        },
     ]
     return spec

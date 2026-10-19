@@ -209,7 +209,9 @@ class SMTPEmailProvider:
         message.add_alternative(
             request.html_body
             or branded_email(
-                request.subject, request.text_body, locale=request.locale,
+                request.subject,
+                request.text_body,
+                locale=request.locale,
                 has_logo=request.logo is not None,
             )[1],
             subtype="html",
@@ -521,7 +523,9 @@ class SESEmailProvider:
         message.add_alternative(
             request.html_body
             or branded_email(
-                request.subject, request.text_body, locale=request.locale,
+                request.subject,
+                request.text_body,
+                locale=request.locale,
                 has_logo=request.logo is not None,
             )[1],
             subtype="html",
@@ -1248,7 +1252,9 @@ class GmailEmailProvider:
         message.add_alternative(
             request.html_body
             or branded_email(
-                request.subject, request.text_body, locale=request.locale,
+                request.subject,
+                request.text_body,
+                locale=request.locale,
                 has_logo=request.logo is not None,
             )[1],
             subtype="html",
@@ -1403,7 +1409,9 @@ class OutlookEmailProvider:
         message.add_alternative(
             request.html_body
             or branded_email(
-                request.subject, request.text_body, locale=request.locale,
+                request.subject,
+                request.text_body,
+                locale=request.locale,
                 has_logo=request.logo is not None,
             )[1],
             subtype="html",

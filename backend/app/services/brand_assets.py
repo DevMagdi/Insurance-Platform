@@ -58,7 +58,12 @@ def detect_logo(content: bytes | None, mime_type: str | None = None) -> BrandLog
         if content.startswith(magic):
             detected = mime
             break
-    if detected is None and len(content) >= 12 and content[:4] == b"RIFF" and content[8:12] == b"WEBP":
+    if (
+        detected is None
+        and len(content) >= 12
+        and content[:4] == b"RIFF"
+        and content[8:12] == b"WEBP"
+    ):
         detected = "image/webp"
     if detected is None:
         return None
@@ -93,7 +98,7 @@ def attach_inline_logo(message: EmailMessage, logo: BrandLogo | None) -> bool:
     else:
         for part in message.walk():
             if part.get_content_type() == "text/html":
-                html_part = part  # type: ignore[assignment]
+                html_part = part
                 break
     if html_part is None:
         return False
