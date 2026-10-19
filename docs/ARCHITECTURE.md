@@ -22,9 +22,28 @@ Prometheus (/metrics, bearer) -> alert rules -> Alertmanager / Grafana; Sentry (
 The HTTP router → service → repository flow is in `backend/app/api/`, `app/services/`, `app/repositories/`; request/response constraints live in `app/domain/schemas.py`. The old Phase 1 SQL schema (`001`–`003`) is preserved; `004`–`006` add sessions, idempotency, upload reservations, notice outbox and SECURITY DEFINER commands. Phase 3 revisions `007`–`016` add staff workflows, automation, guarded administration, SLA calendars, scheduled reports, operations administration, analytics rollups and export formats; Phase 4 revision `017` adds encrypted integrations, queued actions, AI insights, API keys and voice/message delivery state. Phase 6 revisions `20261016_18`–`20261016_19` add customer profile/preference helpers and preference-aware notice delivery. Phase 7 revision `20261016_20` adds the staff-console team/assignment administration functions and permission catalog entries without duplicating the main branch's Phase 3/4 services. Phase 8 revisions `20261016_21` (PDPL consent evidence, privacy requests, retention, queue-depth telemetry) and `20261016_22` (statement-level InitPlan RLS for complaints) follow. Phase 9 revision `20261016_23` adds the `storage.manage` capability for the first-party, read-only storage inventory; revision `20261016_24` moves that inventory — and the bytes it describes — from the retired S3-compatible object store onto the owning rows in PostgreSQL (`attachments.content`, `export_jobs.content`, `call_logs.recording_content`), all encrypted with `APP_ENCRYPTION_KEY` before they reach the database. Revisions `20261017_25`–`20261017_27` then repair CSAT projection, the voice-consent
 grant and the integration-job enqueue (an ambiguous PL/pgSQL `RETURNING id, state`
 reference made every outbound integration enqueue fail). Revisions `20261017_28`
-(integration connections) and `20261018_29`–`20261018_32` (staff onboarding,
-department management, platform brand/customer helpers and staff mobile OTP)
-follow. There are thirty-two ordered Alembic revisions, with `20261018_32` as head. The typed SQLAlchemy 2 mappings in `app/models/` mirror the database. Partitioned complaint keys retain `(id, created_at)` so child queries and events join the correct partition. Ticket numbers are globally unique and customer-facing; UUIDs are internal IDs.
+(integration connections), `20261018_29`–`20261018_32` (staff onboarding,
+department management, platform brand/customer helpers and staff mobile OTP),
+`20261019_33`–`20261019_34` (customer policy/company linking, profile national-ID
+reveal and the virus-scanner presence probe) and `20261019_35` (customer-activity
+staff notices plus live directory revision signatures) follow. There are
+thirty-five ordered Alembic revisions, with `20261019_35` as head. The typed SQLAlchemy 2 mappings in `app/models/` mirror the database. Partitioned complaint keys retain `(id, created_at)` so child queries and events join the correct partition. Ticket numbers are globally unique and customer-facing; UUIDs are internal IDs.
+
+### Live staff console
+
+Nothing on the staff console needs a manual refresh. The complaints queue
+subscribes to the existing staff WebSocket (`/api/staff/complaints/stream`) and
+an open ticket to its SSE twin, both of which re-run session, token-version,
+permission and AccessScope checks on every frame; a quiet poll covers a dropped
+channel. The customer and staff directories poll `GET /api/staff/customers/revision`
+and `GET /api/staff/users/revision` — cheap aggregates behind the same
+permission/scope gate — and refetch rows only when the signature moves, and only
+while the tab is visible. Customer activity (a new complaint or a customer
+message) writes a scoped staff notification inside
+`app_security.queue_staff_notice`, so the console bell lights up live and opens
+that complaint's chat directly; the bell itself polls
+`GET /api/me/notifications` every 10s while visible and refreshes instantly on
+the queue/ticket change signals.
 
 ### First-party database-storage administration
 
