@@ -131,7 +131,13 @@ async def test_outlook_graph_sendmail_contract(monkeypatch: pytest.MonkeyPatch) 
         if request.url.path.endswith("/token"):
             return httpx.Response(200, json={"access_token": "ms-token", "expires_in": 3600})
         seen["url"] = str(request.url)
-        seen["body"] = json.loads(request.content)
+        from email import policy
+        from email.parser import BytesParser
+
+        seen["body"] = BytesParser(policy=policy.default).parsebytes(
+            base64.b64decode(request.content)
+        )
+        assert request.headers["Content-Type"] == "text/plain"
         return httpx.Response(202)
 
     install_httpx_mock(monkeypatch, handler)
@@ -143,9 +149,9 @@ async def test_outlook_graph_sendmail_contract(monkeypatch: pytest.MonkeyPatch) 
     )
     assert result.provider_id is None
     assert seen["url"].endswith("graph.microsoft.com/v1.0/me/sendMail")
-    assert seen["body"]["message"]["toRecipients"][0]["emailAddress"]["address"] == (
-        "customer@example.test"
-    )
+    assert seen["body"]["To"] == "customer@example.test"
+    assert seen["body"].get_body(preferencelist=("plain",)).get_content().startswith("Body")
+    assert "automated message" in seen["body"].get_body(preferencelist=("html",)).get_content()
 
 
 async def test_twilio_sms_enforces_country_allowlist_and_status_callback(

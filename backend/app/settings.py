@@ -59,6 +59,7 @@ class Settings(BaseSettings):
     smtp_host: str | None = None
     smtp_port: int = 587
     smtp_from: str = ""
+    support_email: str = "support@example.invalid"
     smtp_username: str | None = None
     smtp_password: str | None = None
     smtp_start_tls: bool = True

@@ -30,6 +30,7 @@ import httpx
 import jwt
 
 from app.security.ssrf import UnsafeDestination, pin_public_url
+from app.services.email_templates import branded_email
 
 
 class IntegrationProviderError(Exception):
@@ -68,6 +69,23 @@ class EmailSendRequest:
     text_body: str
     locale: str = "en"
     attachments: tuple[OutboundAttachment, ...] = ()
+    html_body: str | None = None
+
+    def __post_init__(self) -> None:
+        # Even connection-test / direct-adapter messages get both branded alternatives.
+        # Normal transactional paths supply the platform's current database brand.
+        if self.html_body is None:
+            import os
+
+            text, html = branded_email(
+                self.subject,
+                self.text_body,
+                locale=self.locale,
+                public_url=os.getenv("PUBLIC_APP_URL", ""),
+                support_email=os.getenv("SUPPORT_EMAIL", "support@example.invalid"),
+            )
+            object.__setattr__(self, "text_body", text)
+            object.__setattr__(self, "html_body", html)
 
 
 @dataclass(frozen=True)
@@ -183,6 +201,11 @@ class SMTPEmailProvider:
         message["Message-ID"] = make_msgid(idstring=idempotency_key[:24])
         message["X-Idempotency-Key"] = idempotency_key[:128]
         message.set_content(request.text_body)
+        message.add_alternative(
+            request.html_body
+            or branded_email(request.subject, request.text_body, locale=request.locale)[1],
+            subtype="html",
+        )
         for item in request.attachments:
             maintype, _, subtype = item.mime_type.partition("/")
             if not maintype or not subtype:
@@ -399,7 +422,14 @@ class SendGridEmailProvider:
             "from": {"email": sender},
             "personalizations": [{"to": [{"email": email} for email in request.recipients]}],
             "subject": request.subject,
-            "content": [{"type": "text/plain", "value": request.text_body}],
+            "content": [
+                {"type": "text/plain", "value": request.text_body},
+                {
+                    "type": "text/html",
+                    "value": request.html_body
+                    or branded_email(request.subject, request.text_body, locale=request.locale)[1],
+                },
+            ],
             "custom_args": {"idempotency_key": idempotency_key[:128]},
         }
         if attachments:
@@ -469,6 +499,11 @@ class SESEmailProvider:
         message["Subject"] = request.subject
         message["X-Idempotency-Key"] = idempotency_key[:128]
         message.set_content(request.text_body)
+        message.add_alternative(
+            request.html_body
+            or branded_email(request.subject, request.text_body, locale=request.locale)[1],
+            subtype="html",
+        )
         for item in request.attachments:
             maintype, _, subtype = item.mime_type.partition("/")
             message.add_attachment(
@@ -1187,6 +1222,11 @@ class GmailEmailProvider:
         message["Message-ID"] = make_msgid(idstring=idempotency_key[:24])
         message["X-Idempotency-Key"] = idempotency_key[:128]
         message.set_content(request.text_body)
+        message.add_alternative(
+            request.html_body
+            or branded_email(request.subject, request.text_body, locale=request.locale)[1],
+            subtype="html",
+        )
         for item in request.attachments:
             maintype, _, subtype = item.mime_type.partition("/")
             if not maintype or not subtype:
@@ -1328,34 +1368,32 @@ class OutlookEmailProvider:
         sender = str(self.config.get("from_email", ""))
         if not sender:
             raise IntegrationProviderError("outlook_configuration_missing", retryable=False)
-        attachments = [
-            {
-                "@odata.type": "#microsoft.graph.fileAttachment",
-                "name": item.filename,
-                "contentType": item.mime_type,
-                "contentBytes": base64.b64encode(item.content).decode("ascii"),
-            }
-            for item in request.attachments
-        ]
+        message = EmailMessage()
+        message["From"] = sender
+        message["To"] = ", ".join(request.recipients)
+        message["Subject"] = request.subject[:300]
+        message.set_content(request.text_body)
+        message.add_alternative(
+            request.html_body
+            or branded_email(request.subject, request.text_body, locale=request.locale)[1],
+            subtype="html",
+        )
+        for item in request.attachments:
+            maintype, _, subtype = item.mime_type.partition("/")
+            message.add_attachment(
+                item.content,
+                maintype=maintype,
+                subtype=subtype or "octet-stream",
+                filename=item.filename,
+            )
         token = await self.tokens.access_token()
-        payload: dict[str, Any] = {
-            "message": {
-                "subject": request.subject[:300],
-                "body": {"contentType": "Text", "content": request.text_body[:20_000]},
-                "toRecipients": [
-                    {"emailAddress": {"address": email}} for email in request.recipients
-                ],
-                "internetMessageId": f"<{idempotency_key[:64]}@insurance-platform>",
-                **({"attachments": attachments} if attachments else {}),
-            },
-            "saveToSentItems": True,
-        }
+        payload = base64.b64encode(message.as_bytes()).decode("ascii")
         try:
             async with httpx.AsyncClient(timeout=30, follow_redirects=False) as client:
                 response = await client.post(
                     "https://graph.microsoft.com/v1.0/me/sendMail",
-                    headers={"Authorization": f"Bearer {token}"},
-                    json=payload,
+                    headers={"Authorization": f"Bearer {token}", "Content-Type": "text/plain"},
+                    content=payload,
                 )
         except httpx.HTTPError as exc:
             raise IntegrationProviderError("outlook_unreachable") from exc

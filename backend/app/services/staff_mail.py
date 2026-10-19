@@ -15,7 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.repositories.staff_profiles import StaffProfileRepository
 from app.security.integration_crypto import SecretCipher
-from app.services.email_templates import render_staff_invitation
+from app.services.email_templates import branded_email, render_staff_invitation
 from app.services.integration_providers import EmailSendRequest, build_provider
 from app.services.integrations import config_aad
 from app.services.providers import Delivery, ProviderUnavailable
@@ -92,11 +92,20 @@ class StaffMailService:
             brand_loader = getattr(self.fallback, "brand_loader", None)
             brand = (await brand_loader()) if brand_loader is not None else "Insurance"
             brand = brand.strip()[:80] or "Insurance"
+            text, html = branded_email(
+                subject,
+                body,
+                brand=brand,
+                public_url=self.settings.public_app_url,
+                support_email=self.settings.support_email,
+                locale="ar",
+            )
             await build_provider(provider, config).send(
                 EmailSendRequest(
                     recipients=(email,),
                     subject=f"{subject} · {brand}",
-                    text_body=f"{body.rstrip()}\n\n— {brand}",
+                    text_body=text,
+                    html_body=html,
                     locale="ar",
                 ),
                 # This key is not derived from, and must never disclose, the bearer token.

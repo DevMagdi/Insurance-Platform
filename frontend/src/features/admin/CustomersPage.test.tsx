@@ -51,6 +51,13 @@ function mockDirectory(customers: unknown[], companies: unknown[] = [company]) {
 }
 
 describe('CustomersPage', () => {
+  it('shows the company for a historical complaint even without a policy', async () => {
+    mockDirectory([{ ...customer, policies: [] }]);
+    render(<CustomersPage access={access} />);
+    expect(await screen.findByText('منى أحمد')).toBeTruthy();
+    expect(screen.queryByText('غير مرتبطة')).toBeNull();
+    expect(screen.getAllByText(company.name_ar).length).toBeGreaterThan(0);
+  });
   it('filters across client and policy details and opens a complete profile', async () => {
     mockDirectory([customer]);
     render(<CustomersPage access={access} />);

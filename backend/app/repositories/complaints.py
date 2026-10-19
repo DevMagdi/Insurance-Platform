@@ -7,6 +7,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import UUID, uuid4
 
+from fastapi import HTTPException
 from sqlalchemy import Select, func, or_, select, text
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -15,7 +16,7 @@ from app.domain.access import AccessScope
 from app.domain.enums import ComplaintStatus, InsuranceType, MessageDirection, MessageVisibility
 from app.domain.schemas import ComplaintCreate, ComplaintFilter
 from app.models.core import ComplaintIdempotency
-from app.models.identity import Customer, InsuranceCompany, Policy
+from app.models.identity import Customer, InsuranceCompany
 from app.models.tickets import (
     Attachment,
     AuditLog,
@@ -321,14 +322,17 @@ class ComplaintRepository:
         customer_id: UUID,
         item: ComplaintCreate,
     ) -> UUID | None:
+        # The helper binds ownership to the authenticated transaction actor, not an input ID.
         result: UUID | None = await db.scalar(
-            select(Policy.id).where(
-                Policy.customer_id == customer_id,
-                Policy.company_id == item.company_id,
-                Policy.insurance_type == item.insurance_type,
-                Policy.policy_number == item.policy_number,
-            )
+            text("SELECT app_security.ensure_customer_policy(:company, :kind, :number)"),
+            {
+                "company": item.company_id,
+                "kind": item.insurance_type.value,
+                "number": item.policy_number,
+            },
         )
+        if result is None:
+            raise HTTPException(status_code=409, detail="Policy unavailable for this customer")
         return result
 
     async def reserve_idempotency(

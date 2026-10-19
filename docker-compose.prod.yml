@@ -124,6 +124,7 @@ services:
       JWT_PREVIOUS_PUBLIC_KEYS: ${JWT_PREVIOUS_PUBLIC_KEYS:-}
       SMTP_HOST: ${SMTP_HOST:?set SMTP_HOST in .env.production}
       SMTP_PORT: ${SMTP_PORT:-587}
+      SUPPORT_EMAIL: ${SUPPORT_EMAIL:-support@example.invalid}
       SMTP_FROM: ${SMTP_FROM:?set SMTP_FROM in .env.production}
       SMTP_USERNAME: ${SMTP_USERNAME:-}
       SMTP_PASSWORD: ${SMTP_PASSWORD:-}
@@ -171,11 +172,13 @@ services:
       REDIS_URL: redis://redis:6379/0
       SMTP_HOST: ${SMTP_HOST:?set SMTP_HOST in .env.production}
       SMTP_PORT: ${SMTP_PORT:-587}
+      SUPPORT_EMAIL: ${SUPPORT_EMAIL:-support@example.invalid}
       SMTP_FROM: ${SMTP_FROM:?set SMTP_FROM in .env.production}
       SMTP_USERNAME: ${SMTP_USERNAME:-}
       SMTP_PASSWORD: ${SMTP_PASSWORD:-}
       SMTP_START_TLS: ${SMTP_START_TLS:-true}
       SMTP_USE_TLS: ${SMTP_USE_TLS:-false}
+      PUBLIC_APP_URL: ${PUBLIC_APP_URL:?set PUBLIC_APP_URL in .env.production}
       ENVIRONMENT: production
       # The worker decrypts integration payloads and runs key-rotation aware crons.
       APP_ENCRYPTION_KEY: ${APP_ENCRYPTION_KEY:?set APP_ENCRYPTION_KEY in .env.production}
