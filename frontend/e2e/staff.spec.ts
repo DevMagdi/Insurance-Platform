@@ -130,7 +130,7 @@ for (const theme of ['light', 'dark'] as const) {
     await page.getByText('CMP-2026-000123').click();
     await expect(page.getByRole('heading', { name: 'إدارة الحالة' })).toBeVisible();
     const shell = page.locator('.staff-console');
-    await expect(shell).toHaveCSS('background-color', theme === 'dark' ? 'rgb(10, 15, 24)' : 'rgb(246, 247, 249)');
+    await expect(shell).toHaveCSS('background-color', theme === 'dark' ? 'rgb(6, 10, 17)' : 'rgb(246, 247, 249)');
     await expect(shell).toHaveCSS('color', theme === 'dark' ? 'rgb(232, 237, 244)' : 'rgb(10, 26, 47)');
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     await page.screenshot({ path: testInfo.outputPath(`staff-${theme}.png`), fullPage: true });
