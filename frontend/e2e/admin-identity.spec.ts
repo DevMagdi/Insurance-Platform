@@ -38,6 +38,7 @@ async function install(page: Page) {
       return json(state.departments[1]);
     }
     if (path === '/api/staff/users') return json([employee]);
+    if (path === '/api/staff/users/revision') return json({ revision: 'e2e-users-1' });
     if (path === `/api/staff/users/${employeeId}/profile`) return json({ ...employee,
       department_description: department.description, department_is_active: department.is_active,
       created_at: '2026-09-01T08:00:00Z', profile_completed_at: '2026-09-03T08:00:00Z',

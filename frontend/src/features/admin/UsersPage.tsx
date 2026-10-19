@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { api, jsonBody } from '../../api';
 import { AccessDenied } from '../../components/Access';
 import { hasPermission } from '../../utils/access';
@@ -33,9 +33,9 @@ export function UsersPage({ access, onAccessChanged }: UsersPageProps) {
   const [selectedUser, setSelectedUser] = useState<StaffDirectoryEntry | null>(null);
   const [toast, setToast] = useState('');
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (silent = false) => {
     if (!hasPermission(access, 'users.view')) { setLoading(false); return; }
-    setLoading(true);
+    if (!silent) setLoading(true);
     try {
       const [result, options] = await Promise.all([api<StaffDirectoryEntry[]>('/api/staff/users'), api<StaffDepartment[]>('/api/staff/departments')]);
       setUsers(result);
@@ -44,13 +44,43 @@ export function UsersPage({ access, onAccessChanged }: UsersPageProps) {
     } catch (cause) {
       setUsers([]);
       setError(cause instanceof Error ? cause.message : 'تعذر تحميل المستخدمين.');
-    } finally { setLoading(false); }
+    } finally { if (!silent) setLoading(false); }
   }, [access]);
   useEffect(() => {
     let active = true;
     queueMicrotask(() => { if (active) void load(); });
     return () => { active = false; };
   }, [load]);
+
+  // Live directory: poll a cheap revision signature while the page is visible
+  // and refetch the rows only when it actually moved, so an accepted
+  // invitation, a deactivation or a department change appears without a
+  // manual refresh. The signature endpoint applies the same permission/scope
+  // gate as the directory itself (empty revision = not permitted).
+  const loadRef = useRef(load);
+  useEffect(() => { loadRef.current = load; }, [load]);
+  useEffect(() => {
+    if (!hasPermission(access, 'users.view')) return;
+    let previous = '';
+    const poll = async () => {
+      if (document.visibilityState !== 'visible') return;
+      try {
+        const data = await api<{ revision: string }>('/api/staff/users/revision');
+        const revision = data?.revision ?? '';
+        if (!revision) return;
+        if (previous && revision !== previous) void loadRef.current(true);
+        previous = revision;
+      } catch { /* keep the current rows; the next tick retries */ }
+    };
+    void poll();
+    const timer = window.setInterval(poll, 15_000);
+    const onVisibility = () => { void poll(); };
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
+  }, [access]);
 
   const filteredUsers = useMemo(() => users.filter((user) => {
     const matchesSearch = `${user.full_name} ${user.email} ${user.department_name ?? ''}`.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase());

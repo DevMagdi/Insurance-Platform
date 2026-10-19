@@ -161,6 +161,7 @@ export function ComplaintQueue({ access, range, options, companyNames, onOpenTic
   useEffect(() => {
     if (!hasPermission(access, 'complaints.view')) return;
     let socket: WebSocket | null = null;
+    const knownIds = new Set<string>();
     try {
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
       socket = new WebSocket(`${protocol}//${window.location.host}/api/staff/complaints/stream${params}`);
@@ -168,9 +169,16 @@ export function ComplaintQueue({ access, range, options, companyNames, onOpenTic
         try {
           const data = JSON.parse(event.data) as ComplaintListResponse;
           if (Array.isArray(data.items)) {
+            const fresh = data.items.some((item) => !knownIds.has(item.id));
+            data.items.forEach((item) => knownIds.add(item.id));
             setResult({ ...data, items: data.items });
             setError('');
             setSelected((current) => current.filter((id) => data.items.some((item) => item.id === id)));
+            if (fresh) {
+              // A ticket nobody had seen before: tell the console (and its
+              // notification bell) that staff data changed.
+              window.dispatchEvent(new Event('staff:data-changed'));
+            }
           }
         } catch { /* Malformed frames are ignored; REST remains the fallback. */ }
       };

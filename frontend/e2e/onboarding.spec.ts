@@ -24,6 +24,7 @@ async function install(page: Page, kind: 'invitation' | 'password_reset' | 'expi
     if (path === '/api/me/notifications') return json([]);
     if (path === '/api/staff/departments') return json([{ id: departmentId, name: 'التعويضات' }]);
     if (path === '/api/staff/users') return json([employee]);
+    if (path === '/api/staff/users/revision') return json({ revision: 'e2e-users-1' });
     if (path === '/api/staff/users/invitations') {
       state.invite = request.postDataJSON();
       return json({ id: userId, message: 'Provider accepted the invitation' }, 202);

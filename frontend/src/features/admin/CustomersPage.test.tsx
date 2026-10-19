@@ -1,11 +1,11 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { api } from '../../api';
 import type { StaffAccess } from '../../types';
 import { CustomersPage } from './CustomersPage';
 
 vi.mock('../../api', () => ({ api: vi.fn(), jsonBody: (value: unknown) => JSON.stringify(value) }));
-afterEach(() => { cleanup(); vi.clearAllMocks(); });
+afterEach(() => { cleanup(); vi.clearAllMocks(); vi.useRealTimers(); });
 
 const access: StaffAccess = {
   id: 'admin-1', email: 'admin@example.invalid', full_name: 'Admin', status: 'active', token_version: 1,
@@ -46,9 +46,40 @@ function mockDirectory(customers: unknown[], companies: unknown[] = [company]) {
   vi.mocked(api).mockImplementation(async (path: string) => {
     if (path === '/api/staff/customers') return customers as never;
     if (path === '/api/companies') return companies as never;
+    if (path === '/api/staff/customers/revision') return { revision: 'revision-1' } as never;
     return [] as never;
   });
 }
+
+describe('CustomersPage liveness', () => {
+  it('refetches the directory only when the cheap revision signature moves', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: false });
+    let revision = 'revision-1';
+    vi.mocked(api).mockImplementation(async (path: string) => {
+      if (path === '/api/staff/customers') return [customer] as never;
+      if (path === '/api/companies') return [company] as never;
+      if (path === '/api/staff/customers/revision') return { revision } as never;
+      return [] as never;
+    });
+    render(<CustomersPage access={access} />);
+    await act(async () => { await vi.advanceTimersByTimeAsync(0); });
+    expect(screen.getByText('منى أحمد')).toBeTruthy();
+    const directoryCalls = () =>
+      vi.mocked(api).mock.calls.filter(([path]) => path === '/api/staff/customers').length;
+    expect(directoryCalls()).toBe(1);
+
+    // Nothing changed: the signature stays put and the rows are not re-downloaded.
+    await act(async () => { await vi.advanceTimersByTimeAsync(30_000); });
+    expect(directoryCalls()).toBe(1);
+
+    // A new customer (or a new complaint/policy) moves the signature, so the
+    // counts and rows refresh without a manual reload.
+    revision = 'revision-2';
+    await act(async () => { await vi.advanceTimersByTimeAsync(15_000); });
+    expect(directoryCalls()).toBe(2);
+    expect(screen.getByText('منى أحمد')).toBeTruthy();
+  });
+});
 
 describe('CustomersPage', () => {
   it('shows the company for a historical complaint even without a policy', async () => {

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api, jsonBody } from '../../api';
 import { AccessDenied } from '../../components/Access';
 import { Icon } from '../../components/Icon';
@@ -32,12 +32,52 @@ export function CustomersPage({ access }: { access: StaffAccess }) {
   const [showRevealForm, setShowRevealForm] = useState(false);
 
   // Keep the directory live while the page is visible; no manual refresh.
-  useEffect(() => {
-    const timer = window.setInterval(() => {
-      if (document.visibilityState === 'visible') setReloadToken((value) => value + 1);
-    }, 30_000);
-    return () => window.clearInterval(timer);
+  // A cheap revision signature is polled every 15s and the full directory is
+  // only re-downloaded when it actually moved (new customer, new policy or a
+  // new complaint), so a background tab costs one tiny aggregate per tick.
+  const loadDirectory = useCallback(async () => {
+    const [customersResult, companiesResult] = await Promise.allSettled([
+      api<Customer[]>('/api/staff/customers'),
+      api<Company[]>('/api/companies'),
+    ]);
+    const errors: string[] = [];
+    if (customersResult.status === 'fulfilled') {
+      setCustomers(customersResult.value);
+    } else {
+      errors.push(customersResult.reason instanceof Error ? customersResult.reason.message : 'تعذر تحميل العملاء.');
+    }
+    if (companiesResult.status === 'fulfilled') {
+      setCompanies(companiesResult.value);
+    } else {
+      errors.push(companiesResult.reason instanceof Error ? companiesResult.reason.message : 'تعذر تحميل شركات التأمين.');
+    }
+    setError(errors.join(' '));
+    setLoading(false);
   }, []);
+  const loadDirectoryRef = useRef(loadDirectory);
+  useEffect(() => { loadDirectoryRef.current = loadDirectory; }, [loadDirectory]);
+  useEffect(() => {
+    if (!hasPermission(access, 'users.view')) return;
+    let previous = '';
+    const poll = async () => {
+      if (document.visibilityState !== 'visible') return;
+      try {
+        const data = await api<{ revision: string }>('/api/staff/customers/revision');
+        const revision = data?.revision ?? '';
+        if (!revision) return;
+        if (previous && revision !== previous) void loadDirectoryRef.current();
+        previous = revision;
+      } catch { /* keep the current rows; the next tick retries */ }
+    };
+    void poll();
+    const timer = window.setInterval(poll, 15_000);
+    const onVisibility = () => { void poll(); };
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
+  }, [access]);
 
   const openCustomer = (customer: Customer) => {
     setNationalId('');
@@ -67,32 +107,9 @@ export function CustomersPage({ access }: { access: StaffAccess }) {
 
   useEffect(() => {
     let active = true;
-
-    const load = async () => {
-      const [customersResult, companiesResult] = await Promise.allSettled([
-        api<Customer[]>('/api/staff/customers'),
-        api<Company[]>('/api/companies'),
-      ]);
-      if (!active) return;
-
-      const errors: string[] = [];
-      if (customersResult.status === 'fulfilled') {
-        setCustomers(customersResult.value);
-      } else {
-        errors.push(customersResult.reason instanceof Error ? customersResult.reason.message : 'تعذر تحميل العملاء.');
-      }
-      if (companiesResult.status === 'fulfilled') {
-        setCompanies(companiesResult.value);
-      } else {
-        errors.push(companiesResult.reason instanceof Error ? companiesResult.reason.message : 'تعذر تحميل شركات التأمين.');
-      }
-      setError(errors.join(' '));
-      setLoading(false);
-    };
-
-    void load();
+    queueMicrotask(() => { if (active) void loadDirectory(); });
     return () => { active = false; };
-  }, [reloadToken]);
+  }, [loadDirectory, reloadToken]);
 
   // Load the insurer catalog independently of the current client directory so
   // companies with no associated clients are still available as filter options.
