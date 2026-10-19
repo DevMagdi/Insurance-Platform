@@ -200,7 +200,7 @@ export function TicketWorkspace({ id, access, options, onBack, onOpenTicket, onR
         });
         completed += 1;
       }
-      setNotice(`تم رفع ${formatNumber(completed)} ملف. التنزيل سيبقى محظوراً حتى اكتمال فحص الأمان.`);
+      setNotice(`تم رفع ${formatNumber(completed)} ملف. تظهر حالة الفحص وقابلية الفتح في قائمة المرفقات.`);
       await refresh();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'تعذر رفع المرفقات.');
@@ -403,7 +403,7 @@ export function TicketWorkspace({ id, access, options, onBack, onOpenTicket, onR
 
               <section className="surface-card attachments-panel">
                 <div className="panel-heading"><div><p className="eyebrow">الملفات</p><h2>المرفقات <span className="heading-count">{formatNumber(attachments.length)}</span></h2></div><Icon name="paperclip" size={17} /></div>
-                {!hasPermission(access, 'complaints.view_attachments') ? <p className="muted small-copy">لا تتوفر لديك صلاحية عرض المرفقات.</p> : attachments.length === 0 ? <p className="muted small-copy">لا توجد مرفقات مرتبطة بهذه الشكوى.</p> : <div className="attachment-list">{attachments.map((attachment) => <button className="attachment-row" key={attachment.id} type="button" disabled={attachment.scan_status !== 'clean'} onClick={() => { void downloadAttachment(attachment); }}><span className="attachment-file-icon"><Icon name="paperclip" size={15} /></span><span className="attachment-copy"><strong>{attachment.filename}</strong><small>{(attachment.size_bytes / 1024).toFixed(0)} KB · {attachment.scan_status === 'clean' ? 'تم الفحص' : 'بانتظار فحص آمن'}</small></span><span className={`scan-state scan-${attachment.scan_status}`}>{attachment.scan_status === 'clean' ? 'آمن' : 'معلّق'}</span></button>)}</div>}
+                {!hasPermission(access, 'complaints.view_attachments') ? <p className="muted small-copy">لا تتوفر لديك صلاحية عرض المرفقات.</p> : attachments.length === 0 ? <p className="muted small-copy">لا توجد مرفقات مرتبطة بهذه الشكوى.</p> : <div className="attachment-list">{attachments.map((attachment) => { const scanLabel = { clean: 'آمن', pending: 'معلّق', infected: 'مصاب', error: 'خطأ في الفحص' }[attachment.scan_status]; const scanHint = { clean: 'تم الفحص', pending: 'بانتظار الفحص', infected: 'تم رفض الملف', error: 'تعذر إكمال الفحص' }[attachment.scan_status]; return <button className="attachment-row" key={attachment.id} type="button" disabled={attachment.scan_status !== 'clean'} title={attachment.scan_status !== 'clean' ? 'المرفق غير متاح للفتح حتى يصبح آمناً' : 'فتح المرفق'} onClick={() => { void downloadAttachment(attachment); }}><span className="attachment-file-icon"><Icon name="paperclip" size={15} /></span><span className="attachment-copy"><strong>{attachment.filename}</strong><small>{(attachment.size_bytes / 1024).toFixed(0)} KB · {scanHint}</small></span><span className={`scan-state scan-${attachment.scan_status}`}>{scanLabel}</span></button>; })}</div>}
               </section>
 
               <section className="surface-card call-panel">

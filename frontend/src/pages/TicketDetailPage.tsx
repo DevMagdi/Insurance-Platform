@@ -325,7 +325,7 @@ export function TicketDetailPage({ complaintId }: { complaintId: string }) {
                     <span className="attachment-icon" aria-hidden="true"><FileText size={14} /></span>
                     <span className="attachment-copy">
                       <strong title={file.filename}>{file.filename}</strong>
-                      <span>{file.scan_status === 'clean' ? t('files.clean') : t('files.pending')}</span>
+                      <span>{t(`files.${file.scan_status}`)}</span>
                     </span>
                     <Button
                       size="sm"

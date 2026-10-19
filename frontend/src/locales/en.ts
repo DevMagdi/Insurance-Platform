@@ -134,6 +134,8 @@ export const en = {
     "badName": "The file name contains an unsupported path.",
     "pending": "Awaiting virus scan",
     "clean": "Clean",
+    "infected": "Infected — file rejected",
+    "error": "Scan error",
     "blocked": "Download unavailable"
   },
   "tickets": {

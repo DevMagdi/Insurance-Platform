@@ -179,8 +179,14 @@ async def install_state(
         settings.jwt_signing_key,
         integration_events=integrations_service,
     )
+    async def virus_scanner_configured(db: Any) -> bool:
+        return bool(await db.scalar(text("SELECT app_security.virus_scanner_configured()")))
+
     app.state.attachments = AttachmentService(
-        AttachmentRepository(), TokenManager(settings), app.state.blobs
+        AttachmentRepository(),
+        TokenManager(settings),
+        app.state.blobs,
+        scanner_configured=virus_scanner_configured,
     )
 
     async def close() -> None:

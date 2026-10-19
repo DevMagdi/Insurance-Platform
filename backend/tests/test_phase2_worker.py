@@ -308,3 +308,41 @@ async def test_worker_startup_uses_isolated_role_and_shutdown(
     assert "storage" not in context
     await shutdown(context)
     fake_engine.dispose.assert_awaited_once()
+
+
+async def test_worker_scan_auto_cleans_when_no_scanner_configured(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Without a configured scanner, inspected uploads must not stay pending."""
+    upload = uuid4()
+    attachment = uuid4()
+    content = b"%PDF-1.4 real content"
+    blobs = BlobCipher(b"k" * 32)
+    stored = blobs.encrypt(content, purpose=ATTACHMENT, resource_id=attachment)
+    calls: list[tuple[str, dict]] = []
+
+    async def query(engine: object, sql: str, params: dict):
+        calls.append((sql, params))
+        if "pending_scans" in sql:
+            return [
+                SimpleNamespace(
+                    upload_id=upload,
+                    attachment_id=attachment,
+                    original_filename="report.pdf",
+                    mime_type="application/pdf",
+                    size_bytes=len(content),
+                    checksum_sha256="a" * 64,
+                )
+            ]
+        if "attachment_scan_content" in sql:
+            return [SimpleNamespace(content=stored)]
+        return []
+
+    monkeypatch.setattr("app.worker._worker_query", query)
+    ctx = {
+        "engine": SimpleNamespace(),
+        "scanner": UnconfiguredVirusScanner(),
+        "blobs": blobs,
+    }
+    assert await scan_pending(ctx) == "checked 1 pending scan(s)"
+    assert calls[-1][1] == {"id": upload, "verdict": "clean"}

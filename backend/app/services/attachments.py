@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime, timedelta
 from tempfile import SpooledTemporaryFile
 from typing import Any
@@ -21,6 +22,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domain.access import AccessScope
+from app.domain.enums import AttachmentScanStatus
 from app.domain.schemas import UploadPlan
 from app.models.tickets import Attachment, AuditLog, Complaint
 from app.repositories.attachments import AttachmentRepository
@@ -32,11 +34,22 @@ _ALLOWED = frozenset({"application/pdf", "image/jpeg", "image/png"})
 
 class AttachmentService:
     def __init__(
-        self, repository: AttachmentRepository, tokens: TokenManager, blobs: BlobCipher
+        self,
+        repository: AttachmentRepository,
+        tokens: TokenManager,
+        blobs: BlobCipher,
+        scanner_configured: Callable[[AsyncSession], Awaitable[bool]] | None = None,
     ) -> None:
         self.repository = repository
         self.tokens = tokens
         self.blobs = blobs
+        # Presence probe for an external virus scanner. When no scanner is
+        # configured, a successful upload has already passed magic-byte MIME,
+        # size and checksum inspection, so it is marked clean immediately
+        # instead of being stuck in "pending" forever. When a scanner IS
+        # configured (or the probe is not wired), uploads stay pending for
+        # the worker's verdict — fail closed.
+        self.scanner_configured = scanner_configured
 
     async def plan(
         self,
@@ -156,6 +169,14 @@ class AttachmentService:
                 )
             )
         await db.flush()
+        if self.scanner_configured is not None and not await self.scanner_configured(db):
+            attachment.scan_status = AttachmentScanStatus.CLEAN
+            await db.flush()
+            return {
+                "id": attachment.id,
+                "scan_status": "clean",
+                "message": "File passed content inspection and is available for download",
+            }
         return {
             "id": attachment.id,
             "scan_status": "pending",

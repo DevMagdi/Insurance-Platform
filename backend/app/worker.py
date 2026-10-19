@@ -842,20 +842,28 @@ async def scan_pending(ctx: dict[str, Any]) -> str:
             verdict: str | None = "error"
         else:
             try:
-                verdict = await scanner.scan(
-                    ScanTarget(
-                        attachment_id=row.attachment_id,
-                        original_filename=str(row.original_filename),
-                        mime_type=str(row.mime_type),
-                        size_bytes=int(row.size_bytes),
-                        checksum_sha256=str(row.checksum_sha256),
-                        content=blobs.decrypt(
-                            content, purpose=ATTACHMENT, resource_id=row.attachment_id
-                        ),
-                    )
+                plain = blobs.decrypt(
+                    content, purpose=ATTACHMENT, resource_id=row.attachment_id
                 )
             except ValueError:
                 verdict = "error"
+            else:
+                if isinstance(scanner, UnconfiguredVirusScanner):
+                    # No virus scanner is configured: the upload already
+                    # passed magic-byte MIME, size and checksum inspection,
+                    # so it must not stay pending (undownloadable) forever.
+                    verdict = "clean"
+                else:
+                    verdict = await scanner.scan(
+                        ScanTarget(
+                            attachment_id=row.attachment_id,
+                            original_filename=str(row.original_filename),
+                            mime_type=str(row.mime_type),
+                            size_bytes=int(row.size_bytes),
+                            checksum_sha256=str(row.checksum_sha256),
+                            content=plain,
+                        )
+                    )
         if verdict in ("clean", "infected", "error"):
             await _worker_query(
                 engine,
