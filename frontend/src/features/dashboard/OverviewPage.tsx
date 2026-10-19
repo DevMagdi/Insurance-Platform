@@ -27,7 +27,16 @@ import type {
   StaffAccess,
 } from '../../types';
 
-const PALETTE = ['#c99b57', '#368e81', '#466fbd', '#a66d97', '#de8f66', '#8e9aa9'];
+const PALETTE = ['var(--gold-500)', 'var(--emerald-500)', 'var(--info)', 'var(--fuchsia)', 'var(--orange)', 'var(--ink-400)'];
+/** Chart colors speak the same language as status chips (foundation.css). */
+const STATUS_COLORS: Record<string, string> = {
+  new: 'var(--info)',
+  assigned: 'var(--violet)',
+  in_review: 'var(--warning)',
+  resolved: 'var(--success)',
+  reopened: 'var(--orange)',
+  transferred: 'var(--fuchsia)',
+};
 const STATUS_NAMES: Record<string, string> = {
   new: 'جديدة',
   assigned: 'مُسندة',
@@ -236,7 +245,17 @@ export function OverviewPage({
       </div>
 
       {loading && !report ? (
-        <div className="loading-surface"><span className="loading-spinner" /><span>جارٍ تجهيز التحليلات حسب نطاق صلاحيتك…</span></div>
+        <div className="ov-loading" role="status" aria-live="polite" aria-label="جارٍ تجهيز التحليلات حسب نطاق صلاحيتك…">
+          <div className="charts-grid charts-top" aria-hidden="true">
+            <div className="skeleton ov-skel-chart chart-wide" />
+            <div className="skeleton ov-skel-chart" />
+          </div>
+          <div className="charts-grid" aria-hidden="true">
+            <div className="skeleton ov-skel-chart" />
+            <div className="skeleton ov-skel-chart" />
+            <div className="skeleton ov-skel-chart" />
+          </div>
+        </div>
       ) : report ? (
         <>
           <div className="charts-grid charts-top">
@@ -244,12 +263,12 @@ export function OverviewPage({
               <div className="chart-container trend-chart">
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={report.time_series} margin={{ top: 10, right: 8, left: -16, bottom: 0 }}>
-                    <defs><linearGradient id="trendFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#378f82" stopOpacity={0.24} /><stop offset="100%" stopColor="#378f82" stopOpacity={0.01} /></linearGradient></defs>
+                    <defs><linearGradient id="trendFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="var(--emerald-500)" stopOpacity={0.24} /><stop offset="100%" stopColor="var(--emerald-500)" stopOpacity={0.01} /></linearGradient></defs>
                     <CartesianGrid strokeDasharray="3 5" vertical={false} stroke="var(--chart-grid)" />
                     <XAxis dataKey="date" tickFormatter={(value: string) => value.slice(5)} tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: 'var(--text-muted)' }} />
                     <YAxis allowDecimals={false} tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: 'var(--text-muted)' }} />
                     <Tooltip contentStyle={{ borderRadius: 14, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)' }} labelFormatter={(value) => String(value)} />
-                    <Area type="monotone" dataKey="arrived" name="الشكاوى" stroke="#328d80" strokeWidth={2.6} fill="url(#trendFill)" activeDot={{ r: 5, fill: '#c99b57', stroke: 'var(--surface)', strokeWidth: 2 }} />
+                    <Area type="monotone" dataKey="arrived" name="الشكاوى" stroke="var(--emerald-500)" strokeWidth={2.6} fill="url(#trendFill)" activeDot={{ r: 5, fill: 'var(--gold-500)', stroke: 'var(--surface)', strokeWidth: 2 }} />
                   </AreaChart>
                 </ResponsiveContainer>
               </div>
@@ -263,7 +282,7 @@ export function OverviewPage({
                     <YAxis type="category" dataKey="label" width={82} tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: 'var(--text-muted)' }} />
                     <Tooltip contentStyle={{ borderRadius: 12, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)' }} />
                     <Bar dataKey="count" name="الشكاوى" radius={[0, 6, 6, 0]} barSize={12}>
-                      {byStatus.map((entry, index) => <Cell key={entry.status} fill={PALETTE[index % PALETTE.length]} />)}
+                      {byStatus.map((entry, index) => <Cell key={entry.status} fill={STATUS_COLORS[entry.status] ?? PALETTE[index % PALETTE.length]} />)}
                     </Bar>
                   </BarChart>
                 </ResponsiveContainer>
@@ -280,7 +299,7 @@ export function OverviewPage({
                     <XAxis dataKey="name" interval={0} angle={-16} textAnchor="end" tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: 'var(--text-muted)' }} />
                     <YAxis allowDecimals={false} tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: 'var(--text-muted)' }} />
                     <Tooltip contentStyle={{ borderRadius: 12, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)' }} />
-                    <Bar dataKey="count" name="الشكاوى" fill="#c99b57" radius={[6, 6, 0, 0]} barSize={24} />
+                    <Bar dataKey="count" name="الشكاوى" fill="var(--gold-500)" radius={[6, 6, 0, 0]} barSize={24} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -311,7 +330,7 @@ export function OverviewPage({
                     <XAxis type="number" allowDecimals={false} tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: 'var(--text-muted)' }} />
                     <YAxis type="category" dataKey="name" width={105} tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: 'var(--text-muted)' }} />
                     <Tooltip contentStyle={{ borderRadius: 12, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)' }} />
-                    <Bar dataKey="count" name="الشكاوى" fill="#368e81" radius={[0, 6, 6, 0]} barSize={13} />
+                    <Bar dataKey="count" name="الشكاوى" fill="var(--emerald-500)" radius={[0, 6, 6, 0]} barSize={13} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -324,7 +343,7 @@ export function OverviewPage({
                     <XAxis dataKey="name" interval={0} tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: 'var(--text-muted)' }} />
                     <YAxis allowDecimals={false} tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: 'var(--text-muted)' }} />
                     <Tooltip contentStyle={{ borderRadius: 12, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)' }} />
-                    <Bar dataKey="value" name="الشكاوى" fill="#5574b7" radius={[6, 6, 0, 0]} barSize={26} />
+                    <Bar dataKey="value" name="الشكاوى" fill="var(--info)" radius={[6, 6, 0, 0]} barSize={26} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -341,7 +360,7 @@ export function OverviewPage({
                     {Array.from({ length: 24 }, (_, hour) => {
                       const value = heatByHour.get(`${weekday}-${hour}`) ?? 0;
                       const opacity = value === 0 ? 0.06 : 0.18 + (value / maxHeat) * 0.78;
-                      return <span className="heatmap-cell" key={hour} title={`${day} · ${hour}:00 — ${formatNumber(value)} شكوى`} style={{ backgroundColor: `rgba(54, 142, 129, ${opacity})` }} />;
+                      return <span className="heatmap-cell" key={hour} title={`${day} · ${hour}:00 — ${formatNumber(value)} شكوى`} style={{ backgroundColor: `color-mix(in srgb, var(--emerald-500) ${Math.round(opacity * 100)}%, transparent)` }} />;
                     })}
                   </div>
                 ))}

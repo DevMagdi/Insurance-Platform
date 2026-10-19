@@ -1777,6 +1777,21 @@ html[lang='ar'] .staff-console .ov-head h1 {
   transition: border-color var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
 }
 
+.staff-console .ov-loading {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.staff-console .ov-skel-chart {
+  min-height: 250px;
+  border-radius: var(--r-lg);
+}
+
+.staff-console .charts-top .ov-skel-chart {
+  min-height: 300px;
+}
+
 .staff-console .ov-kpi:hover {
   border-color: var(--border-strong);
   transform: translateY(-1px);
