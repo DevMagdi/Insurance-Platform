@@ -26,3 +26,13 @@
 @media (max-width: 1050px) { .admin-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }.admin-shortcuts { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 700px) { .admin-hero { flex-direction: column; align-items: flex-start; padding: 24px; }.admin-data-grid { grid-template-columns: 1fr; }.admin-shortcuts { grid-template-columns: 1fr; }.admin-panel { padding: 20px; } }
 @media (max-width: 440px) { .admin-kpis { grid-template-columns: 1fr; }.admin-team-stats { grid-template-columns: 1fr; } }
+
+/* Restrained elevation keeps charts and KPI values ahead of decoration. */
+.admin-kpi, .admin-panel { border-radius: var(--r-lg); box-shadow: var(--shadow-sm); }
+.admin-kpi { border-top-width: 1px; gap: 10px; }
+.admin-kpi-head svg { padding: 8px; width: 36px; height: 36px; border-radius: var(--r-md); background: var(--gold-soft); }
+.admin-kpi-blue svg { background: var(--blue-soft); }
+.admin-kpi-red svg { background: var(--red-soft); }
+.admin-kpi-green svg { background: var(--green-soft); }
+.admin-hero { border-radius: var(--r-xl); box-shadow: var(--shadow-xs); }
+.admin-bar-track span { transition: width var(--dur-base) var(--ease-out); }

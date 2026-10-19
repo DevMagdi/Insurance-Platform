@@ -4,38 +4,12 @@
    ========================================================================== */
 
 .staff-console {
-  --bg: #f5f6f8;
-  --bg-elevated: #fafbfc;
-  --surface: #ffffff;
-  --surface-raised: #fbfcfd;
-  --surface-muted: #f3f5f7;
-  --surface-hover: #eef1f5;
-  --text: #0d1c2e;
-  --text-secondary: #40536a;
-  --text-muted: #6c7c8f;
-  --text-faint: #97a3b1;
-  --border: #e7eaee;
-  --border-strong: #d4dae2;
-  --gold: #9a782c;
-  --gold-strong: #7d5f1e;
-  --gold-soft: rgba(201, 162, 39, 0.1);
-  --teal: #0f766e;
-  --teal-soft: rgba(15, 118, 110, 0.08);
-  --blue: #2560a8;
-  --blue-soft: rgba(37, 96, 168, 0.08);
-  --red: #b4384a;
-  --red-soft: rgba(180, 56, 74, 0.08);
-  --green: #0f766e;
-  --green-soft: rgba(15, 118, 110, 0.08);
-  --violet: #6250b8;
-  --chart-grid: #eceff3;
-  --shadow: 0 1px 3px rgba(13, 28, 46, 0.04), 0 18px 44px -24px rgba(13, 28, 46, 0.2);
-  --focus: #9a782c;
-  --staff-sidebar: #fbfcfd;
-  --staff-sidebar-text: #33465c;
-  --staff-sidebar-muted: #8090a2;
-  --staff-sidebar-active: #0b1f3a;
-  --staff-topbar: rgba(255, 255, 255, 0.84);
+  /* Palette and compatibility aliases are owned by foundation / staff-console. */
+  --staff-sidebar: var(--surface-1);
+  --staff-sidebar-text: var(--ink-700);
+  --staff-sidebar-muted: var(--ink-500);
+  --staff-sidebar-active: var(--navy-800);
+  --staff-topbar: color-mix(in srgb, var(--surface-1) 88%, transparent);
   color-scheme: light;
   font-family: var(--font-arabic);
   color: var(--text);
@@ -46,38 +20,7 @@
 }
 
 .staff-console.theme-dark {
-  --bg: #070d16;
-  --bg-elevated: #0a1220;
-  --surface: #0d1624;
-  --surface-raised: #111c2c;
-  --surface-muted: #0a1421;
-  --surface-hover: #16243a;
-  --text: #eef2f7;
-  --text-secondary: #c0ccd9;
-  --text-muted: #8b99ab;
-  --text-faint: #667588;
-  --border: rgba(255, 255, 255, 0.07);
-  --border-strong: rgba(255, 255, 255, 0.14);
-  --gold: #d6ae58;
-  --gold-strong: #e8cb8c;
-  --gold-soft: rgba(214, 174, 88, 0.11);
-  --teal: #4fb8a2;
-  --teal-soft: rgba(79, 184, 162, 0.1);
-  --blue: #85b0ea;
-  --blue-soft: rgba(133, 176, 234, 0.1);
-  --red: #ef94a2;
-  --red-soft: rgba(239, 148, 162, 0.09);
-  --green: #6fc9b0;
-  --green-soft: rgba(111, 201, 176, 0.09);
-  --violet: #baabf3;
-  --chart-grid: rgba(255, 255, 255, 0.055);
-  --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 24px 60px -32px rgba(0, 0, 0, 0.8);
-  --focus: #d6ae58;
-  --staff-sidebar: #0a1220;
-  --staff-sidebar-text: #b8c4d2;
-  --staff-sidebar-muted: #6f7e90;
-  --staff-sidebar-active: #14223a;
-  --staff-topbar: rgba(10, 18, 32, 0.82);
+  --staff-sidebar-active: var(--surface-3);
   color-scheme: dark;
 }
 
@@ -1159,9 +1102,9 @@ html[dir='rtl'] .staff-console .date-picker-trigger.is-open .date-picker-chevron
 
 .staff-console .surface-card {
   border: 1px solid var(--border);
-  border-radius: 14px;
+  border-radius: var(--r-lg);
   background: var(--surface);
-  box-shadow: 0 1px 2px rgba(13, 28, 46, 0.03);
+  box-shadow: var(--shadow-sm);
 }
 
 .staff-console .button {
@@ -1169,10 +1112,10 @@ html[dir='rtl'] .staff-console .date-picker-trigger.is-open .date-picker-chevron
   align-items: center;
   justify-content: center;
   gap: 6px;
-  min-height: 33px;
-  padding: 0 12px;
+  min-height: 38px;
+  padding: 0 14px;
   border: 1px solid transparent;
-  border-radius: 8px;
+  border-radius: var(--r-md);
   font-family: var(--font-arabic);
   font-size: 11.5px;
   font-weight: 600;
@@ -2531,11 +2474,11 @@ html[dir='rtl'] .staff-console .ov-link svg {
   top: 0;
   z-index: 2;
   height: 34px;
-  padding: 0 11px;
+  padding: 12px;
   border-bottom: 1px solid var(--border);
   background: var(--surface-muted);
   color: var(--text-faint);
-  font-size: 8.5px;
+  font-size: 11px;
   font-weight: 650;
   letter-spacing: 0.03em;
   text-align: start;
@@ -2544,7 +2487,7 @@ html[dir='rtl'] .staff-console .ov-link svg {
 
 .staff-console .data-table tbody td {
   height: 44px;
-  padding: 7px 11px;
+  padding: 14px 12px;
   border-bottom: 1px solid var(--border);
   color: var(--text-secondary);
   vertical-align: middle;
@@ -4964,3 +4907,26 @@ html[dir='rtl'] .staff-console .admin-shortcuts button > svg {
 .staff-console .employee-profile-details dt { color: var(--text-muted); font-size: 12px; margin-bottom: 5px; }
 .staff-console .employee-profile-details dd { margin: 0; overflow-wrap: anywhere; font-weight: 600; }
 .staff-console .employee-department-form { margin-top: 24px; border-top: 1px solid var(--border); padding-top: 16px; }
+
+/* Shared geometry, calmer navigation and readable operational density. */
+.staff-console .sidebar { box-shadow: var(--shadow-xs); }
+.staff-console .sidebar-brand, .staff-console .sidebar-user, .staff-console .sidebar-bottom { border-color: var(--border); }
+.staff-console .page-stack { gap: 24px; }
+.staff-console .button:active:not(:disabled) { transform: translateY(0); }
+.staff-console .button-gold { color: var(--navy-950); background: var(--gold-400); border-color: var(--gold-400); }
+.staff-console .button-gold:hover:not(:disabled) { background: var(--gold-300); border-color: var(--gold-300); }
+.staff-console .data-table thead th { color: var(--text-muted); }
+.staff-console .data-table tbody td { padding-block: 14px; font-size: 12px; transition: background-color var(--dur-base) var(--ease-out); }
+.staff-console .timeline-message { border-radius: var(--r-md); padding: 14px; box-shadow: var(--shadow-xs); }
+.staff-console .timeline-message p { font-size: 13px; line-height: 1.9; overflow-wrap: anywhere; }
+.staff-console .timeline-message-meta { font-size: 11px; }
+.staff-console .detail-grid span, .staff-console .detail-grid strong { font-size: 12px; }
+.staff-console .ticket-description p { font-size: 13px; }
+.staff-console .modal-card { border-radius: var(--r-xl); }
+.staff-console .empty-table { min-height: 220px; gap: 12px; }
+.staff-console .empty-icon { width: 48px; height: 48px; border-radius: var(--r-lg); }
+.staff-console .queue-search-wrap:focus-within, .staff-console .command-search:focus-within { box-shadow: var(--focus-ring); }
+@media (min-width: 1100px) {
+  .staff-console .workspace-grid { gap: 24px; grid-template-columns: minmax(0, 1fr) 320px; }
+  .staff-console .customer-summary-card, .staff-console .conversation-card { padding: 24px; }
+}

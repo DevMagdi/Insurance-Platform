@@ -57,13 +57,19 @@ export function StatusTimeline({
           <h3 className="eyebrow" style={{ marginBottom: 2 }}>{t('timeline.events')}</h3>
           <ol style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {[...events].reverse().map((event) => (
-              <li key={event.id} className="journey-event">
+              <motion.li
+                key={event.id}
+                className="journey-event"
+                initial={reduced ? false : { opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.2 }}
+              >
                 <span>
                   <i aria-hidden="true" />
                   {t(eventLabelKey(event))}
                 </span>
-                <time>{formatDate(event.occurred_at, i18n.language)}</time>
-              </li>
+                <time dateTime={event.occurred_at}>{formatDate(event.occurred_at, i18n.language)}</time>
+              </motion.li>
             ))}
           </ol>
         </div>

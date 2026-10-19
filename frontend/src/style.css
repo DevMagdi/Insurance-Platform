@@ -11,3 +11,16 @@
   --color-emerald: #168b69;
   --color-cream: #f6f7f9;
 }
+
+/* Semantic utilities retain the existing brand utilities and contracts. */
+@theme inline {
+  --color-surface: var(--surface);
+  --color-surface-elevated: var(--surface-elevated);
+  --color-border: var(--border);
+  --color-text-primary: var(--text-primary);
+  --color-text-muted: var(--text-muted);
+  --color-accent: var(--accent);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+}

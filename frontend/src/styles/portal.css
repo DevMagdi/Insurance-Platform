@@ -608,7 +608,7 @@ html[lang='ar'] .footer-col h4 {
   grid-template-columns: minmax(0, 1.04fr) minmax(0, 0.96fr);
   align-items: center;
   gap: 56px;
-  padding-block: 44px 52px;
+  padding-block: clamp(32px, 5vw, 72px) clamp(40px, 5vw, 72px);
 }
 
 .hero-copy {
@@ -655,7 +655,7 @@ html[dir='rtl'] .hero-eyebrow {
 
 .hero h1 {
   margin-top: 22px;
-  font-size: clamp(34px, 4.3vw, 56px);
+  font-size: clamp(34px, 4.6vw, 60px);
   font-weight: 800;
   line-height: 1.16;
   letter-spacing: -0.035em;
@@ -1906,7 +1906,7 @@ html[lang='ar'] .track-result-body dt {
   color: var(--ink-400);
   font-size: 10.5px;
   font-weight: 700;
-  transition: all var(--dur-base) var(--ease-out);
+  transition: border-color var(--dur-base) var(--ease-out), background-color var(--dur-base) var(--ease-out), box-shadow var(--dur-base) var(--ease-out);
 }
 
 .wizard-step.is-active .wizard-step-dot {
@@ -2017,7 +2017,7 @@ html[lang='ar'] .track-result-body dt {
   padding: 22px 28px 26px;
   display: flex;
   flex-direction: column;
-  gap: 17px;
+  gap: 22px;
 }
 
 .wizard-card-foot {
@@ -2511,7 +2511,7 @@ html[lang='ar'] .track-result-body dt {
   background: color-mix(in srgb, var(--surface-2) 55%, transparent);
   text-align: center;
   cursor: pointer;
-  transition: all var(--dur-base) var(--ease-out);
+  transition: border-color var(--dur-base) var(--ease-out), background-color var(--dur-base) var(--ease-out), box-shadow var(--dur-base) var(--ease-out);
 }
 
 .dropzone:hover {
@@ -2851,7 +2851,7 @@ html[lang='ar'] .track-result-body dt {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 16px;
-  padding: 16px 18px;
+  padding: 20px 22px;
   border-top: 1px solid var(--line-soft);
   text-align: start;
   transition: background-color var(--dur-fast) var(--ease-out);
@@ -3558,7 +3558,7 @@ html[dir='rtl'] .back-link svg {
   color: var(--ink-300);
   font-size: 10px;
   font-weight: 700;
-  transition: all var(--dur-base) var(--ease-out);
+  transition: border-color var(--dur-base) var(--ease-out), background-color var(--dur-base) var(--ease-out), box-shadow var(--dur-base) var(--ease-out);
 }
 
 .journey-step.reached .journey-dot {
@@ -4024,4 +4024,24 @@ html[dir='rtl'] .back-link svg {
     margin-inline-start: 0;
     max-width: none;
   }
+}
+
+/* Quiet hierarchy: emphasis belongs to the current step and conversation. */
+.wizard-step.is-active .wizard-step-dot { box-shadow: var(--focus-ring), var(--shadow-sm); }
+.review-section { padding: 18px; border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--surface-1); }
+.review-section + .review-section { margin-top: 16px; }
+.review-section-head { padding-bottom: 12px; }
+.journey-event { padding-block: 8px; border-bottom: 1px solid var(--line-soft); }
+.journey-event:last-child { border-bottom: 0; }
+.message-bubble { border-radius: var(--r-lg); padding: 14px 16px; box-shadow: var(--shadow-xs); }
+.message-author { font-size: 11px; }
+.message-bubble p { font-size: 13.5px; overflow-wrap: anywhere; }
+.attachment-row { padding-block: 12px; }
+.file-row { border-radius: var(--r-md); }
+.dropzone:focus-visible { border-color: var(--focus); box-shadow: var(--focus-ring); }
+.ticket-row:focus-visible { outline-offset: -3px; background: var(--surface-2); }
+@media (max-width: 640px) {
+  .review-section { padding: 14px; }
+  .ticket-row { padding: 16px; }
+  .message { max-width: 94%; }
 }
