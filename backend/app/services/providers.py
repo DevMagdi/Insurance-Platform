@@ -13,6 +13,7 @@ from uuid import UUID
 
 import aiosmtplib
 
+from app.services.brand_assets import BrandLogo, attach_inline_logo, coerce_logo
 from app.services.email_templates import (
     branded_email,
     render_customer_notice,
@@ -67,10 +68,26 @@ class SMTPDelivery:
     """
 
     def __init__(
-        self, settings: DeliveryConfig, brand_loader: Callable[[], Awaitable[str]] | None = None
+        self,
+        settings: DeliveryConfig,
+        brand_loader: Callable[[], Awaitable[str]] | None = None,
+        logo_loader: Callable[[], Awaitable[Any]] | None = None,
     ) -> None:
         self.settings = settings
         self.brand_loader = brand_loader
+        self.logo_loader = logo_loader
+
+    async def _brand(self) -> str:
+        brand = (await self.brand_loader()) if self.brand_loader is not None else "Insurance"
+        return brand.strip()[:80] or "Insurance"
+
+    async def _logo(self) -> BrandLogo | None:
+        if self.logo_loader is None:
+            return None
+        try:
+            return coerce_logo(await self.logo_loader())
+        except Exception:  # A logo lookup must never block delivery.
+            return None
 
     async def _mail(self, address: str, subject: str, body: str) -> None:
         host = (self.settings.smtp_host or "").strip().lower().rstrip(".")
@@ -86,8 +103,8 @@ class SMTPDelivery:
             raise ProviderUnavailable("A real SMTP provider and sender address are required")
         if not (self.settings.smtp_start_tls or self.settings.smtp_use_tls):
             raise ProviderUnavailable("SMTP transport must use TLS")
-        brand = (await self.brand_loader()) if self.brand_loader is not None else "Insurance"
-        brand = brand.strip()[:80] or "Insurance"
+        brand = await self._brand()
+        logo = await self._logo()
         message = EmailMessage()
         message["From"] = self.settings.smtp_from
         message["To"] = address
@@ -98,9 +115,11 @@ class SMTPDelivery:
             brand=brand,
             public_url=getattr(self.settings, "public_app_url", ""),
             support_email=getattr(self.settings, "support_email", "support@example.invalid"),
+            has_logo=logo is not None,
         )
         message.set_content(text)
         message.add_alternative(html, subtype="html")
+        attach_inline_logo(message, logo)
         await aiosmtplib.send(
             message,
             hostname=self.settings.smtp_host,
@@ -167,16 +186,19 @@ class SMTPDelivery:
         message["From"] = self.settings.smtp_from
         message["To"] = ", ".join(recipients)
         message["Subject"] = subject
-        brand = (await self.brand_loader()) if self.brand_loader is not None else "Insurance"
+        brand = await self._brand()
+        logo = await self._logo()
         text, html = branded_email(
             subject,
             body,
             brand=brand,
             public_url=getattr(self.settings, "public_app_url", ""),
             support_email=getattr(self.settings, "support_email", "support@example.invalid"),
+            has_logo=logo is not None,
         )
         message.set_content(text)
         message.add_alternative(html, subtype="html")
+        attach_inline_logo(message, logo)
         maintype, _, subtype = content_type.partition("/")
         message.add_attachment(
             data,

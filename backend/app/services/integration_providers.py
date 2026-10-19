@@ -30,6 +30,7 @@ import httpx
 import jwt
 
 from app.security.ssrf import UnsafeDestination, pin_public_url
+from app.services.brand_assets import LOGO_CID, BrandLogo, attach_inline_logo
 from app.services.email_templates import branded_email
 
 
@@ -70,6 +71,9 @@ class EmailSendRequest:
     locale: str = "en"
     attachments: tuple[OutboundAttachment, ...] = ()
     html_body: str | None = None
+    # Inline CID brand logo; MIME/API adapters embed it so the logo renders
+    # in clients that block remote images.
+    logo: BrandLogo | None = field(default=None, repr=False)
 
     def __post_init__(self) -> None:
         # Even connection-test / direct-adapter messages get both branded alternatives.
@@ -83,6 +87,7 @@ class EmailSendRequest:
                 locale=self.locale,
                 public_url=os.getenv("PUBLIC_APP_URL", ""),
                 support_email=os.getenv("SUPPORT_EMAIL", "support@example.invalid"),
+                has_logo=self.logo is not None,
             )
             object.__setattr__(self, "text_body", text)
             object.__setattr__(self, "html_body", html)
@@ -203,9 +208,13 @@ class SMTPEmailProvider:
         message.set_content(request.text_body)
         message.add_alternative(
             request.html_body
-            or branded_email(request.subject, request.text_body, locale=request.locale)[1],
+            or branded_email(
+                request.subject, request.text_body, locale=request.locale,
+                has_logo=request.logo is not None,
+            )[1],
             subtype="html",
         )
+        attach_inline_logo(message, request.logo)
         for item in request.attachments:
             maintype, _, subtype = item.mime_type.partition("/")
             if not maintype or not subtype:
@@ -432,6 +441,16 @@ class SendGridEmailProvider:
             ],
             "custom_args": {"idempotency_key": idempotency_key[:128]},
         }
+        if request.logo is not None:
+            attachments.append(
+                {
+                    "content": base64.b64encode(request.logo.content).decode("ascii"),
+                    "type": request.logo.mime_type,
+                    "filename": request.logo.filename,
+                    "disposition": "inline",
+                    "content_id": LOGO_CID,
+                }
+            )
         if attachments:
             body["attachments"] = attachments
         try:
@@ -501,9 +520,13 @@ class SESEmailProvider:
         message.set_content(request.text_body)
         message.add_alternative(
             request.html_body
-            or branded_email(request.subject, request.text_body, locale=request.locale)[1],
+            or branded_email(
+                request.subject, request.text_body, locale=request.locale,
+                has_logo=request.logo is not None,
+            )[1],
             subtype="html",
         )
+        attach_inline_logo(message, request.logo)
         for item in request.attachments:
             maintype, _, subtype = item.mime_type.partition("/")
             message.add_attachment(
@@ -1224,9 +1247,13 @@ class GmailEmailProvider:
         message.set_content(request.text_body)
         message.add_alternative(
             request.html_body
-            or branded_email(request.subject, request.text_body, locale=request.locale)[1],
+            or branded_email(
+                request.subject, request.text_body, locale=request.locale,
+                has_logo=request.logo is not None,
+            )[1],
             subtype="html",
         )
+        attach_inline_logo(message, request.logo)
         for item in request.attachments:
             maintype, _, subtype = item.mime_type.partition("/")
             if not maintype or not subtype:
@@ -1375,9 +1402,13 @@ class OutlookEmailProvider:
         message.set_content(request.text_body)
         message.add_alternative(
             request.html_body
-            or branded_email(request.subject, request.text_body, locale=request.locale)[1],
+            or branded_email(
+                request.subject, request.text_body, locale=request.locale,
+                has_logo=request.logo is not None,
+            )[1],
             subtype="html",
         )
+        attach_inline_logo(message, request.logo)
         for item in request.attachments:
             maintype, _, subtype = item.mime_type.partition("/")
             message.add_attachment(

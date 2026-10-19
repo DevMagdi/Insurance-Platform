@@ -143,7 +143,17 @@ async def install_state(
             )
         return str(name or "Insurance")
 
-    delivery = SMTPDelivery(settings, brand_loader=platform_name)
+    async def platform_logo() -> Any:
+        from app.services.brand_assets import detect_logo
+
+        async with purpose_transaction(app.state.factory, "guest") as db:
+            result = await db.execute(text("SELECT * FROM app_security.public_platform_logo()"))
+            logo = result.one_or_none()
+        if logo is None:
+            return None
+        return detect_logo(bytes(logo.logo_content), str(logo.logo_mime_type))
+
+    delivery = SMTPDelivery(settings, brand_loader=platform_name, logo_loader=platform_logo)
     keyring = settings.encryption_keyring()
     # Private binaries (attachments, export artifacts, call recordings) are encrypted
     # with this keyring and stored in PostgreSQL; no object storage is involved.
