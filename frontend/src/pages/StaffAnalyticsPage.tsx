@@ -71,8 +71,8 @@ export function StaffAnalyticsPage() {
 
   return (
     <StaffShell>
-      <section className="rounded-3xl border border-white/40 bg-white/70 p-5 shadow-xl backdrop-blur dark:border-white/10 dark:bg-white/5">
-        <h2 className="text-xl font-black">{t('staff.analytics')}</h2>
+      <section className="card panel-lg">
+        <h2 className="text-2xl font-bold">{t('staff.analytics')}</h2>
         <p className="mt-1 text-sm text-slate-500 dark:text-slate-300">{t('staff.dateWindow')}</p>
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
           <Field label={t('staff.from')}>
@@ -90,9 +90,9 @@ export function StaffAnalyticsPage() {
           <>
             <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               {Object.entries(data.kpis).slice(0, 12).map(([key, value]) => (
-                <article key={key} className="rounded-2xl bg-slate-950/5 p-4 dark:bg-white/10">
+                <article key={key} className="card card-inset p-5">
                   <p className="text-xs font-bold tracking-wide text-slate-500 dark:text-slate-300">{KPI_LABELS[key] ?? key}</p>
-                  <p className="mt-1 text-3xl font-black"><bdi dir="ltr">{typeof value === 'number' || value === null ? formatKpi(key, value) : value}</bdi></p>
+                  <p className="mt-1 text-3xl font-bold tabular"><bdi dir="ltr">{typeof value === 'number' || value === null ? formatKpi(key, value) : value}</bdi></p>
                 </article>
               ))}
             </div>

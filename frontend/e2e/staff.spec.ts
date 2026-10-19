@@ -58,6 +58,12 @@ async function mockStaffApi(page: Page) {
     if (path === '/api/me') return json({ kind: 'staff', access });
     if (path === '/api/auth/refresh') return json({ detail: 'expired' }, 401);
     if (path === '/api/auth/staff/login') return json({ next_step: 'totp_verify', challenge: 'challenge' });
+    if (path === '/api/staff/analytics/overview') return json({
+      kpis: { total: 8, new: 2, reopened: 1, assigned: 3, in_review: 1, resolved: 2, transferred: 0, sla_breaches: 1, avg_resolution_hours: 4, reopen_rate: 0.125, csat_avg: null },
+      time_series: [{ date: '2026-10-01', arrived: 3 }, { date: '2026-10-02', arrived: 5 }],
+      by_status: [{ status: 'new', count: 2 }], by_company: [{ company_id: summary.company_id, name: 'Nile Insurance', count: 8 }],
+      top_issues: [], company_scorecards: [], by_type: [],
+    });
     if (path === '/api/staff/complaints/filter-options') {
       return json({ companies: [], agents: [], statuses: ['new', 'assigned', 'in_review', 'resolved', 'reopened', 'transferred'], priorities: ['low', 'normal', 'high', 'urgent'], channels: ['portal'], insurance_types: ['health'] });
     }
@@ -109,3 +115,31 @@ test('staff queue opens a ticket and renders the workspace actions', async ({ pa
   await expect(page.getByText('رد مقترح بالذكاء الاصطناعي')).toBeVisible();
   await expect(page.getByText('غير مفعّل')).toBeVisible();
 });
+
+for (const theme of ['light', 'dark'] as const) {
+  test(`premium staff theme remains independent of customer theme: ${theme}`, async ({ page }, testInfo) => {
+    await mockStaffApi(page);
+    await page.addInitScript((theme) => {
+      localStorage.setItem('wasiq-theme', theme);
+      localStorage.setItem('insurance-portal:theme', theme === 'dark' ? 'light' : 'dark');
+      localStorage.setItem('insurance-portal:lang', 'ar');
+    }, theme);
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.goto('/staff/complaints');
+    await expect(page.getByText('CMP-2026-000123')).toBeVisible();
+    await page.getByText('CMP-2026-000123').click();
+    await expect(page.getByRole('heading', { name: 'إدارة الحالة' })).toBeVisible();
+    const shell = page.locator('.staff-console');
+    await expect(shell).toHaveCSS('background-color', theme === 'dark' ? 'rgb(10, 15, 24)' : 'rgb(246, 247, 249)');
+    await expect(shell).toHaveCSS('color', theme === 'dark' ? 'rgb(232, 237, 244)' : 'rgb(10, 26, 47)');
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    await page.screenshot({ path: testInfo.outputPath(`staff-${theme}.png`), fullPage: true });
+    await page.goto('/staff/analytics');
+    await expect(page.getByText('الشكاوى الواردة يومياً')).toBeVisible();
+    await page.goto('/staff/admin');
+    await expect(page.locator('.admin-kpi')).toHaveCount(4);
+    await expect(page.locator('.admin-trend svg')).toBeVisible();
+    await page.screenshot({ path: testInfo.outputPath(`admin-${theme}.png`), fullPage: true });
+
+  });
+}

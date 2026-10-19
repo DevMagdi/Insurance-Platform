@@ -177,3 +177,31 @@ test('my tickets dashboard shows counters and opens the animated timeline', asyn
   await expect(page.getByText('Karim Adel').first()).toBeVisible();
   await expect(page.getByText('We are reviewing your documents.')).toBeVisible();
 });
+
+for (const theme of ['light', 'dark'] as const) {
+  for (const language of ['ar', 'en'] as const) {
+    test(`premium customer surfaces: ${theme}, ${language}`, async ({ page }, testInfo) => {
+      await mockApi(page, { authed: true });
+      await page.addInitScript(({ theme, language }) => {
+        localStorage.setItem('insurance-portal:theme', theme);
+        localStorage.setItem('insurance-portal:lang', language);
+      }, { theme, language });
+      await page.emulateMedia({ reducedMotion: 'reduce' });
+      for (const route of ['/', '/complaints/new', '/tickets', `/tickets/${TICKET_ID}`]) {
+        await page.goto(route);
+        await expect(page.locator('html')).toHaveAttribute('dir', language === 'ar' ? 'rtl' : 'ltr');
+        await expect(page.locator('h1:visible').first()).toBeVisible();
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+      }
+      await expect(page.locator('.journey-card')).toBeVisible();
+      await expect(page.locator('.message-bubble').first()).toBeVisible();
+      const tokens = await page.evaluate(() => {
+        const style = getComputedStyle(document.documentElement);
+        return { surface: style.getPropertyValue('--surface').trim(), ink: style.getPropertyValue('--text-primary').trim() };
+      });
+      expect(tokens.surface).toBe(theme === 'dark' ? '#101824' : '#ffffff');
+      expect(tokens.ink).toBe(theme === 'dark' ? '#e8edf4' : '#0a1a2f');
+      await page.screenshot({ path: testInfo.outputPath(`customer-${theme}-${language}.png`), fullPage: true });
+    });
+  }
+}
