@@ -150,6 +150,9 @@ export function TicketWorkspace({ id, access, options, onBack, onOpenTicket, onR
         if (payload.signature && payload.signature !== lastSignature) {
           lastSignature = payload.signature;
           void refreshRef.current(true);
+          // Something changed on this ticket (customer reply, status,
+          // attachment): keep the console's notification count in step.
+          window.dispatchEvent(new Event('staff:data-changed'));
         }
       } catch { /* Heartbeats and malformed frames need no action. */ }
     };

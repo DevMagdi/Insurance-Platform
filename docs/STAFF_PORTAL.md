@@ -23,6 +23,30 @@ by `GET /api/me`; backend permission dependencies and PostgreSQL RLS remain the
 authority. The queue uses the staff WebSocket snapshot stream and invalidates
 the scoped REST queries when updates arrive.
 
+### Everything updates live — no refresh button
+
+| Surface | Live mechanism |
+|---|---|
+| Complaint queue / inbox | staff WebSocket snapshot per filter; a 20s REST poll only while the socket is down |
+| Open ticket | SSE signature stream (`/api/staff/complaints/{id}/stream`); a 15s REST poll only while SSE is down |
+| Customer directory | 15s poll of `GET /api/staff/customers/revision`; rows refetch only when the signature moves |
+| Users / staff directory | 15s poll of `GET /api/staff/users/revision`; rows refetch only when the signature moves |
+| Admin dashboard / analytics | 30s refresh while the tab is visible, plus an immediate refresh on window focus |
+| Notification bell | `GET /api/me/notifications` every 10s while visible, immediately on tab focus and on the queue/ticket change signals |
+
+Every live path re-authenticates through the normal session and CSRF flow and
+re-runs the same permission and AccessScope checks as a first load, so a
+revoked session or a narrowed scope simply stops returning data. A hidden tab
+backs off completely; becoming visible refreshes immediately.
+
+When a customer creates a complaint or sends a message, the server writes a
+scoped staff notification (see
+`app_security.queue_staff_notice`): every active staff member holding
+`complaints.view` whose AccessScope covers the ticket receives one, deny
+overrides included in the decision. Clicking that notification marks it read
+and opens the complaint's chat — the link is the notification's own
+`complaint_id`, never a client-side guess.
+
 The storage route is a first-party page in the same product shell, not an
 embedded third-party storage console or dashboard. It lists metadata
 from the platform's own encrypted database rows, requires `storage.manage` plus

@@ -5,6 +5,8 @@ import { AccessDenied, ScopeBadge } from './components/Access';
 import { DateRangePicker } from './components/DateRangePicker';
 import { Icon, type IconName } from './components/Icon';
 import { usePlatformBrand } from './components/Branding';
+import { useStaffNotifications } from './hooks/useStaffNotifications';
+import { complaintIdForNotice, noticeLabel } from './lib/notifications';
 import { Modal } from './components/Modal';
 import { hasPermission } from './utils/access';
 import { canViewAdminDashboard } from './features/admin/adminAccess';
@@ -69,9 +71,6 @@ const OPERATION_REQUIREMENTS: Array<{ permissions: Permission[]; global?: boolea
   { permissions: ['integrations.manage'] },
   { permissions: ['reports.manage', 'analytics.view', 'analytics.export'] },
 ];
-const NOTIFICATION_LABELS: Record<string, string> = {
-  status_changed: 'تغيّرت حالة شكوى', complaint_assigned: 'أُسندت إليك شكوى', access_changed: 'تم تحديث صلاحياتك', team_membership_changed: 'تم تحديث عضويتك في فريق',
-};
 
 function routeFromPath(pathname: string): AppRoute {
   // Legacy `/dashboard*` URLs are still bookmarked; map them onto the console so
@@ -153,7 +152,7 @@ function CommandPalette({ access, onNavigate, onClose }: { access: StaffAccess; 
 }
 
 function NotificationPopover({ items, loading, onRead, onClose }: { items: NotificationItem[]; loading: boolean; onRead: (item: NotificationItem) => void; onClose: () => void }) {
-  return <div className="notification-popover" role="dialog" aria-label="الإشعارات"><div className="popover-heading"><div><strong>الإشعارات</strong><span>{items.filter((item) => !item.read_at).length} غير مقروءة</span></div><button className="icon-button small" type="button" aria-label="إغلاق الإشعارات" onClick={onClose}><Icon name="close" size={15} /></button></div><div className="notification-list">{loading && <div className="notification-empty">جارٍ تحميل الإشعارات…</div>}{!loading && items.length === 0 && <div className="notification-empty">لا توجد إشعارات جديدة.</div>}{items.map((item) => <button className={`notification-item${item.read_at ? '' : ' notification-unread'}`} type="button" key={item.id} onClick={() => onRead(item)}><span className="notification-dot" /><span><strong>{NOTIFICATION_LABELS[item.kind] ?? item.kind.replaceAll('_', ' ')}</strong><small>{typeof item.payload.ticket_no === 'string' ? item.payload.ticket_no : formatDateTime(item.created_at)}</small></span></button>)}</div></div>;
+  return <div className="notification-popover" role="dialog" aria-label="الإشعارات"><div className="popover-heading"><div><strong>الإشعارات</strong><span>{items.filter((item) => !item.read_at).length} غير مقروءة</span></div><button className="icon-button small" type="button" aria-label="إغلاق الإشعارات" onClick={onClose}><Icon name="close" size={15} /></button></div><div className="notification-list">{loading && <div className="notification-empty">جارٍ تحميل الإشعارات…</div>}{!loading && items.length === 0 && <div className="notification-empty">لا توجد إشعارات جديدة.</div>}{items.map((item) => <button className={`notification-item${item.read_at ? '' : ' notification-unread'}`} type="button" key={item.id} onClick={() => onRead(item)}><span className="notification-dot" /><span><strong>{noticeLabel(item.kind)}</strong><small>{typeof item.payload.ticket_no === 'string' ? `${item.payload.ticket_no} · ${formatDateTime(item.created_at)}` : formatDateTime(item.created_at)}</small></span></button>)}</div></div>;
 }
 
 function App() {
@@ -171,9 +170,8 @@ function App() {
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const { items: notifications, unread, loading: notificationsLoading, markRead: markNotificationRead } = useStaffNotifications(access);
   const [collapsed, setCollapsed] = useState(() => window.localStorage.getItem('wasiq-sidebar') === 'collapsed');
-  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
-  const [notificationsLoading, setNotificationsLoading] = useState(false);
   const [notice, setNotice] = useState('');
   const [theme, setTheme] = useState<Theme>(readTheme);
 
@@ -266,29 +264,18 @@ function App() {
     });
     return () => { active = false; };
   }, [access]);
-  useEffect(() => {
-    if (!access) return;
-    let active = true;
-    queueMicrotask(() => {
-      if (!active) return;
-      setNotificationsLoading(true);
-      void api<NotificationItem[]>('/api/me/notifications').then((result) => { if (active) setNotifications(Array.isArray(result) ? result : []); }).catch(() => { if (active) setNotifications([]); }).finally(() => { if (active) setNotificationsLoading(false); });
-    });
-    return () => { active = false; };
-  }, [access]);
-
   const onAuthenticated = useCallback(async () => { await refreshAccess(); }, [refreshAccess]);
   const onReadNotification = async (item: NotificationItem) => {
-    if (!item.read_at) {
-      try { await api(`/api/me/notifications/${encodeURIComponent(item.id)}/read`, { method: 'PATCH', body: jsonBody({}) }); setNotifications((current) => current.map((row) => row.id === item.id ? { ...row, read_at: new Date().toISOString() } : row)); }
-      catch (cause) { setNotice(cause instanceof Error ? cause.message : 'تعذر تحديث الإشعار.'); }
-    }
-    if (typeof item.payload.complaint_id === 'string') navigate({ page: 'ticket', id: item.payload.complaint_id });
+    await markNotificationRead(item);
+    // Opening the complaint's chat is the whole point of the notice; the
+    // link rides on the row, with the payload as a fallback.
+    const complaintId = complaintIdForNotice(item);
+    if (complaintId) navigate({ page: 'ticket', id: complaintId });
   };
   const logout = async () => {
     try { await api('/api/auth/logout', { method: 'POST', body: jsonBody({}) }); }
     catch { /* Local state is cleared even when the server session is already expired. */ }
-    setAccess(null); setSessionState('unauthenticated'); setRoute({ page: 'overview' }); setNotifications([]);
+    setAccess(null); setSessionState('unauthenticated'); setRoute({ page: 'overview' });
   };
 
   const companyNames = useMemo(() => new Map(filterOptions.companies.map((company) => [company.id, company.name_ar || company.name_en])), [filterOptions.companies]);
@@ -298,7 +285,6 @@ function App() {
     if (item.page === 'storage') return storageAllowed(access);
     return Boolean(item.permission && hasPermission(access, item.permission) && (!item.extraPermission || hasPermission(access, item.extraPermission)));
   }), [access]);
-  const unread = notifications.filter((item) => !item.read_at).length;
 
   if (sessionState === 'loading') return <div className={`staff-console theme-${theme}`}><main className="session-loading"><span className="loading-spinner" /><strong>جارٍ التحقق من جلسة العمل…</strong></main></div>;
   if (!access) return <div className={`staff-console theme-${theme}`}><div className="session-entry">{sessionError && <p className="session-entry-notice" role="status">{sessionError}</p>}<Suspense fallback={<main className="session-loading"><span className="loading-spinner" /><strong>جارٍ تحميل تسجيل الدخول…</strong></main>}><AuthPage onAuthenticated={onAuthenticated} /></Suspense></div></div>;

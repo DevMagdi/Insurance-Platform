@@ -2926,6 +2926,31 @@ paths:
       security:
       - AccessCookie: []
       x-required-permission: complaints.view
+  /api/staff/users/revision:
+    get:
+      tags:
+      - staff
+      summary: Users Revision
+      description: 'Cheap change signature for the staff directory (live console polling).
+
+
+        Mirrors the ``staff_directory()`` gate: an empty revision means the caller
+
+        cannot read the directory, so the console must not refetch on it.'
+      operationId: users_revision_api_staff_users_revision_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+                title: Response Users Revision Api Staff Users Revision Get
+      security:
+      - AccessCookie: []
+      x-required-permission: users.view
   /api/staff/departments:
     get:
       tags:
@@ -7637,6 +7662,33 @@ paths:
                   type: object
                 type: array
                 title: Response Customer Directory Api Staff Customers Get
+      security:
+      - AccessCookie: []
+      x-required-permission: users.view
+  /api/staff/customers/revision:
+    get:
+      tags:
+      - platform
+      summary: Customer Directory Revision
+      description: 'Cheap change signature for the customer directory (live console
+        polling).
+
+
+        Mirrors the ``customer_directory()`` gate: an empty revision means the
+
+        caller cannot read the directory, so the console must not refetch on it.'
+      operationId: customer_directory_revision_api_staff_customers_revision_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+                title: Response Customer Directory Revision Api Staff Customers Revision
+                  Get
       security:
       - AccessCookie: []
       x-required-permission: users.view

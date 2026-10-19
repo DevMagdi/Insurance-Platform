@@ -245,6 +245,9 @@ async def my_notifications(
             "id": item.id,
             "kind": item.kind,
             "payload": item.payload,
+            # The complaint link travels on the row (not only inside the
+            # payload) so the console can open that ticket's chat directly.
+            "complaint_id": item.complaint_id,
             "created_at": item.created_at,
             "read_at": item.read_at,
         }

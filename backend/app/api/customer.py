@@ -288,6 +288,7 @@ async def customer_notifications(
             "id": item.id,
             "kind": item.kind,
             "payload": item.payload,
+            "complaint_id": item.complaint_id,
             "created_at": item.created_at,
             "read_at": item.read_at,
         }

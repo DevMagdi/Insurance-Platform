@@ -411,6 +411,9 @@ class ComplaintRepository:
             {"id": record.id, "created": record.created_at},
         )
         await self.notify(db, record, "created")
+        # The same customer action fans out to scoped staff so the console
+        # bell lights up without anyone refreshing a page.
+        await self.notify_staff(db, record, "created")
         await db.flush()
         return record
 
@@ -421,6 +424,18 @@ class ComplaintRepository:
         )
         assert isinstance(result, UUID)
         return result
+
+    async def notify_staff(self, db: AsyncSession, complaint: Complaint, kind: str) -> int:
+        """Fan a customer-visible event out to staff whose scope covers it.
+
+        The SQL definer re-checks the actor, the kind and every candidate's
+        permission/scope, so this is a no-op for staff or guest actors.
+        """
+        result = await db.scalar(
+            text("SELECT app_security.queue_staff_notice(:id, :created, :kind)"),
+            {"id": complaint.id, "created": complaint.created_at, "kind": kind},
+        )
+        return int(result or 0)
 
     async def reply(
         self,
@@ -449,6 +464,9 @@ class ComplaintRepository:
                 text("SELECT app_security.audit_customer_action(:id, :created, 'reply')"),
                 {"id": complaint.id, "created": complaint.created_at},
             )
+            # A customer message is exactly what the staff inbox must show
+            # immediately; the definer ignores non-customer actors itself.
+            await self.notify_staff(db, complaint, "reply")
         else:
             db.add(
                 AuditLog(

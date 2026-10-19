@@ -295,6 +295,8 @@ export interface NotificationItem {
   id: string;
   kind: string;
   payload: Record<string, unknown>;
+  /** Complaint this notice belongs to (null for access-change notices). */
+  complaint_id: string | null;
   created_at: string;
   read_at: string | null;
 }

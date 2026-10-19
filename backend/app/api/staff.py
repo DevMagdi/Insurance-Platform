@@ -7,6 +7,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from fastapi.responses import StreamingResponse
+from sqlalchemy import text
 from sqlalchemy.exc import DBAPIError
 
 from app.api.deps import RequestContext, require_permission
@@ -468,11 +469,25 @@ async def staff_notifications(
             "id": item.id,
             "kind": item.kind,
             "payload": item.payload,
+            "complaint_id": item.complaint_id,
             "created_at": item.created_at,
             "read_at": item.read_at,
         }
         for item in records
     ]
+
+
+@router.get("/users/revision")
+async def users_revision(
+    ctx: RequestContext = Depends(require_permission("users.view")),
+) -> dict[str, str]:
+    """Cheap change signature for the staff directory (live console polling).
+
+    Mirrors the ``staff_directory()`` gate: an empty revision means the caller
+    cannot read the directory, so the console must not refetch on it.
+    """
+    revision = await ctx.db.scalar(text("SELECT app_security.staff_directory_revision()"))
+    return {"revision": str(revision or "")}
 
 
 @router.get("/departments")

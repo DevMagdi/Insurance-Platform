@@ -216,7 +216,7 @@ compares them.
 
 ## Staff invitations and employee profiles
 
-1. Apply Alembic through `20261018_32` before deploying the updated UI. Existing staff
+1. Apply Alembic through `20261019_35` before deploying the updated UI. Existing staff
    (and bootstrap/seed accounts) belong to **الإدارة العامة** until an administrator
    assigns their actual department under **Users → employee photo → department**.
    Legacy accounts are explicitly shown as incomplete; no invented identity/photo

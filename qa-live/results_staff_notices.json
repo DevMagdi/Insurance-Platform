@@ -1,0 +1,156 @@
+[
+  {
+    "section": "S2 customer activity reaches staff notifications",
+    "name": "staff login as admin@demo.example",
+    "status": "PASS",
+    "expected": "authenticated",
+    "actual": "{\"next_step\":\"authenticated\",\"challenge\":null}"
+  },
+  {
+    "section": "S2 customer activity reaches staff notifications",
+    "name": "session identity resolves for admin@demo.example",
+    "status": "PASS",
+    "expected": "200 staff",
+    "actual": "{\"kind\":\"staff\",\"access\":{\"id\":\"eb4c965b-ea91-4a63-b9a7-6e4842d8cc8f\",\"email\":\"a"
+  },
+  {
+    "section": "S2 customer activity reaches staff notifications",
+    "name": "staff notification list is readable",
+    "status": "PASS",
+    "expected": "list",
+    "actual": "30"
+  },
+  {
+    "section": "S2 customer activity reaches staff notifications",
+    "name": "customer message + new complaint stored through the app repository",
+    "status": "PASS",
+    "expected": "CMP-2026-005028",
+    "actual": ""
+  },
+  {
+    "section": "S2 customer activity reaches staff notifications",
+    "name": "customer message appears in staff notifications with the complaint link",
+    "status": "PASS",
+    "expected": "notice carries complaint_id + ticket_no",
+    "actual": "{\"kind\": \"reply\", \"status\": \"new\", \"ticket_no\": \"CMP-2026-005027\", \"complaint_id\": \"13f9d176-ffb3-4864-8d45-cb6a20bffe8e\"}"
+  },
+  {
+    "section": "S2 customer activity reaches staff notifications",
+    "name": "new complaint appears in staff notifications",
+    "status": "PASS",
+    "expected": "CMP-2026-005028",
+    "actual": ""
+  },
+  {
+    "section": "S2 customer activity reaches staff notifications",
+    "name": "staff timeline contains the new customer message",
+    "status": "PASS",
+    "expected": "message readable by staff",
+    "actual": ""
+  },
+  {
+    "section": "S3 live streams (no manual refresh)",
+    "name": "staff ticket SSE stream opens",
+    "status": "PASS",
+    "expected": "",
+    "actual": ""
+  },
+  {
+    "section": "S3 live streams (no manual refresh)",
+    "name": "staff ticket SSE pushes a live signature",
+    "status": "PASS",
+    "expected": "3e1272a0afcb1751",
+    "actual": ""
+  },
+  {
+    "section": "S3 live streams (no manual refresh)",
+    "name": "staff complaints queue WebSocket pushes a scoped snapshot",
+    "status": "PASS",
+    "expected": "items + total",
+    "actual": "total=5009"
+  },
+  {
+    "section": "S3 live streams (no manual refresh)",
+    "name": "the new complaint is visible in the live queue snapshot",
+    "status": "PASS",
+    "expected": "CMP-2026-005028",
+    "actual": ""
+  },
+  {
+    "section": "S4 live directory revision signatures",
+    "name": "staff directory revision signature returned",
+    "status": "PASS",
+    "expected": "opaque signature",
+    "actual": ""
+  },
+  {
+    "section": "S4 live directory revision signatures",
+    "name": "customer directory revision signature returned",
+    "status": "PASS",
+    "expected": "opaque signature",
+    "actual": ""
+  },
+  {
+    "section": "S4 live directory revision signatures",
+    "name": "revision signature is stable while nothing changed",
+    "status": "PASS",
+    "expected": "19|20261019132647486506|9|11",
+    "actual": ""
+  },
+  {
+    "section": "S4 live directory revision signatures",
+    "name": "anonymous client cannot read the customer directory revision",
+    "status": "PASS",
+    "expected": "401/403",
+    "actual": ""
+  },
+  {
+    "section": "S5 scoped fan-out and cross-tenant isolation",
+    "name": "staff login as agent@demo.example",
+    "status": "PASS",
+    "expected": "authenticated",
+    "actual": "{\"next_step\":\"authenticated\",\"challenge\":null}"
+  },
+  {
+    "section": "S5 scoped fan-out and cross-tenant isolation",
+    "name": "session identity resolves for agent@demo.example",
+    "status": "PASS",
+    "expected": "200 staff",
+    "actual": "{\"kind\":\"staff\",\"access\":{\"id\":\"547a71a9-3bda-4533-b032-65e362b92cc8\",\"email\":\"a"
+  },
+  {
+    "section": "S5 scoped fan-out and cross-tenant isolation",
+    "name": "scoped agent already holds complaint notices",
+    "status": "PASS",
+    "expected": "30 notices",
+    "actual": ""
+  },
+  {
+    "section": "S5 scoped fan-out and cross-tenant isolation",
+    "name": "non-admin staff cannot read the customer directory revision (403)",
+    "status": "PASS",
+    "expected": "403",
+    "actual": "{\"detail\":\"Permission denied\"}"
+  },
+  {
+    "section": "S5 scoped fan-out and cross-tenant isolation",
+    "name": "agent without users.view cannot read the staff directory revision (403)",
+    "status": "PASS",
+    "expected": "403",
+    "actual": "{\"detail\":\"Permission denied\"}"
+  },
+  {
+    "section": "S5 scoped fan-out and cross-tenant isolation",
+    "name": "a customer message on an in-scope complaint reaches the scoped agent",
+    "status": "PASS",
+    "expected": "0 -> 1",
+    "actual": ""
+  },
+  {
+    "section": "S5 scoped fan-out and cross-tenant isolation",
+    "name": "every notice an agent holds points at a complaint inside their AccessScope",
+    "status": "PASS",
+    "expected": "checked 30 notices",
+    "actual": "[]"
+  }
+]

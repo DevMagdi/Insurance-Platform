@@ -150,6 +150,7 @@ export interface CustomerNotification {
   id: string;
   kind: string;
   payload: Record<string, unknown>;
+  complaint_id: string | null;
   created_at: string;
   read_at: string | null;
 }

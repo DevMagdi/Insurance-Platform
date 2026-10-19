@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { api } from '../../api';
 import type { StaffAccess } from '../../types';
@@ -18,10 +18,56 @@ function install() {
     if (path === '/api/staff/users') return [employee] as never;
     if (path === '/api/staff/departments') return departments as never;
     if (path === '/api/staff/users/employee/profile') return profile as never;
+    if (path === '/api/staff/users/revision') return { revision: 'revision-1' } as never;
     return {} as never;
   });
 }
-afterEach(() => vi.clearAllMocks());
+afterEach(() => { vi.clearAllMocks(); vi.useRealTimers(); });
+
+describe('employee directory liveness', () => {
+  it('refetches the directory when the cheap revision signature moves', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: false });
+    let revision = 'revision-1';
+    vi.mocked(api).mockImplementation(async (path) => {
+      if (path === '/api/staff/users') return [employee] as never;
+      if (path === '/api/staff/departments') return departments as never;
+      if (path === '/api/staff/users/revision') return { revision } as never;
+      return {} as never;
+    });
+    render(<UsersPage access={access} onAccessChanged={vi.fn()} />);
+    await act(async () => { await vi.advanceTimersByTimeAsync(0); });
+    expect(screen.getByText('Mona Ali')).toBeTruthy();
+    const directoryCalls = () => vi.mocked(api).mock.calls.filter(([path]) => path === '/api/staff/users').length;
+    expect(directoryCalls()).toBe(1);
+
+    // A steady signature must not re-download the directory.
+    await act(async () => { await vi.advanceTimersByTimeAsync(30_000); });
+    expect(directoryCalls()).toBe(1);
+
+    // An accepted invitation / deactivation moves the signature: the rows are
+    // refetched without anyone pressing refresh.
+    revision = 'revision-2';
+    await act(async () => { await vi.advanceTimersByTimeAsync(15_000); });
+    expect(directoryCalls()).toBe(2);
+    expect(screen.getByText('Mona Ali')).toBeTruthy();
+  });
+
+  it('ignores an empty signature so scoped staff never poll-refetch', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: false });
+    vi.mocked(api).mockImplementation(async (path) => {
+      if (path === '/api/staff/users') return [] as never;
+      if (path === '/api/staff/departments') return [] as never;
+      if (path === '/api/staff/users/revision') return { revision: '' } as never;
+      return {} as never;
+    });
+    render(<UsersPage access={access} onAccessChanged={vi.fn()} />);
+    await act(async () => { await vi.advanceTimersByTimeAsync(0); });
+    expect(screen.getByText('لا يوجد مستخدمون مطابقون')).toBeTruthy();
+    const directoryCalls = () => vi.mocked(api).mock.calls.filter(([path]) => path === '/api/staff/users').length;
+    await act(async () => { await vi.advanceTimersByTimeAsync(45_000); });
+    expect(directoryCalls()).toBe(1);
+  });
+});
 
 describe('employee directory', () => {
   it('requires an explicit department and sends invitations to the entered real address', async () => {

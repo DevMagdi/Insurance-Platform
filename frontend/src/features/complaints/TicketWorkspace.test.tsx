@@ -76,7 +76,14 @@ describe('TicketWorkspace live updates', () => {
     mockApi([{ id: 'm1', body: 'الرسالة الأولى' }, { id: 'm2', body: 'رد العميل الجديد' }]);
     const source = FakeEventSource.instances[0];
     expect(source.url).toBe('/api/staff/complaints/ticket-1/stream');
+    // The open ticket also tells the console that staff data changed, so the
+    // notification badge reflects the same event without a page refresh.
+    const signals: string[] = [];
+    const onDataChanged = () => signals.push('staff:data-changed');
+    window.addEventListener('staff:data-changed', onDataChanged);
     await act(async () => { source.emit('update', { signature: 'sig-2', status: 'in_review' }); });
-    expect(await screen.findByText('رد العميل الجديد')).toBeTruthy();
+    expect(screen.getByText('رد العميل الجديد')).toBeTruthy();
+    expect(signals).toEqual(['staff:data-changed']);
+    window.removeEventListener('staff:data-changed', onDataChanged);
   });
 });

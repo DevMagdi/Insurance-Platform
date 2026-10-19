@@ -70,6 +70,28 @@ cd frontend && npm run api:types                                  # typed client
 
 See [STORAGE_ADMIN.md](STORAGE_ADMIN.md) for the built-in `/staff/storage` UI, access model and intentional privacy limits.
 
+## Live console endpoints
+
+The staff console updates without a browser refresh: the complaints queue
+streams over the staff WebSocket, an open ticket streams over SSE, and the
+directory pages poll these cheap revision signatures (they apply the same
+permission/scope gate as the directory they version, and return an empty
+`revision` when the caller may not read it).
+
+| Method and path | Who | Purpose |
+|---|---|---|
+| `GET /api/staff/users/revision` | `users.view` | Change signature for the staff directory; the Users page refetches only when it moves |
+| `GET /api/staff/customers/revision` | `users.view` with global scope | Change signature for the customer directory; the Customers page refetches only when it moves |
+| `GET /api/me/notifications` | staff | Live notice list (bell); every item carries `complaint_id` so the console can open that ticket's chat |
+| `GET /api/staff/notifications` | `complaints.view` | Same scoped notice list for the staff API surface |
+
+When a customer creates a complaint or sends a message, the server fans a
+scoped notification out to every active staff member who holds
+`complaints.view` and whose AccessScope covers the ticket (deny overrides
+win). The recipient set is derived inside a `SECURITY DEFINER` function, so a
+customer can never name a recipient and out-of-scope staff never learn the
+ticket exists.
+
 Rate limits per endpoint class are listed in
 [SECURITY.md](SECURITY.md#rate-limiting-and-abuse-detection). The access model
 behind every staff route is in [ACCESS_CONTROL.md](ACCESS_CONTROL.md).
