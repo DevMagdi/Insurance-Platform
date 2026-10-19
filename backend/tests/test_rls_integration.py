@@ -174,6 +174,7 @@ def data() -> Data:
                     "complaints.export",
                     "complaints.assign",
                     "reports.manage",
+                    "users.view",
                 )
             ],
         )
@@ -749,3 +750,75 @@ def test_partition_placement_catalog_and_runtime_role(data: Data) -> None:
             "SELECT 1 FROM pg_indexes WHERE tablename = 'complaints' "
             "AND indexname = 'ix_complaints_fts'"
         ).fetchone()
+
+
+async def test_complaint_policy_link_and_directory(runtime_url: str, data: Data) -> None:
+    """Real complaint service, restricted runtime policy writes, and admin directory."""
+    from app.domain.access import AccessScope
+    from app.domain.schemas import ComplaintCreate
+    from app.repositories.complaints import ComplaintRepository
+    from app.security.crypto import NationalIdProtector
+    from app.services.complaints import ComplaintService
+
+    engine = make_engine(runtime_url)
+    factory = async_sessionmaker(engine, expire_on_commit=False)
+    customer = data.customers["one"]
+    company = data.companies["a"]
+    number = f"LINK-{uuid4().hex}"
+    protector = NationalIdProtector(b"e" * 32, b"b" * 32)
+    with psycopg.connect(data.admin_url) as conn:
+        conn.execute(
+            "UPDATE customers SET national_id_blind_index = %s, mobile = %s WHERE id = %s",
+            (protector.blind_index("29901010112345"), "+201123456789", customer),
+        )
+    try:
+        actor = Actor(customer, "customer")
+        async with scoped_transaction(factory, actor) as db:
+            item = ComplaintCreate(
+                national_id="29901010112345",
+                mobile="+201123456789",
+                company_id=company,
+                insurance_type="health",
+                policy_number=number,
+                subject="Policy linking test",
+                description="Customer-visible complaint description.",
+            )
+            repo = ComplaintRepository()
+            service = ComplaintService(repo, protector, "k" * 64)
+            scope = AccessScope.for_customer(actor)
+            first, _ = await service.create(db, scope, item, uuid4().hex)
+            second, _ = await service.create(db, scope, item, uuid4().hex)
+            third, _ = await service.create(
+                db, scope, item.model_copy(update={"policy_number": number + "-2"}), uuid4().hex
+            )
+            assert first.policy_id is not None
+            assert second.policy_id == first.policy_id
+            assert third.policy_id != first.policy_id
+            assert (
+                await db.scalar(
+                    text("SELECT count(*) FROM policies WHERE policy_number IN (:one, :two)"),
+                    {"one": number, "two": number + "-2"},
+                )
+                == 2
+            )
+            # Simulate a historical complaint created before policy linking was fixed.
+            legacy = item.model_copy(update={"company_id": data.companies["b"]})
+            reserved = await repo.reserve_idempotency(
+                db, customer, uuid4().bytes * 2, uuid4().bytes * 2
+            )
+            await repo.create(
+                db, customer_id=customer, item=legacy, policy_id=None, idempotency=reserved
+            )
+            await db.execute(text("SELECT set_config('app.scope', 'staff', true)"))
+            await db.execute(
+                text("SELECT set_config('app.user_id', :id, true)"),
+                {"id": str(data.staff["admin"])},
+            )
+            rows = await db.scalar(text("SELECT app_security.customer_directory()"))
+            row = next(r for r in rows if r["id"] == str(customer))
+            assert {str(company), str(data.companies["b"])} <= {c["id"] for c in row["companies"]}
+            assert number in {p["policy_number"] for p in row["policies"]}
+            assert "national_id" not in str(row)
+            await db.rollback()  # Leave fixture cleanup and other tests unaffected.
+    finally:
+        await engine.dispose()
