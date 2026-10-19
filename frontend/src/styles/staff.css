@@ -88,7 +88,7 @@
   height: 34px;
   flex: none;
   border-radius: 10px;
-  background: linear-gradient(150deg, #0f2c4f, #071426);
+  background: linear-gradient(150deg, var(--navy-700), var(--navy-950));
   color: var(--gold-strong);
   font-family: var(--font-arabic);
   font-size: 16px;
@@ -151,7 +151,7 @@
 }
 
 .staff-console .avatar-active {
-  background: linear-gradient(150deg, #14304f, #081726);
+  background: linear-gradient(150deg, var(--navy-700), var(--navy-900));
   color: var(--gold-strong);
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
 }
@@ -1130,28 +1130,28 @@ html[dir='rtl'] .staff-console .date-picker-trigger.is-open .date-picker-chevron
 
 .staff-console .button-dark {
   color: #f6f8fa;
-  background: #0b1f3a;
-  border-color: #0b1f3a;
+  background: var(--navy-800);
+  border-color: var(--navy-800);
   box-shadow: 0 1px 2px rgba(8, 26, 47, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
 .staff-console .button-dark:hover:not(:disabled) {
-  background: #14304f;
-  border-color: #14304f;
+  background: var(--navy-700);
+  border-color: var(--navy-700);
 }
 
 .staff-console.theme-light .button-dark {
   color: #f6f8fa;
-  background: #0b1f3a;
-  border-color: #0b1f3a;
+  background: var(--navy-800);
+  border-color: var(--navy-800);
 }
 
 .staff-console.theme-light .button-dark:hover:not(:disabled) {
-  background: #14304f;
+  background: var(--navy-700);
 }
 
 .staff-console.theme-dark .button-dark {
-  color: #0b1f3a;
+  color: var(--navy-800);
   background: #eef2f7;
   border-color: #eef2f7;
 }
@@ -1770,14 +1770,17 @@ html[lang='ar'] .staff-console .ov-head h1 {
   position: relative;
   padding: 14px 15px 13px;
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: var(--r-lg);
   background: var(--surface);
+  box-shadow: var(--shadow-xs);
   overflow: hidden;
-  transition: border-color var(--dur-fast);
+  transition: border-color var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
 }
 
 .staff-console .ov-kpi:hover {
   border-color: var(--border-strong);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
 }
 
 .staff-console .ov-kpi-head {
@@ -1978,7 +1981,7 @@ html[lang='ar'] .staff-console .ov-head h1 {
 }
 
 .staff-console .attention-row.urgent .attention-flag { background: var(--red); }
-.staff-console .attention-row.high .attention-flag { background: #c98b3c; }
+.staff-console .attention-row.high .attention-flag { background: var(--gold-500); }
 .staff-console .attention-row.normal .attention-flag { background: var(--blue); }
 
 .staff-console .attention-main {
@@ -2241,9 +2244,16 @@ html[dir='rtl'] .staff-console .ov-link svg {
   min-height: 116px;
   padding: 13px 14px 12px;
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: var(--r-lg);
   background: var(--surface);
-  box-shadow: none;
+  box-shadow: var(--shadow-xs);
+  transition: border-color var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
+}
+
+.staff-console .metric-card:hover {
+  border-color: var(--border-strong);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
 }
 
 .staff-console .metric-card::after {
@@ -2477,6 +2487,7 @@ html[dir='rtl'] .staff-console .ov-link svg {
   padding: 12px;
   border-bottom: 1px solid var(--border);
   background: var(--surface-muted);
+  box-shadow: 0 1px 0 var(--border), 0 10px 18px -16px color-mix(in srgb, var(--navy-950) 35%, transparent);
   color: var(--text-faint);
   font-size: 11px;
   font-weight: 650;
@@ -2614,17 +2625,12 @@ html[dir='rtl'] .staff-console .ov-link svg {
 
 .staff-console .status-new { color: var(--blue); background: var(--blue-soft); border-color: color-mix(in srgb, var(--blue) 14%, transparent); }
 .staff-console .status-assigned { color: var(--violet); background: color-mix(in srgb, var(--violet) 9%, transparent); border-color: color-mix(in srgb, var(--violet) 16%, transparent); }
-.staff-console .status-in_review { color: var(--gold-strong); background: var(--gold-soft); border-color: color-mix(in srgb, var(--gold) 20%, transparent); }
+.staff-console .status-in_review { color: var(--warning); background: var(--warning-soft); border-color: color-mix(in srgb, var(--warning) 18%, transparent); }
 .staff-console .status-resolved { color: var(--green); background: var(--green-soft); border-color: color-mix(in srgb, var(--green) 16%, transparent); }
-.staff-console .status-reopened { color: #c2703a; background: rgba(194, 112, 58, 0.09); border-color: rgba(194, 112, 58, 0.16); }
-.staff-console .status-transferred { color: #9d3b7a; background: rgba(157, 59, 122, 0.08); border-color: rgba(157, 59, 122, 0.16); }
+.staff-console .status-reopened { color: var(--orange); background: var(--orange-soft); border-color: color-mix(in srgb, var(--orange) 18%, transparent); }
+.staff-console .status-transferred { color: var(--fuchsia); background: var(--fuchsia-soft); border-color: color-mix(in srgb, var(--fuchsia) 16%, transparent); }
 
-.staff-console.theme-dark .status-new { color: #9dc3f0; background: rgba(120, 167, 224, 0.1); }
-.staff-console.theme-dark .status-assigned { color: #c3b5f2; background: rgba(160, 140, 230, 0.1); }
-.staff-console.theme-dark .status-in_review { color: var(--gold-strong); background: var(--gold-soft); }
-.staff-console.theme-dark .status-resolved { color: var(--green); background: var(--green-soft); }
-.staff-console.theme-dark .status-reopened { color: #e6a678; background: rgba(230, 166, 120, 0.1); }
-.staff-console.theme-dark .status-transferred { color: #e8a0cb; background: rgba(232, 160, 203, 0.1); }
+/* Dark theme: the semantic tokens above already resolve to their dark values — no per-status overrides needed. */
 
 .staff-console .priority-pill {
   display: inline-flex;
@@ -2638,7 +2644,7 @@ html[dir='rtl'] .staff-console .ov-link svg {
 
 .staff-console .priority-low { color: var(--text-faint); background: var(--surface-muted); }
 .staff-console .priority-normal { color: var(--blue); background: var(--blue-soft); }
-.staff-console .priority-high { color: var(--gold-strong); background: var(--gold-soft); }
+.staff-console .priority-high { color: var(--warning); background: var(--warning-soft); }
 .staff-console .priority-urgent { color: var(--red); background: var(--red-soft); }
 
 .staff-console .sort-button {
@@ -2854,10 +2860,10 @@ html[dir='rtl'] .staff-console .back-link svg {
   justify-content: space-between;
   gap: 18px;
   flex-wrap: wrap;
-  padding: 17px 19px;
-  border-radius: 13px;
+  padding: 18px 20px;
+  border-radius: var(--r-lg);
   background:
-    linear-gradient(90deg, var(--gold-soft), transparent 32%),
+    radial-gradient(55% 130% at 100% 0%, color-mix(in srgb, var(--gold-500) 8%, transparent), transparent 58%),
     var(--surface);
 }
 
@@ -3098,7 +3104,7 @@ html[lang='ar'] .staff-console .ticket-heading h1 {
 
 .staff-console .channel-dot.portal { background: var(--blue); }
 .staff-console .channel-dot.email { background: var(--teal); }
-.staff-console .channel-dot.whatsapp { background: #3f9d6c; }
+.staff-console .channel-dot.whatsapp { background: var(--emerald-500); }
 .staff-console .channel-dot.call { background: var(--gold); }
 
 .staff-console .unified-inbox-badge {
@@ -4381,11 +4387,11 @@ html[dir='rtl'] .staff-console .action-row > svg:last-child {
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, #d6ae58, #b18b3d);
+  background: linear-gradient(90deg, var(--gold-400), var(--gold-600));
 }
 
 .staff-console .admin-bar-track.company span {
-  background: linear-gradient(90deg, #2f7f75, #5aa99b);
+  background: linear-gradient(90deg, var(--emerald-700), var(--emerald-500));
 }
 
 .staff-console .admin-bar-row strong {
@@ -4855,18 +4861,18 @@ html[dir='rtl'] .staff-console .admin-shortcuts button > svg {
 }
 
 .staff-console .btn.btn-primary {
-  --btn-bg: #0b1f3a;
+  --btn-bg: var(--navy-800);
   --btn-fg: #f6f8fa;
   --btn-border: transparent;
 }
 
 .staff-console .btn.btn-primary:hover:not(:disabled) {
-  --btn-bg: #14304f;
+  --btn-bg: var(--navy-700);
 }
 
 .staff-console.theme-dark .btn.btn-primary {
   --btn-bg: #eef2f7;
-  --btn-fg: #0b1f3a;
+  --btn-fg: var(--navy-800);
 }
 
 .staff-console.theme-dark .btn.btn-primary:hover:not(:disabled) {
