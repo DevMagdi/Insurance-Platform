@@ -352,3 +352,51 @@ make test                  # 419 passed, coverage 80.23%
 make lint                  # ruff + mypy + eslint + tsc
 frontend: npm run typecheck && npm run test && npm run build   # 150 passed
 ```
+
+---
+
+## 13. Full live E2E re-verification (2026-10-19)
+
+Clean-room rebuild of the local stack (venv, npm, PostgreSQL cluster, 32 Alembic
+revisions to `20261018_32`) and a complete re-run of the committed live harness
+(`qa-live/`) against the merged tree, with the STARTTLS QA mail sink on
+`169.254.0.21:2525` (SAN-pinned CA, `SSL_CERT_FILE` bundle) playing the role of a
+real SMTP provider. Evidence files refreshed in `qa-live/results_*.json`.
+
+| Part | Coverage | Result |
+| --- | --- | --- |
+| `e2e_core.py` (S1–S4) | health, **customer registration/OTP/identification**, complaint create/idempotency/attachments/CSAT, body limits, XSS/SQLi/Origin abuse, partial-PATCH profile | **76/76 PASS** |
+| `e2e_staff.py` (S5–S12) | staff login + forced password change, invitation onboarding, permission matrix, RLS scope, session security (rotation/replay/family revoke/force-logout), TOTP 2FA, complaint lifecycle (assign → reply → note → escalate → resolve → reopen → CSAT), NID reveal + audit, CSV export, WebSocket, metrics, abuse detector | **111/111 PASS** |
+| `e2e_resilience.py` (R1–R4) | SMTP-down graceful 503 + recovery, Redis outage (fail-safe rate limiter + cache 503), Postgres outage + pool recovery, JWT hardening (expired / `alg=none` / HS256 confusion / kid / typ confusion) | **32/32 PASS** |
+| **Total live checks** | | **219/219 PASS, 0 failed** |
+
+Fixes from §12 and §1 proven live in this run:
+
+- **C-1 (critical):** R1 — registration with the mail provider down returns the
+  graceful 503 + `Retry-After: 120` (not the old 422 "not configured"), body
+  leaks no infrastructure internals, and delivery resumes after the provider
+  returns (202 + real OTP e-mail captured by the sink).
+- **A-3 / L-8:** the R2 Redis outage killed the bare `arq` process as designed;
+  `scripts/worker_supervisor.py` respawned it automatically
+  (`[worker-supervisor] worker exited with 1; restarting in 2.0s → attempt 2`)
+  and the worker resumed crons (insurer notices, queue metrics) without human
+  intervention — the exact failure mode L-8 recorded for local runs is closed.
+- **L-7:** graceful JSON 503 + `Retry-After` for `/api/companies` and OTP start
+  during both Redis and Postgres outages; `/api/health/ready` flips 503→200 on
+  recovery.
+- **L-4:** S3 — preferences-only PATCH keeps name/WhatsApp; empty PATCH → 422.
+- **A-2:** whitespace-only reply bodies now 422 (`Reply body must not be empty`),
+  covered by unit tests; live reply path green in S3/S10.
+- Security matrices re-confirmed: CSRF double-submit, IDOR indistinguishable-404,
+  RLS company/ownership scoping, refresh replay family revocation, TOTP
+  challenge gating, NID reveal audit, `/metrics` token gating, abuse-detector
+  900 s block on authenticated IDOR probing, JWT attack suite (10/10 rejected).
+
+Unit gates on the same tree: backend `pytest -m 'not integration' --cov` —
+**419 passed, 80.23%** (≥80% gate); frontend `typecheck` clean + **150 passed**.
+
+Stateful-rerun notes (from `qa-live/README.md`) held true: the harness
+randomizes identities/IPs; a clean-room pass resets `staff_pw_rotated.flag` and
+`totp_admin_secret.txt` and re-seeds staff credentials before `e2e_staff.py`
+(careful: re-running the password rotation without that reset is what the
+`ROTATED` flag path is for).

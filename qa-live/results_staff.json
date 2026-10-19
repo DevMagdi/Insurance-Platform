@@ -14,18 +14,186 @@
     "actual": "401 {\"detail\":\"Invalid credentials\"}"
   },
   {
+    "section": "S5 staff auth",
+    "name": "admin: seeded login -> password_change challenge (no session cookies)",
+    "status": "PASS",
+    "expected": "password_change + no cookies",
+    "actual": "200 {\"next_step\":\"password_change\",\"challenge\":\"eyJhbGciOiJFZERTQSIsImtpZCI6ImFjdGl2ZSIsInR5cCI6IkpXVCJ9"
+  },
+  {
+    "section": "S5 staff auth",
+    "name": "[SECURITY] admin: password-change challenge is not an access token",
+    "status": "PASS",
+    "expected": "401",
+    "actual": "401"
+  },
+  {
+    "section": "S5 staff auth",
+    "name": "admin: weak new password rejected 422",
+    "status": "PASS",
+    "expected": "422",
+    "actual": "422 {\"detail\":[{\"type\":\"string_too_short\",\"loc\":[\"body\",\"password\"],\"msg\":\"String sh"
+  },
+  {
+    "section": "S5 staff auth",
+    "name": "admin: password change accepted",
+    "status": "PASS",
+    "expected": "200",
+    "actual": "200 {\"next_step\":\"sign_in_with_new_password\"}"
+  },
+  {
+    "section": "S5 staff auth",
+    "name": "[SECURITY] admin: old password invalid after change",
+    "status": "PASS",
+    "expected": "401",
+    "actual": "401"
+  },
+  {
+    "section": "S5 staff auth",
+    "name": "admin: login with new password -> authenticated + cookies",
+    "status": "PASS",
+    "expected": "session",
+    "actual": "200 {\"next_step\":\"authenticated\",\"challenge\":null}"
+  },
+  {
+    "section": "S5 staff auth",
+    "name": "supervisor: seeded login -> password_change challenge (no session cookies)",
+    "status": "PASS",
+    "expected": "password_change + no cookies",
+    "actual": "200 {\"next_step\":\"password_change\",\"challenge\":\"eyJhbGciOiJFZERTQSIsImtpZCI6ImFjdGl2ZSIsInR5cCI6IkpXVCJ9"
+  },
+  {
+    "section": "S5 staff auth",
+    "name": "[SECURITY] supervisor: password-change challenge is not an access token",
+    "status": "PASS",
+    "expected": "401",
+    "actual": "401"
+  },
+  {
+    "section": "S5 staff auth",
+    "name": "supervisor: weak new password rejected 422",
+    "status": "PASS",
+    "expected": "422",
+    "actual": "422 {\"detail\":[{\"type\":\"string_too_short\",\"loc\":[\"body\",\"password\"],\"msg\":\"String sh"
+  },
+  {
+    "section": "S5 staff auth",
+    "name": "supervisor: password change accepted",
+    "status": "PASS",
+    "expected": "200",
+    "actual": "200 {\"next_step\":\"sign_in_with_new_password\"}"
+  },
+  {
+    "section": "S5 staff auth",
+    "name": "[SECURITY] supervisor: old password invalid after change",
+    "status": "PASS",
+    "expected": "401",
+    "actual": "401"
+  },
+  {
+    "section": "S5 staff auth",
+    "name": "supervisor: login with new password -> authenticated + cookies",
+    "status": "PASS",
+    "expected": "session",
+    "actual": "200 {\"next_step\":\"authenticated\",\"challenge\":null}"
+  },
+  {
+    "section": "S5 staff auth",
+    "name": "agent: seeded login -> password_change challenge (no session cookies)",
+    "status": "PASS",
+    "expected": "password_change + no cookies",
+    "actual": "200 {\"next_step\":\"password_change\",\"challenge\":\"eyJhbGciOiJFZERTQSIsImtpZCI6ImFjdGl2ZSIsInR5cCI6IkpXVCJ9"
+  },
+  {
+    "section": "S5 staff auth",
+    "name": "[SECURITY] agent: password-change challenge is not an access token",
+    "status": "PASS",
+    "expected": "401",
+    "actual": "401"
+  },
+  {
+    "section": "S5 staff auth",
+    "name": "agent: weak new password rejected 422",
+    "status": "PASS",
+    "expected": "422",
+    "actual": "422 {\"detail\":[{\"type\":\"string_too_short\",\"loc\":[\"body\",\"password\"],\"msg\":\"String sh"
+  },
+  {
+    "section": "S5 staff auth",
+    "name": "agent: password change accepted",
+    "status": "PASS",
+    "expected": "200",
+    "actual": "200 {\"next_step\":\"sign_in_with_new_password\"}"
+  },
+  {
+    "section": "S5 staff auth",
+    "name": "[SECURITY] agent: old password invalid after change",
+    "status": "PASS",
+    "expected": "401",
+    "actual": "401"
+  },
+  {
+    "section": "S5 staff auth",
+    "name": "agent: login with new password -> authenticated + cookies",
+    "status": "PASS",
+    "expected": "session",
+    "actual": "200 {\"next_step\":\"authenticated\",\"challenge\":null}"
+  },
+  {
+    "section": "S5 staff auth",
+    "name": "analyst: seeded login -> password_change challenge (no session cookies)",
+    "status": "PASS",
+    "expected": "password_change + no cookies",
+    "actual": "200 {\"next_step\":\"password_change\",\"challenge\":\"eyJhbGciOiJFZERTQSIsImtpZCI6ImFjdGl2ZSIsInR5cCI6IkpXVCJ9"
+  },
+  {
+    "section": "S5 staff auth",
+    "name": "[SECURITY] analyst: password-change challenge is not an access token",
+    "status": "PASS",
+    "expected": "401",
+    "actual": "401"
+  },
+  {
+    "section": "S5 staff auth",
+    "name": "analyst: weak new password rejected 422",
+    "status": "PASS",
+    "expected": "422",
+    "actual": "422 {\"detail\":[{\"type\":\"string_too_short\",\"loc\":[\"body\",\"password\"],\"msg\":\"String sh"
+  },
+  {
+    "section": "S5 staff auth",
+    "name": "analyst: password change accepted",
+    "status": "PASS",
+    "expected": "200",
+    "actual": "200 {\"next_step\":\"sign_in_with_new_password\"}"
+  },
+  {
+    "section": "S5 staff auth",
+    "name": "[SECURITY] analyst: old password invalid after change",
+    "status": "PASS",
+    "expected": "401",
+    "actual": "401"
+  },
+  {
+    "section": "S5 staff auth",
+    "name": "analyst: login with new password -> authenticated + cookies",
+    "status": "PASS",
+    "expected": "session",
+    "actual": "200 {\"next_step\":\"authenticated\",\"challenge\":null}"
+  },
+  {
     "section": "S5b invitation",
     "name": "admin creates a department -> 201 with id",
     "status": "PASS",
     "expected": "201 + id",
-    "actual": "201 {\"id\":\"0f94f6b2-1b23-4649-9bd9-a4be5fc2299e\",\"name\":\"QA Dept f06f\",\"description\":\"QA onboarding depa"
+    "actual": "201 {\"id\":\"9d929e30-510e-498d-b754-64fb6e03e3eb\",\"name\":\"QA Dept eb87\",\"description\":\"QA onboarding depa"
   },
   {
     "section": "S5b invitation",
     "name": "admin invites staff -> 2xx and invitation e-mail queued",
     "status": "PASS",
     "expected": "2xx",
-    "actual": "202 {\"id\":\"b24216a6-ad00-4d17-aefe-0969309219ac\",\"message\":\"Invitation accepted by the configured email provider\"}"
+    "actual": "202 {\"id\":\"2c95f423-8a60-4735-a7bc-e2d93e87f440\",\"message\":\"Invitation accepted by the configured email provider\"}"
   },
   {
     "section": "S5b invitation",
@@ -39,7 +207,7 @@
     "name": "invite inspect -> 200 with name/email, no user id leak",
     "status": "PASS",
     "expected": "details, no id",
-    "actual": "200 {\"kind\":\"invitation\",\"email\":\"invitee.4c25e5ea@qa.example.com\",\"full_name\":\"QA Invitee\",\"department_name\":\"QA Dept f06f\""
+    "actual": "200 {\"kind\":\"invitation\",\"email\":\"invitee.43665e66@qa.example.com\",\"full_name\":\"QA Invitee\",\"department_name\":\"QA Dept eb87\""
   },
   {
     "section": "S5b invitation",
@@ -74,7 +242,7 @@
     "name": "invitee signs in with the chosen password -> session with zero permissions",
     "status": "PASS",
     "expected": "empty effective access",
-    "actual": "200 {\"kind\":\"staff\",\"access\":{\"id\":\"b24216a6-ad00-4d17-aefe-0969309219ac\",\"email\":\"invitee.4c25e5ea@qa.e"
+    "actual": "200 {\"kind\":\"staff\",\"access\":{\"id\":\"2c95f423-8a60-4735-a7bc-e2d93e87f440\",\"email\":\"invitee.43665e66@qa.e"
   },
   {
     "section": "S5b invitation",
@@ -102,7 +270,7 @@
     "name": "admin /api/me -> full permission catalog + global scope",
     "status": "PASS",
     "expected": ">=34 permissions, all_companies",
-    "actual": "{\"kind\":\"staff\",\"access\":{\"id\":\"e74a9bdb-1fda-4d0b-a294-b8c3aae3e69b\",\"email\":\"admin@demo.example\",\"roles\":[\"d70107ed-12"
+    "actual": "{\"kind\":\"staff\",\"access\":{\"id\":\"b14cd5f1-a5f3-411f-928e-876c1c54302f\",\"email\":\"admin@demo.example\",\"roles\":[\"033b74c3-83"
   },
   {
     "section": "S6 permissions",
@@ -123,7 +291,7 @@
     "name": "permission matrix: analyst GET /api/staff/analytics/overview -> 200",
     "status": "PASS",
     "expected": "200",
-    "actual": "200 {\"kpis\":{\"total\":433,\"new\":45,\"assigned\":56,\"in_review\":136,\"resolved\":121,\"reop"
+    "actual": "200 {\"kpis\":{\"total\":434,\"new\":45,\"assigned\":58,\"in_review\":136,\"resolved\":119,\"reop"
   },
   {
     "section": "S6 permissions",
@@ -179,14 +347,14 @@
     "name": "permission matrix: admin GET /api/staff/users -> 200",
     "status": "PASS",
     "expected": "200",
-    "actual": "200 [{\"id\":\"e74a9bdb-1fda-4d0b-a294-b8c3aae3e69b\",\"email\":\"admin@demo.example\",\"full"
+    "actual": "200 [{\"id\":\"b14cd5f1-a5f3-411f-928e-876c1c54302f\",\"email\":\"admin@demo.example\",\"full"
   },
   {
     "section": "S6 permissions",
     "name": "permission matrix: admin GET /api/staff/audit/events -> 200",
     "status": "PASS",
     "expected": "200",
-    "actual": "200 [{\"id\":\"f7aa302a-80f7-4daa-81f7-7e3a7b0ffb3e\",\"created_at\":\"2026-10-18T20:28:02."
+    "actual": "200 [{\"id\":\"46f5c047-b5f9-4daf-83d0-ea5be10e57bb\",\"created_at\":\"2026-10-19T09:13:12."
   },
   {
     "section": "S6 permissions",
@@ -214,7 +382,7 @@
     "name": "access snapshots: agent companies subset of supervisor, admin global",
     "status": "PASS",
     "expected": "nested scopes",
-    "actual": "agent=['7176046f-231d-47f6-ae62-50716d1f9a90'] sup=['5fafac43-6d54-44eb-ae58-b2fd7d841778', '7176046f-231d-47f6-ae62-50716d1f9a90']"
+    "actual": "agent=['814bf6ec-a358-4555-97cc-05dacdadd65c'] sup=['814bf6ec-a358-4555-97cc-05dacdadd65c', '83cc1303-2e9c-4687-b572-cb2e444cdf4b']"
   },
   {
     "section": "S7 scope",
@@ -256,7 +424,7 @@
     "name": "scoped counters < global counters (RLS applied to aggregates)",
     "status": "PASS",
     "expected": "agent total < admin total",
-    "actual": "262 vs 5012"
+    "actual": "261 vs 5003"
   },
   {
     "section": "S7 scope",
@@ -323,13 +491,6 @@
   },
   {
     "section": "S8 sessions",
-    "name": "revoke another own session -> 200",
-    "status": "PASS",
-    "expected": "200",
-    "actual": "200"
-  },
-  {
-    "section": "S8 sessions",
     "name": "[SECURITY] revoke unknown/foreign session id -> 404",
     "status": "PASS",
     "expected": "404",
@@ -344,16 +505,37 @@
   },
   {
     "section": "S9 totp",
-    "name": "TOTP",
-    "status": "INFO",
-    "expected": "",
-    "actual": "already enrolled from a previous run; using saved secret"
+    "name": "TOTP enroll start -> provisioning uri with secret",
+    "status": "PASS",
+    "expected": "otpauth uri",
+    "actual": "200 otpauth://totp/Insurance%20Platform:admin%40demo.example?sec"
   },
   {
     "section": "S9 totp",
-    "name": "rerun login -> totp_verify challenge; correct TOTP -> session",
+    "name": "TOTP enroll confirm -> 200 and cookies cleared (re-login required)",
     "status": "PASS",
-    "expected": "session (probe + S5 admin)",
+    "expected": "200 + logged out",
+    "actual": "200 {\"next_step\":\"sign_in_with_2fa\"}"
+  },
+  {
+    "section": "S9 totp",
+    "name": "login after enroll -> totp_verify challenge (no session yet)",
+    "status": "PASS",
+    "expected": "totp_verify",
+    "actual": "200 {\"next_step\":\"totp_verify\",\"challenge\":\"eyJhbGciOiJFZERTQSIsImtpZCI6ImFjdGl2ZSIsInR5cCI6IkpXVCJ9.eyJ"
+  },
+  {
+    "section": "S9 totp",
+    "name": "[SECURITY] wrong TOTP -> 401, still no session",
+    "status": "PASS",
+    "expected": "401",
+    "actual": "401"
+  },
+  {
+    "section": "S9 totp",
+    "name": "correct TOTP -> session issued",
+    "status": "PASS",
+    "expected": "session",
     "actual": "200 {\"authenticated_as\":\"staff\"}"
   },
   {
@@ -389,7 +571,7 @@
     "name": "admin assigns ticket to agent+team -> status assigned",
     "status": "PASS",
     "expected": "assigned",
-    "actual": "200 {\"id\":\"e438c610-f31f-4a60-acfc-8c06103a12b0\",\"assigned_agent_id\":\"a27f4205-6496-44c8-b149-74439441b1"
+    "actual": "200 {\"id\":\"5e8d4013-d139-47f7-82e7-6e0ef40d8edd\",\"assigned_agent_id\":\"4cd1c6aa-3a8e-4eac-a094-a5e4783644"
   },
   {
     "section": "S10 lifecycle",
@@ -410,14 +592,14 @@
     "name": "agent public reply -> 2xx",
     "status": "PASS",
     "expected": "2xx",
-    "actual": "200 {\"id\":\"12388733-9a2e-474b-b534-224036230f32\",\"created_at\":\"2026-10-18T20:28:04.7"
+    "actual": "200 {\"id\":\"5f86fd7f-9047-42a6-9aae-9731e54ed9dd\",\"created_at\":\"2026-10-19T09:13:14.0"
   },
   {
     "section": "S10 lifecycle",
     "name": "agent internal note -> 2xx",
     "status": "PASS",
     "expected": "2xx",
-    "actual": "200 {\"id\":\"1c1c8d20-a6af-4972-b465-5f0a25abdcd3\",\"created_at\":\"2026-10-18T20:28:04.8"
+    "actual": "200 {\"id\":\"af8f6fa4-1d25-46a0-8a26-1e1214fde6d2\",\"created_at\":\"2026-10-19T09:13:14.1"
   },
   {
     "section": "S10 lifecycle",
@@ -459,7 +641,7 @@
     "name": "supervisor escalate -> queued for insurer delivery",
     "status": "PASS",
     "expected": "queued",
-    "actual": "200 {\"id\":\"e438c610-f31f-4a60-acfc-8c06103a12b0\",\"status\":\"transferred\",\"delivery\":\"queued\"}"
+    "actual": "200 {\"id\":\"5e8d4013-d139-47f7-82e7-6e0ef40d8edd\",\"status\":\"transferred\",\"delivery\":\"queued\"}"
   },
   {
     "section": "S10 lifecycle",
@@ -508,14 +690,14 @@
     "name": "admin NID reveal with reason -> 200 returns full ID",
     "status": "PASS",
     "expected": "full NID",
-    "actual": "200 {\"national_id\":\"30105200431063\"}"
+    "actual": "200 {\"national_id\":\"30105200410004\"}"
   },
   {
     "section": "S10 lifecycle",
     "name": "staff CSV export (GET, flat ComplaintFilter) -> 200 text/csv",
     "status": "PASS",
     "expected": "200 text/csv",
-    "actual": "200 ct=text/csv; charset=utf-8 ﻿ticket_no,created_at,company_id,insurance_type,status,subject,policy_number\r\nCMP-2026-005013,2026-1"
+    "actual": "200 ct=text/csv; charset=utf-8 ﻿ticket_no,created_at,company_id,insurance_type,status,subject,policy_number\r\nCMP-2026-002191,2026-1"
   },
   {
     "section": "S10 lifecycle",
@@ -557,7 +739,7 @@
     "name": "WS authenticated staff -> snapshot payload",
     "status": "PASS",
     "expected": "snapshot json",
-    "actual": "{'type': 'snapshot', 'items': [{'id': 'e438c610-f31f-4a60-acfc-8c06103a12b0', 'ticket_no': 'CMP-2026"
+    "actual": "{'type': 'snapshot', 'items': [{'id': '5e8d4013-d139-47f7-82e7-6e0ef40d8edd', 'ticket_no': 'CMP-2026"
   },
   {
     "section": "S12 platform",
