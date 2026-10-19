@@ -4,7 +4,7 @@
 
 Frontend only; no API, authorization, routing, persistence, dependency manifest,
 or backend changes. Framer Motion, TanStack Query and state management remain.
-Work uses Arena's fixed feature branch `arena/ae421a2b-insurance-platform`.
+Initial pass used Arena's fixed feature branch `arena/ae421a2b-insurance-platform`; the elevation pass below used `arena/c963ec4f-insurance-platform`.
 
 - Shared semantic surface, text, border, accent and feedback tokens, including
   independently scoped staff light/dark themes (regardless of customer theme).
@@ -63,3 +63,45 @@ CI uses the existing Playwright browser installation, without that override.
 This is not a live-production/backend manual verification or an exhaustive
 screen-reader/contrast audit. Existing Arabic-only staff console copy is retained;
 this change does not claim to translate that pre-existing console.
+
+## Elevation pass (Wathiq design-system unification)
+
+Frontend only; no API, authorization, routing, persistence, dependency, or
+backend changes. Framer Motion, TanStack Query, i18n and state management remain.
+
+- **Foundation**: deepened dark surfaces, token-driven scrollbars, interactive
+  card + gold button refinements, unified semantic tokens (`--info/--success/
+  --warning/--danger/--violet/--orange/--fuchsia` + `-soft`).
+- **Staff console CSS fully tokenized** (`staff-console.css`, `staff.css`,
+  admin identity/dashboard): status/priority pills now share one semantic map
+  with the customer portal (new=info, assigned=violet, in_review=warning,
+  resolved=success, reopened=orange, transferred=fuchsia). Auth surfaces use
+  theme-invariant tokens only. Modal scrim and popover entrance motion unified
+  (`staff-pop` / `staff-fade-in`).
+- **Customer portal**: ambient hero glow (clipped to the hero box so it never
+  widens the document), wizard step halo + choice-card lift, dropzone focus
+  ring, journey gold sheen + current-node halo, mobile bottom-nav raised FAB.
+  Customer pages get a reduced-motion-aware Framer Motion page transition.
+- **Analytics**: Overview charts read CSS tokens (gold/emerald/info/fuchsia/
+  orange/ink) with a semantic per-status palette; loading state uses
+  chart-shaped skeletons instead of a spinner.
+- **Standalone pages** (staff login, invite, analytics, audit exports,
+  error boundary) moved from raw slate utilities to semantic tokens.
+- Four unreferenced legacy components removed (verified zero imports).
+
+### Local checks (elevation pass)
+
+| Check | Result |
+| --- | --- |
+| `npm run typecheck` | Pass |
+| `npm run lint` | Pass; same 2 pre-existing Fast Refresh warnings |
+| `npm run test` | 34 files / 165 tests passed |
+| `npm run build` | Pass |
+| `npm run test:e2e` | 48/48 passed, Chromium mobile + desktop |
+
+Screenshot review (network-mocked API, real app): landing + wizard (incl.
+review/success) + tickets + detail + profile in AR/EN × light/dark; staff
+queue, workspace, overview, admin in light/dark. One regression found and
+fixed during review: the hero glow initially widened the document on desktop
+(`scrollWidth > innerWidth`); it is now clipped to the hero box and the
+gradients recentered.

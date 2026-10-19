@@ -86,15 +86,15 @@ export function InvitePage() {
     } finally { setBusy(false); captcha.reset(); }
   };
 
-  if (done) return <section className="mx-auto max-w-xl rounded-3xl bg-white p-6 shadow-xl dark:bg-slate-900" aria-live="polite"><h1 className="text-2xl font-black">{ar ? 'تم حفظ حسابك بنجاح' : 'Your account is ready'}</h1><p className="my-4">{ar ? 'سجّل الدخول بكلمة المرور الجديدة. صلاحيات العمل يحددها الأدمن.' : 'Sign in with your new password. Your administrator assigns work permissions.'}</p><a className={primaryButton} href="/staff/login">{ar ? 'تسجيل الدخول' : 'Sign in'}</a></section>;
+  if (done) return <section className="mx-auto max-w-xl rounded-3xl border border-border bg-surface p-6 shadow-[var(--shadow-lg)]" aria-live="polite"><h1 className="text-2xl font-black">{ar ? 'تم حفظ حسابك بنجاح' : 'Your account is ready'}</h1><p className="my-4">{ar ? 'سجّل الدخول بكلمة المرور الجديدة. صلاحيات العمل يحددها الأدمن.' : 'Sign in with your new password. Your administrator assigns work permissions.'}</p><a className={primaryButton} href="/staff/login">{ar ? 'تسجيل الدخول' : 'Sign in'}</a></section>;
 
-  return <section className="mx-auto max-w-2xl rounded-3xl border border-white/40 bg-white/80 p-6 shadow-xl dark:bg-slate-900">
+  return <section className="mx-auto max-w-2xl rounded-3xl border border-border bg-surface p-6 shadow-[var(--shadow-lg)]">
     <h1 className="text-2xl font-black">{details?.kind === 'password_reset' ? (ar ? 'إعادة تعيين كلمة المرور' : 'Reset password') : (ar ? 'إنشاء الحساب والبروفايل' : 'Create your account and profile')}</h1>
     {error && <p role="alert" className="my-4 text-red-600">{error}</p>}
     {!token && <p role="alert" className="mt-4">{ar ? 'رابط الدعوة غير مكتمل. اطلب رابطًا جديدًا من الأدمن.' : 'The invitation link is incomplete. Ask your administrator for a new link.'}</p>}
     {token && !details && !error && <p role="status" className="mt-4">{ar ? 'جارٍ التحقق من الدعوة…' : 'Checking your invitation…'}</p>}
     {details && <form className="mt-5 space-y-4" onSubmit={(event) => { void submit(event); }}>
-      <p className="rounded-xl bg-slate-500/10 p-3"><span dir="ltr">{details.email}</span> · {details.department_name}</p>
+      <p className="rounded-xl bg-surface-elevated p-3"><span dir="ltr">{details.email}</span> · {details.department_name}</p>
       {details.kind === 'invitation' && <>
         <Field label={ar ? 'الاسم الكامل' : 'Full name'}><TextInput required autoComplete="name" minLength={2} maxLength={120} value={name} onChange={(event) => setName(event.target.value)} /></Field>
         <Field label={ar ? 'الرقم القومي' : 'National ID'}><TextInput required dir="ltr" inputMode="numeric" pattern="[23][0-9]{13}" maxLength={14} value={nationalId} onChange={(event) => setNationalId(event.target.value)} /></Field>

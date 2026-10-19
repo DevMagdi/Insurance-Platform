@@ -461,8 +461,21 @@ html[dir='rtl'] .account-trigger {
     line-height: 1.2;
   }
 
+  .mobile-bottom-nav a {
+    transition: color var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out);
+  }
+
   .mobile-bottom-nav a.is-active {
     color: var(--ink-900);
+    background: color-mix(in srgb, var(--gold-500) 9%, transparent);
+  }
+
+  .mobile-bottom-nav .fab {
+    transition: transform var(--dur-fast) var(--ease-spring), box-shadow var(--dur-fast) var(--ease-out);
+  }
+
+  .mobile-bottom-nav .fab:active {
+    transform: scale(0.94);
   }
 
   .mobile-bottom-nav a.is-active svg {
@@ -601,6 +614,26 @@ html[lang='ar'] .footer-col h4 {
 .hero {
   position: relative;
   padding-block: 26px 24px;
+}
+
+/* Ambient gold/navy breath behind the hero — depth without decoration. */
+.hero::before {
+  content: '';
+  position: absolute;
+  inset-inline: 0;
+  top: -140px;
+  height: 480px;
+  z-index: -1;
+  background:
+    radial-gradient(46% 64% at 90% 30%, color-mix(in srgb, var(--gold-500) 7%, transparent), transparent 70%),
+    radial-gradient(42% 58% at 4% 20%, color-mix(in srgb, var(--navy-500) 8%, transparent), transparent 70%);
+  pointer-events: none;
+}
+
+.dark .hero::before {
+  background:
+    radial-gradient(46% 64% at 90% 30%, color-mix(in srgb, var(--gold-500) 10%, transparent), transparent 70%),
+    radial-gradient(42% 58% at 4% 20%, color-mix(in srgb, var(--navy-500) 16%, transparent), transparent 70%);
 }
 
 .hero-grid {
@@ -1170,6 +1203,19 @@ html[lang='ar'] .section-head h2 {
   box-shadow: var(--shadow-sm);
 }
 
+.step-card:hover .step-icon,
+.security-card:hover .step-icon {
+  background: var(--gold-100);
+  color: var(--gold-700);
+  border-color: color-mix(in srgb, var(--gold-500) 24%, transparent);
+}
+
+.dark .step-card:hover .step-icon,
+.dark .security-card:hover .step-icon {
+  background: color-mix(in srgb, var(--gold-500) 14%, transparent);
+  color: var(--gold-300);
+}
+
 .step-card::after {
   content: '';
   position: absolute;
@@ -1197,6 +1243,7 @@ html[lang='ar'] .section-head h2 {
   background: var(--surface-2);
   color: var(--navy-800);
   border: 1px solid var(--line-soft);
+  transition: background-color var(--dur-base) var(--ease-out), color var(--dur-base) var(--ease-out), border-color var(--dur-base) var(--ease-out);
 }
 
 .dark .step-icon {
@@ -1369,6 +1416,14 @@ html[dir='rtl'] .step-arrow svg {
   border: 1px solid var(--line);
   border-radius: var(--r-lg);
   background: var(--surface-1);
+  box-shadow: var(--shadow-xs);
+  transition: border-color var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-out), box-shadow var(--dur-base) var(--ease-out);
+}
+
+.security-card:hover {
+  border-color: var(--line-strong);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-sm);
 }
 
 .security-card .step-icon {
@@ -1422,6 +1477,14 @@ html[dir='rtl'] .step-arrow svg {
   display: none;
 }
 
+.faq summary {
+  transition: color var(--dur-fast) var(--ease-out);
+}
+
+.faq summary:hover {
+  color: var(--ink-900);
+}
+
 .faq summary .faq-plus {
   flex: none;
   display: grid;
@@ -1431,11 +1494,28 @@ html[dir='rtl'] .step-arrow svg {
   border-radius: 7px;
   border: 1px solid var(--line);
   color: var(--ink-400);
-  transition: transform var(--dur-base) var(--ease-out);
+  transition: transform var(--dur-base) var(--ease-out), background-color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+
+.faq summary:hover .faq-plus {
+  background: var(--gold-100);
+  border-color: color-mix(in srgb, var(--gold-500) 26%, transparent);
+  color: var(--gold-700);
+}
+
+.dark .faq summary:hover .faq-plus {
+  color: var(--gold-300);
 }
 
 .faq details[open] summary .faq-plus {
   transform: rotate(45deg);
+  background: var(--gold-100);
+  border-color: color-mix(in srgb, var(--gold-500) 26%, transparent);
+  color: var(--gold-700);
+}
+
+.dark .faq details[open] summary .faq-plus {
+  color: var(--gold-300);
 }
 .faq details p {
   padding: 0 2px 20px;
@@ -1913,13 +1993,14 @@ html[lang='ar'] .track-result-body dt {
   background: var(--navy-900);
   border-color: var(--navy-900);
   color: var(--gold-300);
-  box-shadow: 0 6px 14px -6px rgba(8, 26, 47, 0.5);
+  box-shadow: 0 6px 14px -6px rgba(8, 26, 47, 0.5), 0 0 0 4px color-mix(in srgb, var(--gold-500) 14%, transparent);
 }
 
 .dark .wizard-step.is-active .wizard-step-dot {
   background: var(--gold-500);
   border-color: var(--gold-500);
   color: #201a09;
+  box-shadow: 0 6px 16px -6px color-mix(in srgb, var(--gold-500) 45%, transparent), 0 0 0 4px color-mix(in srgb, var(--gold-500) 16%, transparent);
 }
 
 .wizard-step.is-done .wizard-step-dot {
@@ -1929,8 +2010,8 @@ html[lang='ar'] .track-result-body dt {
 }
 
 .dark .wizard-step.is-done .wizard-step-dot {
-  background: rgba(22, 139, 105, 0.16);
-  border-color: rgba(22, 139, 105, 0.3);
+  background: color-mix(in srgb, var(--emerald-500) 16%, transparent);
+  border-color: color-mix(in srgb, var(--emerald-500) 30%, transparent);
   color: var(--emerald-200);
 }
 
@@ -2072,11 +2153,16 @@ html[lang='ar'] .track-result-body dt {
   border-radius: var(--r-md);
   background: var(--surface-1);
   text-align: start;
-  transition: all var(--dur-fast) var(--ease-out);
+  transition: border-color var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
 }
 
 .choice-card:hover {
   border-color: var(--ink-300);
+  transform: translateY(-1px);
+}
+
+.choice-card:active {
+  transform: translateY(0) scale(0.995);
 }
 
 .choice-card[aria-checked='true'] {
@@ -2156,6 +2242,14 @@ html[lang='ar'] .track-result-body dt {
   color: var(--gold-700);
   font-size: 10.5px;
   font-weight: 650;
+  border-radius: 4px;
+  transition: color var(--dur-fast) var(--ease-out), text-underline-offset var(--dur-fast) var(--ease-out);
+}
+
+.review-edit:hover {
+  color: var(--gold-600);
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .dark .review-edit {
@@ -2522,7 +2616,19 @@ html[lang='ar'] .track-result-body dt {
 .dropzone.is-dragging {
   border-color: var(--gold-500);
   background: color-mix(in srgb, var(--gold-100) 55%, transparent);
-  box-shadow: 0 0 0 4px rgba(201, 162, 39, 0.1);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--gold-500) 12%, transparent);
+}
+
+.dropzone:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 3px;
+}
+
+.dropzone:hover .dropzone-icon,
+.dropzone.is-dragging .dropzone-icon {
+  color: var(--gold-600);
+  border-color: color-mix(in srgb, var(--gold-500) 30%, transparent);
+  transform: translateY(-2px);
 }
 
 .dropzone-icon {
@@ -2536,6 +2642,7 @@ html[lang='ar'] .track-result-body dt {
   color: var(--ink-400);
   margin-bottom: 8px;
   box-shadow: var(--shadow-xs);
+  transition: color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out), transform var(--dur-base) var(--ease-spring);
 }
 
 .dropzone strong {
@@ -2814,7 +2921,7 @@ html[lang='ar'] .track-result-body dt {
   font-size: 10.5px;
   font-weight: 600;
   border: 1px solid transparent;
-  transition: all var(--dur-fast) var(--ease-out);
+  transition: background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out);
 }
 
 .filter-chip:hover {
@@ -2863,6 +2970,10 @@ html[lang='ar'] .track-result-body dt {
 
 .ticket-row:hover {
   background: color-mix(in srgb, var(--surface-2) 60%, transparent);
+}
+
+.ticket-row:active {
+  background: color-mix(in srgb, var(--surface-2) 85%, transparent);
 }
 
 .ticket-row-min {
@@ -2927,7 +3038,7 @@ html[lang='ar'] .track-result-body dt {
   border-radius: 8px;
   background: var(--surface-2);
   color: var(--ink-400);
-  transition: all var(--dur-fast) var(--ease-out);
+  transition: background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out), transform var(--dur-base) var(--ease-spring);
 }
 
 html[dir='rtl'] .row-chevron svg {
@@ -2937,6 +3048,11 @@ html[dir='rtl'] .row-chevron svg {
 .ticket-row:hover .row-chevron {
   background: var(--navy-900);
   color: #fff;
+  transform: translateX(2px);
+}
+
+html[dir='rtl'] .ticket-row:hover .row-chevron {
+  transform: translateX(-2px);
 }
 
 .ticket-list-foot {
@@ -3277,6 +3393,7 @@ html[dir='rtl'] .back-link svg {
   border-radius: 14px;
   background: var(--surface-2);
   border: 1px solid var(--line-soft);
+  box-shadow: var(--shadow-xs);
 }
 
 .message.inbound .message-bubble {
@@ -3338,6 +3455,11 @@ html[dir='rtl'] .back-link svg {
   line-height: 1.8;
   resize: vertical;
   outline: none;
+  transition: border-color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
+}
+
+.composer textarea:hover {
+  border-color: color-mix(in srgb, var(--line-strong) 60%, var(--ink-400));
 }
 
 .composer textarea:focus {
@@ -3439,7 +3561,11 @@ html[dir='rtl'] .back-link svg {
   border: 1px solid var(--line);
   background: var(--surface-1);
   color: var(--ink-300);
-  transition: all var(--dur-fast) var(--ease-out);
+  transition: color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-spring);
+}
+
+.star-btn:hover {
+  transform: translateY(-1px) scale(1.06);
 }
 
 .star-btn:hover,
@@ -3532,8 +3658,12 @@ html[dir='rtl'] .back-link svg {
 .journey-rail::after {
   inset-inline-end: auto;
   width: var(--journey-progress, 0%);
-  background: linear-gradient(90deg, var(--gold-500), var(--emerald-500));
+  background: linear-gradient(270deg, var(--gold-600), var(--gold-400));
   transition: width 700ms var(--ease-out);
+}
+
+html[dir='ltr'] .journey-rail::after {
+  background: linear-gradient(90deg, var(--gold-600), var(--gold-400));
 }
 
 .journey-step {
@@ -3571,13 +3701,14 @@ html[dir='rtl'] .back-link svg {
   border-color: var(--navy-900);
   background: var(--navy-900);
   color: var(--gold-300);
-  box-shadow: 0 0 0 4px rgba(8, 26, 47, 0.08);
+  box-shadow: 0 0 0 4px rgba(8, 26, 47, 0.08), 0 0 0 8px color-mix(in srgb, var(--gold-500) 12%, transparent);
 }
 
 .dark .journey-step.current .journey-dot {
   border-color: var(--gold-500);
   background: var(--gold-500);
   color: #201a09;
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--gold-500) 18%, transparent), 0 0 0 9px color-mix(in srgb, var(--gold-500) 8%, transparent);
 }
 
 .journey-label {

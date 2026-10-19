@@ -90,10 +90,10 @@ export function StaffLoginPage() {
   };
 
   return (
-    <section className="mx-auto max-w-xl rounded-3xl border border-white/40 bg-white/70 p-6 shadow-xl backdrop-blur dark:border-white/10 dark:bg-white/5">
+    <section className="mx-auto max-w-xl rounded-3xl border border-border bg-[var(--surface-glass)] p-6 shadow-[var(--shadow-lg)] backdrop-blur-xl">
       <p className="text-xs font-bold uppercase tracking-widest text-amber-600 dark:text-amber-300">{brand.platform_name}</p>
       <h1 className="mt-2 text-3xl font-black">{t('staff.loginTitle')}</h1>
-      <p className="mt-2 text-slate-500 dark:text-slate-300">{t('staff.loginSubtitle')}</p>
+      <p className="mt-2 text-text-muted">{t('staff.loginSubtitle')}</p>
       {error && <div className="mt-4"><ErrorState message={error} /></div>}
 
       {step === 'credentials' ? (
@@ -129,7 +129,7 @@ export function StaffLoginPage() {
             </Field>
           )}
           {step === 'totp_setup' && provisioningUri && (
-            <div className="rounded-2xl bg-slate-950/5 p-4 text-sm dark:bg-white/10">
+            <div className="rounded-2xl bg-surface-elevated p-4 text-sm">
               <p className="font-semibold">{t('staff.provisioning')}</p>
               <code className="mt-2 block break-all text-xs" dir="ltr">{provisioningUri}</code>
             </div>

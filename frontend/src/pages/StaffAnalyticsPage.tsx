@@ -73,7 +73,7 @@ export function StaffAnalyticsPage() {
     <StaffShell>
       <section className="card panel-lg">
         <h2 className="text-2xl font-bold">{t('staff.analytics')}</h2>
-        <p className="mt-1 text-sm text-slate-500 dark:text-slate-300">{t('staff.dateWindow')}</p>
+        <p className="mt-1 text-sm text-text-muted">{t('staff.dateWindow')}</p>
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
           <Field label={t('staff.from')}>
             <TextInput type="datetime-local" value={window.date_from?.slice(0, 16)} onChange={(e) => setWindow((w) => ({ ...w, date_from: toIsoDateTime(e.target.value) }))} />
@@ -91,7 +91,7 @@ export function StaffAnalyticsPage() {
             <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               {Object.entries(data.kpis).slice(0, 12).map(([key, value]) => (
                 <article key={key} className="card card-inset p-5">
-                  <p className="text-xs font-bold tracking-wide text-slate-500 dark:text-slate-300">{KPI_LABELS[key] ?? key}</p>
+                  <p className="text-xs font-bold tracking-wide text-text-muted">{KPI_LABELS[key] ?? key}</p>
                   <p className="mt-1 text-3xl font-bold tabular"><bdi dir="ltr">{typeof value === 'number' || value === null ? formatKpi(key, value) : value}</bdi></p>
                 </article>
               ))}
@@ -102,7 +102,7 @@ export function StaffAnalyticsPage() {
               {data.time_series.map((item) => (
                 <div key={item.date} className="flex min-w-3 flex-1 flex-col items-center gap-1">
                   <div className="w-full rounded-t" style={{ height: `${Math.max(4, (item.arrived / maxDaily) * 120)}px`, background: 'linear-gradient(to top, var(--gold-600), var(--gold-300))' }} title={`${item.date}: ${item.arrived}`} />
-                  <span className="hidden text-[9px] text-slate-400 xl:block">{item.date.slice(5)}</span>
+                  <span className="hidden text-[9px] text-text-muted xl:block">{item.date.slice(5)}</span>
                 </div>
               ))}
             </div>
@@ -125,10 +125,10 @@ export function StaffAnalyticsPage() {
             {(data.company_scorecards.length > 0) && (
               <div className="mt-7 overflow-x-auto">
                 <table className="w-full min-w-[640px] text-sm">
-                  <thead><tr className="border-b text-start text-slate-500 dark:border-white/10"><th className="py-2">{t('staff.company')}</th><th>الإجمالي</th><th>تجاوزات SLA</th><th>رضا العميل</th><th>متوسط الساعات</th></tr></thead>
+                  <thead><tr className="border-b border-border text-start text-text-muted"><th className="py-2">{t('staff.company')}</th><th>الإجمالي</th><th>تجاوزات SLA</th><th>رضا العميل</th><th>متوسط الساعات</th></tr></thead>
                   <tbody>
                     {data.company_scorecards.map((row, index) => (
-                      <tr key={index} className="border-b border-slate-100 dark:border-white/5">
+                      <tr key={index} className="border-b border-border">
                         <td className="py-2 font-bold">{companyNameAr(String(row.company_id ?? ''), String(row.name ?? ''))}</td>
                         <td>{String(row.total ?? '')}</td>
                         <td>{String(row.sla_breaches ?? '')}</td>

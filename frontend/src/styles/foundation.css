@@ -119,11 +119,12 @@
 
 :root.dark,
 .staff-console.theme-dark {
-  --surface-0: #0a0f18;
+  /* OLED-deep canvas: surfaces read as gentle steps of navy-black, never grey. */
+  --surface-0: #060a11;
   --surface-1: #101824;
-  --surface-2: #111c2c;
-  --surface-3: #17243a;
-  --surface-glass: rgba(12, 20, 33, 0.78);
+  --surface-2: #141f2f;
+  --surface-3: #1b2940;
+  --surface-glass: rgba(8, 13, 22, 0.82);
   --surface-inverse: #f4f6f8;
 
   --ink-900: #e8edf4;
@@ -537,13 +538,13 @@ html[lang='ar'] .eyebrow {
 }
 
 .btn-gold {
-  --btn-bg: var(--gold-500);
+  --btn-bg: linear-gradient(180deg, var(--gold-400), var(--gold-500));
   --btn-fg: #201a09;
-  box-shadow: var(--shadow-gold), inset 0 1px 0 rgba(255, 255, 255, 0.28);
+  box-shadow: var(--shadow-gold), inset 0 1px 0 rgba(255, 255, 255, 0.32);
 }
 
 .btn-gold:hover:not(:disabled) {
-  --btn-bg: var(--gold-400);
+  --btn-bg: linear-gradient(180deg, var(--gold-300), var(--gold-400));
 }
 
 .btn-secondary {
@@ -760,6 +761,23 @@ html[dir='rtl'] .select {
 }
 
 .dark .select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%238e9bad' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m7 10 5 5 5-5'/%3E%3C/svg%3E");
+}
+
+.input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.input-wrap > svg {
+  position: absolute;
+  inset-inline-start: 13px;
+  color: var(--ink-400);
+  pointer-events: none;
+}
+
+.inpect {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%238e9bad' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m7 10 5 5 5-5'/%3E%3C/svg%3E");
 }
 
