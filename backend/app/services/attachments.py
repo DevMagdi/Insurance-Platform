@@ -22,7 +22,6 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domain.access import AccessScope
-from app.domain.enums import AttachmentScanStatus
 from app.domain.schemas import UploadPlan
 from app.models.tickets import Attachment, AuditLog, Complaint
 from app.repositories.attachments import AttachmentRepository
@@ -152,6 +151,17 @@ class AttachmentService:
             checksum=digest,
             content=content,
         )
+        # The row is inserted 'pending' (RLS) and the runtime role cannot
+        # UPDATE it. With no virus scanner configured, content inspection is
+        # the only gate, so transition through the narrow SECURITY DEFINER
+        # (which re-checks scanner absence) instead of staying pending.
+        auto_clean = False
+        if self.scanner_configured is not None and not await self.scanner_configured(db):
+            marked = await db.scalar(
+                text("SELECT app_security.mark_attachment_clean_no_scanner(:id)"),
+                {"id": attachment.id},
+            )
+            auto_clean = bool(marked)
         if scope.actor.scope == "customer":
             await db.execute(
                 text("SELECT app_security.audit_customer_action(:id, :created, 'upload')"),
@@ -169,9 +179,7 @@ class AttachmentService:
                 )
             )
         await db.flush()
-        if self.scanner_configured is not None and not await self.scanner_configured(db):
-            attachment.scan_status = AttachmentScanStatus.CLEAN
-            await db.flush()
+        if auto_clean:
             return {
                 "id": attachment.id,
                 "scan_status": "clean",

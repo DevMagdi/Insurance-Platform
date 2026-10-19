@@ -48,7 +48,9 @@ def fixture() -> tuple[
     blobs = BlobCipher(settings.encryption_keyring())
     service = AttachmentService(repo, tokens, blobs)
     scope = AccessScope.for_customer(Actor(uuid4(), "customer"))
-    db = SimpleNamespace(execute=AsyncMock(), add=Mock(), flush=AsyncMock())
+    db = SimpleNamespace(
+        execute=AsyncMock(), add=Mock(), flush=AsyncMock(), scalar=AsyncMock(return_value=True)
+    )
     parent = SimpleNamespace(id=uuid4(), created_at=datetime.now(UTC))
     return service, repo, blobs, db, scope, parent, tokens
 
@@ -309,6 +311,7 @@ async def test_upload_without_configured_scanner_is_clean_and_downloadable(
     token = tokens.issue(scope.actor, sid, 0, "upload", timedelta(minutes=5), resource_id=record.id)
     result = await service.upload(db, scope, sid, 0, record.id, token, body_request(PDF))
     assert result["scan_status"] == "clean"
+    db.scalar.assert_awaited()  # Clean transition goes through the SECURITY DEFINER.
     # The same clean gate used by authorize/download now passes for this row.
     repo.clean_attachment.return_value = SimpleNamespace(
         id=result["id"],
@@ -341,6 +344,7 @@ async def test_upload_with_configured_scanner_stays_pending(fixture: tuple) -> N
     token = tokens.issue(scope.actor, sid, 0, "upload", timedelta(minutes=5), resource_id=record.id)
     result = await service.upload(db, scope, sid, 0, record.id, token, body_request(PDF))
     assert result["scan_status"] == "pending"
+    db.scalar.assert_not_awaited()
     repo.clean_attachment.return_value = None
     with pytest.raises(HTTPException) as exc:
         await service.authorize_download(db, scope, sid, 0, result["id"])

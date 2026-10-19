@@ -75,3 +75,25 @@ LANGUAGE sql STABLE SECURITY DEFINER SET search_path = pg_catalog, public AS $fu
 $function$;
 REVOKE ALL ON FUNCTION app_security.virus_scanner_configured() FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION app_security.virus_scanner_configured() TO app_runtime, app_worker;
+
+-- Attachments are INSERTed as 'pending' (RLS insert policy) and the runtime
+-- role has no UPDATE grant. When no virus scanner is configured, the
+-- uploader may transition their own just-uploaded row to 'clean' through
+-- this narrow definer: it re-checks scanner absence inside the function, so
+-- enabling a scanner immediately restores the pending -> verdict flow.
+CREATE FUNCTION app_security.mark_attachment_clean_no_scanner(p_attachment_id uuid)
+RETURNS boolean
+LANGUAGE plpgsql VOLATILE SECURITY DEFINER SET search_path = pg_catalog, public AS $function$
+BEGIN
+    IF app_security.virus_scanner_configured() THEN RETURN false; END IF;
+    UPDATE public.attachments SET scan_status = 'clean'
+    WHERE id = p_attachment_id AND scan_status = 'pending'
+      AND ((app_security.actor_scope() = 'customer'
+            AND uploaded_by_customer_id = app_security.actor_id())
+        OR (app_security.actor_scope() = 'staff'
+            AND uploaded_by_staff_id = app_security.actor_id()));
+    RETURN FOUND;
+END;
+$function$;
+REVOKE ALL ON FUNCTION app_security.mark_attachment_clean_no_scanner(uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION app_security.mark_attachment_clean_no_scanner(uuid) TO app_runtime;

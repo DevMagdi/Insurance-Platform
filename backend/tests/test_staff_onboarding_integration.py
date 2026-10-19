@@ -218,7 +218,8 @@ async def invite(world: SimpleNamespace, domain: str = "gmail.com") -> tuple[str
     assert message["To"] == email
     assert message.get_content_type() == "multipart/alternative"
     html = message.get_body(preferencelist=("html",)).get_content()
-    assert "/api/public/brand/logo" in html
+    assert "/api/public/brand/logo" not in html  # Logo is CID-embedded, never remote.
+    assert "<img" not in html or 'src="cid:logo@brand"' in html
     assert "This is an automated message" in html
     assert 'dir="rtl"' in html
     assert world.smtp["recipients"][-1] == f"RCPT TO:<{email}>"
