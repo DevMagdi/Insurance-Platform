@@ -906,3 +906,85 @@ async def test_phase3_export_rechecks_ticket_scope_at_download(test_app: SimpleN
             (request.json()["id"],),
         ).fetchone()
         assert row is not None
+
+
+async def test_upload_without_scanner_clean_and_staff_downloadable(
+    test_app: SimpleNamespace,
+) -> None:
+    """End-to-end: no ClamAV configured -> clean -> staff authorize + download."""
+    from app.main import app as live_app
+
+    ctx = test_app
+
+    async def scanner_configured(db: object) -> bool:
+        return bool(
+            await db.scalar(text("SELECT app_security.virus_scanner_configured()"))  # type: ignore[attr-defined]
+        )
+
+    original = live_app.state.attachments
+    live_app.state.attachments = AttachmentService(
+        AttachmentRepository(),
+        TokenManager(
+            Settings(
+                DATABASE_URL="postgresql+asyncpg://app_runtime@localhost/test",
+                APP_ENCRYPTION_KEY=base64.urlsafe_b64encode(b"e" * 32).decode(),
+                APP_BLIND_INDEX_KEY=base64.urlsafe_b64encode(b"b" * 32).decode(),
+                JWT_SIGNING_KEY="s" * 64,
+                ENVIRONMENT="test",
+            )
+        ),
+        ctx.blobs,
+        scanner_configured=scanner_configured,
+    )
+    try:
+        await sign_in_customer(ctx.customer, ctx.mailbox)
+        await sign_in_staff(ctx.admin, "admin@test.invalid")
+        record = await ctx.customer.post(
+            "/api/customer/complaints",
+            json=complaint_payload(ctx.identities["a"], "No-scanner attachment ticket"),
+            headers={**csrf(ctx.customer), "Idempotency-Key": "integration-upload-noscanner-001"},
+        )
+        assert record.status_code == 201, record.text
+        complaint_id = record.json()["id"]
+        digest = hashlib.sha256(PDF).hexdigest()
+        plan = await ctx.customer.post(
+            f"/api/customer/complaints/{complaint_id}/attachments/plan",
+            json={
+                "files": [
+                    {
+                        "filename": "proof.pdf",
+                        "mime_type": "application/pdf",
+                        "size_bytes": len(PDF),
+                        "checksum_sha256": digest,
+                    }
+                ]
+            },
+            headers=csrf(ctx.customer),
+        )
+        assert plan.status_code == 200, plan.text
+        reserved = plan.json()["uploads"][0]
+        sent = await ctx.customer.put(
+            reserved["upload_url"],
+            content=PDF,
+            headers={
+                **csrf(ctx.customer),
+                "Content-Type": "application/pdf",
+                "X-Upload-Token": reserved["upload_token"],
+            },
+        )
+        assert sent.status_code == 200, sent.text
+        assert sent.json()["scan_status"] == "clean"
+        attachment_id = sent.json()["id"]
+        # Staff can list, authorize and download the clean attachment.
+        listed = await ctx.admin.get(f"/api/staff/complaints/{complaint_id}/attachments")
+        assert listed.status_code == 200, listed.text
+        assert listed.json()[0]["scan_status"] == "clean"
+        authorized = await ctx.admin.get(f"/api/staff/attachments/{attachment_id}/authorize")
+        assert authorized.status_code == 200, authorized.text
+        download = await ctx.admin.get(
+            authorized.json()["download_url"],
+            headers={"X-Download-Token": authorized.json()["download_token"]},
+        )
+        assert download.status_code == 200 and download.content == PDF
+    finally:
+        live_app.state.attachments = original
