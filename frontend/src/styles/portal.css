@@ -620,20 +620,20 @@ html[lang='ar'] .footer-col h4 {
 .hero::before {
   content: '';
   position: absolute;
-  inset-inline: -12%;
+  inset-inline: 0;
   top: -140px;
   height: 480px;
   z-index: -1;
   background:
-    radial-gradient(42% 60% at 78% 30%, color-mix(in srgb, var(--gold-500) 7%, transparent), transparent 70%),
-    radial-gradient(38% 55% at 12% 20%, color-mix(in srgb, var(--navy-500) 8%, transparent), transparent 70%);
+    radial-gradient(46% 64% at 90% 30%, color-mix(in srgb, var(--gold-500) 7%, transparent), transparent 70%),
+    radial-gradient(42% 58% at 4% 20%, color-mix(in srgb, var(--navy-500) 8%, transparent), transparent 70%);
   pointer-events: none;
 }
 
 .dark .hero::before {
   background:
-    radial-gradient(42% 60% at 78% 30%, color-mix(in srgb, var(--gold-500) 10%, transparent), transparent 70%),
-    radial-gradient(38% 55% at 12% 20%, color-mix(in srgb, var(--navy-500) 16%, transparent), transparent 70%);
+    radial-gradient(46% 64% at 90% 30%, color-mix(in srgb, var(--gold-500) 10%, transparent), transparent 70%),
+    radial-gradient(42% 58% at 4% 20%, color-mix(in srgb, var(--navy-500) 16%, transparent), transparent 70%);
 }
 
 .hero-grid {
