@@ -1,4 +1,5 @@
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, type ReactNode } from 'react';
+import { motion, useReducedMotion } from 'framer-motion';
 import { Layout } from './components/Layout';
 import { usePathname } from './lib/router';
 import { HomePage } from './pages/HomePage';
@@ -14,6 +15,22 @@ import { TicketsPage } from './pages/TicketsPage';
 import { TrackPage } from './pages/TrackPage';
 
 const StaffConsole = lazy(() => import('./StaffConsole'));
+
+/** Quiet page entrance: a 220ms fade with a breath of rise, keyed by route. */
+function PageTransition({ routeKey, children }: { routeKey: string; children: ReactNode }) {
+  const reduced = useReducedMotion();
+  if (reduced) return <>{children}</>;
+  return (
+    <motion.div
+      key={routeKey}
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.22, ease: [0.22, 0.61, 0.36, 1] }}
+    >
+      {children}
+    </motion.div>
+  );
+}
 
 /** Customer portal plus the Phase 4/5 staff workspace and Phase 7 administration. */
 function App() {
@@ -55,7 +72,7 @@ function App() {
   else if (path === '/profile') page = <ProfilePage />;
   else page = <HomePage />;
 
-  return <Layout>{page}</Layout>;
+  return <Layout><PageTransition routeKey={path}>{page}</PageTransition></Layout>;
 }
 
 export default App;

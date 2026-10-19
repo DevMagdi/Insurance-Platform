@@ -1533,7 +1533,7 @@ html[lang='ar'] .staff-console .section-title-row h2 {
   display: grid;
   place-items: center;
   padding: 18px;
-  background: rgba(4, 10, 20, 0.5);
+  background: color-mix(in srgb, var(--navy-950) 55%, transparent);
   backdrop-filter: blur(3px);
 }
 
@@ -4619,6 +4619,7 @@ html[dir='rtl'] .staff-console .admin-shortcuts button > svg {
 .staff-console .modal-card,
 .staff-console .notification-popover,
 .staff-console .date-picker-menu,
+.staff-console .columns-popover,
 .staff-console .user-menu {
   animation: staff-pop 0.18s var(--ease-out);
 }

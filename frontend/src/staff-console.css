@@ -553,6 +553,12 @@
 .staff-console .unavailable-ticket p { color: var(--text-muted); font-size: 11px; }
 
 /* Access editor, dialogs, command palette */
+/* Entrance motion (backdrop fade) complements staff.css's staff-pop on cards/popovers. */
+@keyframes staff-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.staff-console .modal-backdrop { animation: staff-fade-in var(--dur-base) var(--ease-out); }
 .staff-console .modal-backdrop { position: fixed; z-index: 100; inset: 0; display: flex; align-items: center; justify-content: center; overflow: auto; padding: 24px; background: color-mix(in srgb, var(--navy-950) 72%, transparent); backdrop-filter: blur(5px); }
 .staff-console .modal-card { width: min(100%, 520px); max-height: min(92vh, 950px); display: flex; flex-direction: column; overflow: hidden; border: 1px solid var(--border-strong); border-radius: 16px; background: var(--surface); box-shadow: var(--shadow); }
 .staff-console .modal-card-wide { width: min(100%, 890px); }
