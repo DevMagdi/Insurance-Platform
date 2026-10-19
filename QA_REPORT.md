@@ -400,3 +400,69 @@ randomizes identities/IPs; a clean-room pass resets `staff_pw_rotated.flag` and
 `totp_admin_secret.txt` and re-seeds staff credentials before `e2e_staff.py`
 (careful: re-running the password rotation without that reset is what the
 `ROTATED` flag path is for).
+
+---
+
+## 14. Live verification of the staff-notice + live-console add-on (2026-10-19)
+
+Branch `arena/76712121-insurance-platform` (target `main`), covering the four
+mandatory fixes of the brief: inline-CID e-mail logo, national-ID reveal in the
+admin customer profile, downloadable complaint attachments, and the full live
+staff dashboard — plus the Arabic add-on ("a customer message must immediately
+appear in staff notifications; clicking it opens that complaint's chat").
+
+**Stack used for this section (Docker-free):** `scripts/local_stack.py up` on
+pgserver PostgreSQL 16 (127.0.0.1:5432) + redislite (6379) + uvicorn API (:8000)
++ arq worker + vite (:5173), `.env` from `scripts/bootstrap_env.py`,
+`make local-seed` (4 demo staff, 5 000 complaints). **`alembic upgrade head`
+applied all 35 revisions including the new `20261019_35`** (staff notices +
+live directory revision signatures) against the real PostgreSQL parser; the
+committed SQL file also parses cleanly under `pglast` (12 statements).
+
+| Suite | Result |
+| --- | --- |
+| Backend `pytest -m 'not integration'` | ✅ **470 passed**, 81 deselected (incl. the new `tests/test_staff_notices.py`, 12 tests) |
+| Backend `pytest -m integration` (real PostgreSQL, `TEST_DATABASE_ADMIN_URL` / `TEST_DIRECT_DATABASE_URL`) | ✅ **55 passed**, 26 skipped (PgBouncer-parameterised), 470 deselected |
+| Frontend `vitest run` | ✅ **165 passed / 34 files** (new: `useStaffNotifications.test.tsx`, `ComplaintQueue.test.tsx`, `lib/notifications.test.ts`) |
+| `ruff check` + `ruff format --check` (repo root) | ✅ clean |
+| `python -m app.scripts.lint_migrations` | ✅ `checked 15 revision(s); 0 finding(s)` (zero-downtime linter) |
+| `mypy app` | ✅ 109 files clean |
+| Frontend `tsc --noEmit` + `npm run lint` | ✅ clean (2 pre-existing `react-refresh` warnings) |
+| `docs/openapi.yaml` drift | ✅ regenerated, byte-identical to `scripts/export_openapi.py` |
+
+**New committed live harness** — `qa-live/e2e_staff_notices_live.py`
+(evidence: `qa-live/results_staff_notices.json`): **22/22 checks passed** against
+the running stack. It logs the seeded demo staff in over real HTTP (including the
+forced password rotation), performs the customer writes through the application's
+own repository inside an RLS-scoped transaction, and then asserts over HTTP:
+
+* **S2 — the Arabic add-on, proven end to end:** a customer message on an open
+  ticket and a newly filed complaint both appear in `GET /api/me/notifications`
+  with `complaint_id` + `ticket_no` in the payload — exactly the link the staff
+  bell navigates to — and the staff timeline contains the new message.
+* **S3 — no manual refresh:** the open-ticket SSE stream
+  (`/api/staff/complaints/{id}/stream`) pushes a live signature frame, and the
+  complaints-queue WebSocket (`/api/staff/complaints/stream`) delivers a scoped
+  snapshot whose first page already contains the new complaint.
+* **S4 — live directory signatures:** `GET /api/staff/users/revision` and
+  `GET /api/staff/customers/revision` return opaque signatures for a global
+  administrator, stay stable while nothing changed (so the 15 s frontend poll
+  does not refetch), and answer 403 to an anonymous client.
+* **S5 — scoped fan-out and cross-tenant isolation:** a customer message on a
+  complaint inside a scoped agent's AccessScope reaches that agent
+  (0 → 1 notice for that complaint), a non-admin gets 403 from the customer
+  directory revision and an agent without `users.view` gets 403 from the staff
+  directory revision, and **every notice an agent holds points at a complaint
+  whose timeline that agent can actually read** — deny-wins scope resolution
+  with no leakage.
+
+Static gates for the four fixes remain green as committed: `test_branded_email.py`
+(inline-CID logo in every outbound HTML e-mail, text-only header without a logo),
+`test_customer_profile.py` (national-ID reveal + audit, last-4 otherwise),
+`test_phase2_attachments.py` (auto-`clean` without a scanner, `pending`/`infected`
+never downloadable).
+
+Stateful-rerun note: this harness rotates the demo staff passwords to
+`DemoStaffPass2026!x` on the first run and re-uses that value afterwards
+(`DEMO_PASSWORD` → `ROTATED_PASSWORD` in the script); re-seeding staff
+credentials resets it.

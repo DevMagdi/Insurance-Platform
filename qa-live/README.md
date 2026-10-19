@@ -14,7 +14,9 @@ output of the runs quoted in the report.
 | `e2e_core.py` | Part 1 (S1–S4): platform health, **customer registration/OTP/identification (highest priority)**, complaint creation/idempotency/attachments/CSAT, body limits, XSS/SQLi/Origin abuse, partial-PATCH profile semantics. 76 checks. |
 | `e2e_staff.py` | Part 2 (S5–S12): staff login + forced password change, invitation onboarding (e-mail token, profile, avatar), permission matrix, RLS scope enforcement, session security (rotation/replay/family revocation/force-logout), TOTP 2FA, full complaint lifecycle (assign → reply → note → escalate → resolve → reopen → CSAT), NID reveal + audit, CSV export, WebSocket, metrics, abuse detector. 111 checks. |
 | `e2e_resilience.py` | Part 3 (R1–R4): SMTP provider down during registration, Redis down, Postgres down (with recovery), JWT hardening (expired / `alg=none` / HS256 confusion / kid attacks / type confusion) + graceful-503 dependency checks. 32 checks. |
+| `e2e_staff_notices_live.py` | Part 4 (live): staff notices for customer activity + the live staff console — staff session, notice fan-out with complaint links, ticket SSE + queue WebSocket liveness, directory revision signatures, scoped fan-out / cross-tenant isolation. 22 checks. |
 | `results_core.json`, `results_staff.json`, `results_resilience.json` | Recorded evidence of the final green runs (2026-10-18). |
+| `results_staff_notices.json` | Recorded evidence of the 2026-10-19 staff-notice / live-console run (22 checks, 0 failures). |
 
 ## How to run
 
