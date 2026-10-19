@@ -39,7 +39,7 @@
     "name": "registration recovers after provider returns -> 202 + real OTP e-mail",
     "status": "PASS",
     "expected": "202 + code",
-    "actual": "202 mail=True code=184897"
+    "actual": "202 mail=True code=058346"
   },
   {
     "section": "R2 redis-down",
@@ -93,9 +93,9 @@
   {
     "section": "R2 redis-down",
     "name": "[RESILIENCE] arq worker survives a Redis (broker) outage",
-    "status": "FAIL",
+    "status": "PASS",
     "expected": "worker alive",
-    "actual": "DEAD - arq exits on broker ConnectionError; needs supervisor restart"
+    "actual": "alive"
   },
   {
     "section": "R2 redis-down",

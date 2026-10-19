@@ -74,7 +74,7 @@
     "name": "[CRITICAL] OTP e-mail actually delivered to the new address",
     "status": "PASS",
     "expected": "mail with 6-digit code",
-    "actual": "code=246360"
+    "actual": "code=228913"
   },
   {
     "section": "S2 registration",
@@ -102,7 +102,7 @@
     "name": "GET /api/me -> customer identity with masked national ID",
     "status": "PASS",
     "expected": "masked NID",
-    "actual": "{\"kind\":\"customer\",\"id\":\"7b01102d-8e52-488e-bd3f-6fd438725092\",\"full_name\":\"عميل جديد QA\",\"mobile\":\"+201155208490\",\"email\":\"brand.new.330448ad@example.com\",\"nat"
+    "actual": "{\"kind\":\"customer\",\"id\":\"dab4723f-6852-44f7-b1b5-e1921dd2592b\",\"full_name\":\"عميل جديد QA\",\"mobile\":\"+201129980884\",\"email\":\"brand.new.bc98a5eb@example.com\",\"nat"
   },
   {
     "section": "S2 registration",
@@ -123,7 +123,7 @@
     "name": "login lands on the SAME customer (no duplicate)",
     "status": "PASS",
     "expected": "same id",
-    "actual": "7b01102d-8e52-488e-bd3f-6fd438725092 vs 7b01102d-8e52-488e-bd3f-6fd438725092"
+    "actual": "dab4723f-6852-44f7-b1b5-e1921dd2592b vs dab4723f-6852-44f7-b1b5-e1921dd2592b"
   },
   {
     "section": "S2 registration",
@@ -256,14 +256,14 @@
     "name": "complaint create -> 201 with unique ticket number",
     "status": "PASS",
     "expected": "201 CMP-…",
-    "actual": "201 {\"id\":\"b1346385-7a4c-4e09-92e5-60b722616d59\",\"ticket_no\":\"CMP-2026-005011\",\"status\":\"new\",\"company_id\":\"b4635db1-c6b1-412e-b60f-9da2199e6b39"
+    "actual": "201 {\"id\":\"674023cf-e299-430f-a4eb-72783b41a2c6\",\"ticket_no\":\"CMP-2026-005001\",\"status\":\"new\",\"company_id\":\"de62cdfa-a0cc-4c0f-b605-48252636ae43"
   },
   {
     "section": "S3 complaints",
     "name": "idempotent replay (same key+body) -> original ticket, no duplicate",
     "status": "PASS",
-    "expected": "same ticket CMP-2026-005011",
-    "actual": "200 {\"id\":\"b1346385-7a4c-4e09-92e5-60b722616d59\",\"ticket_no\":\"CMP-2026-005011\",\"status\":\"new\",\"company_i"
+    "expected": "same ticket CMP-2026-005001",
+    "actual": "200 {\"id\":\"674023cf-e299-430f-a4eb-72783b41a2c6\",\"ticket_no\":\"CMP-2026-005001\",\"status\":\"new\",\"company_i"
   },
   {
     "section": "S3 complaints",
@@ -354,7 +354,7 @@
     "name": "guest track with ticket + matching NID -> public metadata only",
     "status": "PASS",
     "expected": "200 metadata",
-    "actual": "200 {\"public_ticket\":\"CMP-2026-005011\",\"public_status\":\"new\",\"public_company\":\"Cairo Shield\",\"created\":\"2026-10-18T20:25:04.859990Z\"}"
+    "actual": "200 {\"public_ticket\":\"CMP-2026-005001\",\"public_status\":\"new\",\"public_company\":\"Cairo Shield\",\"created\":\"2026-10-19T09:09:51.234890Z\"}"
   },
   {
     "section": "S3 complaints",
@@ -368,7 +368,7 @@
     "name": "ticket detail -> 200 with timeline eligibility flags",
     "status": "PASS",
     "expected": "200 + can_reopen",
-    "actual": "200 {\"id\":\"b1346385-7a4c-4e09-92e5-60b722616d59\",\"ticket_no\":\"CMP-2026-005011\",\"status\":\"new\",\"company_i"
+    "actual": "200 {\"id\":\"674023cf-e299-430f-a4eb-72783b41a2c6\",\"ticket_no\":\"CMP-2026-005001\",\"status\":\"new\",\"company_i"
   },
   {
     "section": "S3 complaints",
@@ -396,14 +396,14 @@
     "name": "attachment plan -> 200 with one-use signed upload URL",
     "status": "PASS",
     "expected": "200 + relative upload_url",
-    "actual": "200 {\"uploads\":[{\"id\":\"cd30261d-1255-47b2-b047-1c6ddc2b2f67\",\"upload_url\":\"/api/customer/attachments/uploads/cd30261d-1255-47b2-b047-1c6ddc2b2f6"
+    "actual": "200 {\"uploads\":[{\"id\":\"4d0fa9a2-8032-4010-b134-83e9fdd3cf6b\",\"upload_url\":\"/api/customer/attachments/uploads/4d0fa9a2-8032-4010-b134-83e9fdd3cf6"
   },
   {
     "section": "S3 complaints",
     "name": "upload PUT with token+checksum -> 2xx",
     "status": "PASS",
     "expected": "2xx",
-    "actual": "200 {\"id\":\"92e79d52-d4e6-4f69-91aa-6c8b2b4f4e4b\",\"scan_status\":\"pending\",\"message\":\"Awaiting virus scan;"
+    "actual": "200 {\"id\":\"b681fde8-0809-43cd-a2a1-bc27ae236c6c\",\"scan_status\":\"pending\",\"message\":\"Awaiting virus scan;"
   },
   {
     "section": "S3 complaints",
@@ -438,14 +438,14 @@
     "name": "customer reply on own ticket -> 200/201",
     "status": "PASS",
     "expected": "2xx",
-    "actual": "200 {\"id\":\"2ecb40ea-7d42-486e-8e9a-50524b370c7e\",\"created_at\":\"2026-10-18T20:25:05.7"
+    "actual": "200 {\"id\":\"fd7a4656-1ec4-4d24-a48d-a311aae8b5a7\",\"created_at\":\"2026-10-19T09:09:52.3"
   },
   {
     "section": "S3 complaints",
     "name": "worker delivers transactional notice e-mail via outbox (SMTP sink)",
     "status": "PASS",
     "expected": "notice .eml mentioning the ticket",
-    "actual": "20261018-202800-02564628.eml"
+    "actual": "20261019-091000-57207282.eml"
   },
   {
     "section": "S3 complaints",
@@ -480,21 +480,21 @@
     "name": "GET /api/customer/profile -> 200 with preferences",
     "status": "PASS",
     "expected": "200",
-    "actual": "200 {\"id\":\"7b01102d-8e52-488e-bd3f-6fd438725092\",\"email\":\"brand.new.330448ad@example.com\",\"mobile\":\"+201"
+    "actual": "200 {\"id\":\"dab4723f-6852-44f7-b1b5-e1921dd2592b\",\"email\":\"brand.new.bc98a5eb@example.com\",\"mobile\":\"+201"
   },
   {
     "section": "S3 complaints",
     "name": "PATCH /api/customer/profile -> 200 and persisted",
     "status": "PASS",
     "expected": "persisted",
-    "actual": "200 {\"id\":\"7b01102d-8e52-488e-bd3f-6fd438725092\",\"email\":\"brand.new.330448ad@example.com\",\"mobile\":\"+201"
+    "actual": "200 {\"id\":\"dab4723f-6852-44f7-b1b5-e1921dd2592b\",\"email\":\"brand.new.bc98a5eb@example.com\",\"mobile\":\"+201"
   },
   {
     "section": "S3 complaints",
     "name": "[FIX L-4] preferences-only PATCH (no full_name) -> 200; name and whatsapp preserved",
     "status": "PASS",
     "expected": "name/whatsapp kept, prefs saved",
-    "actual": "200 {\"id\":\"7b01102d-8e52-488e-bd3f-6fd438725092\",\"email\":\"brand.new.330448ad@example.com\",\"mobile\":\"+201155208490\",\"full_name\":\"عميل جديد QA\",\"n"
+    "actual": "200 {\"id\":\"dab4723f-6852-44f7-b1b5-e1921dd2592b\",\"email\":\"brand.new.bc98a5eb@example.com\",\"mobile\":\"+201129980884\",\"full_name\":\"عميل جديد QA\",\"n"
   },
   {
     "section": "S3 complaints",
