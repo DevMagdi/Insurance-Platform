@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime, timedelta
 from tempfile import SpooledTemporaryFile
 from typing import Any
@@ -32,11 +33,22 @@ _ALLOWED = frozenset({"application/pdf", "image/jpeg", "image/png"})
 
 class AttachmentService:
     def __init__(
-        self, repository: AttachmentRepository, tokens: TokenManager, blobs: BlobCipher
+        self,
+        repository: AttachmentRepository,
+        tokens: TokenManager,
+        blobs: BlobCipher,
+        scanner_configured: Callable[[AsyncSession], Awaitable[bool]] | None = None,
     ) -> None:
         self.repository = repository
         self.tokens = tokens
         self.blobs = blobs
+        # Presence probe for an external virus scanner. When no scanner is
+        # configured, a successful upload has already passed magic-byte MIME,
+        # size and checksum inspection, so it is marked clean immediately
+        # instead of being stuck in "pending" forever. When a scanner IS
+        # configured (or the probe is not wired), uploads stay pending for
+        # the worker's verdict — fail closed.
+        self.scanner_configured = scanner_configured
 
     async def plan(
         self,
@@ -139,6 +151,17 @@ class AttachmentService:
             checksum=digest,
             content=content,
         )
+        # The row is inserted 'pending' (RLS) and the runtime role cannot
+        # UPDATE it. With no virus scanner configured, content inspection is
+        # the only gate, so transition through the narrow SECURITY DEFINER
+        # (which re-checks scanner absence) instead of staying pending.
+        auto_clean = False
+        if self.scanner_configured is not None and not await self.scanner_configured(db):
+            marked = await db.scalar(
+                text("SELECT app_security.mark_attachment_clean_no_scanner(:id)"),
+                {"id": attachment.id},
+            )
+            auto_clean = bool(marked)
         if scope.actor.scope == "customer":
             await db.execute(
                 text("SELECT app_security.audit_customer_action(:id, :created, 'upload')"),
@@ -156,6 +179,12 @@ class AttachmentService:
                 )
             )
         await db.flush()
+        if auto_clean:
+            return {
+                "id": attachment.id,
+                "scan_status": "clean",
+                "message": "File passed content inspection and is available for download",
+            }
         return {
             "id": attachment.id,
             "scan_status": "pending",

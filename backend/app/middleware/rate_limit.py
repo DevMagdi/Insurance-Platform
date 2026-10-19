@@ -88,7 +88,7 @@ ENDPOINT_CLASSES: tuple[EndpointClass, ...] = (
     ),
     _cls(
         "pii_reveal",
-        r"^/api/staff/complaints/[^/]+/national-id:reveal$",
+        r"^/api/staff/(complaints|customers)/[^/]+/national-id:reveal$",
         "POST",
         Limit("user", 30, 3600),
     ),

@@ -517,6 +517,35 @@ class ComplaintRepository:
         )
         return result
 
+    async def reveal_customer_national_id(
+        self, db: AsyncSession, customer_id: UUID
+    ) -> bytes | None:
+        """Ciphertext for the admin full-profile reveal (global scope gated in SQL)."""
+        result: bytes | None = await db.scalar(
+            text("SELECT app_security.read_customer_profile_national_id_ciphertext(:id)"),
+            {"id": customer_id},
+        )
+        return result
+
+    async def audit_customer_reveal(
+        self,
+        db: AsyncSession,
+        *,
+        staff_id: UUID,
+        customer_id: UUID,
+        reason: str,
+    ) -> None:
+        db.add(
+            AuditLog(
+                actor_staff_id=staff_id,
+                action="national_id_revealed",
+                resource_type="customer",
+                resource_id=customer_id,
+                after_state={"reason": reason, "surface": "customer_profile"},
+            )
+        )
+        await db.flush()
+
     async def audit_reveal(
         self,
         db: AsyncSession,

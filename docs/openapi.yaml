@@ -2841,6 +2841,36 @@ paths:
       security:
       - AccessCookie: []
       x-required-permission: complaints.view_full_national_id
+  /api/staff/complaints/{complaint_id}/stream:
+    get:
+      tags:
+      - staff
+      summary: Staff Complaint Stream
+      description: Live SSE for the open staff ticket; auth/scope rechecked every
+        poll.
+      operationId: staff_complaint_stream_api_staff_complaints__complaint_id__stream_get
+      parameters:
+      - name: complaint_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Complaint Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
   /api/staff/complaints/{complaint_id}/attachments:
     get:
       tags:
@@ -7610,6 +7640,58 @@ paths:
       security:
       - AccessCookie: []
       x-required-permission: users.view
+  /api/staff/customers/{customer_id}/national-id:reveal:
+    post:
+      tags:
+      - platform
+      summary: Reveal Customer National Id
+      description: 'Reveal a customer''s full national ID in the admin full profile.
+
+
+        Requires the dedicated reveal permission (route gate) plus, in SQL,
+
+        ``users.view`` with a global scope; every success is audit-logged.'
+      operationId: reveal_customer_national_id_api_staff_customers__customer_id__national_id_reveal_post
+      parameters:
+      - name: customer_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Customer Id
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RevealReason'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: string
+                title: Response Reveal Customer National Id Api Staff Customers  Customer
+                  Id  National Id Reveal Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: complaints.view_full_national_id
   /api/health/live:
     get:
       tags:
@@ -9541,6 +9623,10 @@ x-websockets:
   description: Same-origin, AccessCookie, complaints.view; filtered scoped snapshots
     on connect, refresh or heartbeat.
 x-event-streams:
+- path: /api/staff/complaints/{complaint_id}/stream
+  description: Server-Sent Events; same-origin AccessCookie for staff with complaints.view.
+    Emits snapshot/update events (status + signature only, never message bodies) and
+    revalidates session, token version, permission and AccessScope per poll.
 - path: /api/customer/complaints/{complaint_id}/stream
   description: Server-Sent Events; same-origin AccessCookie for the owning customer.
     Emits snapshot/update events (status + signature only, never message bodies) and

@@ -4,7 +4,7 @@ import { api } from '../../api';
 import type { StaffAccess } from '../../types';
 import { CustomersPage } from './CustomersPage';
 
-vi.mock('../../api', () => ({ api: vi.fn() }));
+vi.mock('../../api', () => ({ api: vi.fn(), jsonBody: (value: unknown) => JSON.stringify(value) }));
 afterEach(() => { cleanup(); vi.clearAllMocks(); });
 
 const access: StaffAccess = {
@@ -103,5 +103,37 @@ describe('CustomersPage', () => {
     fireEvent.change(companySelect, { target: { value: '' } });
     expect(screen.getByText('منى أحمد')).toBeTruthy();
     expect(screen.getByText('أحمد محمد')).toBeTruthy();
+  });
+});
+
+describe('CustomersPage national ID', () => {
+  const privileged: StaffAccess = { ...access, permissions: ['users.view', 'complaints.view_full_national_id'] };
+
+  it('shows masked رقم البطاقة and reveals the full ID with a reason for authorized staff', async () => {
+    vi.mocked(api).mockImplementation(async (path: string, init?: RequestInit) => {
+      if (path === '/api/staff/customers') return [{ ...customer, national_id_last4: '2345' }] as never;
+      if (path === '/api/companies') return [company] as never;
+      if (path === '/api/staff/customers/customer-1/national-id:reveal' && init?.method === 'POST') {
+        return { national_id: '29901010112345' } as never;
+      }
+      return [] as never;
+    });
+    render(<CustomersPage access={privileged} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'منى أحمد' }));
+    expect(screen.getByText('رقم البطاقة')).toBeTruthy();
+    expect(screen.getByText('•••• •••• 2345')).toBeTruthy();
+    expect(screen.queryByText('29901010112345')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'إظهار رقم البطاقة' }));
+    fireEvent.change(screen.getByRole('textbox', { name: 'سبب إظهار رقم البطاقة' }), { target: { value: 'التحقق من هوية العميل' } });
+    fireEvent.click(screen.getByRole('button', { name: 'تأكيد الإظهار' }));
+    expect(await screen.findByText('29901010112345')).toBeTruthy();
+  });
+
+  it('does not offer reveal without the dedicated permission', async () => {
+    mockDirectory([{ ...customer, national_id_last4: '2345' }]);
+    render(<CustomersPage access={access} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'منى أحمد' }));
+    expect(screen.getByText('رقم البطاقة')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'إظهار رقم البطاقة' })).toBeNull();
   });
 });

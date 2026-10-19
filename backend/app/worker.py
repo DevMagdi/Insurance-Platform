@@ -128,7 +128,19 @@ async def startup(ctx: dict[str, Any]) -> None:
         return str(rows[0][0]) if rows else "Insurance"
 
     ctx["platform_name"] = platform_name
-    ctx["delivery"] = SMTPDelivery(config, brand_loader=platform_name)
+
+    async def platform_logo() -> Any:
+        from app.services.brand_assets import detect_logo
+
+        rows = await _worker_query(
+            ctx["engine"], "SELECT * FROM app_security.public_platform_logo()", {}
+        )
+        if not rows:
+            return None
+        return detect_logo(bytes(rows[0].logo_content), str(rows[0].logo_mime_type))
+
+    ctx["platform_logo"] = platform_logo
+    ctx["delivery"] = SMTPDelivery(config, brand_loader=platform_name, logo_loader=platform_logo)
     ctx["scanner"] = UnconfiguredVirusScanner()
     keyring = build_keyring(
         config.app_encryption_key,
@@ -334,6 +346,8 @@ async def _process_integration_job(ctx: dict[str, Any], row: Any) -> None:
             brand_loader = ctx.get("platform_name")
             brand = (await brand_loader()) if brand_loader is not None else "Insurance"
             brand = brand.strip()[:80] or "Insurance"
+            logo_loader = ctx.get("platform_logo")
+            logo = (await logo_loader()) if logo_loader is not None else None
             text, html = branded_email(
                 str(payload.get("subject", "")),
                 str(payload.get("body", ""))[:19_900],
@@ -343,6 +357,7 @@ async def _process_integration_job(ctx: dict[str, Any], row: Any) -> None:
                     ctx.get("config"), "support_email", "support@example.invalid"
                 ),
                 locale=str(payload.get("locale", "en")),
+                has_logo=logo is not None,
             )
             email_request = EmailSendRequest(
                 recipients=tuple(str(value) for value in payload.get("recipients", [])),
@@ -351,6 +366,7 @@ async def _process_integration_job(ctx: dict[str, Any], row: Any) -> None:
                 html_body=html,
                 locale=str(payload.get("locale", "en")),
                 attachments=tuple(outbound_attachments),
+                logo=logo,
             )
             environment = _environment(ctx)
             email_result = await _email_provider(row.provider, config, environment).send(
@@ -824,20 +840,26 @@ async def scan_pending(ctx: dict[str, Any]) -> str:
             verdict: str | None = "error"
         else:
             try:
-                verdict = await scanner.scan(
-                    ScanTarget(
-                        attachment_id=row.attachment_id,
-                        original_filename=str(row.original_filename),
-                        mime_type=str(row.mime_type),
-                        size_bytes=int(row.size_bytes),
-                        checksum_sha256=str(row.checksum_sha256),
-                        content=blobs.decrypt(
-                            content, purpose=ATTACHMENT, resource_id=row.attachment_id
-                        ),
-                    )
-                )
+                plain = blobs.decrypt(content, purpose=ATTACHMENT, resource_id=row.attachment_id)
             except ValueError:
                 verdict = "error"
+            else:
+                if isinstance(scanner, UnconfiguredVirusScanner):
+                    # No virus scanner is configured: the upload already
+                    # passed magic-byte MIME, size and checksum inspection,
+                    # so it must not stay pending (undownloadable) forever.
+                    verdict = "clean"
+                else:
+                    verdict = await scanner.scan(
+                        ScanTarget(
+                            attachment_id=row.attachment_id,
+                            original_filename=str(row.original_filename),
+                            mime_type=str(row.mime_type),
+                            size_bytes=int(row.size_bytes),
+                            checksum_sha256=str(row.checksum_sha256),
+                            content=plain,
+                        )
+                    )
         if verdict in ("clean", "infected", "error"):
             await _worker_query(
                 engine,

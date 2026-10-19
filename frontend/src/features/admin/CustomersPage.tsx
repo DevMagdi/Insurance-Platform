@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { api } from '../../api';
+import { api, jsonBody } from '../../api';
 import { AccessDenied } from '../../components/Access';
 import { Icon } from '../../components/Icon';
 import { Modal, SectionTitle } from '../../components/Modal';
@@ -10,7 +10,7 @@ import type { StaffAccess } from '../../types';
 interface Company { id: string; name_en: string; name_ar: string; }
 interface Policy { company_name_en: string; company_name_ar: string; insurance_type: string; policy_number: string; effective_from: string | null; expires_at: string | null; }
 interface CustomerComplaint { ticket_no: string; subject: string; status: string; created_at: string; company_name_en: string; company_name_ar: string; insurance_type: string; }
-interface Customer { id: string; full_name: string; email: string | null; mobile: string; whatsapp_available: boolean; created_at: string; companies: Company[]; policies: Policy[]; complaints: CustomerComplaint[]; complaints_count: number; }
+interface Customer { id: string; full_name: string; email: string | null; mobile: string; whatsapp_available: boolean; created_at: string; national_id_last4?: string | null; companies: Company[]; policies: Policy[]; complaints: CustomerComplaint[]; complaints_count: number; }
 
 export function CustomersPage({ access }: { access: StaffAccess }) {
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -25,6 +25,45 @@ export function CustomersPage({ access }: { access: StaffAccess }) {
   const [dateFrom, setDateFrom] = useState<string>('');
   const [dateTo, setDateTo] = useState<string>('');
   const [reloadToken, setReloadToken] = useState(0);
+  const [nationalId, setNationalId] = useState('');
+  const [revealReason, setRevealReason] = useState('');
+  const [revealBusy, setRevealBusy] = useState(false);
+  const [revealError, setRevealError] = useState('');
+  const [showRevealForm, setShowRevealForm] = useState(false);
+
+  // Keep the directory live while the page is visible; no manual refresh.
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === 'visible') setReloadToken((value) => value + 1);
+    }, 30_000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  const openCustomer = (customer: Customer) => {
+    setNationalId('');
+    setRevealReason('');
+    setRevealError('');
+    setShowRevealForm(false);
+    setSelected(customer);
+  };
+
+  const canRevealNationalId = hasPermission(access, 'complaints.view_full_national_id');
+  const revealNationalId = async () => {
+    if (!selected || revealReason.trim().length < 10) return;
+    setRevealBusy(true);
+    setRevealError('');
+    try {
+      const result = await api<{ national_id: string }>(`/api/staff/customers/${encodeURIComponent(selected.id)}/national-id:reveal`, {
+        method: 'POST', body: jsonBody({ reason: revealReason.trim() }),
+      });
+      setNationalId(result.national_id);
+      setShowRevealForm(false);
+    } catch (cause) {
+      setRevealError(cause instanceof Error ? cause.message : 'تعذر إظهار رقم البطاقة.');
+    } finally {
+      setRevealBusy(false);
+    }
+  };
 
   useEffect(() => {
     let active = true;
@@ -167,8 +206,8 @@ export function CustomersPage({ access }: { access: StaffAccess }) {
           : (customer.policies.length > 0 
               ? customer.policies.map((p) => p.company_name_ar || p.company_name_en).join('، ')
               : 'غير مرتبطة');
-        return <tr key={customer.id} onClick={() => setSelected(customer)} style={{ cursor: 'pointer' }} tabIndex={0} onKeyDown={(event) => { if (event.key === 'Enter') setSelected(customer); }}>
-          <td><button type="button" className="link-button" onClick={(event) => { event.stopPropagation(); setSelected(customer); }}><strong>{customer.full_name}</strong></button><small className="cell-secondary" dir="ltr">{customer.id}</small></td>
+        return <tr key={customer.id} onClick={() => openCustomer(customer)} style={{ cursor: 'pointer' }} tabIndex={0} onKeyDown={(event) => { if (event.key === 'Enter') openCustomer(customer); }}>
+          <td><button type="button" className="link-button" onClick={(event) => { event.stopPropagation(); openCustomer(customer); }}><strong>{customer.full_name}</strong></button><small className="cell-secondary" dir="ltr">{customer.id}</small></td>
           <td><span dir="ltr">{customer.mobile}</span><small className="cell-secondary" dir="ltr">{customer.email || '—'}</small></td>
           <td>{companyNames}</td>
           <td>{formatNumber(customer.policies.length)}</td>
@@ -178,6 +217,39 @@ export function CustomersPage({ access }: { access: StaffAccess }) {
       })}
       {!loading && !filtered.length && <tr><td colSpan={6}><div className="empty-table"><span className="empty-icon"><Icon name="users" size={20} /></span><strong>لا يوجد عملاء مطابقون</strong><span>ابحث بكلمات مختلفة تشمل الاسم أو رقم الوثيقة أو الشركة.</span></div></td></tr>}
     </tbody></table></div></section>
-    {selected && <Modal title={selected.full_name} eyebrow="ملف العميل الكامل" onClose={() => setSelected(null)}><div className="page-stack"><section className="surface-card" style={{ padding: 18 }}><h3>بيانات التواصل</h3><p>رقم الموبايل: <bdi>{selected.mobile}</bdi></p><p>البريد الإلكتروني: <bdi>{selected.email || 'غير مسجل'}</bdi></p><p>واتساب: {selected.whatsapp_available ? 'متاح' : 'غير متاح'}</p><p>تاريخ التسجيل: {formatDateTime(selected.created_at)}</p><p>عدد الشكاوى: {formatNumber(selected.complaints_count)}</p></section><section className="surface-card" style={{ padding: 18 }}><h3>شركات التأمين والوثائق</h3>{selected.policies.length ? selected.policies.map((policy, index) => <article key={`${policy.policy_number}-${index}`} style={{ padding: '12px 0', borderTop: '1px solid var(--line, #ddd)' }}><strong>{policy.company_name_ar} · {policy.company_name_en}</strong><p>رقم الوثيقة: <bdi>{policy.policy_number}</bdi></p><p>النوع: {policy.insurance_type} · من {policy.effective_from || '—'} إلى {policy.expires_at || '—'}</p></article>) : <p>لا توجد وثائق مرتبطة.</p>}</section><section className="surface-card" style={{ padding: 18 }}><h3>سجل الشكاوى</h3>{selected.complaints.length ? selected.complaints.map((complaint) => <article key={complaint.ticket_no} style={{ padding: '12px 0', borderTop: '1px solid var(--line, #ddd)' }}><strong>{complaint.ticket_no} · {complaint.subject}</strong><p>{complaint.company_name_ar || complaint.company_name_en} · {complaint.insurance_type}</p><p>الحالة: {complaint.status} · {formatDateTime(complaint.created_at)}</p></article>) : <p>لا توجد شكاوى مسجلة.</p>}</section></div></Modal>}
+    {selected && <Modal title={selected.full_name} eyebrow="ملف العميل الكامل" onClose={() => setSelected(null)}><div className="page-stack customer-profile">
+      <section className="surface-card customer-profile-section">
+        <h3>الهوية</h3>
+        <div className="customer-profile-grid">
+          <div><span>الاسم الكامل</span><strong>{selected.full_name}</strong></div>
+          <div><span>تاريخ التسجيل</span><strong>{formatDateTime(selected.created_at)}</strong></div>
+        </div>
+        <div className="customer-national-id">
+          <span>رقم البطاقة</span>
+          {nationalId
+            ? <strong className="national-id-value" dir="ltr">{nationalId}</strong>
+            : <>
+              <strong className="national-id-value" dir="ltr">{selected.national_id_last4 ? `•••• •••• ${selected.national_id_last4}` : 'غير مسجل'}</strong>
+              {canRevealNationalId && !showRevealForm && <button className="button button-light button-small" type="button" onClick={() => setShowRevealForm(true)}>إظهار رقم البطاقة</button>}
+              {!canRevealNationalId && <small className="muted">الإظهار الكامل يتطلب صلاحية عرض رقم البطاقة.</small>}
+            </>}
+          {showRevealForm && !nationalId && <div className="customer-reveal-form">
+            <label className="field-label">سبب الإظهار (١٠ أحرف على الأقل)
+              <input aria-label="سبب إظهار رقم البطاقة" value={revealReason} onChange={(event) => setRevealReason(event.target.value)} placeholder="مثال: التحقق من هوية العميل" />
+            </label>
+            {revealError && <div className="inline-alert error" role="alert">{revealError}</div>}
+            <div className="modal-actions">
+              <button className="button button-light" type="button" onClick={() => setShowRevealForm(false)}>إلغاء</button>
+              <button className="button button-dark" type="button" disabled={revealBusy || revealReason.trim().length < 10} onClick={() => { void revealNationalId(); }}>{revealBusy ? 'جارٍ الإظهار…' : 'تأكيد الإظهار'}</button>
+            </div>
+            <small className="muted">يتم تسجيل كل عملية إظهار في سجل التدقيق.</small>
+          </div>}
+          {revealError && !showRevealForm && <div className="inline-alert error" role="alert">{revealError}</div>}
+        </div>
+      </section>
+      <section className="surface-card customer-profile-section"><h3>التواصل</h3><div className="customer-profile-grid"><div><span>رقم الموبايل</span><strong dir="ltr">{selected.mobile}</strong></div><div><span>البريد الإلكتروني</span><strong dir="ltr">{selected.email || 'غير مسجل'}</strong></div><div><span>واتساب</span><strong>{selected.whatsapp_available ? 'متاح' : 'غير متاح'}</strong></div><div><span>عدد الشكاوى</span><strong>{formatNumber(selected.complaints_count)}</strong></div></div></section>
+      <section className="surface-card customer-profile-section"><h3>الوثائق والشركات</h3>{selected.policies.length ? selected.policies.map((policy, index) => <article className="customer-profile-item" key={`${policy.policy_number}-${index}`}><strong>{policy.company_name_ar} · {policy.company_name_en}</strong><p>رقم الوثيقة: <bdi>{policy.policy_number}</bdi></p><p>النوع: {policy.insurance_type} · من {policy.effective_from || '—'} إلى {policy.expires_at || '—'}</p></article>) : <div className="empty-inline">لا توجد وثائق مرتبطة.{selected.complaints.length ? ' شركات الشكاوى المرتبطة موضحة في سجل الشكاوى أدناه.' : ''}</div>}</section>
+      <section className="surface-card customer-profile-section"><h3>سجل الشكاوى</h3>{selected.complaints.length ? selected.complaints.map((complaint) => <article className="customer-profile-item" key={complaint.ticket_no}><strong>{complaint.ticket_no} · {complaint.subject}</strong><p>{complaint.company_name_ar || complaint.company_name_en} · {complaint.insurance_type}</p><p>الحالة: {complaint.status} · {formatDateTime(complaint.created_at)}</p></article>) : <div className="empty-inline">لا توجد شكاوى مسجلة.</div>}</section>
+    </div></Modal>}
   </div>;
 }

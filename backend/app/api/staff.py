@@ -6,6 +6,7 @@ from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
+from fastapi.responses import StreamingResponse
 from sqlalchemy.exc import DBAPIError
 
 from app.api.deps import RequestContext, require_permission
@@ -34,6 +35,7 @@ from app.repositories.access import AccessRepository
 from app.repositories.complaints import ComplaintRepository
 from app.repositories.staff_profiles import StaffProfileRepository
 from app.security.tokens import csrf_required
+from app.services.realtime import stream_staff_complaint
 
 router = APIRouter(prefix="/api/staff", tags=["staff"])
 
@@ -409,6 +411,32 @@ async def reveal_national_id(
     value = await ctx.complaints.reveal_national_id(ctx.db, ctx.scope, complaint_id, item.reason)
     response.headers["Cache-Control"] = "no-store"
     return {"national_id": value}
+
+
+@router.get("/complaints/{complaint_id}/stream")
+async def staff_complaint_stream(complaint_id: UUID, request: Request) -> StreamingResponse:
+    """Live SSE for the open staff ticket; auth/scope rechecked every poll."""
+    auth = request.app.state.auth
+    claims = auth.tokens.parse(request.cookies.get("access_token"), "access")
+    if claims.subject.scope != "staff":
+        raise HTTPException(status_code=403, detail="Staff account required")
+    generator = stream_staff_complaint(
+        factory=request.app.state.factory,
+        redis=request.app.state.redis,
+        complaints=request.app.state.complaints,
+        claims=claims,
+        complaint_id=complaint_id,
+        is_disconnected=request.is_disconnected,
+    )
+    return StreamingResponse(
+        generator,
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache, no-store",
+            "X-Accel-Buffering": "no",
+            "Connection": "keep-alive",
+        },
+    )
 
 
 @router.get("/complaints/{complaint_id}/attachments")

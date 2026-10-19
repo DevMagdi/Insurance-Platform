@@ -48,7 +48,9 @@ def fixture() -> tuple[
     blobs = BlobCipher(settings.encryption_keyring())
     service = AttachmentService(repo, tokens, blobs)
     scope = AccessScope.for_customer(Actor(uuid4(), "customer"))
-    db = SimpleNamespace(execute=AsyncMock(), add=Mock(), flush=AsyncMock())
+    db = SimpleNamespace(
+        execute=AsyncMock(), add=Mock(), flush=AsyncMock(), scalar=AsyncMock(return_value=True)
+    )
     parent = SimpleNamespace(id=uuid4(), created_at=datetime.now(UTC))
     return service, repo, blobs, db, scope, parent, tokens
 
@@ -290,3 +292,60 @@ async def test_download_of_pre_revision_24_rows_is_gone_not_stale(fixture: tuple
     with pytest.raises(HTTPException) as exc:
         await service.download(db, scope, sid, 0, record.id, token)
     assert exc.value.status_code == 410
+
+
+async def test_upload_without_configured_scanner_is_clean_and_downloadable(
+    fixture: tuple,
+) -> None:
+    """No scanner configured: content inspection is the gate, never stuck pending."""
+    service, repo, _blobs, db, scope, parent, tokens = fixture
+    service.scanner_configured = AsyncMock(return_value=False)
+    record = reservation(parent, scope.actor)
+    repo.get_reservation.return_value = record
+
+    async def finalize(_db: object, _scope: object, _record: object, **kwargs: object):
+        return SimpleNamespace(id=kwargs["attachment_id"], scan_status="pending")
+
+    repo.finalize.side_effect = finalize
+    sid = uuid4()
+    token = tokens.issue(scope.actor, sid, 0, "upload", timedelta(minutes=5), resource_id=record.id)
+    result = await service.upload(db, scope, sid, 0, record.id, token, body_request(PDF))
+    assert result["scan_status"] == "clean"
+    db.scalar.assert_awaited()  # Clean transition goes through the SECURITY DEFINER.
+    # The same clean gate used by authorize/download now passes for this row.
+    repo.clean_attachment.return_value = SimpleNamespace(
+        id=result["id"],
+        content=_blobs.encrypt(PDF, purpose=ATTACHMENT, resource_id=result["id"]),
+        size_bytes=len(PDF),
+        checksum_sha256=hashlib.sha256(PDF).hexdigest(),
+        mime_type="application/pdf",
+        original_filename="report.pdf",
+        complaint_id=parent.id,
+        complaint_created_at=parent.created_at,
+    )
+    authorization = await service.authorize_download(db, scope, sid, 0, result["id"])
+    content, _meta = await service.download(
+        db, scope, sid, 0, result["id"], authorization["download_token"]
+    )
+    assert content == PDF
+
+
+async def test_upload_with_configured_scanner_stays_pending(fixture: tuple) -> None:
+    service, repo, _blobs, db, scope, parent, tokens = fixture
+    service.scanner_configured = AsyncMock(return_value=True)
+    record = reservation(parent, scope.actor)
+    repo.get_reservation.return_value = record
+
+    async def finalize(_db: object, _scope: object, _record: object, **kwargs: object):
+        return SimpleNamespace(id=kwargs["attachment_id"], scan_status="pending")
+
+    repo.finalize.side_effect = finalize
+    sid = uuid4()
+    token = tokens.issue(scope.actor, sid, 0, "upload", timedelta(minutes=5), resource_id=record.id)
+    result = await service.upload(db, scope, sid, 0, record.id, token, body_request(PDF))
+    assert result["scan_status"] == "pending"
+    db.scalar.assert_not_awaited()
+    repo.clean_attachment.return_value = None
+    with pytest.raises(HTTPException) as exc:
+        await service.authorize_download(db, scope, sid, 0, result["id"])
+    assert exc.value.status_code == 404  # Infected/pending still blocked.

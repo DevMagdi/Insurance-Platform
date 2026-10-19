@@ -124,6 +124,7 @@ def branded_email(
     public_url: str = "",
     support_email: str = "support@example.invalid",
     locale: str = "en",
+    has_logo: bool = False,
 ) -> tuple[str, str]:
     """Shared final rendering boundary: all content is text, never trusted HTML."""
     from html import escape
@@ -137,10 +138,16 @@ def branded_email(
     if origin:
         footer += f"\nPortal: {origin}"
     text = f"{body.rstrip()}\n\n{footer}"
+    # The logo travels inside the message as a CID image part (see
+    # brand_assets.attach_inline_logo); remote logo URLs are blocked by
+    # most clients and render as a broken-image icon. Without logo bytes
+    # there is no <img> at all — just the text brand header below.
+    from app.services.brand_assets import LOGO_CID_REF
+
     logo = (
-        f'<img src="{escape(origin, quote=True)}/api/public/brand/logo" '
+        f'<img src="{LOGO_CID_REF}" '
         f'alt="{escape(brand, quote=True)}" width="160" style="max-width:160px;height:auto">'
-        if origin
+        if has_logo
         else ""
     )
     # Promote standalone HTTP(S) links (including one-time invitations) to safe CTAs.

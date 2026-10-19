@@ -29,7 +29,9 @@ from app.security.tokens import TokenClaims
 from app.services.complaints import ComplaintService
 
 
-def complaint_signature(detail: dict[str, Any], timeline: dict[str, Any]) -> str:
+def complaint_signature(
+    detail: dict[str, Any], timeline: dict[str, Any], attachments: Any = ()
+) -> str:
     """Stable fingerprint of everything the ticket screen renders."""
     last_event = timeline["events"][-1]["id"] if timeline.get("events") else None
     last_message = timeline["messages"][-1]["id"] if timeline.get("messages") else None
@@ -42,6 +44,7 @@ def complaint_signature(detail: dict[str, Any], timeline: dict[str, Any]) -> str
             "messages": len(timeline.get("messages", [])),
             "last_event": str(last_event),
             "last_message": str(last_message),
+            "attachments": [[str(item.id), str(item.scan_status)] for item in attachments or ()],
         },
         sort_keys=True,
     )
@@ -79,6 +82,60 @@ async def stream_customer_complaint(
             parent = await complaints.parent(db, ctx.scope, complaint_id)
             timeline = await ComplaintRepository().timeline(db, ctx.scope, parent, 1, 100)
         signature = complaint_signature(detail, timeline)
+        payload = {
+            "complaint_id": str(complaint_id),
+            "ticket_no": detail.get("ticket_no"),
+            "status": detail.get("status"),
+            "signature": signature,
+        }
+        if previous is None:
+            yield sse_event("snapshot", payload)
+        elif signature != previous:
+            yield sse_event("update", payload)
+        else:
+            yield ": heartbeat\n\n"
+        previous = signature
+        if max_polls is not None and polls >= max_polls:
+            return
+        await asyncio.sleep(poll_seconds)
+
+
+async def stream_staff_complaint(
+    *,
+    factory: async_sessionmaker[AsyncSession],
+    redis: Redis,
+    complaints: ComplaintService,
+    claims: TokenClaims,
+    complaint_id: UUID,
+    poll_seconds: float = 3.0,
+    max_polls: int | None = None,
+    is_disconnected: Callable[[], Any] | None = None,
+) -> AsyncIterator[str]:
+    """Staff twin of the customer stream: same per-poll revalidation.
+
+    Every tick re-runs session, token-version, ``complaints.view``
+    permission and AccessScope checks, and the signature also covers
+    attachment scan states so a newly-clean file refreshes the open ticket.
+    Only status + signature are emitted — never message bodies.
+    """
+    if claims.subject.scope != "staff":
+        raise HTTPException(status_code=403, detail="Staff account required")
+    actor = Actor(claims.subject.id, "staff")
+    previous: str | None = None
+    polls = 0
+    while max_polls is None or polls < max_polls:
+        polls += 1
+        if is_disconnected is not None and await _disconnected(is_disconnected):
+            return
+        async with scoped_transaction(factory, actor) as db:
+            ctx = await load_context(db, claims, redis, complaints)
+            if "complaints.view" not in ctx.permissions:
+                raise HTTPException(status_code=403, detail="Permission denied")
+            detail = await complaints.detail(db, ctx.scope, complaint_id)
+            parent = await complaints.parent(db, ctx.scope, complaint_id)
+            timeline = await ComplaintRepository().timeline(db, ctx.scope, parent, 1, 100)
+            attachments = await ComplaintRepository().attachments(db, ctx.scope, parent)
+        signature = complaint_signature(detail, timeline, attachments)
         payload = {
             "complaint_id": str(complaint_id),
             "ticket_no": detail.get("ticket_no"),

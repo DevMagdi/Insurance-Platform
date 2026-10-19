@@ -92,6 +92,8 @@ class StaffMailService:
             brand_loader = getattr(self.fallback, "brand_loader", None)
             brand = (await brand_loader()) if brand_loader is not None else "Insurance"
             brand = brand.strip()[:80] or "Insurance"
+            logo_loader = getattr(self.fallback, "_logo", None)
+            logo = await logo_loader() if logo_loader is not None else None
             text, html = branded_email(
                 subject,
                 body,
@@ -99,6 +101,7 @@ class StaffMailService:
                 public_url=self.settings.public_app_url,
                 support_email=self.settings.support_email,
                 locale="ar",
+                has_logo=logo is not None,
             )
             await build_provider(provider, config).send(
                 EmailSendRequest(
@@ -107,6 +110,7 @@ class StaffMailService:
                     text_body=text,
                     html_body=html,
                     locale="ar",
+                    logo=logo,
                 ),
                 # This key is not derived from, and must never disclose, the bearer token.
                 idempotency_key="staff-account-" + secrets.token_urlsafe(16),

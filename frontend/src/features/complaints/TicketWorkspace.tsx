@@ -77,13 +77,15 @@ export function TicketWorkspace({ id, access, options, onBack, onOpenTicket, onR
   const [actionBusy, setActionBusy] = useState(false);
   const [notice, setNotice] = useState('');
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (silent = false) => {
     if (!hasPermission(access, 'complaints.view')) {
       setLoading(false);
       return;
     }
-    setLoading(true);
-    setError('');
+    if (!silent) {
+      setLoading(true);
+      setError('');
+    }
     try {
       const detail = await api<Complaint>(`/api/staff/complaints/${encodeURIComponent(id)}`);
       setTicket(detail);
@@ -115,13 +117,15 @@ export function TicketWorkspace({ id, access, options, onBack, onOpenTicket, onR
         if (item?.status === 'fulfilled') setAudit(item.value as AuditEvent[]);
       } else setAudit([]);
     } catch (cause) {
-      setTicket(null);
-      setError(cause instanceof Error ? cause.message : 'هذه الشكوى غير متاحة ضمن نطاق صلاحيتك.');
+      if (!silent) {
+        setTicket(null);
+        setError(cause instanceof Error ? cause.message : 'هذه الشكوى غير متاحة ضمن نطاق صلاحيتك.');
+      }
       if (cause && typeof cause === 'object' && 'status' in cause && (cause as { status: number }).status === 403) {
         await onRefreshAccess();
       }
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, [access, id, onRefreshAccess]);
 
@@ -130,6 +134,39 @@ export function TicketWorkspace({ id, access, options, onBack, onOpenTicket, onR
     queueMicrotask(() => { if (active) void refresh(); });
     return () => { active = false; };
   }, [refresh]);
+
+  const refreshRef = useRef(refresh);
+  useEffect(() => { refreshRef.current = refresh; }, [refresh]);
+
+  // Live ticket: SSE pushes a new signature when the customer replies (or
+  // status/attachments change); a quiet poll covers SSE outages. Neither
+  // path needs a manual page refresh.
+  useEffect(() => {
+    if (!hasPermission(access, 'complaints.view')) return;
+    let lastSignature = '';
+    const onEvent = (event: MessageEvent<string>) => {
+      try {
+        const payload = JSON.parse(event.data) as { signature?: string };
+        if (payload.signature && payload.signature !== lastSignature) {
+          lastSignature = payload.signature;
+          void refreshRef.current(true);
+        }
+      } catch { /* Heartbeats and malformed frames need no action. */ }
+    };
+    let source: EventSource | null = null;
+    try {
+      source = new EventSource(`/api/staff/complaints/${encodeURIComponent(id)}/stream`);
+      source.addEventListener('snapshot', onEvent as EventListener);
+      source.addEventListener('update', onEvent as EventListener);
+    } catch { source = null; }
+    const fallback = window.setInterval(() => {
+      if (document.visibilityState === 'visible') void refreshRef.current(true);
+    }, 15_000);
+    return () => {
+      source?.close();
+      window.clearInterval(fallback);
+    };
+  }, [access, id]);
 
   const companyName = ticket ? options.companies.find((company) => company.id === ticket.company_id)?.name_ar
     ?? options.companies.find((company) => company.id === ticket.company_id)?.name_en
@@ -200,7 +237,7 @@ export function TicketWorkspace({ id, access, options, onBack, onOpenTicket, onR
         });
         completed += 1;
       }
-      setNotice(`تم رفع ${formatNumber(completed)} ملف. التنزيل سيبقى محظوراً حتى اكتمال فحص الأمان.`);
+      setNotice(`تم رفع ${formatNumber(completed)} ملف. تظهر حالة الفحص وقابلية الفتح في قائمة المرفقات.`);
       await refresh();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'تعذر رفع المرفقات.');
@@ -403,7 +440,7 @@ export function TicketWorkspace({ id, access, options, onBack, onOpenTicket, onR
 
               <section className="surface-card attachments-panel">
                 <div className="panel-heading"><div><p className="eyebrow">الملفات</p><h2>المرفقات <span className="heading-count">{formatNumber(attachments.length)}</span></h2></div><Icon name="paperclip" size={17} /></div>
-                {!hasPermission(access, 'complaints.view_attachments') ? <p className="muted small-copy">لا تتوفر لديك صلاحية عرض المرفقات.</p> : attachments.length === 0 ? <p className="muted small-copy">لا توجد مرفقات مرتبطة بهذه الشكوى.</p> : <div className="attachment-list">{attachments.map((attachment) => <button className="attachment-row" key={attachment.id} type="button" disabled={attachment.scan_status !== 'clean'} onClick={() => { void downloadAttachment(attachment); }}><span className="attachment-file-icon"><Icon name="paperclip" size={15} /></span><span className="attachment-copy"><strong>{attachment.filename}</strong><small>{(attachment.size_bytes / 1024).toFixed(0)} KB · {attachment.scan_status === 'clean' ? 'تم الفحص' : 'بانتظار فحص آمن'}</small></span><span className={`scan-state scan-${attachment.scan_status}`}>{attachment.scan_status === 'clean' ? 'آمن' : 'معلّق'}</span></button>)}</div>}
+                {!hasPermission(access, 'complaints.view_attachments') ? <p className="muted small-copy">لا تتوفر لديك صلاحية عرض المرفقات.</p> : attachments.length === 0 ? <p className="muted small-copy">لا توجد مرفقات مرتبطة بهذه الشكوى.</p> : <div className="attachment-list">{attachments.map((attachment) => { const scanLabel = { clean: 'آمن', pending: 'معلّق', infected: 'مصاب', error: 'خطأ في الفحص' }[attachment.scan_status]; const scanHint = { clean: 'تم الفحص', pending: 'بانتظار الفحص', infected: 'تم رفض الملف', error: 'تعذر إكمال الفحص' }[attachment.scan_status]; return <button className="attachment-row" key={attachment.id} type="button" disabled={attachment.scan_status !== 'clean'} title={attachment.scan_status !== 'clean' ? 'المرفق غير متاح للفتح حتى يصبح آمناً' : 'فتح المرفق'} onClick={() => { void downloadAttachment(attachment); }}><span className="attachment-file-icon"><Icon name="paperclip" size={15} /></span><span className="attachment-copy"><strong>{attachment.filename}</strong><small>{(attachment.size_bytes / 1024).toFixed(0)} KB · {scanHint}</small></span><span className={`scan-state scan-${attachment.scan_status}`}>{scanLabel}</span></button>; })}</div>}
               </section>
 
               <section className="surface-card call-panel">

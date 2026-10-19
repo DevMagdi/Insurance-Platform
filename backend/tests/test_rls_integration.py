@@ -818,7 +818,10 @@ async def test_complaint_policy_link_and_directory(runtime_url: str, data: Data)
             row = next(r for r in rows if r["id"] == str(customer))
             assert {str(company), str(data.companies["b"])} <= {c["id"] for c in row["companies"]}
             assert number in {p["policy_number"] for p in row["policies"]}
-            assert "national_id" not in str(row)
+            # Directory may carry last4 only; never the full ID or ciphertext.
+            assert "29901010112345" not in str(row)
+            assert "national_id_ciphertext" not in str(row)
+            assert set(row) >= {"national_id_last4"}
             await db.rollback()  # Leave fixture cleanup and other tests unaffected.
     finally:
         await engine.dispose()

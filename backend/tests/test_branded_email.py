@@ -65,7 +65,8 @@ def test_all_templates_are_branded_and_escape_dynamic_content(locale: str, kind:
     assert "Acme & Partners" in text
     assert "help@portal.example" in text
     assert "This is an automated message from Acme & Partners." in text
-    assert "https://portal.example/api/public/brand/logo" in html
+    assert "/api/public/brand/logo" not in html
+    assert "<img" not in html  # No logo bytes -> text-only header, never a broken img.
     assert "Acme &amp; Partners" in html
     assert "help@portal.example" in html
     assert "<script>" not in html
@@ -134,7 +135,8 @@ async def test_every_smtp_path_has_both_parts(kind: str, monkeypatch: pytest.Mon
         assert "help@example.com" in body
         assert "This is an automated message" in body
         assert "not-in-email" not in body
-    assert "/api/public/brand/logo" in html
+    assert "/api/public/brand/logo" not in html
+    assert "cid:" not in html
     if kind == "report":
         assert len(list(message.iter_attachments())) == 1
 
@@ -176,3 +178,99 @@ async def test_insurer_forward_excludes_identifiers_and_private_staff_notes() ->
             assert forbidden not in value
     for field in ["CMP-42", "POL-42", "health", "Customer description", "Approved note"]:
         assert field in text and field in html
+
+
+# --- CID logo embedding (Part 1) -------------------------------------------------
+
+PNG_BYTES = (
+    b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01"
+    b"\x08\x06\x00\x00\x00\x1f\x15\xc4\x89\x00\x00\x00\nIDATx\x9cc\x00\x01"
+    b"\x00\x00\x05\x00\x01\r\n-\xb4\x00\x00\x00\x00IEND\xaeB`\x82"
+)
+
+
+def test_branded_email_uses_cid_logo_only_when_logo_bytes_exist() -> None:
+    from app.services.brand_assets import LOGO_CID_REF
+
+    _, html = branded_email(
+        "Title", "Body", brand="Acme", public_url="https://portal.example", has_logo=True
+    )
+    assert f'src="{LOGO_CID_REF}"' in html
+    assert "/api/public/brand/logo" not in html
+    assert "http" not in html.split('src="cid:logo@brand"')[0].rsplit("<img", 1)[-1]
+
+    _, html_without = branded_email(
+        "Title", "Body", brand="Acme", public_url="https://portal.example"
+    )
+    assert "<img" not in html_without
+    assert "cid:" not in html_without
+
+
+async def test_smtp_message_embeds_logo_as_inline_cid_part(monkeypatch: pytest.MonkeyPatch) -> None:
+    from app.services.brand_assets import BrandLogo
+
+    send = AsyncMock()
+    monkeypatch.setattr("app.services.providers.aiosmtplib.send", send)
+    settings = SimpleNamespace(
+        smtp_host="smtp.example.com",
+        smtp_from="mail@example.com",
+        smtp_port=587,
+        smtp_username=None,
+        smtp_password=None,
+        smtp_start_tls=True,
+        smtp_use_tls=False,
+        public_app_url="https://portal.example",
+        support_email="help@example.com",
+    )
+    provider = SMTPDelivery(
+        settings,
+        AsyncMock(return_value="Acme"),
+        logo_loader=AsyncMock(return_value=BrandLogo(PNG_BYTES, "image/png")),
+    )
+    await provider.send_otp("to@example.com", "123456")
+    message = send.call_args.args[0]
+    html = message.get_body(preferencelist=("html",)).get_content()
+    assert 'src="cid:logo@brand"' in html
+    assert "/api/public/brand/logo" not in html
+    images = [part for part in message.walk() if part.get_content_type() == "image/png"]
+    assert len(images) == 1
+    assert images[0]["Content-ID"] == "<logo@brand>"
+    assert images[0].get_content_disposition() == "inline"
+    assert images[0].get_payload(decode=True) == PNG_BYTES
+    plain = message.get_body(preferencelist=("plain",)).get_content()
+    assert "cid:" not in plain
+
+
+async def test_smtp_message_without_logo_has_no_image_part(monkeypatch: pytest.MonkeyPatch) -> None:
+    send = AsyncMock()
+    monkeypatch.setattr("app.services.providers.aiosmtplib.send", send)
+    settings = SimpleNamespace(
+        smtp_host="smtp.example.com",
+        smtp_from="mail@example.com",
+        smtp_port=587,
+        smtp_username=None,
+        smtp_password=None,
+        smtp_start_tls=True,
+        smtp_use_tls=False,
+        public_app_url="https://portal.example",
+        support_email="help@example.com",
+    )
+    provider = SMTPDelivery(
+        settings, AsyncMock(return_value="Acme"), logo_loader=AsyncMock(return_value=None)
+    )
+    await provider.send_invitation("to@example.com", "https://portal.example/invite#token=x")
+    message = send.call_args.args[0]
+    html = message.get_body(preferencelist=("html",)).get_content()
+    assert "<img" not in html
+    assert not [part for part in message.walk() if part.get_content_maintype() == "image"]
+
+
+def test_detect_logo_rejects_mislabelled_or_unknown_bytes() -> None:
+    from app.services.brand_assets import coerce_logo, detect_logo
+
+    assert detect_logo(PNG_BYTES, "image/png") is not None
+    assert detect_logo(PNG_BYTES, "image/jpeg") is None
+    assert detect_logo(b"not an image", "image/png") is None
+    assert detect_logo(b"", "image/png") is None
+    assert coerce_logo((PNG_BYTES, "image/png")).content == PNG_BYTES  # type: ignore[union-attr]
+    assert coerce_logo(None) is None
