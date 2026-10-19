@@ -216,10 +216,16 @@ async def invite(world: SimpleNamespace, domain: str = "gmail.com") -> tuple[str
     assert result.status_code == 202, result.text
     message = world.smtp["messages"][-1]
     assert message["To"] == email
+    assert message.get_content_type() == "multipart/alternative"
+    html = message.get_body(preferencelist=("html",)).get_content()
+    assert "/api/public/brand/logo" in html
+    assert "This is an automated message" in html
+    assert 'dir="rtl"' in html
     assert world.smtp["recipients"][-1] == f"RCPT TO:<{email}>"
-    url = re.search(r"https://testserver/invite#token=[A-Za-z0-9_-]+", message.get_content()).group(
-        0
-    )
+    url = re.search(
+        r"https://testserver/invite#token=[A-Za-z0-9_-]+",
+        message.get_body(preferencelist=("plain",)).get_content(),
+    ).group(0)
     return result.json()["id"], email, parse_qs(urlsplit(url).fragment)["token"][0]
 
 
@@ -352,7 +358,10 @@ async def test_rejected_email_rolls_back_invite_and_resend_invalidates_old_link(
         await world.client.post("/api/auth/staff/invitation/inspect", json={"token": old})
     ).status_code == 400
     assert "sandbox@example.test" not in " ".join(world.smtp["recipients"])
-    token = re.search(r"#token=([A-Za-z0-9_-]+)", world.smtp["messages"][-1].get_content()).group(1)
+    token = re.search(
+        r"#token=([A-Za-z0-9_-]+)",
+        world.smtp["messages"][-1].get_body(preferencelist=("plain",)).get_content(),
+    ).group(1)
     with psycopg.connect(world.admin_url) as conn:
         conn.execute(
             "UPDATE staff_invitations SET created_at=now()-interval '3 days', "
@@ -579,7 +588,8 @@ async def test_password_reset_preserves_profile_and_rejects_disabled_accounts(
     )
     assert reset.status_code == 202
     reset_token = re.search(
-        r"#token=([A-Za-z0-9_-]+)", world.smtp["messages"][-1].get_content()
+        r"#token=([A-Za-z0-9_-]+)",
+        world.smtp["messages"][-1].get_body(preferencelist=("plain",)).get_content(),
     ).group(1)
     assert (
         await world.client.post("/api/auth/staff/invitation/inspect", json={"token": reset_token})
