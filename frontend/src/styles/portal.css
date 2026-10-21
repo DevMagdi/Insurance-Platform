@@ -4220,18 +4220,10 @@ html[dir='ltr'] .journey-rail::after {
   box-shadow: var(--shadow-md);
 }
 
-/* Chips */
-.chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 5px 12px;
-  border-radius: var(--r-pill);
-  font-size: 0.75rem;
-  font-weight: 600;
-  border: 1px solid transparent;
-}
-
+/* Chips keep the geometry foundation.css already set (24px tall, 9px side
+   padding, 11px text). Only the palette is re-pointed here — redefining the
+   box made every chip 6px wider and overflowed chip rows on the English
+   landing page, where the labels are longer. */
 .chip-gold { color: var(--gold-600); background: var(--gold-100); }
 .dark .chip-gold { color: var(--gold-400); background: var(--gold-200); }
 .chip-emerald { color: var(--success); background: var(--success-soft); }

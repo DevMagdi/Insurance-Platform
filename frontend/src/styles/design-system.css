@@ -253,36 +253,47 @@
    Arabic and Latin headings claw some of it back.
    -------------------------------------------------------------------------- */
 
+/* Rendering quality is safe to set globally: it changes how glyphs are
+   painted, not how much room they take. Sizing is NOT — the portal and the
+   console already own their own type scales, and a global `h1` rule here
+   would silently resize headings on pages this redesign never touched (it
+   did, and it overflowed the English portal). So every metric below is
+   scoped to the surfaces this design system actually owns. */
 body {
-  font-family: var(--font-arabic);
   font-feature-settings: 'kern' 1, 'liga' 1;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
+}
+
+.ds-page,
+.staff-console {
+  font-family: var(--font-arabic);
   line-height: 1.7;
   letter-spacing: 0;
 }
 
-h1,
-h2,
-h3,
-h4,
-h5 {
+.ds-page :is(h1, h2, h3, h4, h5),
+.staff-console :is(h1, h2, h3, h4, h5) {
   line-height: 1.25;
   letter-spacing: -0.015em;
   font-weight: 700;
   color: var(--ink-900);
 }
 
-h1 { font-size: clamp(1.65rem, 1.2rem + 1.6vw, 2.15rem); letter-spacing: -0.025em; }
-h2 { font-size: clamp(1.3rem, 1.1rem + 0.8vw, 1.55rem); letter-spacing: -0.02em; }
-h3 { font-size: 1.1rem; }
-h4 { font-size: 0.975rem; }
+.ds-page h1,
+.staff-console h1 { font-size: clamp(1.5rem, 1.2rem + 1vw, 1.9rem); letter-spacing: -0.025em; }
+.ds-page h2,
+.staff-console h2 { font-size: clamp(1.2rem, 1.05rem + 0.5vw, 1.4rem); letter-spacing: -0.02em; }
+.ds-page h3,
+.staff-console h3 { font-size: 1.0625rem; }
+.ds-page h4,
+.staff-console h4 { font-size: 0.9375rem; }
 
 /* Latin runs inside Arabic copy — ticket numbers, money, dates — should not
-   inherit Arabic letterforms. */
-.ds-latin,
-[dir='ltr'] {
+   inherit Arabic letterforms. Opt-in only: a bare [dir='ltr'] selector would
+   restyle the entire English portal. */
+.ds-latin {
   font-family: var(--font-latin);
 }
 
