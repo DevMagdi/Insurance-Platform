@@ -19,6 +19,8 @@ import { hasPermission } from '../../utils/access';
 import { Icon } from '../../components/Icon';
 import { SectionTitle } from '../../components/Modal';
 import { formatNumber, rangeBounds } from '../../utils/date';
+import { Metric, Stagger, StaggerItem } from '../../components/ui/Premium';
+import { IntakeBreakdown, QuickActions, RecentActivity } from './IntakeAndActivity';
 import type {
   AnalyticsOverview,
   CompanyOption,
@@ -61,23 +63,10 @@ interface OverviewPageProps {
   companyId: string;
   insuranceType: InsuranceType | '';
   onOpenComplaints: () => void;
-}
-
-function MetricCard({ label, value, detail, icon, tone }: {
-  label: string;
-  value: string;
-  detail: string;
-  icon: 'inbox' | 'clock' | 'shield' | 'chart' | 'check' | 'message' | 'arrow' | 'refresh';
-  tone: string;
-}) {
-  return (
-    <article className="metric-card">
-      <div className={`metric-icon ${tone}`}><Icon name={icon} size={18} /></div>
-      <div className="metric-label-row"><span>{label}</span><span className="metric-dot" /></div>
-      <strong className="metric-value">{value}</strong>
-      <span className="metric-detail">{detail}</span>
-    </article>
-  );
+  /** Optional deep links used by the quick-action row and activity feed. */
+  onOpenTicket?: (id: string) => void;
+  onOpenSettings?: () => void;
+  onOpenAudit?: () => void;
 }
 
 function ChartCard({ title, subtitle, children, className = '' }: {
@@ -103,6 +92,9 @@ export function OverviewPage({
   companyId,
   insuranceType,
   onOpenComplaints,
+  onOpenTicket,
+  onOpenSettings,
+  onOpenAudit,
 }: OverviewPageProps) {
   const [report, setReport] = useState<AnalyticsOverview | null>(null);
   const [loading, setLoading] = useState(true);
@@ -169,17 +161,50 @@ export function OverviewPage({
   }
 
   const kpis = report?.kpis;
-  const metrics = [
-    { label: 'إجمالي الطلبات', value: formatNumber(kpis?.total), detail: 'وصلت خلال الفترة المختارة', icon: 'inbox' as const, tone: 'metric-gold' },
-    { label: 'جديدة', value: formatNumber(kpis?.new), detail: 'بانتظار المعالجة', icon: 'message' as const, tone: 'metric-blue' },
-    { label: 'مُسندة', value: formatNumber(kpis?.assigned), detail: 'لدى فريق مختص', icon: 'check' as const, tone: 'metric-teal' },
-    { label: 'قيد المراجعة', value: formatNumber(kpis?.in_review), detail: 'قيد المتابعة الآن', icon: 'clock' as const, tone: 'metric-violet' },
-    { label: 'تم الحل', value: formatNumber(kpis?.resolved), detail: 'أُغلقت خلال الفترة', icon: 'check' as const, tone: 'metric-green' },
-    { label: 'محوّلة للشركة', value: formatNumber(kpis?.transferred), detail: 'أُحيلت إلى شركة التأمين', icon: 'arrow' as const, tone: 'metric-orange' },
-    { label: 'متوسط زمن الحل', value: kpis?.avg_resolution_hours == null ? '—' : `${formatNumber(kpis.avg_resolution_hours, 1)} س`, detail: 'من الفتح حتى الحل', icon: 'clock' as const, tone: 'metric-blue' },
-    { label: 'تجاوزات SLA', value: formatNumber(kpis?.sla_breaches), detail: 'تحتاج إلى انتباه', icon: 'shield' as const, tone: 'metric-red' },
-    { label: 'معدل إعادة الفتح', value: kpis ? `${formatNumber(kpis.reopen_rate * 100, 1)}٪` : '—', detail: `${formatNumber(kpis?.reopened)} طلب أُعيد فتحها`, icon: 'refresh' as const, tone: 'metric-purple' },
-    { label: 'رضا العملاء CSAT', value: kpis?.csat_avg == null ? '—' : `${formatNumber(kpis.csat_avg, 1)} / 5`, detail: 'متوسط التقييمات المستلمة', icon: 'chart' as const, tone: 'metric-teal' },
+
+  /**
+   * Hierarchy, not a wall of tiles. Four numbers answer "how are we doing
+   * right now" and get full-size cards with a soft wash; the remaining ten
+   * are real but secondary, so they live in a quieter strip underneath.
+   */
+  const headline = [
+    {
+      label: 'إجمالي الطلبات',
+      value: formatNumber(kpis?.total),
+      hint: 'خلال الفترة المحددة',
+      icon: <Icon name="inbox" size={17} />,
+      tone: 'gold' as const,
+    },
+    {
+      label: 'بانتظار المعالجة',
+      value: formatNumber(kpis?.new),
+      hint: 'طلبات جديدة لم تُسند بعد',
+      icon: <Icon name="message" size={17} />,
+      tone: 'info' as const,
+    },
+    {
+      label: 'تم الحل',
+      value: formatNumber(kpis?.resolved),
+      hint: 'أُغلقت خلال الفترة',
+      icon: <Icon name="check" size={17} />,
+      tone: 'success' as const,
+    },
+    {
+      label: 'تجاوزات SLA',
+      value: formatNumber(kpis?.sla_breaches),
+      hint: 'تحتاج إلى انتباه فوري',
+      icon: <Icon name="shield" size={17} />,
+      tone: (kpis?.sla_breaches ? 'danger' : 'success') as 'danger' | 'success',
+    },
+  ];
+
+  const secondary = [
+    { label: 'مُسندة', value: formatNumber(kpis?.assigned) },
+    { label: 'قيد المراجعة', value: formatNumber(kpis?.in_review) },
+    { label: 'محوّلة للشركة', value: formatNumber(kpis?.transferred) },
+    { label: 'متوسط زمن الحل', value: kpis?.avg_resolution_hours == null ? '—' : `${formatNumber(kpis.avg_resolution_hours, 1)} س` },
+    { label: 'معدل إعادة الفتح', value: kpis ? `${formatNumber(kpis.reopen_rate * 100, 1)}٪` : '—' },
+    { label: 'رضا العملاء', value: kpis?.csat_avg == null ? '—' : `${formatNumber(kpis.csat_avg, 1)} / ${formatNumber(5)}` },
   ];
 
   const byType = report?.by_type.map((entry) => ({ ...entry, label: TYPE_NAMES[entry.insurance_type] })) ?? [];
@@ -235,13 +260,35 @@ export function OverviewPage({
 
       {error && <div className="inline-alert error" role="alert">{error}<button type="button" onClick={() => { void refresh(); }}>إعادة المحاولة</button></div>}
 
-      <div className="metric-grid">
-        {metrics.map((metric) => <MetricCard key={metric.label} {...metric} />)}
+      <Stagger className="ds-kpi-grid">
+        {headline.map((metric) => (
+          <StaggerItem key={metric.label}>
+            <Metric {...metric} />
+          </StaggerItem>
+        ))}
+      </Stagger>
+
+      <div className="ds-kpi-strip">
+        {secondary.map((item) => (
+          <div className="ds-kpi-cell" key={item.label}>
+            <span>{item.label}</span>
+            <strong className="ds-metric">{item.value}</strong>
+          </div>
+        ))}
       </div>
-      <div className="arrival-summary">
-        <span className="arrival-summary-mark"><Icon name="calendar" size={16} /></span>
-        <span>وصلت <strong>{formatNumber(kpis?.total)}</strong> طلب في النطاق الزمني المحدد.</span>
-        <button type="button" onClick={onOpenComplaints}>عرض قائمة الطلبات <Icon name="arrow" size={15} /></button>
+
+      <QuickActions
+        actions={[
+          { label: 'قائمة الطلبات', hint: 'كل الطلبات المفتوحة', icon: 'inbox', onClick: onOpenComplaints, primary: true },
+          { label: 'الطلبات الجديدة', hint: 'التي لم تُسند بعد', icon: 'message', onClick: onOpenComplaints },
+          ...(onOpenSettings ? [{ label: 'قنوات الاستقبال', hint: 'واتساب · مكالمات · بريد', icon: 'plug' as const, onClick: onOpenSettings }] : []),
+          ...(onOpenAudit ? [{ label: 'سجل التدقيق', hint: 'آخر الإجراءات', icon: 'audit' as const, onClick: onOpenAudit }] : []),
+        ]}
+      />
+
+      <div className="ds-dash-split">
+        <IntakeBreakdown filterQuery={filterQuery} onPick={() => onOpenComplaints()} />
+        <RecentActivity onOpen={onOpenTicket} />
       </div>
 
       {loading && !report ? (

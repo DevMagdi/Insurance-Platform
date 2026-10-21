@@ -130,8 +130,9 @@ for (const theme of ['light', 'dark'] as const) {
     await page.getByText('CMP-2026-000123').click();
     await expect(page.getByRole('heading', { name: 'إدارة الحالة' })).toBeVisible();
     const shell = page.locator('.staff-console');
-    await expect(shell).toHaveCSS('background-color', theme === 'dark' ? 'rgb(6, 10, 17)' : 'rgb(246, 247, 249)');
-    await expect(shell).toHaveCSS('color', theme === 'dark' ? 'rgb(232, 237, 244)' : 'rgb(10, 26, 47)');
+    // Deep navy #0B1426 on dark, #F6F8FB on light; ink #F1F5F9 / #0B1426.
+    await expect(shell).toHaveCSS('background-color', theme === 'dark' ? 'rgb(11, 20, 38)' : 'rgb(246, 248, 251)');
+    await expect(shell).toHaveCSS('color', theme === 'dark' ? 'rgb(241, 245, 249)' : 'rgb(11, 20, 38)');
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     await page.screenshot({ path: testInfo.outputPath(`staff-${theme}.png`), fullPage: true });
     await page.goto('/staff/analytics');

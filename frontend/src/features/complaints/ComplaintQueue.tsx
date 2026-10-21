@@ -98,8 +98,21 @@ function fileDownload(blob: Blob, filename: string) {
 }
 
 export function ComplaintQueue({ access, range, options, companyNames, onOpenTicket }: ComplaintQueueProps) {
+  const [moreFilters, setMoreFilters] = useState(false);
   const [filters, setFilters] = useState<QueueFilters>(EMPTY_FILTERS);
   const [search, setSearch] = useState('');
+
+  /** Filters hidden behind the disclosure, so a collapsed panel still says
+   *  how much is being filtered out. */
+  const extraFilterCount = useMemo(
+    () => (['company_id', 'insurance_type', 'assigned_agent_id', 'priority', 'channel', 'card_number'] as const)
+      .filter((key) => filters[key] !== '').length,
+    [filters],
+  );
+  const activeFilterCount = useMemo(
+    () => Object.values(filters).filter((value) => value !== '').length + (search ? 1 : 0),
+    [filters, search],
+  );
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [debouncedMobile, setDebouncedMobile] = useState('');
   const [page, setPage] = useState(1);
@@ -334,17 +347,68 @@ export function ComplaintQueue({ access, range, options, companyNames, onOpenTic
         <button className="button button-quiet save-view-button" type="button" onClick={() => setShowSaveView(true)}><Icon name="plus" size={15} /> حفظ العرض</button>
       </div>
 
-      <div className="complaint-filters surface-card">
-        <label className="compact-field"><span>الحالة</span><select value={filters.status} onChange={(event) => setFilter('status', event.target.value as ComplaintStatus | '')}><option value="">كل الحالات</option>{options.statuses.map((status) => <option key={status} value={status}>{STATUS_LABEL[status]}</option>)}</select></label>
-        <label className="compact-field"><span>شركة التأمين</span><select value={filters.company_id} onChange={(event) => setFilter('company_id', event.target.value)}><option value="">كل شركات نطاقي</option>{options.companies.map((company) => <option value={company.id} key={company.id}>{company.name_ar || company.name_en}</option>)}</select></label>
-        <label className="compact-field"><span>نوع التأمين</span><select value={filters.insurance_type} onChange={(event) => setFilter('insurance_type', event.target.value as InsuranceType | '')}><option value="">كل الأنواع</option>{options.insurance_types.map((kind) => <option value={kind} key={kind}>{TYPE_LABEL[kind]}</option>)}</select></label>
-        <label className="compact-field"><span>الموظف</span><select value={filters.assigned_agent_id} onChange={(event) => setFilter('assigned_agent_id', event.target.value)}><option value="">كل الموظفين</option>{options.agents.map((agent) => <option value={agent.id} key={agent.id}>{agent.full_name}</option>)}</select></label>
-        <label className="compact-field"><span>الأولوية</span><select value={filters.priority} onChange={(event) => setFilter('priority', event.target.value as ComplaintPriority | '')}><option value="">كل الأولويات</option>{options.priorities.map((priority) => <option value={priority} key={priority}>{PRIORITY_LABEL[priority]}</option>)}</select></label>
-        <label className="compact-field"><span>القناة</span><select value={filters.channel} onChange={(event) => setFilter('channel', event.target.value)}><option value="">كل القنوات</option>{options.channels.map((channel) => <option value={channel} key={channel}>{CHANNEL_LABEL[channel] ?? channel}</option>)}</select></label>
-        <label className="compact-field"><span>رقم الموبايل</span><input type="tel" inputMode="tel" dir="ltr" placeholder="01xxxxxxxxx" value={filters.mobile} onChange={(event) => setFilter('mobile', event.target.value)} /></label>
-        <label className="compact-field"><span>رقم الكارت</span><input dir="ltr" placeholder="CARD-0000" value={filters.card_number} onChange={(event) => setFilter('card_number', event.target.value)} /></label>
-        <label className="compact-field"><span>مصدر الطلب</span><select value={filters.intake_source} onChange={(event) => setFilter('intake_source', event.target.value)}><option value="">كل المصادر</option>{Object.entries(INTAKE_SOURCE_LABEL).map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select></label>
-        <button className="clear-filter-button" type="button" onClick={() => { setFilters(EMPTY_FILTERS); setSearch(''); setPage(1); }}>مسح الفلاتر</button>
+      {/* Hierarchy over density. Mobile number and intake source are how a
+          request is actually found on the phone with a customer waiting, so
+          they sit in the primary row with status; the remaining six filters
+          are real but rarely needed and fold away behind a count. */}
+      <div className="ds-filters">
+        <div className="ds-filter-primary">
+          <label className="ds-field ds-field-grow">
+            <span>رقم الموبايل</span>
+            <input
+              type="tel"
+              inputMode="tel"
+              dir="ltr"
+              placeholder="01xxxxxxxxx"
+              value={filters.mobile}
+              onChange={(event) => setFilter('mobile', event.target.value)}
+            />
+          </label>
+          <label className="ds-field">
+            <span>مصدر الطلب</span>
+            <select value={filters.intake_source} onChange={(event) => setFilter('intake_source', event.target.value)}>
+              <option value="">كل المصادر</option>
+              {Object.entries(INTAKE_SOURCE_LABEL).map(([value, label]) => <option value={value} key={value}>{label}</option>)}
+            </select>
+          </label>
+          <label className="ds-field">
+            <span>الحالة</span>
+            <select value={filters.status} onChange={(event) => setFilter('status', event.target.value as ComplaintStatus | '')}>
+              <option value="">كل الحالات</option>
+              {options.statuses.map((status) => <option key={status} value={status}>{STATUS_LABEL[status]}</option>)}
+            </select>
+          </label>
+          <button
+            className="ds-ghost-btn ds-more-filters"
+            type="button"
+            aria-expanded={moreFilters}
+            onClick={() => setMoreFilters((open) => !open)}
+          >
+            <Icon name="sliders" size={15} />
+            فلاتر إضافية
+            {extraFilterCount > 0 && <em className="ds-filter-badge">{formatNumber(extraFilterCount)}</em>}
+          </button>
+          {activeFilterCount > 0 && (
+            <button
+              className="ds-quiet-btn"
+              type="button"
+              onClick={() => { setFilters(EMPTY_FILTERS); setSearch(''); setPage(1); }}
+            >
+              مسح الفلاتر
+            </button>
+          )}
+        </div>
+
+        {moreFilters && (
+          <div className="ds-filter-more">
+            <label className="ds-field"><span>شركة التأمين</span><select value={filters.company_id} onChange={(event) => setFilter('company_id', event.target.value)}><option value="">كل شركات نطاقي</option>{options.companies.map((company) => <option value={company.id} key={company.id}>{company.name_ar || company.name_en}</option>)}</select></label>
+            <label className="ds-field"><span>نوع التأمين</span><select value={filters.insurance_type} onChange={(event) => setFilter('insurance_type', event.target.value as InsuranceType | '')}><option value="">كل الأنواع</option>{options.insurance_types.map((kind) => <option value={kind} key={kind}>{TYPE_LABEL[kind]}</option>)}</select></label>
+            <label className="ds-field"><span>الموظف</span><select value={filters.assigned_agent_id} onChange={(event) => setFilter('assigned_agent_id', event.target.value)}><option value="">كل الموظفين</option>{options.agents.map((agent) => <option value={agent.id} key={agent.id}>{agent.full_name}</option>)}</select></label>
+            <label className="ds-field"><span>الأولوية</span><select value={filters.priority} onChange={(event) => setFilter('priority', event.target.value as ComplaintPriority | '')}><option value="">كل الأولويات</option>{options.priorities.map((priority) => <option value={priority} key={priority}>{PRIORITY_LABEL[priority]}</option>)}</select></label>
+            <label className="ds-field"><span>القناة</span><select value={filters.channel} onChange={(event) => setFilter('channel', event.target.value)}><option value="">كل القنوات</option>{options.channels.map((channel) => <option value={channel} key={channel}>{CHANNEL_LABEL[channel] ?? channel}</option>)}</select></label>
+            <label className="ds-field"><span>رقم الكارت</span><input dir="ltr" placeholder="CARD-0000" value={filters.card_number} onChange={(event) => setFilter('card_number', event.target.value)} /></label>
+          </div>
+        )}
       </div>
 
       {selected.length > 0 && (

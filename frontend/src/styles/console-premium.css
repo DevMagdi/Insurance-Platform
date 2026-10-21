@@ -1,0 +1,503 @@
+/* ==========================================================================
+   Console refinements
+   ==========================================================================
+
+   Loaded after `staff.css`, this file lifts the existing console chrome to the
+   premium standard without rewriting five thousand lines of layout. It only
+   touches surface, spacing, weight and motion — never geometry that logic or
+   tests depend on.
+   ========================================================================== */
+
+/* --------------------------------------------------------------- the shell */
+
+/* The sidebar is the same deep navy as the page behind it, separated by a
+   single hairline rather than a slab of contrast. Cards then float above
+   both. This is what makes the console read as one material. */
+.staff-console {
+  --staff-sidebar: var(--surface-0);
+}
+
+.staff-console .app-shell {
+  background: var(--surface-0);
+}
+
+.staff-console .sidebar {
+  border-inline-end: 1px solid var(--line);
+  box-shadow: none;
+}
+
+.staff-console .sidebar-brand strong {
+  letter-spacing: -0.02em;
+  font-weight: 700;
+}
+
+/* Navigation: the active item is a raised plate with a gold spine. Hover is
+   a whisper, so the active state is never ambiguous. */
+.staff-console .nav-link {
+  min-height: 38px;
+  border-radius: var(--r-md);
+  font-size: 0.8125rem;
+  transition:
+    color var(--dur-fast) var(--ease-out),
+    background-color var(--dur-fast) var(--ease-out);
+}
+
+.staff-console .nav-link:hover {
+  background: var(--surface-2);
+}
+
+.staff-console .nav-link.active {
+  background: var(--surface-2);
+  color: var(--ink-900);
+  font-weight: 650;
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+
+.staff-console .nav-link.active::before {
+  inset-inline-start: 0;
+  width: 3px;
+  background: var(--gold-500);
+  box-shadow: 0 0 10px -1px var(--gold-500);
+}
+
+.staff-console .nav-section-title {
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-400);
+}
+
+/* Topbar: a thin, quiet bar. It frosts over content as the page scrolls. */
+.staff-console .topbar {
+  background: var(--surface-glass);
+  backdrop-filter: saturate(150%) blur(12px);
+  -webkit-backdrop-filter: saturate(150%) blur(12px);
+  border-bottom: 1px solid var(--line);
+}
+
+.staff-console .topbar-breadcrumb strong {
+  letter-spacing: -0.015em;
+}
+
+/* --------------------------------------------------------------- surfaces */
+
+.staff-console .surface-card {
+  background: var(--surface-1);
+  border: 1px solid var(--line);
+  border-radius: var(--r-xl);
+  box-shadow: var(--shadow-sm);
+}
+
+.staff-console.theme-dark .surface-card {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.025), rgba(255, 255, 255, 0) 120px),
+    var(--surface-1);
+}
+
+/* Generous, consistent vertical rhythm between the blocks of a page. */
+.staff-console .page-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-6);
+}
+
+/* ----------------------------------------------------------------- tables */
+
+.staff-console .data-table thead th {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-400);
+  background: transparent;
+  border-bottom: 1px solid var(--line);
+  padding-block: 12px;
+  white-space: nowrap;
+}
+
+.staff-console .data-table tbody td {
+  padding-block: 14px;
+  border-bottom: 1px solid var(--line-soft);
+  font-size: 0.8125rem;
+  vertical-align: middle;
+}
+
+/* The row is the primary target, so it gets the full hover treatment: a lift
+   in surface plus a gold spine on the leading edge to show where the click
+   will land. */
+.staff-console .data-table tbody tr {
+  position: relative;
+  transition: background-color var(--dur-fast) var(--ease-out);
+  cursor: pointer;
+}
+
+.staff-console .data-table tbody tr:hover {
+  background: var(--surface-2);
+}
+
+.staff-console .data-table tbody tr::after {
+  content: '';
+  position: absolute;
+  inset-inline-start: 0;
+  inset-block: 0;
+  width: 2px;
+  background: var(--gold-500);
+  opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease-out);
+}
+
+.staff-console .data-table tbody tr:hover::after { opacity: 1; }
+
+.staff-console .data-table tbody tr:focus-visible {
+  outline: none;
+  background: var(--surface-2);
+  box-shadow: inset 0 0 0 1.5px var(--gold-500);
+}
+
+/* Identifiers read as data, not prose. */
+.staff-console .ticket-number {
+  font-family: var(--font-latin);
+  font-variant-numeric: tabular-nums;
+  font-weight: 650;
+  font-size: 0.8125rem;
+  letter-spacing: -0.01em;
+  color: var(--ink-900);
+}
+
+.staff-console .ticket-number:hover { color: var(--gold-500); }
+
+.staff-console .ticket-created {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.6875rem;
+  color: var(--ink-400);
+}
+
+/* ------------------------------------------------------------ status chips */
+
+/* One shape for every state indicator in the console: a soft tinted capsule
+   with a dot in the same hue. */
+.staff-console .staff-status,
+.staff-console .status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 11px;
+  border-radius: var(--r-pill);
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.5;
+  white-space: nowrap;
+  border: 1px solid transparent;
+}
+
+.staff-console .staff-status > i,
+.staff-console .status-chip > i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  flex: none;
+}
+
+.staff-console .staff-active { color: var(--success); background: var(--success-soft); }
+.staff-console .staff-pending { color: var(--warning); background: var(--warning-soft); }
+.staff-console .staff-failed { color: var(--danger); background: var(--danger-soft); }
+.staff-console .staff-disabled { color: var(--ink-400); background: var(--surface-3); }
+
+.staff-console .status-chip--new { color: var(--st-new-fg); background: var(--st-new-bg); }
+.staff-console .status-chip--assigned { color: var(--st-assigned-fg); background: var(--st-assigned-bg); }
+.staff-console .status-chip--in_review { color: var(--st-in-review-fg); background: var(--st-in-review-bg); }
+.staff-console .status-chip--resolved { color: var(--st-resolved-fg); background: var(--st-resolved-bg); }
+.staff-console .status-chip--reopened { color: var(--st-reopened-fg); background: var(--st-reopened-bg); }
+.staff-console .status-chip--transferred { color: var(--st-transferred-fg); background: var(--st-transferred-bg); }
+
+/* -------------------------------------------------------------- buttons */
+
+.staff-console .button {
+  border-radius: var(--r-md);
+  font-weight: 600;
+  letter-spacing: 0;
+  transition:
+    background-color var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out),
+    transform var(--dur-fast) var(--ease-out);
+}
+
+.staff-console .button:hover:not(:disabled) { transform: translateY(-1px); }
+.staff-console .button:active:not(:disabled) { transform: translateY(0); }
+
+/* The console's one gold action. */
+.staff-console .button-dark {
+  background: var(--gold-500);
+  border-color: transparent;
+  color: #0b1426;
+  box-shadow: var(--shadow-gold);
+}
+
+.staff-console .button-dark:hover:not(:disabled) { background: var(--gold-400); }
+
+/* ---------------------------------------------------------------- inputs */
+
+.staff-console input[type='text'],
+.staff-console input[type='tel'],
+.staff-console input[type='search'],
+.staff-console input[type='email'],
+.staff-console input[type='password'],
+.staff-console input[type='number'],
+.staff-console textarea,
+.staff-console select {
+  border-radius: var(--r-md);
+  border-color: var(--line);
+  background: var(--surface-2);
+  color: var(--ink-900);
+  transition:
+    border-color var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-fast) var(--ease-out);
+}
+
+.staff-console input:focus-visible,
+.staff-console textarea:focus-visible,
+.staff-console select:focus-visible {
+  outline: none;
+  border-color: var(--gold-500);
+  box-shadow: var(--focus-ring);
+}
+
+/* ------------------------------------------------------------- modal */
+
+.staff-console .modal-card,
+.modal-card {
+  border-radius: var(--r-2xl);
+  border: 1px solid var(--line);
+  background: var(--surface-1);
+  box-shadow: var(--shadow-lg);
+}
+
+.modal-backdrop {
+  background: rgba(3, 7, 18, 0.62);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+}
+
+/* --------------------------------------------------------------- charts */
+
+.staff-console .chart-card { border-radius: var(--r-xl); }
+
+.staff-console .chart-card-heading h3 {
+  font-size: 0.9375rem;
+  font-weight: 650;
+  letter-spacing: -0.015em;
+}
+
+.staff-console .chart-card-heading p {
+  font-size: 0.75rem;
+  color: var(--ink-400);
+}
+
+/* ------------------------------------------------------------- scrollbars */
+
+.staff-console *::-webkit-scrollbar { width: 10px; height: 10px; }
+.staff-console *::-webkit-scrollbar-track { background: transparent; }
+.staff-console *::-webkit-scrollbar-thumb {
+  background-color: var(--line-strong);
+  background-clip: content-box;
+  border: 3px solid transparent;
+  border-radius: var(--r-pill);
+}
+.staff-console *::-webkit-scrollbar-thumb:hover { background-color: var(--ink-400); }
+
+/* ==========================================================================
+   Request detail — the unified inbox
+   Every event, message, attachment and call hangs off one rail in time order,
+   so a reader scrolls a single conversation rather than hopping between tabs.
+   ========================================================================== */
+
+.staff-console .workspace-grid {
+  gap: var(--s-6);
+  align-items: start;
+}
+
+/* Actions stay in view while the conversation scrolls. */
+@media (min-width: 1100px) {
+  .staff-console .workspace-side-column {
+    position: sticky;
+    top: calc(var(--header-height) + var(--s-4));
+    max-height: calc(100vh - var(--header-height) - var(--s-8));
+    overflow-y: auto;
+    scrollbar-width: thin;
+  }
+}
+
+.staff-console .timeline-list {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+/* The rail. One line, drawn behind the markers, stopping at the last node so
+   the thread has a visible end. */
+.staff-console .timeline-list::before {
+  content: '';
+  position: absolute;
+  inset-inline-start: 13px;
+  inset-block-start: 12px;
+  inset-block-end: 12px;
+  width: 1px;
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    var(--line) 6%,
+    var(--line) 94%,
+    transparent
+  );
+}
+
+.staff-console .timeline-item {
+  position: relative;
+  display: flex;
+  gap: var(--s-4);
+  padding-block: var(--s-3);
+}
+
+.staff-console .timeline-marker {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 27px;
+  height: 27px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  color: var(--ink-500);
+  box-shadow: 0 0 0 4px var(--surface-0);
+}
+
+.staff-console .timeline-marker.marker-message {
+  color: var(--info);
+  background: var(--info-soft);
+  border-color: transparent;
+}
+
+.staff-console .timeline-marker.marker-event {
+  color: var(--gold-500);
+  background: var(--gold-200);
+  border-color: transparent;
+}
+
+.staff-console .timeline-marker.marker-audit {
+  color: var(--ink-400);
+}
+
+.staff-console .timeline-item-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding-top: 3px;
+}
+
+.staff-console .timeline-item-body > time {
+  font-size: 0.6875rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-400);
+}
+
+.staff-console .timeline-item-body > strong {
+  font-size: 0.8125rem;
+  font-weight: 650;
+}
+
+.staff-console .timeline-transition {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-inline-start: 8px;
+  font-size: 0.75rem;
+  color: var(--ink-500);
+}
+
+[dir='rtl'] .staff-console .timeline-transition svg { transform: scaleX(-1); }
+
+/* A message is a card on the rail, not a paragraph. Inbound and outbound
+   differ by surface and by the colour of the leading edge, which is faster to
+   scan than reading the label each time. */
+.staff-console .timeline-message {
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--surface-1);
+  padding: 12px var(--s-4);
+  position: relative;
+  overflow: hidden;
+}
+
+.staff-console .timeline-message::before {
+  content: '';
+  position: absolute;
+  inset-inline-start: 0;
+  inset-block: 0;
+  width: 3px;
+  background: var(--info);
+}
+
+/* Internal notes must never be mistaken for something the customer saw. */
+.staff-console .timeline-message.is-internal {
+  background: var(--warning-soft);
+  border-color: color-mix(in srgb, var(--warning) 26%, transparent);
+}
+
+.staff-console .timeline-message.is-internal::before { background: var(--warning); }
+
+.staff-console .timeline-message-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  margin-bottom: 6px;
+}
+
+.staff-console .timeline-message-meta strong {
+  font-size: 0.75rem;
+  font-weight: 650;
+}
+
+.staff-console .timeline-message-meta span {
+  font-size: 0.6875rem;
+  color: var(--ink-400);
+  padding: 2px 8px;
+  border-radius: var(--r-pill);
+  background: var(--surface-2);
+}
+
+.staff-console .timeline-message p {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.8;
+  color: var(--ink-700);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* ==========================================================================
+   Request detail — header and side actions
+   ========================================================================== */
+
+.staff-console .back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--ink-500);
+  border-radius: var(--r-sm);
+  padding: 6px 10px;
+  transition: color var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out);
+}
+
+.staff-console .back-link:hover { color: var(--ink-900); background: var(--surface-2); }
+[dir='rtl'] .staff-console .back-link svg { transform: scaleX(-1); }

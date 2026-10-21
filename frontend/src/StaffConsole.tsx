@@ -15,6 +15,8 @@ import type { AppRoute, ComplaintFilterOptions, CompanyOption, DateRange, Insura
 import './staff-console.css';
 import './styles/staff.css';
 import './styles/admin-identity.css';
+// Loaded last: refines the console chrome on top of the sheets above.
+import './styles/console-premium.css';
 
 const AuthPage = lazy(async () => ({ default: (await import('./features/auth/AuthPage')).AuthPage }));
 const OverviewPage = lazy(async () => ({ default: (await import('./features/dashboard/OverviewPage')).OverviewPage }));
@@ -297,7 +299,7 @@ function App() {
   const pageContent = route.page === 'admin'
     ? <AdminDashboard access={access} range={range} onNavigate={navigate} />
     : route.page === 'overview'
-    ? <OverviewPage access={access} range={range} companies={filterOptions.companies} companyId={effectiveCompanyId} insuranceType={effectiveInsuranceType} onCompany={setCompanyId} onInsuranceType={setInsuranceType} onOpenComplaints={() => navigate({ page: 'complaints' })} />
+    ? <OverviewPage access={access} range={range} companies={filterOptions.companies} companyId={effectiveCompanyId} insuranceType={effectiveInsuranceType} onCompany={setCompanyId} onInsuranceType={setInsuranceType} onOpenComplaints={() => navigate({ page: 'complaints' })} onOpenTicket={(id) => navigate({ page: 'ticket', id })} onOpenSettings={() => navigate({ page: 'admin' })} onOpenAudit={hasPermission(access, 'audit.view') ? () => navigate({ page: 'audit' }) : undefined} />
     : route.page === 'complaints'
       ? <ComplaintQueue access={access} range={range} options={filterOptions} companyNames={companyNames} onOpenTicket={(id) => navigate({ page: 'ticket', id })} />
       : route.page === 'ticket'

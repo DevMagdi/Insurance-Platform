@@ -1,0 +1,1540 @@
+/* ==========================================================================
+   Wathiq Design System — premium edition
+   ==========================================================================
+
+   One palette, two renderings. Deep navy is the product's resting state: the
+   staff console, the sidebar and every dark surface are built from four steps
+   of the same blue-black so depth reads as light falling on a single material
+   rather than as a stack of different greys. Gold is scarce on purpose — it
+   marks the one action that matters on a screen and nothing else.
+
+   This file is loaded after `foundation.css` and re-tunes its tokens in place.
+   Every existing selector keeps working; only the values change, so the whole
+   application is re-skinned without touching a line of behaviour.
+
+   Contrast is measured, not assumed. On the deep-navy background body text
+   lands at 16.8:1 and secondary text at 7.2:1; every status colour clears
+   6.3:1 on a card. The one adjustment to the brief's palette is the muted
+   grey: #64748B measures 3.86:1, below AA for small text, so --ink-400 is
+   lifted to #7D8CA1 — same hue and saturation, bright enough to clear AA on
+   every surface it lands on (5.4:1 navy, 5.0:1 card, 4.5:1 elevated).
+   Surfaces still stay soft enough that a long shift does not tire the eye.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   Dark — the premium default
+   -------------------------------------------------------------------------- */
+
+:root.dark,
+.staff-console.theme-dark {
+  /* Canvas: four steps of one navy, each ~6% lighter than the last. */
+  --surface-0: #0b1426; /* app background, sidebar */
+  --surface-1: #111b2e; /* soft midnight — cards */
+  --surface-2: #1a2438; /* elevated surface — inputs, nested panels */
+  --surface-3: #222e46; /* raised — hover, active rows */
+  --surface-4: #2a3548;
+  --surface-glass: rgba(17, 27, 46, 0.72);
+  --surface-inverse: #f1f5f9;
+
+  /* Text */
+  --ink-900: #f1f5f9;
+  --ink-800: #e2e8f0;
+  --ink-700: #cbd5e1;
+  --ink-600: #adb9c9;
+  --ink-500: #94a3b8;
+  /* Brief says #64748B. That measures 3.86:1 on the app background and 3.6:1
+     on an elevated card — below AA for small text, and this token carries
+     timestamps and counts that people actually read. Same hue, same
+     saturation, lifted until it clears AA on the darkest surface it ever sits
+     on: 5.4:1 on navy, 5.0:1 on a card, 4.5:1 on an elevated panel. */
+  --ink-400: #7d8ca1;
+  --ink-300: #4b5a6e;
+  --ink-on-brand: #0b1426;
+
+  /* Lines — subtle, never a hard rule */
+  --line: #2a3548;
+  --line-soft: rgba(42, 53, 72, 0.6);
+  --line-strong: #39455c;
+
+  /* Premium gold */
+  --gold-700: #9a7d20;
+  --gold-600: #c8a52f;
+  --gold-500: #d4af37;
+  --gold-400: #e8c547;
+  --gold-300: #f0d678;
+  --gold-200: rgba(212, 175, 55, 0.18);
+  --gold-100: rgba(212, 175, 55, 0.1);
+
+  --emerald-700: #047857;
+  --emerald-600: #059669;
+  --emerald-500: #10b981;
+  --emerald-200: rgba(16, 185, 129, 0.18);
+  --emerald-100: rgba(16, 185, 129, 0.1);
+
+  /* Semantic — soft, desaturated, never harsh */
+  --info: #7dadf8;
+  --info-soft: rgba(96, 165, 250, 0.14);
+  --success: #34d399;
+  --success-soft: rgba(16, 185, 129, 0.14);
+  --warning: #fbbf24;
+  --warning-soft: rgba(245, 158, 11, 0.14);
+  --danger: #fb7185;
+  --danger-soft: rgba(244, 63, 94, 0.14);
+  --violet: #a78bfa;
+  --violet-soft: rgba(139, 92, 246, 0.14);
+  --orange: #fdba74;
+  --orange-soft: rgba(249, 115, 22, 0.14);
+  --fuchsia: #f0abfc;
+  --fuchsia-soft: rgba(232, 121, 249, 0.14);
+
+  /* Elevation — soft shadows only, no hard edges */
+  --shadow-xs: 0 1px 2px rgba(3, 7, 18, 0.4);
+  --shadow-sm: 0 1px 2px rgba(3, 7, 18, 0.3), 0 8px 24px -16px rgba(3, 7, 18, 0.7);
+  --shadow-md: 0 2px 4px rgba(3, 7, 18, 0.26), 0 20px 48px -28px rgba(3, 7, 18, 0.85);
+  --shadow-lg: 0 4px 12px rgba(3, 7, 18, 0.3), 0 40px 90px -44px rgba(3, 7, 18, 0.95);
+  --shadow-brand: 0 20px 56px -24px rgba(3, 7, 18, 0.9);
+  --shadow-gold: 0 10px 30px -12px rgba(212, 175, 55, 0.42);
+
+  --focus: #d4af37;
+  --focus-ring: 0 0 0 3px rgba(212, 175, 55, 0.3);
+
+  color-scheme: dark;
+}
+
+/* --------------------------------------------------------------------------
+   Light — the same design, lit from the front
+   -------------------------------------------------------------------------- */
+
+:root,
+.staff-console.theme-light {
+  --surface-0: #f6f8fb;
+  --surface-1: #ffffff;
+  --surface-2: #f3f6fa;
+  --surface-3: #eaeff6;
+  --surface-4: #e1e8f1;
+  --surface-glass: rgba(255, 255, 255, 0.78);
+  --surface-inverse: #0b1426;
+
+  --ink-900: #0b1426;
+  --ink-800: #16233a;
+  --ink-700: #2a3548;
+  --ink-600: #475569;
+  --ink-500: #64748b;
+  --ink-400: #94a3b8;
+  --ink-300: #b4c0cf;
+  --ink-on-brand: #0b1426;
+
+  --line: rgba(11, 20, 38, 0.09);
+  --line-soft: rgba(11, 20, 38, 0.06);
+  --line-strong: rgba(11, 20, 38, 0.16);
+
+  --gold-700: #8a6d18;
+  --gold-600: #a8861f;
+  --gold-500: #d4af37;
+  --gold-400: #e8c547;
+  --gold-300: #f0d678;
+  --gold-200: rgba(212, 175, 55, 0.2);
+  --gold-100: rgba(212, 175, 55, 0.1);
+
+  --emerald-700: #047857;
+  --emerald-600: #059669;
+  --emerald-500: #10b981;
+  --emerald-200: rgba(16, 185, 129, 0.18);
+  --emerald-100: rgba(16, 185, 129, 0.1);
+
+  --info: #2563eb;
+  --info-soft: rgba(37, 99, 235, 0.09);
+  --success: #047857;
+  --success-soft: rgba(16, 185, 129, 0.12);
+  --warning: #b45309;
+  --warning-soft: rgba(245, 158, 11, 0.13);
+  --danger: #be123c;
+  --danger-soft: rgba(244, 63, 94, 0.1);
+  --violet: #6d28d9;
+  --violet-soft: rgba(139, 92, 246, 0.1);
+  --orange: #c2410c;
+  --orange-soft: rgba(249, 115, 22, 0.1);
+  --fuchsia: #a21caf;
+  --fuchsia-soft: rgba(232, 121, 249, 0.1);
+
+  --shadow-xs: 0 1px 2px rgba(11, 20, 38, 0.05);
+  --shadow-sm: 0 1px 2px rgba(11, 20, 38, 0.04), 0 6px 18px -12px rgba(11, 20, 38, 0.14);
+  --shadow-md: 0 1px 3px rgba(11, 20, 38, 0.04), 0 18px 40px -24px rgba(11, 20, 38, 0.2);
+  --shadow-lg: 0 2px 8px rgba(11, 20, 38, 0.05), 0 32px 72px -40px rgba(11, 20, 38, 0.28);
+  --shadow-brand: 0 18px 44px -20px rgba(11, 20, 38, 0.3);
+  --shadow-gold: 0 10px 28px -14px rgba(212, 175, 55, 0.45);
+
+  --focus: #a8861f;
+  --focus-ring: 0 0 0 3px rgba(212, 175, 55, 0.28);
+
+  color-scheme: light;
+}
+
+/* --------------------------------------------------------------------------
+   Shared scale — rhythm, radii, motion, type
+   -------------------------------------------------------------------------- */
+
+:root,
+.staff-console.theme-light,
+.staff-console.theme-dark {
+  --surface: var(--surface-1);
+  --surface-elevated: var(--surface-2);
+  --border: var(--line);
+  --text-primary: var(--ink-900);
+  --text-muted: var(--ink-500);
+  --accent: var(--gold-500);
+  --accent-soft: var(--gold-200);
+
+  /* One 4px rhythm, named so spacing is a decision and not a guess. */
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-5: 20px;
+  --s-6: 24px;
+  --s-8: 32px;
+  --s-10: 40px;
+  --s-12: 48px;
+  --s-16: 64px;
+  --s-20: 80px;
+
+  --r-xs: 6px;
+  --r-sm: 8px;
+  --r-md: 10px;
+  --r-lg: 14px;
+  --r-xl: 18px;
+  --r-2xl: 22px;
+  --r-3xl: 28px;
+  --r-pill: 999px;
+
+  --ease-out: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --ease-spring: cubic-bezier(0.34, 1.32, 0.64, 1);
+  --dur-fast: 140ms;
+  --dur-base: 200ms;
+  --dur-slow: 320ms;
+
+  --font-arabic: 'Cairo', 'Tajawal', 'Inter', system-ui, sans-serif;
+  --font-latin: 'Inter', 'Cairo', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', 'SFMono-Regular', ui-monospace, Menlo, monospace;
+
+  /* Only the portal reads --container (.container, .portal-main-inner,
+     .site-header-inner); the console lays out with flex and never touches it.
+     Widening it to 1320px shrank the page gutter below the bleed that
+     .hero-visual::before relies on (inset: 6% -6% 0 6%), which pushed the
+     document 21px wide in LTR — in RTL the bleed falls on the side that still
+     had room, so only English showed it. Left at the width the portal was
+     designed around. */
+  --container: 1200px;
+  --container-narrow: 940px;
+  --header-height: 64px;
+}
+
+/* --------------------------------------------------------------------------
+   Status palette
+   Soft, low-chroma fills with a legible foreground. Declared once here so a
+   pill, a dot, a chart series and a table row all agree on what "In Review"
+   looks like.
+   -------------------------------------------------------------------------- */
+
+:root,
+.staff-console.theme-light,
+.staff-console.theme-dark {
+  --st-new-fg: var(--info);
+  --st-new-bg: var(--info-soft);
+  --st-assigned-fg: var(--violet);
+  --st-assigned-bg: var(--violet-soft);
+  --st-in-review-fg: var(--warning);
+  --st-in-review-bg: var(--warning-soft);
+  --st-resolved-fg: var(--success);
+  --st-resolved-bg: var(--success-soft);
+  --st-reopened-fg: var(--danger);
+  --st-reopened-bg: var(--danger-soft);
+  --st-transferred-fg: var(--fuchsia);
+  --st-transferred-bg: var(--fuchsia-soft);
+}
+
+/* --------------------------------------------------------------------------
+   Typography
+   Headings are tight and confident; body copy is generous. Arabic needs more
+   line-height than Latin to stay readable, so the base leading is set for
+   Arabic and Latin headings claw some of it back.
+   -------------------------------------------------------------------------- */
+
+/* Rendering quality is safe to set globally: it changes how glyphs are
+   painted, not how much room they take. Sizing is NOT — the portal and the
+   console already own their own type scales, and a global `h1` rule here
+   would silently resize headings on pages this redesign never touched (it
+   did, and it overflowed the English portal). So every metric below is
+   scoped to the surfaces this design system actually owns. */
+body {
+  font-feature-settings: 'kern' 1, 'liga' 1;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+.ds-page,
+.staff-console {
+  font-family: var(--font-arabic);
+  line-height: 1.7;
+  letter-spacing: 0;
+}
+
+.ds-page :is(h1, h2, h3, h4, h5),
+.staff-console :is(h1, h2, h3, h4, h5) {
+  line-height: 1.25;
+  letter-spacing: -0.015em;
+  font-weight: 700;
+  color: var(--ink-900);
+}
+
+.ds-page h1,
+.staff-console h1 { font-size: clamp(1.5rem, 1.2rem + 1vw, 1.9rem); letter-spacing: -0.025em; }
+.ds-page h2,
+.staff-console h2 { font-size: clamp(1.2rem, 1.05rem + 0.5vw, 1.4rem); letter-spacing: -0.02em; }
+.ds-page h3,
+.staff-console h3 { font-size: 1.0625rem; }
+.ds-page h4,
+.staff-console h4 { font-size: 0.9375rem; }
+
+/* Latin runs inside Arabic copy — ticket numbers, money, dates — should not
+   inherit Arabic letterforms. Opt-in only: a bare [dir='ltr'] selector would
+   restyle the entire English portal. */
+.ds-latin {
+  font-family: var(--font-latin);
+}
+
+.ds-mono,
+.ds-numeric {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+/* --------------------------------------------------------------------------
+   Premium primitives
+   -------------------------------------------------------------------------- */
+
+/* A card: one soft border, one soft shadow, and a barely-there sheen so it
+   reads as a lit surface rather than a filled rectangle. Glassmorphism is
+   kept to a whisper — enough to feel expensive, not enough to blur text. */
+.ds-card {
+  position: relative;
+  background: var(--surface-1);
+  border: 1px solid var(--line);
+  border-radius: var(--r-xl);
+  box-shadow: var(--shadow-sm);
+  transition:
+    border-color var(--dur-base) var(--ease-out),
+    box-shadow var(--dur-base) var(--ease-out),
+    transform var(--dur-base) var(--ease-out);
+}
+
+:root.dark .ds-card,
+.staff-console.theme-dark .ds-card {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.025), rgba(255, 255, 255, 0) 120px), var(--surface-1);
+}
+
+.ds-card-interactive:hover {
+  border-color: var(--line-strong);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
+
+.ds-card-pad {
+  padding: var(--s-6);
+}
+
+@media (max-width: 640px) {
+  .ds-card-pad { padding: var(--s-5); }
+}
+
+/* Section header: a title, an optional count, an optional action. */
+.ds-section-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--s-4);
+  margin-bottom: var(--s-5);
+  flex-wrap: wrap;
+}
+
+.ds-section-title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+}
+
+.ds-section-sub {
+  margin: 4px 0 0;
+  font-size: 0.8125rem;
+  color: var(--ink-500);
+  line-height: 1.6;
+}
+
+/* Eyebrow: the small uppercase label above a title. */
+.ds-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--gold-500);
+}
+
+/* Status pill — the single source of truth for status colour. */
+.ds-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 11px;
+  border-radius: var(--r-pill);
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.5;
+  white-space: nowrap;
+  border: 1px solid transparent;
+}
+
+.ds-pill::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  flex: none;
+}
+
+.ds-pill[data-tone='new'] { color: var(--st-new-fg); background: var(--st-new-bg); }
+.ds-pill[data-tone='assigned'] { color: var(--st-assigned-fg); background: var(--st-assigned-bg); }
+.ds-pill[data-tone='in_review'] { color: var(--st-in-review-fg); background: var(--st-in-review-bg); }
+.ds-pill[data-tone='resolved'] { color: var(--st-resolved-fg); background: var(--st-resolved-bg); }
+.ds-pill[data-tone='reopened'] { color: var(--st-reopened-fg); background: var(--st-reopened-bg); }
+.ds-pill[data-tone='transferred'] { color: var(--st-transferred-fg); background: var(--st-transferred-bg); }
+.ds-pill[data-tone='neutral'] { color: var(--ink-500); background: var(--surface-3); }
+.ds-pill[data-tone='gold'] { color: var(--gold-500); background: var(--gold-200); }
+
+/* A pill with no dot, for metadata rather than state. */
+.ds-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: var(--r-pill);
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--ink-500);
+  background: var(--surface-2);
+  border: 1px solid var(--line-soft);
+  white-space: nowrap;
+}
+
+/* Soft gradient wash for KPI cards — a hint of hue, never a block of colour. */
+.ds-wash {
+  position: relative;
+  overflow: hidden;
+}
+
+.ds-wash::after {
+  content: '';
+  position: absolute;
+  inset-inline-end: -30%;
+  inset-block-start: -60%;
+  width: 72%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--wash, rgba(212, 175, 55, 0.14)), transparent 68%);
+  pointer-events: none;
+}
+
+/* Focus: one ring everywhere. */
+.ds-focusable:focus-visible,
+.ds-card-interactive:focus-visible {
+  outline: 2px solid transparent;
+  box-shadow: var(--focus-ring), var(--shadow-sm);
+  border-color: var(--gold-500);
+}
+
+/* Dividers that breathe. */
+.ds-divider {
+  height: 1px;
+  background: var(--line-soft);
+  border: 0;
+  margin: var(--s-6) 0;
+}
+
+/* A quiet scrollbar so long lists do not shout. */
+.ds-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
+
+.ds-scroll::-webkit-scrollbar { width: 10px; height: 10px; }
+.ds-scroll::-webkit-scrollbar-track { background: transparent; }
+.ds-scroll::-webkit-scrollbar-thumb {
+  background: var(--line-strong);
+  border-radius: var(--r-pill);
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+.ds-scroll::-webkit-scrollbar-thumb:hover { background-clip: content-box; background-color: var(--ink-400); }
+
+/* Numbers that change should not reflow the layout around them. */
+.ds-metric {
+  font-family: var(--font-latin);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+  color: var(--ink-900);
+}
+
+/* Skeleton shimmer, calmed down. */
+@keyframes ds-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.ds-skeleton {
+  border-radius: var(--r-md);
+  background: linear-gradient(90deg, var(--surface-2) 25%, var(--surface-3) 50%, var(--surface-2) 75%);
+  background-size: 200% 100%;
+  animation: ds-shimmer 1.6s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ds-skeleton { animation: none; }
+  .ds-card-interactive:hover { transform: none; }
+}
+
+/* --------------------------------------------------------------------------
+   Component styles for the premium primitives
+   -------------------------------------------------------------------------- */
+
+.ds-metric-card {
+  display: flex;
+  flex-direction: column;
+  min-height: 132px;
+}
+
+.ds-metric-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--r-md);
+  flex: none;
+}
+
+.ds-blank {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: var(--s-12) var(--s-6);
+  gap: 6px;
+}
+
+.ds-blank-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  margin-bottom: var(--s-3);
+  border-radius: var(--r-xl);
+  background: var(--surface-2);
+  border: 1px solid var(--line-soft);
+  color: var(--ink-400);
+}
+
+.ds-blank-title {
+  font-size: 0.975rem;
+  font-weight: 650;
+  color: var(--ink-800);
+}
+
+.ds-blank-body {
+  margin: 0;
+  max-width: 44ch;
+  font-size: 0.8125rem;
+  line-height: 1.7;
+  color: var(--ink-500);
+}
+
+/* A grid that breathes: cards never get narrower than is comfortable. */
+.ds-grid {
+  display: grid;
+  gap: var(--s-4);
+  grid-template-columns: repeat(auto-fit, minmax(min(230px, 100%), 1fr));
+}
+
+.ds-grid-wide {
+  display: grid;
+  gap: var(--s-5);
+  grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
+}
+
+/* Page rhythm: a generous, consistent gap between every major block. */
+.ds-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-6);
+}
+
+.ds-page-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--s-5);
+  flex-wrap: wrap;
+}
+
+.ds-page-title {
+  margin: 0;
+  font-size: clamp(1.35rem, 1.1rem + 0.9vw, 1.75rem);
+  font-weight: 700;
+  letter-spacing: -0.025em;
+}
+
+.ds-page-sub {
+  margin: 6px 0 0;
+  font-size: 0.875rem;
+  line-height: 1.7;
+  color: var(--ink-500);
+  max-width: 68ch;
+}
+
+/* ==========================================================================
+   Buttons
+   Three weights only. Gold is the one action that matters on a screen; ghost
+   is everything reversible; quiet is everything incidental.
+   ========================================================================== */
+
+.ds-gold-btn,
+.ds-ghost-btn,
+.ds-quiet-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  height: 38px;
+  padding: 0 16px;
+  border-radius: var(--r-md);
+  font-family: inherit;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  white-space: nowrap;
+  border: 1px solid transparent;
+  transition:
+    background-color var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-base) var(--ease-out),
+    transform var(--dur-fast) var(--ease-out);
+}
+
+.ds-gold-btn {
+  background: var(--gold-500);
+  color: #0b1426;
+  box-shadow: var(--shadow-gold);
+}
+
+.ds-gold-btn:hover:not(:disabled) {
+  background: var(--gold-400);
+  transform: translateY(-1px);
+}
+
+.ds-gold-btn:active:not(:disabled) { transform: translateY(0); }
+
+.ds-ghost-btn {
+  background: var(--surface-2);
+  border-color: var(--line);
+  color: var(--ink-800);
+}
+
+.ds-ghost-btn:hover:not(:disabled) {
+  background: var(--surface-3);
+  border-color: var(--line-strong);
+}
+
+.ds-quiet-btn {
+  background: transparent;
+  color: var(--ink-500);
+  height: 34px;
+  padding: 0 12px;
+}
+
+.ds-quiet-btn:hover:not(:disabled) {
+  background: var(--surface-2);
+  color: var(--ink-800);
+}
+
+.ds-gold-btn:disabled,
+.ds-ghost-btn:disabled,
+.ds-quiet-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
+
+.ds-gold-btn:focus-visible,
+.ds-ghost-btn:focus-visible,
+.ds-quiet-btn:focus-visible {
+  outline: 2px solid transparent;
+  box-shadow: var(--focus-ring);
+}
+
+/* ==========================================================================
+   Banners
+   ========================================================================== */
+
+.ds-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-radius: var(--r-lg);
+  font-size: 0.8125rem;
+  line-height: 1.6;
+  border: 1px solid transparent;
+}
+
+.ds-banner > span { flex: 1; min-width: 0; }
+
+.ds-banner > button {
+  background: transparent;
+  border: 0;
+  color: inherit;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  opacity: 0.75;
+  padding: 4px 8px;
+  border-radius: var(--r-xs);
+}
+
+.ds-banner > button:hover { opacity: 1; background: rgba(255, 255, 255, 0.06); }
+
+.ds-banner-success {
+  background: var(--success-soft);
+  border-color: color-mix(in srgb, var(--success) 26%, transparent);
+  color: var(--success);
+}
+
+.ds-banner-error {
+  background: var(--danger-soft);
+  border-color: color-mix(in srgb, var(--danger) 26%, transparent);
+  color: var(--danger);
+}
+
+.ds-banner-info {
+  background: var(--info-soft);
+  border-color: color-mix(in srgb, var(--info) 24%, transparent);
+  color: var(--info);
+}
+
+/* ==========================================================================
+   Intake channel cards — the heart of the settings page
+   Three cards, nothing else above the fold. Each answers one question at a
+   glance (is this channel on?) and offers exactly one primary action.
+   ========================================================================== */
+
+.ds-channel-grid {
+  display: grid;
+  gap: var(--s-5);
+  grid-template-columns: repeat(auto-fit, minmax(min(290px, 100%), 1fr));
+}
+
+/* Cards carry different amounts of metadata, but three cards of unequal
+   height look unfinished. The motion wrapper between the grid and the card
+   has to pass the stretch through. */
+.ds-channel-grid > * {
+  display: flex;
+}
+
+.ds-channel-grid > * > .ds-channel {
+  width: 100%;
+}
+
+.ds-channel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  padding: var(--s-6);
+  min-height: 272px;
+  overflow: hidden;
+  transition:
+    border-color var(--dur-base) var(--ease-out),
+    box-shadow var(--dur-base) var(--ease-out),
+    transform var(--dur-base) var(--ease-out);
+}
+
+.ds-channel:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--line-strong);
+}
+
+/* A connected channel earns a faint gold edge — the only reward state on the
+   page, so "done" is visible without reading a word. */
+.ds-channel.is-connected {
+  border-color: color-mix(in srgb, var(--gold-500) 30%, var(--line));
+}
+
+.ds-channel-glow {
+  position: absolute;
+  inset-inline-start: 0;
+  inset-block-start: 0;
+  width: 100%;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, var(--line-strong), transparent);
+  opacity: 0;
+  transition: opacity var(--dur-base) var(--ease-out);
+}
+
+.ds-channel.is-connected .ds-channel-glow {
+  opacity: 1;
+  background: linear-gradient(90deg, transparent, var(--gold-500), transparent);
+}
+
+.ds-channel-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--s-3);
+  margin-bottom: var(--s-5);
+}
+
+.ds-channel-logo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 54px;
+  height: 54px;
+  border-radius: var(--r-lg);
+  flex: none;
+}
+
+.ds-channel-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 11px;
+  border-radius: var(--r-pill);
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.ds-channel-state i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  flex: none;
+}
+
+.ds-channel-state-on { color: var(--success); background: var(--success-soft); }
+.ds-channel-state-off { color: var(--ink-400); background: var(--surface-3); }
+.ds-channel-state-fail { color: var(--danger); background: var(--danger-soft); }
+
+/* A connected channel pulses once a second, very faintly — a heartbeat, not
+   an animation. */
+.ds-channel-state-on i {
+  animation: ds-pulse 2.4s var(--ease-out) infinite;
+}
+
+@keyframes ds-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--success) 55%, transparent); }
+  50% { box-shadow: 0 0 0 4px transparent; }
+}
+
+.ds-channel-name {
+  margin: 0 0 6px;
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.ds-channel-copy {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.75;
+  color: var(--ink-500);
+}
+
+.ds-channel-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: var(--s-4) 0 var(--s-5);
+}
+
+.ds-tag-danger { color: var(--danger); background: var(--danger-soft); border-color: transparent; }
+
+/* Actions pinned to the bottom so three cards of different copy lengths still
+   line up on one baseline. */
+.ds-channel-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  margin-top: auto;
+  padding-top: var(--s-2);
+}
+
+.ds-channel-actions > .ds-gold-btn,
+.ds-channel-actions > .ds-ghost-btn { flex: 1; }
+
+.ds-channel-actions > .ds-quiet-btn {
+  height: 38px;
+  border-color: var(--line);
+  color: var(--ink-600);
+}
+
+.ds-channel-actions > .ds-quiet-btn:hover:not(:disabled) {
+  border-color: var(--line-strong);
+  background: var(--surface-2);
+  color: var(--ink-900);
+}
+
+.ds-reassure {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--ink-400);
+  line-height: 1.7;
+}
+
+/* ==========================================================================
+   Advanced disclosure — present, quiet, closed by default
+   ========================================================================== */
+
+.ds-advanced {
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--surface-1);
+  overflow: hidden;
+}
+
+.ds-advanced > summary {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  padding: 14px var(--s-5);
+  cursor: pointer;
+  list-style: none;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--ink-700);
+  transition: background-color var(--dur-fast) var(--ease-out);
+}
+
+.ds-advanced > summary::-webkit-details-marker { display: none; }
+.ds-advanced > summary:hover { background: var(--surface-2); }
+
+.ds-advanced > summary > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ds-advanced > summary > small {
+  flex: 1;
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: var(--ink-400);
+}
+
+.ds-advanced > summary > svg {
+  transition: transform var(--dur-base) var(--ease-out);
+}
+
+.ds-advanced[open] > summary > svg { transform: rotate(90deg); }
+[dir='rtl'] .ds-advanced > summary > svg { transform: rotate(180deg); }
+[dir='rtl'] .ds-advanced[open] > summary > svg { transform: rotate(90deg); }
+
+.ds-advanced-body {
+  padding: var(--s-5);
+  border-top: 1px solid var(--line-soft);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-6);
+}
+
+.ds-advanced-group > h3 {
+  margin: 0 0 var(--s-3);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--ink-500);
+  letter-spacing: 0.02em;
+}
+
+.ds-advanced-grid {
+  display: grid;
+  gap: var(--s-3);
+  grid-template-columns: repeat(auto-fit, minmax(min(270px, 100%), 1fr));
+}
+
+.ds-mini-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: var(--s-4);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+}
+
+.ds-mini-card > p {
+  margin: 0;
+  font-size: 0.75rem;
+  line-height: 1.7;
+  color: var(--ink-400);
+}
+
+.ds-mini-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ds-mini-head > strong {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.8125rem;
+  font-weight: 650;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ds-mini-logo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--r-sm);
+  background: var(--surface-3);
+  color: var(--ink-500);
+  flex: none;
+}
+
+.ds-mini-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 2px;
+}
+
+.ds-unavailable {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ds-unavailable > li {
+  display: flex;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--r-sm);
+  color: var(--ink-400);
+}
+
+.ds-unavailable > li:hover { background: var(--surface-2); }
+.ds-unavailable > li > svg { flex: none; margin-top: 3px; }
+.ds-unavailable div { display: flex; flex-direction: column; gap: 2px; }
+.ds-unavailable strong { font-size: 0.8125rem; font-weight: 600; color: var(--ink-600); }
+.ds-unavailable span { font-size: 0.75rem; line-height: 1.65; }
+
+/* ==========================================================================
+   Provider chooser
+   ========================================================================== */
+
+.ds-chooser-lead {
+  margin: 0 0 var(--s-4);
+  font-size: 0.8125rem;
+  line-height: 1.7;
+  color: var(--ink-500);
+}
+
+.ds-chooser {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+}
+
+.ds-chooser-option {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  width: 100%;
+  padding: 13px var(--s-4);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+  transition:
+    border-color var(--dur-fast) var(--ease-out),
+    background-color var(--dur-fast) var(--ease-out),
+    transform var(--dur-fast) var(--ease-out);
+}
+
+.ds-chooser-option:hover {
+  border-color: var(--gold-500);
+  background: var(--surface-3);
+}
+
+.ds-chooser-option:focus-visible {
+  outline: 2px solid transparent;
+  box-shadow: var(--focus-ring);
+}
+
+.ds-chooser-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.ds-chooser-text > strong { font-size: 0.875rem; font-weight: 650; }
+.ds-chooser-text > small { font-size: 0.75rem; line-height: 1.6; color: var(--ink-400); }
+
+[dir='rtl'] .ds-chooser-option > svg:last-child { transform: scaleX(-1); }
+
+@media (max-width: 560px) {
+  .ds-channel { min-height: 0; padding: var(--s-5); }
+  .ds-channel-actions { flex-direction: column; align-items: stretch; }
+  .ds-channel-actions > * { width: 100%; }
+  .ds-chooser-option > .staff-status { display: none; }
+}
+
+/* ==========================================================================
+   Dashboard
+   Four headline KPIs, a quiet strip of supporting numbers, one row of
+   actions, then the two blocks a shift lead actually reads.
+   ========================================================================== */
+
+.ds-kpi-grid {
+  display: grid;
+  gap: var(--s-4);
+  grid-template-columns: repeat(auto-fit, minmax(min(212px, 100%), 1fr));
+}
+
+/* Supporting numbers: real, but deliberately quieter than the four above. */
+.ds-kpi-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(140px, 100%), 1fr));
+  gap: 1px;
+  background: var(--line-soft);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+}
+
+.ds-kpi-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 15px var(--s-4);
+  background: var(--surface-1);
+}
+
+.ds-kpi-cell > span {
+  font-size: 0.75rem;
+  color: var(--ink-500);
+}
+
+.ds-kpi-cell > strong {
+  font-size: 1.2rem;
+}
+
+/* Quick actions sit above the fold: the dashboard is a launchpad, not a
+   read-only report. */
+.ds-quick-grid {
+  display: grid;
+  gap: var(--s-3);
+  grid-template-columns: repeat(auto-fit, minmax(min(230px, 100%), 1fr));
+}
+
+.ds-quick {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  padding: 14px var(--s-4);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--surface-1);
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+  transition:
+    border-color var(--dur-fast) var(--ease-out),
+    background-color var(--dur-fast) var(--ease-out),
+    transform var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-base) var(--ease-out);
+}
+
+.ds-quick:hover {
+  transform: translateY(-2px);
+  border-color: var(--line-strong);
+  box-shadow: var(--shadow-sm);
+}
+
+.ds-quick:focus-visible { outline: 2px solid transparent; box-shadow: var(--focus-ring); }
+
+.ds-quick.is-primary {
+  border-color: color-mix(in srgb, var(--gold-500) 38%, var(--line));
+  background: linear-gradient(135deg, var(--gold-100), transparent 70%), var(--surface-1);
+}
+
+.ds-quick.is-primary .ds-quick-icon { color: var(--gold-500); background: var(--gold-200); }
+
+.ds-quick-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--r-md);
+  background: var(--surface-3);
+  color: var(--ink-500);
+  flex: none;
+}
+
+.ds-quick-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.ds-quick-text > strong { font-size: 0.8125rem; font-weight: 650; }
+.ds-quick-text > small { font-size: 0.6875rem; color: var(--ink-400); }
+.ds-quick > svg { color: var(--ink-400); flex: none; }
+[dir='rtl'] .ds-quick > svg:last-child { transform: scaleX(-1); }
+
+/* Intake split beside the activity feed; stacks on narrow screens. */
+.ds-dash-split {
+  display: grid;
+  gap: var(--s-5);
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  align-items: start;
+}
+
+@media (max-width: 1040px) {
+  .ds-dash-split { grid-template-columns: 1fr; }
+}
+
+/* ------------------------------------------------------- intake breakdown */
+
+.ds-intake-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+}
+
+.ds-intake-row {
+  display: grid;
+  grid-template-columns: 34px 1fr auto auto;
+  grid-template-rows: auto auto;
+  align-items: center;
+  gap: 4px var(--s-3);
+  width: 100%;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: var(--r-md);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease-out);
+}
+
+.ds-intake-row:disabled { cursor: default; }
+.ds-intake-row:not(:disabled):hover { background: var(--surface-2); }
+.ds-intake-row:focus-visible { outline: 2px solid transparent; box-shadow: var(--focus-ring); }
+
+.ds-intake-icon {
+  grid-row: 1 / 3;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--r-sm);
+}
+
+.ds-intake-label { font-size: 0.8125rem; font-weight: 600; }
+.ds-intake-count { font-size: 1.05rem; }
+.ds-intake-share { font-size: 0.75rem; color: var(--ink-400); min-width: 34px; text-align: end; }
+
+.ds-intake-track {
+  grid-column: 2 / -1;
+  height: 4px;
+  border-radius: var(--r-pill);
+  background: var(--surface-3);
+  overflow: hidden;
+}
+
+.ds-intake-fill {
+  display: block;
+  height: 100%;
+  border-radius: var(--r-pill);
+  transition: width var(--dur-slow) var(--ease-out);
+}
+
+/* ------------------------------------------------------------ activity feed */
+
+.ds-feed {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.ds-feed-row {
+  display: flex;
+  gap: var(--s-3);
+  width: 100%;
+  padding: 2px 8px 2px 8px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+  border-radius: var(--r-md);
+  transition: background-color var(--dur-fast) var(--ease-out);
+}
+
+.ds-feed-row:disabled { cursor: default; }
+.ds-feed-row:not(:disabled):hover { background: var(--surface-2); }
+.ds-feed-row:focus-visible { outline: 2px solid transparent; box-shadow: var(--focus-ring); }
+
+/* A continuous rail joins the entries so the feed reads as one thread. */
+.ds-feed-rail {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  width: 28px;
+  flex: none;
+  padding: 12px 0;
+}
+
+.ds-feed li:not(:last-child) .ds-feed-rail::after {
+  content: '';
+  position: absolute;
+  inset-block-start: 38px;
+  inset-block-end: -6px;
+  width: 1px;
+  background: var(--line);
+}
+
+.ds-feed-node {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  color: var(--ink-500);
+  align-self: flex-start;
+}
+
+.ds-feed-node[data-tone='new'] { color: var(--st-new-fg); background: var(--st-new-bg); border-color: transparent; }
+.ds-feed-node[data-tone='assigned'] { color: var(--st-assigned-fg); background: var(--st-assigned-bg); border-color: transparent; }
+.ds-feed-node[data-tone='in_review'] { color: var(--st-in-review-fg); background: var(--st-in-review-bg); border-color: transparent; }
+.ds-feed-node[data-tone='resolved'] { color: var(--st-resolved-fg); background: var(--st-resolved-bg); border-color: transparent; }
+.ds-feed-node[data-tone='reopened'] { color: var(--st-reopened-fg); background: var(--st-reopened-bg); border-color: transparent; }
+.ds-feed-node[data-tone='transferred'] { color: var(--st-transferred-fg); background: var(--st-transferred-bg); border-color: transparent; }
+
+.ds-feed-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 12px 0;
+}
+
+.ds-feed-top {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+}
+
+.ds-feed-subject {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ds-feed-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 0.6875rem;
+  color: var(--ink-400);
+}
+
+.ds-feed-meta > i { font-style: normal; opacity: 0.5; }
+
+@media (max-width: 520px) {
+  .ds-feed-top { flex-direction: column; align-items: flex-start; gap: 5px; }
+  .ds-feed-subject { white-space: normal; }
+}
+
+/* ==========================================================================
+   Filters
+   One primary row carrying the three filters that matter, and a disclosure
+   for the rest that reports how much it is hiding.
+   ========================================================================== */
+
+.ds-filters {
+  background: var(--surface-1);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  padding: var(--s-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+}
+
+.ds-filter-primary {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--s-3);
+  flex-wrap: wrap;
+}
+
+.ds-filter-more {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(176px, 100%), 1fr));
+  gap: var(--s-3);
+  padding-top: var(--s-4);
+  border-top: 1px solid var(--line-soft);
+  animation: ds-reveal var(--dur-base) var(--ease-out);
+}
+
+@keyframes ds-reveal {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ds-filter-more { animation: none; }
+}
+
+.ds-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 152px;
+}
+
+.ds-field-grow { flex: 1 1 210px; }
+
+.ds-field > span {
+  font-size: 0.6875rem;
+  font-weight: 650;
+  color: var(--ink-500);
+  letter-spacing: 0.01em;
+}
+
+.ds-field > input,
+.ds-field > select {
+  height: 38px;
+  padding: 0 12px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  color: var(--ink-900);
+  font-family: inherit;
+  font-size: 0.8125rem;
+  width: 100%;
+  transition:
+    border-color var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-fast) var(--ease-out),
+    background-color var(--dur-fast) var(--ease-out);
+}
+
+.ds-field > select {
+  cursor: pointer;
+  appearance: none;
+  /* Caret drawn in CSS so it follows the text colour in both themes. */
+  background-image: linear-gradient(45deg, transparent 50%, currentColor 50%),
+    linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+  padding-inline-end: 30px;
+}
+
+[dir='rtl'] .ds-field > select {
+  background-position: 13px calc(50% + 1px), 17px calc(50% + 1px);
+}
+
+[dir='ltr'] .ds-field > select {
+  background-position: calc(100% - 17px) calc(50% + 1px), calc(100% - 13px) calc(50% + 1px);
+}
+
+.ds-field > input::placeholder { color: var(--ink-400); }
+
+.ds-field > input:hover,
+.ds-field > select:hover { border-color: var(--line-strong); }
+
+.ds-field > input:focus,
+.ds-field > select:focus {
+  outline: none;
+  border-color: var(--gold-500);
+  box-shadow: var(--focus-ring);
+  background: var(--surface-1);
+}
+
+.ds-more-filters { position: relative; }
+
+.ds-filter-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: var(--r-pill);
+  background: var(--gold-500);
+  color: #0b1426;
+  font-size: 0.6875rem;
+  font-style: normal;
+  font-weight: 700;
+}
+
+@media (max-width: 680px) {
+  .ds-filter-primary { flex-direction: column; align-items: stretch; }
+  .ds-field { min-width: 0; }
+  .ds-more-filters, .ds-filter-primary > .ds-quiet-btn { width: 100%; }
+}

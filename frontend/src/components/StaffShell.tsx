@@ -10,6 +10,8 @@ import { EmptyState } from './ui';
 import { Icon, type IconName } from './Icon';
 import '../staff-console.css';
 import '../styles/staff.css';
+// Loaded last: refines the console chrome on top of the sheets above.
+import '../styles/console-premium.css';
 
 type Theme = 'light' | 'dark';
 

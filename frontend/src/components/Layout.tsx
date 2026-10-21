@@ -121,7 +121,7 @@ export function Layout({ children }: { children: ReactNode }) {
   if (path.startsWith('/staff') || path.startsWith('/dashboard') || path === '/auth/staff' || path === '/auth') {
     return (
       <div className="portal-shell">
-        <div className="pointer-events-none fixed inset-x-0 top-0 h-72 bg-[radial-gradient(60%_100%_at_50%_0%,rgba(201,162,39,0.1),transparent)]" />
+        <div className="pointer-events-none fixed inset-x-0 top-0 h-72 bg-[radial-gradient(60%_100%_at_50%_0%,rgba(212,175,55,0.1),transparent)]" />
         <main className="relative mx-auto w-full max-w-6xl px-4 pb-12 pt-10">{children}</main>
       </div>
     );
