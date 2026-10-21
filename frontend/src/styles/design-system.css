@@ -217,7 +217,14 @@
   --font-latin: 'Inter', 'Cairo', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --font-mono: 'JetBrains Mono', 'SFMono-Regular', ui-monospace, Menlo, monospace;
 
-  --container: 1320px;
+  /* Only the portal reads --container (.container, .portal-main-inner,
+     .site-header-inner); the console lays out with flex and never touches it.
+     Widening it to 1320px shrank the page gutter below the bleed that
+     .hero-visual::before relies on (inset: 6% -6% 0 6%), which pushed the
+     document 21px wide in LTR — in RTL the bleed falls on the side that still
+     had room, so only English showed it. Left at the width the portal was
+     designed around. */
+  --container: 1200px;
   --container-narrow: 940px;
   --header-height: 64px;
 }
@@ -747,6 +754,17 @@ body {
   grid-template-columns: repeat(auto-fit, minmax(min(290px, 100%), 1fr));
 }
 
+/* Cards carry different amounts of metadata, but three cards of unequal
+   height look unfinished. The motion wrapper between the grid and the card
+   has to pass the stretch through. */
+.ds-channel-grid > * {
+  display: flex;
+}
+
+.ds-channel-grid > * > .ds-channel {
+  width: 100%;
+}
+
 .ds-channel {
   position: relative;
   display: flex;
@@ -875,6 +893,18 @@ body {
 
 .ds-channel-actions > .ds-gold-btn,
 .ds-channel-actions > .ds-ghost-btn { flex: 1; }
+
+.ds-channel-actions > .ds-quiet-btn {
+  height: 38px;
+  border-color: var(--line);
+  color: var(--ink-600);
+}
+
+.ds-channel-actions > .ds-quiet-btn:hover:not(:disabled) {
+  border-color: var(--line-strong);
+  background: var(--surface-2);
+  color: var(--ink-900);
+}
 
 .ds-reassure {
   display: flex;
