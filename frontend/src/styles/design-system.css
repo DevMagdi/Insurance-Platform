@@ -553,13 +553,13 @@ h4 { font-size: 0.975rem; }
 .ds-grid {
   display: grid;
   gap: var(--s-4);
-  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(230px, 100%), 1fr));
 }
 
 .ds-grid-wide {
   display: grid;
   gap: var(--s-5);
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
 }
 
 /* Page rhythm: a generous, consistent gap between every major block. */
@@ -733,7 +733,7 @@ h4 { font-size: 0.975rem; }
 .ds-channel-grid {
   display: grid;
   gap: var(--s-5);
-  grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(290px, 100%), 1fr));
 }
 
 .ds-channel {
@@ -942,7 +942,7 @@ h4 { font-size: 0.975rem; }
 .ds-advanced-grid {
   display: grid;
   gap: var(--s-3);
-  grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(270px, 100%), 1fr));
 }
 
 .ds-mini-card {
@@ -1095,13 +1095,13 @@ h4 { font-size: 0.975rem; }
 .ds-kpi-grid {
   display: grid;
   gap: var(--s-4);
-  grid-template-columns: repeat(auto-fit, minmax(212px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(212px, 100%), 1fr));
 }
 
 /* Supporting numbers: real, but deliberately quieter than the four above. */
 .ds-kpi-strip {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(140px, 100%), 1fr));
   gap: 1px;
   background: var(--line-soft);
   border: 1px solid var(--line);
@@ -1131,7 +1131,7 @@ h4 { font-size: 0.975rem; }
 .ds-quick-grid {
   display: grid;
   gap: var(--s-3);
-  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(230px, 100%), 1fr));
 }
 
 .ds-quick {
@@ -1394,7 +1394,7 @@ h4 { font-size: 0.975rem; }
 
 .ds-filter-more {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(176px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(176px, 100%), 1fr));
   gap: var(--s-3);
   padding-top: var(--s-4);
   border-top: 1px solid var(--line-soft);
