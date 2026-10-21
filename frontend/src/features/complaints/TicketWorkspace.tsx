@@ -54,6 +54,33 @@ function StatusPill({ status }: { status: ComplaintStatus }) {
   return <span className={`status-pill status-${status}`}><i />{STATUS_LABEL[status]}</span>;
 }
 
+/**
+ * Arabic labels for every event type the backend writes to complaint_events
+ * (created, assigned, status_changed, escalated, merged, reopened,
+ * sla_breached). Only `status_changed` used to be translated; everything else
+ * fell through to `event_type.replaceAll('_', ' ')` and rendered raw English
+ * snake_case in the middle of an Arabic RTL timeline. The fallback keeps that
+ * behaviour for any event type added server-side later, so a new event is
+ * merely unstyled rather than missing.
+ */
+const EVENT_LABEL: Record<string, string> = {
+  created: 'أُنشئ الطلب',
+  assigned: 'أُسند الطلب',
+  reassigned: 'أُعيد إسناد الطلب',
+  status_changed: 'تغيّرت حالة الطلب',
+  escalated: 'صُعّد الطلب',
+  merged: 'دُمج الطلب',
+  reopened: 'أُعيد فتح الطلب',
+  sla_breached: 'تجاوز اتفاقية مستوى الخدمة',
+  sla_warning: 'اقتراب موعد اتفاقية مستوى الخدمة',
+  note_added: 'أُضيفت ملاحظة داخلية',
+  attachment_added: 'أُضيف مرفق',
+};
+
+function eventLabel(eventType: string): string {
+  return EVENT_LABEL[eventType] ?? eventType.replaceAll('_', ' ');
+}
+
 export function TicketWorkspace({ id, access, options, onBack, onOpenTicket, onRefreshAccess }: TicketWorkspaceProps) {
   const [ticket, setTicket] = useState<Complaint | null>(null);
   const [timeline, setTimeline] = useState<TicketTimeline | null>(null);
@@ -343,7 +370,7 @@ export function TicketWorkspace({ id, access, options, onBack, onOpenTicket, onR
         key: `event-${event.id}`,
         date: event.occurred_at,
         kind: 'event',
-        content: <><strong>{event.event_type === 'status_changed' ? 'تغيّرت حالة الطلب' : event.event_type.replaceAll('_', ' ')}</strong>{event.from_status && event.to_status && <span className="timeline-transition">{STATUS_LABEL[event.from_status]} <Icon name="arrow" size={13} /> {STATUS_LABEL[event.to_status]}</span>}</>,
+        content: <><strong>{eventLabel(event.event_type)}</strong>{event.from_status && event.to_status && <span className="timeline-transition">{STATUS_LABEL[event.from_status]} <Icon name="arrow" size={13} /> {STATUS_LABEL[event.to_status]}</span>}</>,
       });
     }
     for (const message of timeline?.messages ?? []) {

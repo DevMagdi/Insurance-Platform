@@ -229,15 +229,15 @@
 .staff-console .button:hover:not(:disabled) { transform: translateY(-1px); }
 .staff-console .button:active:not(:disabled) { transform: translateY(0); }
 
-/* The console's one gold action. */
+/* The console's one accent action. */
 .staff-console .button-dark {
-  background: var(--gold-500);
+  background: var(--accent-600);
   border-color: transparent;
-  color: #0b1426;
-  box-shadow: var(--shadow-gold);
+  color: var(--ink-on-brand);
+  box-shadow: var(--shadow-accent);
 }
 
-.staff-console .button-dark:hover:not(:disabled) { background: var(--gold-400); }
+.staff-console .button-dark:hover:not(:disabled) { background: var(--accent-500); }
 
 /* ---------------------------------------------------------------- inputs */
 
@@ -277,7 +277,7 @@
 }
 
 .modal-backdrop {
-  background: rgba(3, 7, 18, 0.62);
+  background: rgba(0, 0, 0, 0.62);
   backdrop-filter: blur(5px);
   -webkit-backdrop-filter: blur(5px);
 }
@@ -501,3 +501,348 @@
 
 .staff-console .back-link:hover { color: var(--ink-900); background: var(--surface-2); }
 [dir='rtl'] .staff-console .back-link svg { transform: scaleX(-1); }
+
+/* ==========================================================================
+   v2 elevation pass — console chrome
+   ==========================================================================
+   Loaded last, so this is the final word on the staff console. Same four
+   rules as the design-system pass: more air, larger radii, one edge per
+   surface, and a hierarchy you can read from across the room.
+   ========================================================================== */
+
+/* The page gutter was 24/28px, which left content pinned to the chrome.
+   Opening it to 40px is the single change that makes the console feel like
+   an application rather than an admin panel. */
+.staff-console .main-content-inner {
+  padding: var(--s-10) var(--s-10) var(--s-12);
+  max-width: 1480px;
+}
+
+@media (max-width: 1100px) {
+  .staff-console .main-content-inner {
+    padding: var(--s-6) var(--s-5) var(--s-8);
+  }
+}
+
+/* ------------------------------------------------------------- surfaces */
+
+.staff-console .surface-card {
+  border-radius: var(--r-card);
+  box-shadow: var(--shadow-md);
+}
+
+/* ------------------------------------------------------------- sidebar */
+
+/* "Where am I" is one of only three jobs violet is allowed to do. The active
+   item gets a soft violet fill, a full-strength label and a glowing spine on
+   the inline edge — unmistakable without turning the nav into a block of
+   colour. The theme-dark override has to be matched or it wins on
+   specificity and paints the item plain grey. */
+.staff-console .nav-link.active,
+.staff-console.theme-dark .nav-link.active,
+.staff-console.theme-light .nav-link.active {
+  background: var(--accent-200);
+  color: var(--ink-900);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-500) 22%, transparent);
+}
+
+.staff-console .nav-link.active::before {
+  background: var(--accent-500);
+  width: 3px;
+  box-shadow: 0 0 14px var(--accent-glow);
+}
+
+.staff-console .nav-link.active .nav-icon {
+  color: var(--accent-400);
+}
+
+.staff-console .nav-link {
+  border-radius: var(--r-control);
+  transition:
+    background-color var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out);
+}
+
+.staff-console .nav-link:not(.active):hover {
+  background: var(--surface-2);
+}
+
+/* One primary action, one colour. `.button-dark` was a near-white fill in
+   dark mode, so the console's main confirm button and the Integrations
+   connect button — both "the primary action on this screen" — looked like
+   two different kinds of control. Both are violet now. */
+.staff-console .button-dark,
+.staff-console.theme-dark .button-dark,
+.staff-console.theme-light .button-dark {
+  background: var(--accent-600);
+  border-color: transparent;
+  color: var(--ink-on-brand);
+  box-shadow: var(--shadow-accent);
+}
+
+.staff-console .button-dark:hover:not(:disabled),
+.staff-console.theme-dark .button-dark:hover:not(:disabled),
+.staff-console.theme-light .button-dark:hover:not(:disabled) {
+  background: var(--accent-500);
+}
+
+/* ------------------------------------------------------------- data table */
+
+/* Rows get height instead of borders. A 1px rule under every row is six
+   competing horizontal lines on a dense screen; a hover fill and generous
+   row height separate them just as clearly and far more quietly. */
+.staff-console .data-table tbody td {
+  padding-block: var(--s-4);
+  border-bottom-color: var(--line-soft);
+}
+
+.staff-console .data-table thead th {
+  padding-block: var(--s-3);
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  color: var(--ink-400);
+  background: transparent;
+  border-bottom: 1px solid var(--line);
+}
+
+.staff-console .data-table tbody tr {
+  transition: background-color var(--dur-fast) var(--ease-out);
+}
+
+.staff-console .data-table tbody tr:hover {
+  background: var(--surface-2);
+}
+
+/* --------------------------------------------------------------- controls */
+
+.staff-console .button,
+.staff-console input,
+.staff-console select,
+.staff-console textarea {
+  border-radius: var(--r-control);
+}
+
+.staff-console input:focus-visible,
+.staff-console select:focus-visible,
+.staff-console textarea:focus-visible {
+  border-color: var(--accent-500);
+  box-shadow: var(--focus-ring);
+  outline: none;
+}
+
+/* --------------------------------------------------------------- scrollbar */
+
+.staff-console *::-webkit-scrollbar-thumb {
+  background: var(--surface-3);
+  border-radius: var(--r-pill);
+}
+
+.staff-console *::-webkit-scrollbar-thumb:hover {
+  background: var(--surface-4);
+}
+
+/* ------------------------------------------------------- status, unified */
+
+/* The console painted its status pills from raw semantic tokens (--violet,
+   --orange, --green) while the design system published a --st-* contract that
+   pills, dots, legends and chart series were all supposed to share. The two
+   drifted, and the new palette made it visible twice over:
+
+   * "Assigned" resolved to --violet, which is now the brand accent, so an
+     assigned row looked like a highlighted row.
+   * "Reopened" resolved to --orange, a neighbour of the amber used by
+     "In review" — two different states, near-identical at pill size.
+   
+   Both are repointed at --st-*, so there is exactly one place a status colour
+   is decided. */
+
+.staff-console .status-new { color: var(--st-new-fg); background: var(--st-new-bg); border-color: color-mix(in srgb, var(--st-new-fg) 16%, transparent); }
+.staff-console .status-assigned { color: var(--st-assigned-fg); background: var(--st-assigned-bg); border-color: color-mix(in srgb, var(--st-assigned-fg) 16%, transparent); }
+.staff-console .status-in_review { color: var(--st-in-review-fg); background: var(--st-in-review-bg); border-color: color-mix(in srgb, var(--st-in-review-fg) 16%, transparent); }
+.staff-console .status-resolved { color: var(--st-resolved-fg); background: var(--st-resolved-bg); border-color: color-mix(in srgb, var(--st-resolved-fg) 16%, transparent); }
+.staff-console .status-reopened { color: var(--st-reopened-fg); background: var(--st-reopened-bg); border-color: color-mix(in srgb, var(--st-reopened-fg) 16%, transparent); }
+.staff-console .status-transferred { color: var(--st-transferred-fg); background: var(--st-transferred-bg); border-color: color-mix(in srgb, var(--st-transferred-fg) 16%, transparent); }
+
+.staff-console .status-new i { background: var(--st-new-fg); }
+.staff-console .status-assigned i { background: var(--st-assigned-fg); }
+.staff-console .status-in_review i { background: var(--st-in-review-fg); }
+.staff-console .status-resolved i { background: var(--st-resolved-fg); }
+.staff-console .status-reopened i { background: var(--st-reopened-fg); }
+.staff-console .status-transferred i { background: var(--st-transferred-fg); }
+
+/* Priority sat beside status as a second full-colour pill, so every row
+   carried two competing badges. Priority is an attribute, not a state: it
+   reads as quiet text with a coloured dot, and only "urgent" keeps a fill. */
+.staff-console .priority-pill {
+  background: transparent;
+  border-color: transparent;
+  color: var(--ink-500);
+  padding-inline: 2px;
+  font-weight: 600;
+}
+
+.staff-console .priority-pill::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  flex: none;
+  margin-inline-end: 6px;
+}
+
+.staff-console .priority-urgent {
+  color: var(--danger);
+  background: var(--danger-soft);
+  border-color: color-mix(in srgb, var(--danger) 20%, transparent);
+  padding-inline: 10px;
+}
+
+.staff-console .priority-high { color: var(--warning); }
+.staff-console .priority-normal { color: var(--ink-500); }
+.staff-console .priority-low { color: var(--ink-400); }
+
+/* ------------------------------------------------------------- timeline */
+
+/* The marker punches a ring in the page background so the rail appears to
+   pass behind it. That ring was hard-coded to --surface-0, but the timeline
+   lives inside a --surface-1 card: with navy the two were close enough to
+   get away with, with zinc (#09090B vs #18181B) every node grew a dark halo
+   and the thread looked broken. The ring has to match the surface the
+   timeline is actually drawn on. */
+.staff-console .timeline-marker {
+  box-shadow: 0 0 0 4px var(--surface-1);
+  width: 28px;
+  height: 28px;
+}
+
+/* Events are structure, not signal. Painting every event marker with the
+   brand violet meant a routine "status changed" shouted as loudly as the
+   primary action. Events are neutral; only the rail's living end is tinted. */
+.staff-console .timeline-marker.marker-event {
+  color: var(--ink-400);
+  background: var(--surface-2);
+  border-color: var(--line);
+}
+
+.staff-console .timeline-marker.marker-message {
+  color: var(--info);
+  background: var(--info-soft);
+  border-color: color-mix(in srgb, var(--info) 24%, transparent);
+}
+
+/* A continuous thread reads as one conversation; a dotted one reads as a
+   list of unrelated rows. Solid, quiet, and it stops short of both ends. */
+.staff-console .timeline-list::before {
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    var(--line-strong) 4%,
+    var(--line-strong) 96%,
+    transparent
+  );
+}
+
+.staff-console .timeline-item {
+  padding-block: var(--s-2);
+}
+
+/* The message bubble sat inside the row with its own border while the row
+   already had one — two edges describing one thing. One edge, more padding,
+   and the direction stripe does the rest. */
+.staff-console .timeline-message {
+  border-radius: var(--r-lg);
+  padding: var(--s-4) var(--s-5);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  box-shadow: none;
+}
+
+.staff-console .timeline-message p {
+  font-size: 13.5px;
+  line-height: 1.95;
+  color: var(--ink-800);
+}
+
+.staff-console .timeline-item-body > strong {
+  font-size: 13.5px;
+  color: var(--ink-800);
+  font-weight: 650;
+}
+
+.staff-console .timeline-item-body > time {
+  color: var(--ink-400);
+  font-size: 11.5px;
+}
+
+/* The row and the bubble collide on one class name. TicketWorkspace renders
+   `timeline-item timeline-${kind}` on the <article>, so a message row is
+   `.timeline-item.timeline-message` — the exact class the bubble <div> inside
+   it also carries. Both therefore picked up the bubble's background, border,
+   radius and direction stripe, and every message rendered as a box inside an
+   identical box. Only the inner <div> is a bubble. */
+.staff-console article.timeline-message {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  padding-inline: 0;
+  overflow: visible;
+}
+
+.staff-console article.timeline-message::before {
+  content: none;
+}
+
+/* ------------------------------------------------- empty + loading states */
+
+/* An empty state is the first thing a new account sees, and it was a grey
+   sentence floating in a card. Centre it, give it room, and let the icon do
+   the explaining — the same treatment the design system's .ds-blank uses, so
+   the console and the redesigned surfaces agree. */
+.staff-console .empty,
+.staff-console .empty-table,
+.staff-console .admin-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-3);
+  padding: var(--s-12) var(--s-6);
+  text-align: center;
+  color: var(--ink-400);
+  font-size: 13.5px;
+  line-height: 1.8;
+}
+
+.staff-console .empty-inline {
+  color: var(--ink-400);
+  font-size: 13px;
+}
+
+.staff-console .empty-icon,
+.staff-console .empty-state-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 46px;
+  border-radius: var(--r-xl);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  color: var(--ink-400);
+}
+
+/* ------------------------------------------------------------ focus ring */
+
+/* One focus treatment everywhere. Keyboard users should never have to hunt
+   for the caret, and a violet ring is the clearest signal we have. */
+.staff-console :is(a, button, [tabindex]):focus-visible {
+  outline: 2px solid var(--accent-500);
+  outline-offset: 2px;
+  border-radius: var(--r-xs);
+}
+
+.staff-console ::selection {
+  background: var(--accent-200);
+  color: var(--ink-900);
+}

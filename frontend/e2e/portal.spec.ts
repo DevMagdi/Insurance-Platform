@@ -200,8 +200,8 @@ for (const theme of ['light', 'dark'] as const) {
         return { surface: style.getPropertyValue('--surface').trim(), ink: style.getPropertyValue('--text-primary').trim() };
       });
       // Premium palette: soft midnight cards on dark, deep navy ink on light.
-      expect(tokens.surface).toBe(theme === 'dark' ? '#111b2e' : '#ffffff');
-      expect(tokens.ink).toBe(theme === 'dark' ? '#f1f5f9' : '#0b1426');
+      expect(tokens.surface).toBe(theme === 'dark' ? '#18181b' : '#ffffff');
+      expect(tokens.ink).toBe(theme === 'dark' ? '#fafafa' : '#09090b');
       await page.screenshot({ path: testInfo.outputPath(`customer-${theme}-${language}.png`), fullPage: true });
     });
   }
