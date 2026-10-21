@@ -8,7 +8,7 @@
   display: flex;
   flex-direction: column;
   background:
-    radial-gradient(1200px 600px at 85% -10%, rgba(201, 162, 39, 0.055), transparent 60%),
+    radial-gradient(1200px 600px at 85% -10%, rgba(212, 175, 55, 0.055), transparent 60%),
     radial-gradient(900px 520px at 5% 5%, rgba(15, 118, 110, 0.05), transparent 55%),
     var(--surface-0);
   color: var(--ink-900);
@@ -16,7 +16,7 @@
 
 .dark .portal-shell {
   background:
-    radial-gradient(1100px 560px at 82% -12%, rgba(214, 174, 88, 0.06), transparent 60%),
+    radial-gradient(1100px 560px at 82% -12%, rgba(212, 175, 55, 0.06), transparent 60%),
     radial-gradient(900px 520px at 0% 8%, rgba(15, 118, 110, 0.08), transparent 55%),
     var(--surface-0);
 }
@@ -91,7 +91,7 @@
   height: 36px;
   border-radius: 11px;
   background: linear-gradient(150deg, var(--navy-800), var(--navy-950));
-  box-shadow: 0 6px 16px -8px rgba(8, 26, 47, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  box-shadow: 0 6px 16px -8px rgba(3, 7, 18, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.12);
   color: var(--gold-400);
 }
 
@@ -445,7 +445,7 @@ html[dir='rtl'] .account-trigger {
     background: color-mix(in srgb, var(--surface-1) 92%, transparent);
     backdrop-filter: blur(20px) saturate(1.5);
     -webkit-backdrop-filter: blur(20px) saturate(1.5);
-    box-shadow: 0 16px 40px -18px rgba(8, 26, 47, 0.34);
+    box-shadow: 0 16px 40px -18px rgba(3, 7, 18, 0.34);
   }
 
   .mobile-bottom-nav a {
@@ -493,7 +493,7 @@ html[dir='rtl'] .account-trigger {
     border-radius: 16px;
     background: linear-gradient(150deg, var(--navy-800), var(--navy-950));
     color: var(--gold-300);
-    box-shadow: 0 12px 24px -10px rgba(8, 26, 47, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+    box-shadow: 0 12px 24px -10px rgba(3, 7, 18, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.12);
   }
 
   .mobile-bottom-nav .fab span {
@@ -682,7 +682,7 @@ html[dir='rtl'] .hero-eyebrow {
 }
 
 .dark .hero-eyebrow .tag {
-  background: rgba(214, 174, 88, 0.14);
+  background: rgba(212, 175, 55, 0.14);
   color: var(--gold-300);
 }
 
@@ -720,7 +720,7 @@ html[lang='ar'] .hero h1 {
   bottom: -4px;
   height: 6px;
   border-radius: 99px;
-  background: linear-gradient(90deg, rgba(201, 162, 39, 0.32), rgba(201, 162, 39, 0.04));
+  background: linear-gradient(90deg, rgba(212, 175, 55, 0.32), rgba(212, 175, 55, 0.04));
 }
 
 .hero-lead {
@@ -777,7 +777,7 @@ html[lang='ar'] .hero h1 {
   inset: 6% -6% 0 6%;
   border-radius: 40px;
   background:
-    radial-gradient(80% 70% at 30% 20%, rgba(201, 162, 39, 0.15), transparent 62%),
+    radial-gradient(80% 70% at 30% 20%, rgba(212, 175, 55, 0.15), transparent 62%),
     radial-gradient(70% 70% at 80% 80%, rgba(15, 118, 110, 0.14), transparent 60%),
     linear-gradient(160deg, var(--navy-800), var(--navy-950));
   transform: rotate(-2deg);
@@ -907,11 +907,11 @@ html[lang='ar'] .hero h1 {
   background: var(--gold-100);
   color: var(--gold-700);
   border-color: color-mix(in srgb, var(--gold-500) 30%, transparent);
-  box-shadow: 0 0 0 4px rgba(201, 162, 39, 0.1);
+  box-shadow: 0 0 0 4px rgba(212, 175, 55, 0.1);
 }
 
 .dark .hero-timeline-dot.current {
-  background: rgba(214, 174, 88, 0.16);
+  background: rgba(212, 175, 55, 0.16);
   color: var(--gold-300);
 }
 
@@ -1224,7 +1224,7 @@ html[lang='ar'] .section-head h2 {
   width: 120px;
   height: 120px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(201, 162, 39, 0.09), transparent 70%);
+  background: radial-gradient(circle, rgba(212, 175, 55, 0.09), transparent 70%);
 }
 
 .step-top {
@@ -1313,7 +1313,7 @@ html[dir='rtl'] .step-arrow svg {
   position: relative;
   padding: 38px;
   background:
-    radial-gradient(120% 100% at 0% 0%, rgba(201, 162, 39, 0.12), transparent 55%),
+    radial-gradient(120% 100% at 0% 0%, rgba(212, 175, 55, 0.12), transparent 55%),
     linear-gradient(160deg, var(--navy-800), var(--navy-950));
   color: #e8edf3;
   display: flex;
@@ -1549,7 +1549,7 @@ html[dir='rtl'] .step-arrow svg {
   padding: 44px 46px;
   border-radius: var(--r-2xl);
   background:
-    radial-gradient(90% 140% at 100% 0%, rgba(201, 162, 39, 0.16), transparent 55%),
+    radial-gradient(90% 140% at 100% 0%, rgba(212, 175, 55, 0.16), transparent 55%),
     linear-gradient(135deg, var(--navy-800), var(--navy-950));
   color: #eef2f6;
   box-shadow: var(--shadow-md);
@@ -1993,7 +1993,7 @@ html[lang='ar'] .track-result-body dt {
   background: var(--navy-900);
   border-color: var(--navy-900);
   color: var(--gold-300);
-  box-shadow: 0 6px 14px -6px rgba(8, 26, 47, 0.5), 0 0 0 4px color-mix(in srgb, var(--gold-500) 14%, transparent);
+  box-shadow: 0 6px 14px -6px rgba(3, 7, 18, 0.5), 0 0 0 4px color-mix(in srgb, var(--gold-500) 14%, transparent);
 }
 
 .dark .wizard-step.is-active .wizard-step-dot {
@@ -2168,11 +2168,11 @@ html[lang='ar'] .track-result-body dt {
 .choice-card[aria-checked='true'] {
   border-color: var(--gold-500);
   background: color-mix(in srgb, var(--gold-100) 55%, var(--surface-1));
-  box-shadow: 0 0 0 3px rgba(201, 162, 39, 0.12);
+  box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.12);
 }
 
 .dark .choice-card[aria-checked='true'] {
-  background: rgba(214, 174, 88, 0.08);
+  background: rgba(212, 175, 55, 0.08);
 }
 
 .choice-card strong {
@@ -2317,7 +2317,7 @@ html[lang='ar'] .track-result-body dt {
 }
 
 .dark .otp-panel {
-  background: rgba(214, 174, 88, 0.06);
+  background: rgba(212, 175, 55, 0.06);
 }
 
 .otp-panel h3 {
@@ -2566,7 +2566,7 @@ html[lang='ar'] .track-result-body dt {
     z-index: 5;
     padding: 12px 20px;
     background: var(--surface-1);
-    box-shadow: 0 -10px 24px -18px rgba(8, 26, 47, 0.35);
+    box-shadow: 0 -10px 24px -18px rgba(3, 7, 18, 0.35);
     flex-wrap: wrap;
     row-gap: 10px;
   }
@@ -2812,7 +2812,7 @@ html[lang='ar'] .track-result-body dt {
 
 .counter-card:first-child {
   background:
-    radial-gradient(90% 120% at 100% 0%, rgba(201, 162, 39, 0.1), transparent 55%),
+    radial-gradient(90% 120% at 100% 0%, rgba(212, 175, 55, 0.1), transparent 55%),
     var(--surface-1);
 }
 
@@ -3576,7 +3576,7 @@ html[dir='rtl'] .back-link svg {
 }
 
 .dark .star-btn.is-active {
-  background: rgba(214, 174, 88, 0.12);
+  background: rgba(212, 175, 55, 0.12);
 }
 
 @media (max-width: 1020px) {
@@ -3701,7 +3701,7 @@ html[dir='ltr'] .journey-rail::after {
   border-color: var(--navy-900);
   background: var(--navy-900);
   color: var(--gold-300);
-  box-shadow: 0 0 0 4px rgba(8, 26, 47, 0.08), 0 0 0 8px color-mix(in srgb, var(--gold-500) 12%, transparent);
+  box-shadow: 0 0 0 4px rgba(3, 7, 18, 0.08), 0 0 0 8px color-mix(in srgb, var(--gold-500) 12%, transparent);
 }
 
 .dark .journey-step.current .journey-dot {
@@ -3868,7 +3868,7 @@ html[dir='ltr'] .journey-rail::after {
 }
 
 .dark .notification-row.is-unread {
-  background: rgba(214, 174, 88, 0.04);
+  background: rgba(212, 175, 55, 0.04);
 }
 
 .notification-icon {
@@ -4089,7 +4089,7 @@ html[dir='ltr'] .journey-rail::after {
 
 .dark .auth-step.is-active {
   color: var(--gold-200);
-  background: rgba(214, 174, 88, 0.1);
+  background: rgba(212, 175, 55, 0.1);
 }
 
 .dark .auth-step.is-done {
@@ -4175,4 +4175,117 @@ html[dir='ltr'] .journey-rail::after {
   .review-section { padding: 14px; }
   .ticket-row { padding: 16px; }
   .message { max-width: 94%; }
+}
+
+/* ==========================================================================
+   Portal — premium refinements
+   The public face of the brokerage. It has one job before anything else: look
+   like an institution a customer can trust with a claim.
+   ========================================================================== */
+
+.portal-shell {
+  font-family: var(--font-arabic);
+}
+
+/* Heading hierarchy on the landing page is the whole first impression. */
+.hero-copy h1,
+.hero h1 {
+  letter-spacing: -0.03em;
+  line-height: 1.22;
+  font-weight: 800;
+}
+
+.hero-eyebrow,
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--gold-600);
+}
+
+.dark .hero-eyebrow,
+.dark .eyebrow { color: var(--gold-400); }
+
+/* Cards on the portal get the same material as the console. */
+.hero-card,
+.portal-card,
+.faq,
+.cta-band {
+  border-radius: var(--r-2xl);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-md);
+}
+
+/* Chips */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: var(--r-pill);
+  font-size: 0.75rem;
+  font-weight: 600;
+  border: 1px solid transparent;
+}
+
+.chip-gold { color: var(--gold-600); background: var(--gold-100); }
+.dark .chip-gold { color: var(--gold-400); background: var(--gold-200); }
+.chip-emerald { color: var(--success); background: var(--success-soft); }
+
+/* Forms: tall, calm fields with a gold focus ring. A claim form is stressful
+   enough without cramped inputs. */
+.portal-shell input[type='text'],
+.portal-shell input[type='tel'],
+.portal-shell input[type='email'],
+.portal-shell input[type='search'],
+.portal-shell textarea,
+.portal-shell select {
+  border-radius: var(--r-md);
+  border: 1px solid var(--line);
+  background: var(--surface-1);
+  color: var(--ink-900);
+  font-family: inherit;
+  transition:
+    border-color var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-fast) var(--ease-out);
+}
+
+.portal-shell input:focus-visible,
+.portal-shell textarea:focus-visible,
+.portal-shell select:focus-visible {
+  outline: none;
+  border-color: var(--gold-500);
+  box-shadow: var(--focus-ring);
+}
+
+/* Buttons */
+.portal-shell .btn {
+  border-radius: var(--r-md);
+  font-weight: 650;
+  letter-spacing: 0;
+  transition:
+    background-color var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out),
+    transform var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-base) var(--ease-out);
+}
+
+.portal-shell .btn:hover:not(:disabled) { transform: translateY(-1px); }
+.portal-shell .btn:active:not(:disabled) { transform: translateY(0); }
+
+.portal-shell .btn-primary {
+  background: var(--gold-500);
+  border-color: transparent;
+  color: #0b1426;
+  box-shadow: var(--shadow-gold);
+}
+
+.portal-shell .btn-primary:hover:not(:disabled) { background: var(--gold-400); }
+
+@media (prefers-reduced-motion: reduce) {
+  .portal-shell .btn:hover:not(:disabled) { transform: none; }
 }

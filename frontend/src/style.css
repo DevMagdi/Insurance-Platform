@@ -1,16 +1,36 @@
 @import 'tailwindcss';
 @custom-variant dark (&:where(.dark, .dark *));
 @import './styles/foundation.css';
+/* Loaded after the foundation so it re-tunes those tokens in place. */
+@import './styles/design-system.css';
 @import './styles/portal.css';
 @import './styles/corporate.css';
 
 @theme {
-  --color-navy: #0b1f3a;
-  --color-navy-deep: #081a2f;
-  --color-gold: #d6ae58;
-  --color-gold-deep: #c9a227;
-  --color-emerald: #168b69;
-  --color-cream: #f6f7f9;
+  /* Premium palette, available as Tailwind utilities (bg-navy, text-gold, …). */
+  --color-navy: #0b1426;
+  --color-navy-deep: #070f1d;
+  --color-midnight: #111b2e;
+  --color-elevated: #1a2438;
+  --color-hairline: #2a3548;
+  --color-gold: #d4af37;
+  --color-gold-hover: #e8c547;
+  --color-gold-deep: #a8861f;
+  --color-emerald: #10b981;
+  --color-cream: #f6f8fb;
+  --color-ink: #f1f5f9;
+  --color-ink-muted: #94a3b8;
+  --color-ink-faint: #64748b;
+
+  --radius-lg: 14px;
+  --radius-xl: 18px;
+  --radius-2xl: 22px;
+  --radius-3xl: 28px;
+
+  --font-arabic: 'Cairo', 'Tajawal', 'Inter', system-ui, sans-serif;
+  --font-latin: 'Inter', 'Cairo', system-ui, sans-serif;
+
+  --ease-premium: cubic-bezier(0.22, 0.61, 0.36, 1);
 }
 
 /* Semantic utilities retain the existing brand utilities and contracts. */

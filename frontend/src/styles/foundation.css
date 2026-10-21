@@ -7,16 +7,16 @@
 .staff-console.theme-light {
   /* Brand */
   --navy-950: #07111f;
-  --navy-900: #081a2f;
-  --navy-800: #0b1f3a;
+  --navy-900: #070f1d;
+  --navy-800: #0b1426;
   --navy-700: #122a4a;
   --navy-600: #1b3a60;
   --navy-500: #2b4e75;
 
   --gold-700: #8f7127;
   --gold-600: #a98634;
-  --gold-500: #c9a227;
-  --gold-400: #d6ae58;
+  --gold-500: #d4af37;
+  --gold-400: #d4af37;
   --gold-300: #e6c888;
   --gold-200: #f2e2bd;
   --gold-100: #faf3e2;
@@ -24,17 +24,17 @@
   --emerald-800: #0b514b;
   --emerald-700: #0f766e;
   --emerald-600: #128a72;
-  --emerald-500: #168b69;
+  --emerald-500: #10b981;
   --emerald-200: #b8e4d7;
   --emerald-100: #e5f5ef;
 
   /* Light surfaces */
-  --surface-0: #f6f7f9;
+  --surface-0: #f6f8fb;
   --surface-1: #ffffff;
   --surface-2: #f1f4f7;
   --surface-3: #e9eef3;
   --surface-glass: rgba(255, 255, 255, 0.82);
-  --surface-inverse: #081a2f;
+  --surface-inverse: #070f1d;
 
   /* Ink */
   --ink-900: #0a1a2f;
@@ -47,9 +47,9 @@
   --ink-on-brand: #f4f6f8;
 
   /* Lines */
-  --line: rgba(11, 31, 58, 0.09);
-  --line-soft: rgba(11, 31, 58, 0.06);
-  --line-strong: rgba(11, 31, 58, 0.16);
+  --line: rgba(11, 20, 38, 0.09);
+  --line-soft: rgba(11, 20, 38, 0.06);
+  --line-strong: rgba(11, 20, 38, 0.16);
 
   /* Semantic */
   --info: #2468c7;
@@ -86,12 +86,12 @@
   --r-pill: 999px;
 
   /* Elevation — soft, layered, never muddy */
-  --shadow-xs: 0 1px 2px rgba(8, 26, 47, 0.05);
-  --shadow-sm: 0 1px 2px rgba(8, 26, 47, 0.04), 0 6px 18px -10px rgba(8, 26, 47, 0.12);
-  --shadow-md: 0 1px 3px rgba(8, 26, 47, 0.04), 0 18px 44px -22px rgba(8, 26, 47, 0.24);
-  --shadow-lg: 0 2px 8px rgba(8, 26, 47, 0.04), 0 32px 80px -36px rgba(8, 26, 47, 0.34);
-  --shadow-brand: 0 18px 44px -18px rgba(8, 26, 47, 0.42);
-  --shadow-gold: 0 12px 28px -14px rgba(201, 162, 39, 0.55);
+  --shadow-xs: 0 1px 2px rgba(3, 7, 18, 0.05);
+  --shadow-sm: 0 1px 2px rgba(3, 7, 18, 0.04), 0 6px 18px -10px rgba(3, 7, 18, 0.12);
+  --shadow-md: 0 1px 3px rgba(3, 7, 18, 0.04), 0 18px 44px -22px rgba(3, 7, 18, 0.24);
+  --shadow-lg: 0 2px 8px rgba(3, 7, 18, 0.04), 0 32px 80px -36px rgba(3, 7, 18, 0.34);
+  --shadow-brand: 0 18px 44px -18px rgba(3, 7, 18, 0.42);
+  --shadow-gold: 0 12px 28px -14px rgba(212, 175, 55, 0.55);
 
   /* Motion */
   --ease-out: cubic-bezier(0.22, 0.61, 0.36, 1);
@@ -102,7 +102,7 @@
 
   /* Focus */
   --focus: #b08a2e;
-  --focus-ring: 0 0 0 3px rgba(201, 162, 39, 0.24);
+  --focus-ring: 0 0 0 3px rgba(212, 175, 55, 0.24);
 
   /* Typography */
   --font-arabic: 'Cairo', 'Tajawal', 'Inter', system-ui, sans-serif;
@@ -141,7 +141,7 @@
   --line-strong: rgba(255, 255, 255, 0.16);
 
   --gold-600: #d3ad62;
-  --gold-500: #d6ae58;
+  --gold-500: #d4af37;
   --gold-400: #e3c583;
   --gold-300: #efd9ab;
   --gold-200: #4a3d22;
@@ -168,8 +168,8 @@
   --shadow-lg: 0 3px 10px rgba(0, 0, 0, 0.35), 0 40px 100px -44px rgba(0, 0, 0, 0.9);
   --shadow-brand: 0 18px 54px -20px rgba(0, 0, 0, 0.8);
 
-  --focus: #d6ae58;
-  --focus-ring: 0 0 0 3px rgba(214, 174, 88, 0.26);
+  --focus: #d4af37;
+  --focus-ring: 0 0 0 3px rgba(212, 175, 55, 0.26);
 
   color-scheme: dark;
 }
@@ -293,7 +293,7 @@ table {
 }
 
 ::selection {
-  background: rgba(201, 162, 39, 0.22);
+  background: rgba(212, 175, 55, 0.22);
   color: inherit;
 }
 
@@ -520,17 +520,17 @@ html[lang='ar'] .eyebrow {
   --btn-bg: var(--navy-900);
   --btn-fg: #f8fafc;
   --btn-border: transparent;
-  box-shadow: 0 1px 2px rgba(8, 26, 47, 0.24), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  box-shadow: 0 1px 2px rgba(3, 7, 18, 0.24), inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
 .btn-primary:hover:not(:disabled) {
   --btn-bg: var(--navy-800);
-  box-shadow: 0 10px 24px -14px rgba(8, 26, 47, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  box-shadow: 0 10px 24px -14px rgba(3, 7, 18, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
 .dark .btn-primary {
   --btn-bg: #eef2f7;
-  --btn-fg: #0b1f3a;
+  --btn-fg: #0b1426;
 }
 
 .dark .btn-primary:hover:not(:disabled) {
@@ -842,7 +842,7 @@ html[dir='rtl'] .select {
   height: 16px;
   border-radius: 50%;
   background: #fff;
-  box-shadow: 0 1px 3px rgba(8, 26, 47, 0.3);
+  box-shadow: 0 1px 3px rgba(3, 7, 18, 0.3);
   transition: transform var(--dur-base) var(--ease-spring);
 }
 
@@ -957,7 +957,7 @@ html[dir='rtl'] .switch[aria-checked='true'] .switch-thumb {
 .dark .chip-gold {
   background: var(--gold-100);
   color: var(--gold-300);
-  border-color: rgba(214, 174, 88, 0.2);
+  border-color: rgba(212, 175, 55, 0.2);
 }
 
 .chip-emerald {

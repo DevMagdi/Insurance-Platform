@@ -9,8 +9,9 @@
  */
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
 import { api, jsonBody } from '../../api';
-import { Icon } from '../../components/Icon';
-import { Modal, SectionTitle } from '../../components/Modal';
+import { Icon, type IconName } from '../../components/Icon';
+import { Modal } from '../../components/Modal';
+import { SkeletonRows, Stagger, StaggerItem } from '../../components/ui/Premium';
 import { formatDateTime } from '../../utils/date';
 import { validateIntegrationCredentials } from './integrationRules';
 import type { CompanyOption } from '../../types';
@@ -301,6 +302,66 @@ const STATUS_META: Record<ConnectionStatus, { label: string; className: string }
   failed: { label: 'فشل', className: 'staff-failed' },
 };
 
+/**
+ * The three ways a request reaches the brokerage. This is the whole settings
+ * page as far as a non-technical operator is concerned: everything else is an
+ * implementation detail of one of these three rows.
+ */
+interface ChannelSpec {
+  id: 'whatsapp' | 'phone' | 'email';
+  title: string;
+  blurb: string;
+  setupHint: string;
+  chooseHint: string;
+  icon: IconName;
+  color: string;
+  tint: string;
+  /** Ordered by recommendation; the first is the default suggestion. */
+  providers: string[];
+}
+
+const CHANNELS: ChannelSpec[] = [
+  {
+    id: 'whatsapp',
+    title: 'واتساب',
+    blurb: 'القناة الأساسية. يصل الطلب برسالة من العميل مع المرفقات، ويُفتح تلقائياً في قائمة الطلبات.',
+    setupHint: 'يتطلب رقم واتساب للأعمال',
+    chooseHint: 'اختر مزوّد واتساب الذي تستخدمه.',
+    icon: 'message',
+    color: '#25D366',
+    tint: 'rgba(37, 211, 102, 0.12)',
+    providers: ['whatsapp_cloud'],
+  },
+  {
+    id: 'phone',
+    title: 'المكالمات الهاتفية',
+    blurb: 'يُسجَّل الاتصال ويُحفظ مشفّراً، ويُنشأ طلب جديد باسم المتصل ورقمه دون إدخال يدوي.',
+    setupHint: 'يتطلب رقماً من مزوّد اتصالات',
+    chooseHint: 'اختر مزوّد الاتصالات الذي يستقبل مكالمات العملاء.',
+    icon: 'phone',
+    color: '#60A5FA',
+    tint: 'rgba(96, 165, 250, 0.12)',
+    providers: ['twilio', 'vonage'],
+  },
+  {
+    id: 'email',
+    title: 'البريد الإلكتروني',
+    blurb: 'كل رسالة واردة تتحوّل إلى طلب، والردود من داخل المنصة تصل للعميل في نفس سلسلة البريد.',
+    setupHint: 'يتطلب صندوق بريد للعمل',
+    chooseHint: 'اختر طريقة الاتصال بصندوق البريد. Gmail وOutlook يتطلبان تسجيل دخول Google أو Microsoft.',
+    icon: 'mail',
+    color: '#D4AF37',
+    tint: 'rgba(212, 175, 55, 0.12)',
+    providers: ['gmail_oauth', 'outlook_oauth', 'smtp', 'imap', 'sendgrid', 'ses'],
+  },
+];
+
+/** Providers already surfaced by a channel card must not repeat under Advanced. */
+const CHANNEL_PROVIDERS = new Set(CHANNELS.flatMap((channel) => channel.providers));
+
+/** Providers whose API supports a real sandbox send. */
+const SANDBOX_CAPABLE = new Set(['smtp', 'gmail_oauth', 'outlook_oauth', 'twilio_sms']);
+
 const FAMILY_LABEL: Record<ProviderSpec['family'], string> = {
   email: 'البريد الإلكتروني',
   messaging: 'المراسلة (واتساب / SMS)',
@@ -324,6 +385,7 @@ export function IntegrationsSettings({ companies }: IntegrationsSettingsProps) {
   const [toast, setToast] = useState('');
   const [editor, setEditor] = useState<{ provider: ProviderSpec; company_id: string | null; pickCompany: boolean } | null>(null);
   const [busyKey, setBusyKey] = useState('');
+  const [chooser, setChooser] = useState<ChannelSpec | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -402,147 +464,259 @@ export function IntegrationsSettings({ companies }: IntegrationsSettingsProps) {
   const companyLabel = (id: string | null) =>
     id ? companies.find((company) => company.id === id)?.name_ar ?? id.slice(0, 8) : 'عام · جميع الشركات';
 
+
+  // ---------------------------------------------------------------- channels
+  // The operator thinks in channels, not vendors: "is WhatsApp on?" rather
+  // than "is whatsapp_cloud configured?". Each card owns the providers that
+  // serve one channel and reports the best state among them.
+  const channelState = (spec: ChannelSpec) => {
+    const records = spec.providers
+      .map((id) => ({ id, record: byKey.get(`${id}:global`) }))
+      .filter((entry): entry is { id: string; record: IntegrationConnectionRecord } => Boolean(entry.record));
+    const companyRecords = rows.filter((row) => spec.providers.includes(row.provider) && row.company_id !== null);
+    const all = [...records.map((r) => r.record), ...companyRecords];
+    const live = all.find((r) => r.connection_status === 'connected');
+    const failed = all.find((r) => r.connection_status === 'failed');
+    const ready = all.find((r) => r.connection_status === 'configured');
+    const status: ConnectionStatus = live ? 'connected' : failed ? 'failed' : ready ? 'configured' : 'unconfigured';
+    const active = live ?? failed ?? ready ?? all[0];
+    const activeProvider = active
+      ? PROVIDERS.find((candidate) => candidate.id === active.provider) ?? null
+      : null;
+    return {
+      status,
+      active,
+      activeProvider,
+      companyNames: companyRecords.map((row) => companyLabel(row.company_id)),
+    };
+  };
+
+  const openChannel = (spec: ChannelSpec) => {
+    const options = spec.providers
+      .map((id) => PROVIDERS.find((provider) => provider.id === id))
+      .filter((provider): provider is ProviderSpec => Boolean(provider));
+    // One provider means one decision fewer: go straight to its form.
+    if (options.length === 1) {
+      const only = options[0];
+      setEditor({ provider: only, company_id: null, pickCompany: only.scope === 'company' });
+      return;
+    }
+    setChooser(spec);
+  };
+
   return (
-    <div className="operations-page">
-      <SectionTitle
-        title="تكاملات المزودين الفعلية"
-        description="إعداد بيانات الاتصال الحقيقية لكل مزود، واختبار الاتصال قبل الاعتماد على الإرسال."
-      />
-      <div className="inline-alert info">
-        <Icon name="lock" size={16} /> الأسرار تُخزَّن مشفّرة (APP_ENCRYPTION_KEY) ولا تُعرض بعد الحفظ ولا تُسجَّل في السجلات.
-        اختبار الاتصال لا يرسل أي رسالة؛ إرسال الاختبار يتم فقط إلى عنوان sandbox وبموافقة صريحة.
+    <div className="ds-page intake-settings">
+      <div className="ds-page-head">
+        <div>
+          <span className="ds-eyebrow">الإعدادات</span>
+          <h1 className="ds-page-title">قنوات استقبال الطلبات</h1>
+          <p className="ds-page-sub">
+            ثلاث قنوات يصل منها الطلب. فعّل ما تحتاجه — الإعداد لا يستغرق أكثر من دقيقة، ويمكنك
+            اختبار الاتصال في أي وقت دون إرسال أي رسالة للعملاء.
+          </p>
+        </div>
+        <button className="ds-ghost-btn" type="button" onClick={() => void load()} disabled={loading}>
+          <Icon name="refresh" size={15} />
+          {loading ? 'جارٍ التحديث…' : 'تحديث'}
+        </button>
       </div>
+
       {toast && (
-        <div className="inline-alert success" role="status">
-          {toast}
-          <button className="notice-close" type="button" onClick={() => setToast('')} aria-label="إخفاء">
-            <Icon name="close" size={14} />
-          </button>
+        <div className="ds-banner ds-banner-success" role="status">
+          <Icon name="check" size={16} />
+          <span>{toast}</span>
+          <button type="button" onClick={() => setToast('')} aria-label="إخفاء"><Icon name="close" size={14} /></button>
         </div>
       )}
       {error && (
-        <div className="inline-alert error" role="alert">
-          {error}
+        <div className="ds-banner ds-banner-error" role="alert">
+          <Icon name="alert" size={16} />
+          <span>{error}</span>
           <button type="button" onClick={() => void load()}>إعادة المحاولة</button>
         </div>
       )}
 
-      {(['email', 'messaging', 'ai', 'voice', 'security'] as const).map((family) => (
-        <div className="surface-card integration-family" key={family}>
-          <h3 className="integration-family-title">{FAMILY_LABEL[family]}</h3>
-          <div className="integration-grid">
-            {PROVIDERS.filter((provider) => provider.family === family).map((provider) => {
-              const record = byKey.get(`${provider.id}:global`);
-              const companyConfigs = rows.filter((row) => row.provider === provider.id && row.company_id !== null);
-              const status: ConnectionStatus = record?.connection_status ?? 'unconfigured';
-              const meta = STATUS_META[status];
-              return (
-                <article className="integration-card" key={provider.id}>
-                  <header className="integration-card-head">
-                    <span className={`integration-logo${provider.family === 'messaging' ? ' integration-whatsapp' : ''}`}>
-                      <Icon name={provider.icon} size={16} />
-                    </span>
-                    <div>
-                      <strong>{provider.label}</strong>
-                      <small>{provider.summary}</small>
-                    </div>
-                  </header>
-                  {provider.scope !== 'company' && (
-                    <div className="integration-scope-row">
-                      <span className="scope-chip">عام · جميع الشركات</span>
-                      <span className={`staff-status ${meta.className}`}><i />{meta.label}</span>
-                    </div>
+      <Stagger className="ds-channel-grid">
+        {CHANNELS.map((spec) => {
+          const { status, active, activeProvider, companyNames } = channelState(spec);
+          const connected = status === 'connected';
+          const failed = status === 'failed';
+          const busy = busyKey.startsWith(`test:${active?.provider ?? '—'}`);
+          return (
+            <StaggerItem key={spec.id}>
+              <article className={`ds-channel ds-card${connected ? ' is-connected' : ''}`} data-channel={spec.id}>
+                <span className="ds-channel-glow" aria-hidden="true" />
+
+                <header className="ds-channel-head">
+                  <span className="ds-channel-logo" style={{ color: spec.color, background: spec.tint }}>
+                    <Icon name={spec.icon} size={26} />
+                  </span>
+                  <span className={`ds-channel-state ds-channel-state-${connected ? 'on' : failed ? 'fail' : 'off'}`}>
+                    <i />
+                    {connected ? 'متصل' : failed ? 'يحتاج مراجعة' : status === 'configured' ? 'جاهز للاختبار' : 'غير متصل'}
+                  </span>
+                </header>
+
+                <h2 className="ds-channel-name">{spec.title}</h2>
+                <p className="ds-channel-copy">{spec.blurb}</p>
+
+                <div className="ds-channel-meta">
+                  {connected && active?.last_test_at && (
+                    <span className="ds-tag"><Icon name="check" size={13} /> آخر اختبار {formatDateTime(active.last_test_at)}</span>
                   )}
-                  {provider.scope !== 'company' && record && (
-                    <small className="cell-secondary">
-                      {record.last_test_at
-                        ? `آخر اختبار: ${formatDateTime(record.last_test_at)}${record.last_error_code ? ` · ${record.last_error_code}` : ''}`
-                        : record.has_credentials ? 'لم يُختبر بعد' : 'لا توجد بيانات محفوظة'}
-                    </small>
+                  {failed && active?.last_error_code && (
+                    <span className="ds-tag ds-tag-danger"><Icon name="alert" size={13} /> {active.last_error_code}</span>
                   )}
-                  {companyConfigs.map((config) => (
-                    <div className="integration-scope-row" key={config.id}>
-                      <span className="scope-chip">{companyLabel(config.company_id)}</span>
-                      <span className={`staff-status ${STATUS_META[config.connection_status].className}`}>
-                        <i />{STATUS_META[config.connection_status].label}
-                      </span>
-                    </div>
-                  ))}
-                  <div className="row-action-group">
-                    {!provider.companyRequired && (
-                      <button
-                        className="button button-light button-small"
-                        type="button"
-                        onClick={() => setEditor({ provider, company_id: null, pickCompany: false })}
-                      >
-                        إعداد
-                      </button>
-                    )}
-                    {provider.scope === 'company' && (
-                      <button
-                        className="button button-light button-small"
-                        type="button"
-                        onClick={() => setEditor({ provider, company_id: null, pickCompany: true })}
-                      >
-                        إعداد شركة…
-                      </button>
-                    )}
+                  {/* The vendor name is only meaningful once something is
+                      actually stored; before that it is noise. */}
+                  {activeProvider && active?.has_credentials && (
+                    <span className="ds-tag">{activeProvider.label}</span>
+                  )}
+                  {companyNames.map((name) => <span className="ds-tag" key={name}>{name}</span>)}
+                  {!active?.has_credentials && <span className="ds-tag">{spec.setupHint}</span>}
+                </div>
+
+                <div className="ds-channel-actions">
+                  <button
+                    className={connected ? 'ds-ghost-btn' : 'ds-gold-btn'}
+                    type="button"
+                    onClick={() => openChannel(spec)}
+                  >
+                    <Icon name={connected ? 'settings' : 'plug'} size={15} />
+                    {connected ? 'إدارة' : 'ربط القناة'}
+                  </button>
+                  {active?.has_credentials && (
                     <button
-                      className="button button-dark button-small"
+                      className="ds-quiet-btn"
                       type="button"
-                      disabled={busyKey === `test:${provider.id}:global` || !record?.has_credentials}
-                      onClick={() => void runTest(provider.id, null)}
+                      disabled={busy}
+                      onClick={() => void runTest(active.provider, active.company_id)}
                     >
-                      {busyKey.startsWith(`test:${provider.id}`) ? 'جارٍ…' : 'اختبار الاتصال'}
+                      {busy ? 'جارٍ الاختبار…' : 'اختبار الاتصال'}
                     </button>
-                    {['smtp', 'gmail_oauth', 'outlook_oauth', 'twilio_sms'].includes(provider.id) && (
-                      <button
-                        className="button button-quiet button-small"
-                        type="button"
-                        disabled={busyKey === `sandbox:${provider.id}:global` || !record?.has_credentials}
-                        onClick={() => void runSandboxSend(provider.id, null)}
-                      >
-                        إرسال sandbox…
-                      </button>
-                    )}
-                    {provider.oauth && (
-                      <button
-                        className="button button-quiet button-small"
-                        type="button"
-                        disabled={!record?.has_credentials}
-                        onClick={() => void startOAuth(provider.oauth!, null)}
-                      >
-                        ربط حساب {provider.oauth === 'gmail_oauth' ? 'Google' : 'Microsoft'}
-                      </button>
-                    )}
-                  </div>
-                </article>
+                  )}
+                </div>
+              </article>
+            </StaggerItem>
+          );
+        })}
+      </Stagger>
+
+      <p className="ds-reassure">
+        <Icon name="lock" size={14} />
+        البيانات تُحفظ مشفّرة ولا تظهر بعد الحفظ. اختبار الاتصال لا يُرسل أي رسالة للعملاء.
+      </p>
+
+      {/* Everything that is not one of the three intake channels lives behind
+          this disclosure: still reachable, no longer in the way. */}
+      <details className="ds-advanced">
+        <summary>
+          <span><Icon name="sliders" size={15} /> إعدادات متقدمة</span>
+          <small>الذكاء الاصطناعي، الرسائل النصية، فحص الملفات</small>
+          <Icon name="chevron" size={15} />
+        </summary>
+        <div className="ds-advanced-body">
+          {(['messaging', 'ai', 'security'] as const).map((family) => {
+            const items = PROVIDERS.filter(
+              (provider) => provider.family === family && !CHANNEL_PROVIDERS.has(provider.id),
+            );
+            if (!items.length) return null;
+            return (
+              <section className="ds-advanced-group" key={family}>
+                <h3>{FAMILY_LABEL[family]}</h3>
+                <div className="ds-advanced-grid">
+                  {items.map((provider) => {
+                    const record = byKey.get(`${provider.id}:global`);
+                    const meta = STATUS_META[record?.connection_status ?? 'unconfigured'];
+                    return (
+                      <article className="ds-mini-card" key={provider.id}>
+                        <div className="ds-mini-head">
+                          <span className="ds-mini-logo"><Icon name={provider.icon} size={15} /></span>
+                          <strong>{provider.label}</strong>
+                          <span className={`staff-status ${meta.className}`}><i />{meta.label}</span>
+                        </div>
+                        <p>{provider.summary}</p>
+                        <div className="ds-mini-actions">
+                          {!provider.companyRequired && (
+                            <button className="ds-quiet-btn" type="button" onClick={() => setEditor({ provider, company_id: null, pickCompany: false })}>إعداد</button>
+                          )}
+                          {provider.scope === 'company' && (
+                            <button className="ds-quiet-btn" type="button" onClick={() => setEditor({ provider, company_id: null, pickCompany: true })}>إعداد شركة…</button>
+                          )}
+                          <button
+                            className="ds-quiet-btn"
+                            type="button"
+                            disabled={busyKey.startsWith(`test:${provider.id}`) || !record?.has_credentials}
+                            onClick={() => void runTest(provider.id, null)}
+                          >
+                            {busyKey.startsWith(`test:${provider.id}`) ? 'جارٍ…' : 'اختبار'}
+                          </button>
+                          {SANDBOX_CAPABLE.has(provider.id) && (
+                            <button
+                              className="ds-quiet-btn"
+                              type="button"
+                              disabled={busyKey === `sandbox:${provider.id}:global` || !record?.has_credentials}
+                              onClick={() => void runSandboxSend(provider.id, null)}
+                            >
+                              إرسال sandbox…
+                            </button>
+                          )}
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
+              </section>
+            );
+          })}
+
+          <section className="ds-advanced-group">
+            <h3>ميزات غير مفعّلة</h3>
+            <ul className="ds-unavailable">
+              {NOT_IMPLEMENTED.map((item) => (
+                <li key={item.title}>
+                  <Icon name="lock" size={14} />
+                  <div><strong>{item.title}</strong><span>{item.detail}</span></div>
+                </li>
+              ))}
+            </ul>
+          </section>
+        </div>
+      </details>
+
+      {loading && rows.length === 0 && <SkeletonRows rows={3} />}
+
+      {chooser && (
+        <Modal title={`ربط ${chooser.title}`} onClose={() => setChooser(null)}>
+          <p className="ds-chooser-lead">{chooser.chooseHint}</p>
+          <div className="ds-chooser">
+            {chooser.providers.map((id) => {
+              const provider = PROVIDERS.find((candidate) => candidate.id === id);
+              if (!provider) return null;
+              const record = byKey.get(`${provider.id}:global`);
+              const meta = STATUS_META[record?.connection_status ?? 'unconfigured'];
+              return (
+                <button
+                  className="ds-chooser-option"
+                  type="button"
+                  key={provider.id}
+                  onClick={() => {
+                    setChooser(null);
+                    setEditor({ provider, company_id: null, pickCompany: provider.scope === 'company' });
+                  }}
+                >
+                  <span className="ds-mini-logo"><Icon name={provider.icon} size={16} /></span>
+                  <span className="ds-chooser-text">
+                    <strong>{provider.label}</strong>
+                    <small>{provider.summary}</small>
+                  </span>
+                  <span className={`staff-status ${meta.className}`}><i />{meta.label}</span>
+                  <Icon name="arrow" size={15} />
+                </button>
               );
             })}
           </div>
-        </div>
-      ))}
-
-      <div className="surface-card integration-family">
-        <h3 className="integration-family-title">ميزات غير مفعّلة</h3>
-        <div className="integration-grid">
-          {NOT_IMPLEMENTED.map((item) => (
-            <article className="integration-card integration-card-disabled" key={item.title}>
-              <header className="integration-card-head">
-                <span className="integration-logo"><Icon name="lock" size={16} /></span>
-                <div>
-                  <strong>{item.title}</strong>
-                  <small>{item.detail}</small>
-                </div>
-              </header>
-              <span className="staff-status staff-disabled"><i />غير مفعّلة</span>
-            </article>
-          ))}
-        </div>
-      </div>
-
-      {loading && (
-        <div className="loading-surface compact-loading"><span className="loading-spinner" /> جارٍ تحميل الإعدادات…</div>
+        </Modal>
       )}
 
       {editor && (
@@ -566,6 +740,7 @@ export function IntegrationsSettings({ companies }: IntegrationsSettingsProps) {
     </div>
   );
 }
+
 
 function IntegrationEditor({
   provider,
