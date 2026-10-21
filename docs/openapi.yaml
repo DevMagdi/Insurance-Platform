@@ -7218,7 +7218,7 @@ paths:
         required: true
         schema:
           type: string
-          pattern: ^CMP-[0-9]{4}-[0-9]{6,}$
+          pattern: ^(REQ|CMP)-[0-9]{4}-[0-9]{6,}$
           title: Ticket No
       - name: Authorization
         in: header

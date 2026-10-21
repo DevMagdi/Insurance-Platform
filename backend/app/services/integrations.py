@@ -46,6 +46,7 @@ from app.repositories.complaints import ComplaintRepository
 from app.repositories.integrations import IntegrationRepository
 from app.security.integration_crypto import SecretCipher
 from app.services.email_templates import render_customer_reply, render_insurer_forward
+from app.services.intake import TICKET_RE
 from app.services.integration_providers import (
     PROVIDER_REQUIRED_FIELDS as _PROVIDER_REQUIRED_FIELDS,
 )
@@ -59,7 +60,10 @@ from app.services.integration_providers import (
 )
 from app.services.providers import ProviderUnavailable
 
-_TICKET_RE = re.compile(r"\bCMP-\d{4}-\d{6,}\b", re.IGNORECASE)
+# One canonical ticket pattern for the whole platform. Tickets mint as `REQ-`
+# and the historical `CMP-` stays valid, so a second copy of this regex that
+# knows only one prefix silently drops the other's replies.
+_TICKET_RE = TICKET_RE
 _NATIONAL_ID_RE = re.compile(r"(?<!\d)\d{14}(?!\d)")
 _EGYPT_MOBILE_RE = re.compile(r"(?<!\w)(?:\+?20|0)?1[0125]\d{8}(?!\d)")
 _EMAIL_RE = re.compile(r"\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b", re.IGNORECASE)

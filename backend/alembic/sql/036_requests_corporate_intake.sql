@@ -1176,7 +1176,41 @@ REVOKE ALL ON FUNCTION app_security.corporate_change_password(uuid, text) FROM P
 REVOKE ALL ON FUNCTION app_security.set_contract_document_scan(
     uuid, public.attachment_scan_status) FROM PUBLIC;
 
-GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA app_security TO app_runtime;
+-- Grant the runtime role exactly the functions this migration adds for it.
+--
+-- `GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA app_security TO app_runtime` would
+-- be shorter, and migrations 002 and 005 use it — but they run before the
+-- worker-only functions exist, so the blanket grant never reached those. This
+-- migration runs last, so the same statement here would hand app_runtime
+-- EXECUTE on worker-only entry points such as
+-- `app_security.claim_integration_jobs(integer)`. The web role must not be
+-- able to claim the worker's jobs, so each function is named explicitly.
+GRANT EXECUTE ON FUNCTION app_security.corporate_overview() TO app_runtime;
+GRANT EXECUTE ON FUNCTION app_security.corporate_members(text) TO app_runtime;
+GRANT EXECUTE ON FUNCTION app_security.corporate_directory() TO app_runtime;
+GRANT EXECUTE ON FUNCTION app_security.corporate_client_id() TO app_runtime;
+GRANT EXECUTE ON FUNCTION app_security.corporate_token_version(uuid) TO app_runtime;
+GRANT EXECUTE ON FUNCTION app_security.is_active_corporate_user() TO app_runtime;
+GRANT EXECUTE ON FUNCTION app_security.can_read_corporate_client(uuid) TO app_runtime;
+GRANT EXECUTE ON FUNCTION app_security.corporate_login_record(text) TO app_runtime;
+GRANT EXECUTE ON FUNCTION app_security.corporate_mark_login(uuid) TO app_runtime;
+GRANT EXECUTE ON FUNCTION app_security.corporate_change_password(uuid, text) TO app_runtime;
+GRANT EXECUTE ON FUNCTION app_security.read_contract_document(uuid) TO app_runtime;
+GRANT EXECUTE ON FUNCTION app_security.store_contract_document(
+    uuid, text, text, text, text, bigint, text, bytea, boolean) TO app_runtime;
+GRANT EXECUTE ON FUNCTION app_security.upsert_corporate_client(
+    uuid, text, text, text, text, text, text, text, text, boolean) TO app_runtime;
+GRANT EXECUTE ON FUNCTION app_security.upsert_corporate_contract(
+    uuid, uuid, text, numeric, text, public.payment_frequency, date, date,
+    public.contract_status, integer, text) TO app_runtime;
+GRANT EXECUTE ON FUNCTION app_security.create_corporate_user(
+    uuid, text, text, text, text) TO app_runtime;
+GRANT EXECUTE ON FUNCTION app_security.link_customer_to_corporate(
+    uuid, uuid, text) TO app_runtime;
+
+-- Defence in depth: should a later migration reintroduce a blanket grant,
+-- these worker-only entry points stay closed to the web role.
+REVOKE EXECUTE ON FUNCTION app_security.claim_integration_jobs(integer) FROM app_runtime;
 
 -- The worker owns inbound delivery: it may create requests from channel events
 -- and store their binaries, and nothing else.
@@ -1484,4 +1518,36 @@ LANGUAGE sql STABLE SECURITY DEFINER SET search_path = pg_catalog, public AS $fu
             LIMIT 500
         ) rows), '[]'::jsonb)
     END
+$function$;
+
+-- Section 19: guest tracking must accept REQ- tickets
+--
+-- `guest_ticket_status` carried its own copy of the ticket pattern and still
+-- demanded a CMP- prefix, so every ticket minted after this migration failed
+-- guest tracking with a 404 — the customer-visible "track without an account"
+-- flow. The constraint in section 4 and this guard must agree.
+CREATE OR REPLACE FUNCTION app_security.guest_ticket_status(p_ticket text, p_blind bytea)
+RETURNS TABLE (public_ticket text, public_status text, public_company text,
+    created timestamptz)
+LANGUAGE plpgsql VOLATILE SECURITY DEFINER SET search_path = pg_catalog, public AS $function$
+DECLARE v_id uuid;
+BEGIN
+    IF app_security.actor_scope() <> 'guest' OR octet_length(p_blind) <> 32
+       OR p_ticket !~ '^(REQ|CMP)-[0-9]{4}-[0-9]{6,}$' THEN
+        RETURN;
+    END IF;
+    SELECT c.id, k.ticket_no, c.status::text, co.name_en, c.created_at
+        INTO v_id, public_ticket, public_status, public_company, created
+        FROM public.complaint_keys k
+        JOIN public.complaints c ON c.id = k.id AND c.created_at = k.created_at
+        JOIN public.customers cu ON cu.id = c.customer_id
+        JOIN public.insurance_companies co ON co.id = c.company_id
+        WHERE k.ticket_no = p_ticket AND cu.national_id_blind_index = p_blind;
+    IF FOUND THEN
+        INSERT INTO public.audit_logs
+            (action, resource_type, resource_id, complaint_id, complaint_created_at)
+            VALUES ('guest_track', 'complaint', v_id, v_id, created);
+        RETURN NEXT;
+    END IF;
+END;
 $function$;

@@ -93,7 +93,23 @@ async def seed() -> None:
             ),
             {"cid": client_id, "h": password_hash},
         )
-        company = await conn.scalar(text("SELECT id FROM public.insurance_companies LIMIT 1"))
+        # Seeding employees' requests needs a broker company. Create one when
+        # the database is empty so this check also runs against a freshly
+        # migrated instance, not only an already-seeded developer database.
+        company = await conn.scalar(
+            text("SELECT id FROM public.insurance_companies ORDER BY created_at LIMIT 1")
+        )
+        if company is None:
+            company = await conn.scalar(
+                text(
+                    "INSERT INTO public.insurance_companies (slug, name_en, name_ar)"
+                    " VALUES ('corporate-check-co', 'Corporate Check Insurance',"
+                    " 'شركة فحص بوابة الشركات')"
+                    " ON CONFLICT (slug) DO UPDATE SET name_en = EXCLUDED.name_en"
+                    " RETURNING id"
+                )
+            )
+            print(f"  (seeded insurance company {company} for this run)")
 
     # Raise the employees' requests through the real intake path.
     worker = create_async_engine(

@@ -34,7 +34,12 @@ from app.security.integration_crypto import SecretCipher, derive_idempotency_key
 from app.services.backpressure import DEPTH_KEY
 from app.services.email_templates import branded_email
 from app.services.exports import MAX_EXPORT_BYTES, render_export
-from app.services.intake import InboundEvent, InboundMedia, RequestIntakeService
+from app.services.intake import (
+    TICKET_RE,
+    InboundEvent,
+    InboundMedia,
+    RequestIntakeService,
+)
 from app.services.integration_providers import (
     EMAIL_PROVIDER_CLASSES,
     INBOUND_EMAIL_PROVIDER_CLASSES,
@@ -772,9 +777,10 @@ async def poll_imap_inboxes(ctx: dict[str, Any]) -> str:
             )
             continue
         for message in messages:
-            ticket_no_match = re.search(
-                r"\bCMP-\d{4}-\d{6,}\b", f"{message.subject}\n{message.body}", re.IGNORECASE
-            )
+            # The canonical pattern: tickets mint as REQ- and CMP- stays valid.
+            # A prefix-specific copy here silently drops the other's replies —
+            # and marks them seen, so the message is lost for good.
+            ticket_no_match = TICKET_RE.search(f"{message.subject}\n{message.body}")
             if not ticket_no_match or not message.body.strip():
                 with suppress(IntegrationProviderError):
                     await mailbox.mark_seen(message.sequence_id)

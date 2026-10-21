@@ -110,7 +110,7 @@ test('landing offers filing and tracking, with language switch', async ({ page }
   await page.goto('/');
   await expect(page.getByRole('heading', { name: /complaint deserves VIP/ })).toBeVisible();
   await page.getByRole('button', { name: 'العربية' }).click();
-  await expect(page.getByRole('heading', { name: /شكواك تستحق/ })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /طلبك تستحق/ })).toBeVisible();
   await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
 });
 
