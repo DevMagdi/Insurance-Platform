@@ -135,7 +135,7 @@ for (const theme of ['light', 'dark'] as const) {
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     await page.screenshot({ path: testInfo.outputPath(`staff-${theme}.png`), fullPage: true });
     await page.goto('/staff/analytics');
-    await expect(page.getByText('الشكاوى الواردة يومياً')).toBeVisible();
+    await expect(page.getByText('الطلبات الواردة يومياً')).toBeVisible();
     await page.goto('/staff/admin');
     await expect(page.locator('.admin-kpi')).toHaveCount(4);
     await expect(page.locator('.admin-trend svg')).toBeVisible();

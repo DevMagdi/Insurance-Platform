@@ -98,12 +98,12 @@ test('one-company scope is reflected in charts, list search, export, and direct 
   if ((page.viewportSize()?.width ?? 1024) < 768) {
     await page.getByRole('button', { name: 'فتح القائمة' }).click();
   }
-  await page.getByRole('navigation', { name: 'مساحة العمل' }).getByRole('button', { name: /قائمة الشكاوى/ }).click();
-  await expect(page.getByRole('heading', { name: 'صندوق الشكاوى' })).toBeVisible();
+  await page.getByRole('navigation', { name: 'مساحة العمل' }).getByRole('button', { name: /قائمة الطلبات/ }).click();
+  await expect(page.getByRole('heading', { name: 'صندوق الطلبات' })).toBeVisible();
   await expect(page.getByText('Scoped claim review')).toBeVisible();
-  const search = page.getByRole('textbox', { name: 'البحث في الشكاوى' });
+  const search = page.getByRole('textbox', { name: 'البحث في الطلبات' });
   await search.fill('OUTSIDE-CLAIM');
-  await expect(page.getByText('لا توجد شكاوى مطابقة')).toBeVisible();
+  await expect(page.getByText('لا توجد طلبات مطابقة')).toBeVisible();
   await search.fill('');
   await expect(page.getByText('Scoped claim review')).toBeVisible();
 
@@ -121,7 +121,7 @@ test('one-company scope is reflected in charts, list search, export, and direct 
   await page.goto(`/staff/complaints/${outsideId}`);
   expect((await directTicketResponse).status()).toBe(404);
   // Out-of-scope tickets stay inside the console shell and show its locked state.
-  await expect(page.getByRole('heading', { name: 'الشكوى غير متاحة' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'الطلب غير متاح' })).toBeVisible();
   await expect(page.getByText('Scoped Customer')).toHaveCount(0);
   await expect(page.getByText('Other Insurer')).toHaveCount(0);
 });

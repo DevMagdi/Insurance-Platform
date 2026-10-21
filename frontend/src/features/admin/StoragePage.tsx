@@ -62,7 +62,7 @@ const DETAIL_LABELS: Record<string, string> = {
   scan_status: 'حالة الفحص الأمني',
   visibility: 'نطاق الظهور',
   encrypted: 'محتوى مشفَّر',
-  complaint_id: 'رقم الشكوى',
+  complaint_id: 'رقم الطلب',
   ticket_no: 'رقم التذكرة',
   export_kind: 'نوع التصدير',
   format: 'الصيغة',
@@ -434,7 +434,7 @@ export function StoragePage({ access }: StoragePageProps) {
       </section>
 
       <p className="storage-safety-note"><Icon name="shield" size={14} />
-        هذه لوحة مخزون داخلية للقراءة فقط. تنزيل المرفقات يخضع لصلاحيات الشكوى ونتيجة الفحص الأمني من مسارها المعتاد؛ لا يمكن حذف الملفات أو تعديلها من هنا.
+        هذه لوحة مخزون داخلية للقراءة فقط. تنزيل المرفقات يخضع لصلاحيات الطلب ونتيجة الفحص الأمني من مسارها المعتاد؛ لا يمكن حذف الملفات أو تعديلها من هنا.
       </p>
 
       {selectedObject && (

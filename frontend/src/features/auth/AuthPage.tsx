@@ -169,9 +169,9 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
         <section className="auth-story">
           <img className="brand-mark auth-brand-mark" src={brand.logo_url} alt="" />
           <p className="auth-kicker">{brand.platform_name} · INSURANCE OPERATIONS</p>
-          <h1>كل شكوى،<br /><span>بمسار أوضح.</span></h1>
+          <h1>كل طلب،<br /><span>بمسار أوضح.</span></h1>
           <p className="auth-story-copy">
-            مساحة آمنة لفريق الوساطة لمتابعة شكاوى التأمين، وقياس جودة الخدمة، وإدارة الوصول بدقة.
+            مساحة آمنة لفريق الوساطة لمتابعة طلبات التأمين، وقياس جودة الخدمة، وإدارة الوصول بدقة.
           </p>
           <div className="auth-trust-row">
             <span><Icon name="shield" size={16} /> صلاحيات ونطاقات محمية</span>

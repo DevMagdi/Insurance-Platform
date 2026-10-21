@@ -70,7 +70,7 @@ export function StaffAuditPage() {
   );
 }
 
-const EXPORT_KIND: Record<string, string> = { complaints: 'الشكاوى', analytics: 'التحليلات' };
+const EXPORT_KIND: Record<string, string> = { complaints: 'الطلبات', analytics: 'التحليلات' };
 const EXPORT_STATUS: Record<string, string> = {
   queued: 'في الانتظار',
   running: 'قيد التجهيز',
@@ -112,7 +112,7 @@ export function StaffExportsPage() {
         {!windowValid && <p className="mt-3 text-sm text-amber-700 dark:text-amber-300">حدّد تاريخ بداية ونهاية صالحين، وبفارق لا يتجاوز 366 يوماً.</p>}
         {create.isError && <p className="mt-3 text-sm text-red-600 dark:text-red-400">{create.error instanceof Error ? create.error.message : 'تعذر إنشاء التصدير.'}</p>}
         <div className="mt-4 flex flex-wrap gap-2">
-          <button type="button" className={primaryButton} disabled={create.isPending || !windowValid} onClick={() => create.mutate('complaints')}>تصدير الشكاوى (CSV)</button>
+          <button type="button" className={primaryButton} disabled={create.isPending || !windowValid} onClick={() => create.mutate('complaints')}>تصدير الطلبات (CSV)</button>
           <button type="button" className={ghostButton} disabled={create.isPending || !windowValid} onClick={() => create.mutate('analytics')}>تصدير التحليلات (CSV)</button>
           <button type="button" className={ghostButton} onClick={() => void jobs.refetch()}>{t('common.retry')}</button>
         </div>

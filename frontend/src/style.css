@@ -2,6 +2,7 @@
 @custom-variant dark (&:where(.dark, .dark *));
 @import './styles/foundation.css';
 @import './styles/portal.css';
+@import './styles/corporate.css';
 
 @theme {
   --color-navy: #0b1f3a;

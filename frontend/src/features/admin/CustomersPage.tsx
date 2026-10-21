@@ -158,7 +158,7 @@ export function CustomersPage({ access }: { access: StaffAccess }) {
   return <div className="page-stack">
     <SectionTitle eyebrow="إدارة الهوية والوصول" title="العملاء" description="ملفات العملاء وشركات التأمين المرتبطة بوثائقهم؛ ابحث عبر كل بيانات الملف والسياسات." />
     {error && <div className="inline-alert error" role="alert">{error}<button type="button" onClick={() => { setLoading(true); setError(''); setReloadToken((value) => value + 1); }}>إعادة المحاولة</button></div>}
-    <section className="surface-card user-summary-strip"><div className="summary-stat"><span className="summary-stat-icon"><Icon name="users" size={17} /></span><div><strong>{formatNumber(customers.length)}</strong><small>إجمالي العملاء</small></div></div><div className="summary-stat"><span className="summary-stat-icon summary-stat-green"><Icon name="building" size={17} /></span><div><strong>{formatNumber(new Set(customers.flatMap((customer) => customer.companies.map((company) => company.id))).size)}</strong><small>شركات مرتبطة</small></div></div><div className="summary-stat"><span className="summary-stat-icon summary-stat-gold"><Icon name="inbox" size={17} /></span><div><strong>{formatNumber(customers.reduce((count, customer) => count + customer.complaints_count, 0))}</strong><small>إجمالي الشكاوى</small></div></div></section>
+    <section className="surface-card user-summary-strip"><div className="summary-stat"><span className="summary-stat-icon"><Icon name="users" size={17} /></span><div><strong>{formatNumber(customers.length)}</strong><small>إجمالي العملاء</small></div></div><div className="summary-stat"><span className="summary-stat-icon summary-stat-green"><Icon name="building" size={17} /></span><div><strong>{formatNumber(new Set(customers.flatMap((customer) => customer.companies.map((company) => company.id))).size)}</strong><small>شركات مرتبطة</small></div></div><div className="summary-stat"><span className="summary-stat-icon summary-stat-gold"><Icon name="inbox" size={17} /></span><div><strong>{formatNumber(customers.reduce((count, customer) => count + customer.complaints_count, 0))}</strong><small>إجمالي الطلبات</small></div></div></section>
     
     <section className="surface-card admin-table-card" style={{ marginBottom: 16 }}>
       <div className="table-topline">
@@ -188,11 +188,11 @@ export function CustomersPage({ access }: { access: StaffAccess }) {
         </div>
         <div>
           <label className="field-label" style={{ display: 'block' }}>
-            وجود شكاوى
+            وجود طلبات
             <select value={hasComplaintsFilter} onChange={(e) => setHasComplaintsFilter(e.target.value)} style={{ width: '100%' }}>
               <option value="">كل العملاء</option>
-              <option value="yes">لديهم شكاوى</option>
-              <option value="no">بدون شكاوى</option>
+              <option value="yes">لديهم طلبات</option>
+              <option value="no">بدون طلبات</option>
             </select>
           </label>
         </div>
@@ -215,7 +215,7 @@ export function CustomersPage({ access }: { access: StaffAccess }) {
     </section>
     
     <div className="user-toolbar surface-card"><div className="queue-search-wrap"><Icon name="search" size={17} /><input aria-label="فلترة العملاء" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="ابحث في كل بيانات العميل والسياسات والشركات…" /></div><span className="muted small-copy">{formatNumber(filtered.length)} من {formatNumber(customers.length)}</span></div>
-    <section className="surface-card admin-table-card"><div className="table-wrap"><table className="data-table admin-users-table"><thead><tr><th>العميل</th><th>وسائل التواصل</th><th>شركة التأمين</th><th>الوثائق</th><th>الشكاوى</th><th>تاريخ التسجيل</th></tr></thead><tbody>
+    <section className="surface-card admin-table-card"><div className="table-wrap"><table className="data-table admin-users-table"><thead><tr><th>العميل</th><th>وسائل التواصل</th><th>شركة التأمين</th><th>الوثائق</th><th>الطلبات</th><th>تاريخ التسجيل</th></tr></thead><tbody>
       {loading && <tr><td colSpan={6}><div className="loading-surface compact-loading"><span className="loading-spinner" /> جارٍ تحميل العملاء…</div></td></tr>}
       {!loading && filtered.map((customer) => {
         const companyNames = customer.companies.length 
@@ -264,9 +264,9 @@ export function CustomersPage({ access }: { access: StaffAccess }) {
           {revealError && !showRevealForm && <div className="inline-alert error" role="alert">{revealError}</div>}
         </div>
       </section>
-      <section className="surface-card customer-profile-section"><h3>التواصل</h3><div className="customer-profile-grid"><div><span>رقم الموبايل</span><strong dir="ltr">{selected.mobile}</strong></div><div><span>البريد الإلكتروني</span><strong dir="ltr">{selected.email || 'غير مسجل'}</strong></div><div><span>واتساب</span><strong>{selected.whatsapp_available ? 'متاح' : 'غير متاح'}</strong></div><div><span>عدد الشكاوى</span><strong>{formatNumber(selected.complaints_count)}</strong></div></div></section>
-      <section className="surface-card customer-profile-section"><h3>الوثائق والشركات</h3>{selected.policies.length ? selected.policies.map((policy, index) => <article className="customer-profile-item" key={`${policy.policy_number}-${index}`}><strong>{policy.company_name_ar} · {policy.company_name_en}</strong><p>رقم الوثيقة: <bdi>{policy.policy_number}</bdi></p><p>النوع: {policy.insurance_type} · من {policy.effective_from || '—'} إلى {policy.expires_at || '—'}</p></article>) : <div className="empty-inline">لا توجد وثائق مرتبطة.{selected.complaints.length ? ' شركات الشكاوى المرتبطة موضحة في سجل الشكاوى أدناه.' : ''}</div>}</section>
-      <section className="surface-card customer-profile-section"><h3>سجل الشكاوى</h3>{selected.complaints.length ? selected.complaints.map((complaint) => <article className="customer-profile-item" key={complaint.ticket_no}><strong>{complaint.ticket_no} · {complaint.subject}</strong><p>{complaint.company_name_ar || complaint.company_name_en} · {complaint.insurance_type}</p><p>الحالة: {complaint.status} · {formatDateTime(complaint.created_at)}</p></article>) : <div className="empty-inline">لا توجد شكاوى مسجلة.</div>}</section>
+      <section className="surface-card customer-profile-section"><h3>التواصل</h3><div className="customer-profile-grid"><div><span>رقم الموبايل</span><strong dir="ltr">{selected.mobile}</strong></div><div><span>البريد الإلكتروني</span><strong dir="ltr">{selected.email || 'غير مسجل'}</strong></div><div><span>واتساب</span><strong>{selected.whatsapp_available ? 'متاح' : 'غير متاح'}</strong></div><div><span>عدد الطلبات</span><strong>{formatNumber(selected.complaints_count)}</strong></div></div></section>
+      <section className="surface-card customer-profile-section"><h3>الوثائق والشركات</h3>{selected.policies.length ? selected.policies.map((policy, index) => <article className="customer-profile-item" key={`${policy.policy_number}-${index}`}><strong>{policy.company_name_ar} · {policy.company_name_en}</strong><p>رقم الوثيقة: <bdi>{policy.policy_number}</bdi></p><p>النوع: {policy.insurance_type} · من {policy.effective_from || '—'} إلى {policy.expires_at || '—'}</p></article>) : <div className="empty-inline">لا توجد وثائق مرتبطة.{selected.complaints.length ? ' شركات الطلبات المرتبطة موضحة في سجل الطلبات أدناه.' : ''}</div>}</section>
+      <section className="surface-card customer-profile-section"><h3>سجل الطلبات</h3>{selected.complaints.length ? selected.complaints.map((complaint) => <article className="customer-profile-item" key={complaint.ticket_no}><strong>{complaint.ticket_no} · {complaint.subject}</strong><p>{complaint.company_name_ar || complaint.company_name_en} · {complaint.insurance_type}</p><p>الحالة: {complaint.status} · {formatDateTime(complaint.created_at)}</p></article>) : <div className="empty-inline">لا توجد طلبات مسجلة.</div>}</section>
     </div></Modal>}
   </div>;
 }

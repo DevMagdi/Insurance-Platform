@@ -110,8 +110,8 @@ test('RTL access editor has no horizontal overlap on desktop and mobile and save
   await expect(dialog.getByRole('heading', { name: 'مصفوفة الصلاحيات' })).toBeVisible();
   await expect(dialog.getByRole('heading', { name: 'نطاق الشركات والملكية' })).toBeVisible();
   await expectNoHorizontalOverflow(page, '.access-editor-dialog .modal-content');
-  await dialog.getByLabel('البحث في الصلاحيات').fill('عرض الشكاوى');
-  await dialog.getByRole('combobox', { name: 'تجاوز عرض الشكاوى' }).selectOption('deny');
+  await dialog.getByLabel('البحث في الصلاحيات').fill('عرض الطلبات');
+  await dialog.getByRole('combobox', { name: 'تجاوز عرض الطلبات' }).selectOption('deny');
   await expect(dialog.getByText('موقوفة')).toBeVisible();
   await dialog.getByRole('button', { name: 'عرض كـ Mona' }).click();
   await expect(page.getByRole('dialog')).toHaveCount(2);

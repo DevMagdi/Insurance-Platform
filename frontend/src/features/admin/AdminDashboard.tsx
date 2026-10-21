@@ -18,7 +18,7 @@ const STATUS: Record<string, string> = {
 function Trend({ values }: { values: number[] }) {
   const max = Math.max(1, ...values);
   const points = values.map((value, index) => `${values.length === 1 ? 50 : index * 100 / (values.length - 1)},${62 - value * 52 / max}`).join(' ');
-  return <div className="admin-trend" role="img" aria-label={`الشكاوى الواردة: ${values.map((value) => formatNumber(value)).join('، ') || 'لا توجد بيانات'}`}>
+  return <div className="admin-trend" role="img" aria-label={`الطلبات الواردة: ${values.map((value) => formatNumber(value)).join('، ') || 'لا توجد بيانات'}`}>
     {values.length ? <svg viewBox="0 0 100 70" preserveAspectRatio="none" aria-hidden="true" focusable="false">
       <line x1="0" y1="62" x2="100" y2="62" className="trend-grid" />
       <line x1="0" y1="36" x2="100" y2="36" className="trend-grid" />
@@ -79,13 +79,13 @@ export function AdminDashboard({ access, range, onNavigate }: Props) {
 
   const kpis = report?.kpis;
   const cards: Array<{ label: string; value: string; note: string; icon: IconName; tone: string }> = [
-    { label: 'إجمالي الشكاوى', value: formatNumber(kpis?.total), note: 'خلال الفترة المختارة', icon: 'inbox', tone: 'gold' },
+    { label: 'إجمالي الطلبات', value: formatNumber(kpis?.total), note: 'خلال الفترة المختارة', icon: 'inbox', tone: 'gold' },
     { label: 'بانتظار المتابعة', value: formatNumber(kpis ? kpis.new + kpis.reopened : undefined), note: 'جديدة أو أُعيد فتحها', icon: 'clock', tone: 'blue' },
     { label: 'تجاوزات مستوى الخدمة', value: formatNumber(kpis?.sla_breaches), note: 'تحتاج إلى انتباه', icon: 'shield', tone: 'red' },
     { label: 'تم حلها', value: formatNumber(kpis?.resolved), note: 'ضمن الفترة', icon: 'check', tone: 'green' },
   ];
   const shortcuts: Array<{ page: AppRoute['page']; label: string; description: string; icon: IconName; visible: boolean }> = [
-    { page: 'complaints', label: 'قائمة الشكاوى', description: 'مراجعة الحالات وتوزيع العمل', icon: 'inbox', visible: true },
+    { page: 'complaints', label: 'قائمة الطلبات', description: 'مراجعة الحالات وتوزيع العمل', icon: 'inbox', visible: true },
     { page: 'users', label: 'المستخدمون', description: 'الحسابات وسياسات الوصول', icon: 'users', visible: canSeeUsers },
     { page: 'roles', label: 'الأدوار والصلاحيات', description: 'ضبط صلاحيات الفريق', icon: 'roles', visible: hasPermission(access, 'roles.manage') },
     { page: 'audit', label: 'سجل التدقيق', description: 'متابعة التغييرات والأنشطة', icon: 'audit', visible: hasPermission(access, 'audit.view') },
@@ -98,7 +98,7 @@ export function AdminDashboard({ access, range, onNavigate }: Props) {
   return <div className="admin-dashboard page-stack">
     <header className="admin-hero">
       <div><span className="admin-kicker"><span className="admin-kicker-dot" /> مركز القيادة · نطاق الإدارة العام</span>
-        <h1>لوحة الإدارة</h1><p>متابعة الشكاوى ومستوى الخدمة وإدارة الفريق من مكان واحد.</p>
+        <h1>لوحة الإدارة</h1><p>متابعة الطلبات ومستوى الخدمة وإدارة الفريق من مكان واحد.</p>
         <span className="admin-period">الفترة: {displayRange(range)}</span>
       </div>
       <button className="button button-quiet" type="button" onClick={() => { void load(); }} disabled={loading}>
@@ -116,7 +116,7 @@ export function AdminDashboard({ access, range, onNavigate }: Props) {
     </article>)}</div>
 
     <div className="admin-data-grid">
-      <section className="admin-panel admin-trend-panel"><div className="admin-panel-head"><div><span className="admin-eyebrow">حركة الشكاوى</span><h2>الوارد خلال الفترة</h2></div><span className="admin-panel-number">{formatNumber(kpis?.total)}</span></div>
+      <section className="admin-panel admin-trend-panel"><div className="admin-panel-head"><div><span className="admin-eyebrow">حركة الطلبات</span><h2>الوارد خلال الفترة</h2></div><span className="admin-panel-number">{formatNumber(kpis?.total)}</span></div>
         <Trend values={report?.time_series.map((item) => item.arrived) ?? []} />
         {report?.time_series.length ? <div className="admin-trend-labels"><span>{report.time_series[0].date}</span><span>{report.time_series.at(-1)?.date}</span></div> : null}
       </section>
@@ -141,12 +141,12 @@ export function AdminDashboard({ access, range, onNavigate }: Props) {
     {canSeeUsers && (departments ? <DepartmentsPanel departments={departments} canManage={hasPermission(access, 'users.edit')} onRefresh={async () => { setDepartments(await api<StaffDepartment[]>('/api/staff/departments')); }} /> : !loading && <p className="admin-empty">تعذر تحميل الأقسام حالياً.</p>)}
     {canSeeUsers && !!users?.length && <section className="admin-panel"><div className="admin-panel-head"><div><span className="admin-eyebrow">بروفايلات الموظفين</span><h2>الفريق والأقسام</h2></div><button className="admin-text-link" type="button" onClick={() => onNavigate({ page: 'users' })}>عرض كل الموظفين ←</button></div><div className="employee-card-grid">{users.slice(0, 8).map((user) => <button key={user.id} type="button" className="employee-card" aria-label={`عرض بروفايل ${user.full_name || user.email || 'موظف'}`} onClick={() => setProfileId(user.id)}><StaffAvatar name={user.full_name} src={user.avatar_url} status={user.status} /><span><strong>{user.full_name}</strong><small>{user.department_name || 'غير محدد'}</small></span></button>)}</div></section>}
     {profileId && <StaffProfileModal key={profileId} userId={profileId} canEdit={hasPermission(access, 'users.edit')} onClose={() => setProfileId(null)} onUpdated={() => load()} />}
-    <section className="admin-panel"><div className="admin-panel-head"><div><span className="admin-eyebrow">أولوية اليوم</span><h2>يحتاج انتباه</h2></div><button type="button" className="admin-text-link" onClick={() => onNavigate({ page: 'complaints' } as AppRoute)}>فتح قائمة الشكاوى ←</button></div>
+    <section className="admin-panel"><div className="admin-panel-head"><div><span className="admin-eyebrow">أولوية اليوم</span><h2>يحتاج انتباه</h2></div><button type="button" className="admin-text-link" onClick={() => onNavigate({ page: 'complaints' } as AppRoute)}>فتح قائمة الطلبات ←</button></div>
       <div className="attention-list">
         {[
           { tone: 'urgent', label: 'تجاوزات مستوى الخدمة', note: 'تجاوزت الموعد المستهدف وتحتاج تدخلاً', value: kpis?.sla_breaches ?? 0 },
-          { tone: 'high', label: 'شكاوى جديدة بانتظار الإسناد', note: 'لم تُسند إلى مختص بعد', value: kpis?.new ?? 0 },
-          { tone: 'normal', label: 'شكاوى أُعيد فتحها', note: 'تحتاج مراجعة سبب إعادة الفتح', value: kpis?.reopened ?? 0 },
+          { tone: 'high', label: 'طلبات جديدة بانتظار الإسناد', note: 'لم تُسند إلى مختص بعد', value: kpis?.new ?? 0 },
+          { tone: 'normal', label: 'طلبات أُعيد فتحها', note: 'تحتاج مراجعة سبب إعادة الفتح', value: kpis?.reopened ?? 0 },
         ].map((row) => (
           <button key={row.label} type="button" className={`attention-row ${row.tone}`} onClick={() => onNavigate({ page: 'complaints' } as AppRoute)}>
             <span className="attention-flag" aria-hidden="true" />

@@ -311,7 +311,9 @@ async def test_api_ownership_guest_audit_status_and_refresh(test_app: SimpleName
     first = await ctx.customer.post("/api/customer/complaints", json=payload, headers=headers)
     assert first.status_code == 201, first.text
     ticket, complaint_id = first.json()["ticket_no"], first.json()["id"]
-    assert ticket.startswith("CMP-") and first.json()["replayed"] is False
+    # Tickets mint as REQ- now that the platform tracks requests; the
+    # historical CMP- prefix stays valid for tickets issued before the change.
+    assert ticket.startswith("REQ-") and first.json()["replayed"] is False
     again = await ctx.customer.post("/api/customer/complaints", json=payload, headers=headers)
     assert again.status_code == 200 and again.json()["id"] == complaint_id
     collision = await ctx.customer.post(

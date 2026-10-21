@@ -28,6 +28,7 @@ from app.api import (
     audit,
     auth,
     catalog,
+    corporate,
     customer,
     exports,
     integration_webhooks,
@@ -65,6 +66,7 @@ from app.services.attachments import AttachmentService
 from app.services.auth import AuthService
 from app.services.backpressure import QueueBackpressure
 from app.services.complaints import ComplaintService
+from app.services.corporate import CorporateAuthService
 from app.services.integrations import IntegrationService
 from app.services.providers import SMTPDelivery
 from app.settings import Settings, get_settings
@@ -179,6 +181,9 @@ async def install_state(
         settings.jwt_signing_key,
         integration_events=integrations_service,
     )
+    # The corporate portal reuses the staff auth primitives (rate limits,
+    # lockout, password hashing, session issuing) with its own key space.
+    app.state.corporate_auth = CorporateAuthService(app.state.auth)
 
     async def virus_scanner_configured(db: Any) -> bool:
         return bool(await db.scalar(text("SELECT app_security.virus_scanner_configured()")))
@@ -226,6 +231,7 @@ app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(RequestContextMiddleware)
 app.include_router(auth.router)
 app.include_router(customer.router)
+app.include_router(corporate.router)
 app.include_router(staff.router)
 app.include_router(workflow.router)
 app.include_router(analytics.router)

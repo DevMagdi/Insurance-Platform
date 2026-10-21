@@ -13,8 +13,13 @@ import { StaffLoginPage } from './pages/StaffLoginPage';
 import { TicketDetailPage } from './pages/TicketDetailPage';
 import { TicketsPage } from './pages/TicketsPage';
 import { TrackPage } from './pages/TrackPage';
+import { CorporateLoginPage } from './features/corporate/CorporateLoginPage';
 
 const StaffConsole = lazy(() => import('./StaffConsole'));
+// The corporate workspace is a third audience; keep it out of the main bundle.
+const CorporatePortal = lazy(() =>
+  import('./features/corporate/CorporatePortal').then((m) => ({ default: m.CorporatePortal })),
+);
 
 /** Quiet page entrance: a 220ms fade with a breath of rise, keyed by route. */
 function PageTransition({ routeKey, children }: { routeKey: string; children: ReactNode }) {
@@ -56,8 +61,19 @@ function App() {
     return <Suspense fallback={<div className="min-h-screen p-6 text-center">جارٍ تحميل مساحة الإدارة…</div>}><StaffConsole /></Suspense>;
   }
 
+  // The contracted company's portal: its own credentials and its own data,
+  // rendered outside the customer layout like the staff console.
+  if (path === '/corporate' || path === '/corporate/overview') {
+    return (
+      <Suspense fallback={<div className="min-h-screen p-6 text-center">جارٍ تحميل بوابة الشركة…</div>}>
+        <CorporatePortal />
+      </Suspense>
+    );
+  }
+
   let page: React.ReactNode;
-  if (path === '/staff/login' || path === '/auth/staff' || path === '/auth') page = <StaffLoginPage />;
+  if (path === '/corporate/login') page = <CorporateLoginPage />;
+  else if (path === '/staff/login' || path === '/auth/staff' || path === '/auth') page = <StaffLoginPage />;
   else if (path === '/invite') page = <InvitePage />;
   else if (path === '/staff/analytics') page = <StaffAnalyticsPage />;
   else if (path === '/staff/audit') page = <StaffAuditPage />;

@@ -66,3 +66,48 @@ class AttachmentScanStatus(StrEnum):
     CLEAN = "clean"
     INFECTED = "infected"
     ERROR = "error"
+
+
+class PaymentFrequency(StrEnum):
+    """Billing cadence of a brokerage contract with a corporate client."""
+
+    MONTHLY = "monthly"
+    QUARTERLY = "quarterly"
+    SEMI_ANNUAL = "semi_annual"
+    ANNUAL = "annual"
+
+
+class ContractStatus(StrEnum):
+    DRAFT = "draft"
+    ACTIVE = "active"
+    SUSPENDED = "suspended"
+    EXPIRED = "expired"
+    TERMINATED = "terminated"
+
+
+class IntakeSource(StrEnum):
+    """Where a request physically entered the platform."""
+
+    PORTAL = "portal"
+    WHATSAPP = "whatsapp"
+    EMAIL = "email"
+    PHONE = "phone"
+    SMS = "sms"
+    STAFF = "staff"
+    CORPORATE = "corporate"
+
+
+class IntakeState(StrEnum):
+    PENDING = "pending"
+    CREATED = "created"
+    LINKED = "linked"
+    IGNORED = "ignored"
+    FAILED = "failed"
+
+
+class ContractDocumentKind(StrEnum):
+    CONTRACT = "contract"
+    POLICY = "policy"
+    ENDORSEMENT = "endorsement"
+    INVOICE = "invoice"
+    OTHER = "other"

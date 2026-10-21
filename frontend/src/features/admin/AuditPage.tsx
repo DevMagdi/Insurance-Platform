@@ -30,9 +30,9 @@ function download(blob: Blob, filename: string) {
 }
 
 const ACTION_LABELS: Record<string, string> = {
-  complaint_created: 'إنشاء شكوى', complaint_updated: 'تعديل شكوى', status_changed: 'تغيير الحالة',
+  complaint_created: 'إنشاء طلب', complaint_updated: 'تعديل طلب', status_changed: 'تغيير الحالة',
   assigned: 'إسناد', reassigned: 'إعادة إسناد', public_reply: 'رد علني', internal_note: 'ملاحظة داخلية',
-  escalated: 'تحويل إلى شركة التأمين', complaint_merged: 'دمج شكوى', access_updated: 'تعديل صلاحيات',
+  escalated: 'تحويل إلى شركة التأمين', complaint_merged: 'دمج طلب', access_updated: 'تعديل صلاحيات',
   access_replaced: 'استبدال الوصول', user_invited: 'دعوة مستخدم', user_deactivated: 'تعطيل مستخدم',
   team_membership_changed: 'تعديل عضوية فريق', integration_configured: 'حفظ إعداد تكامل',
   integration_disconnected: 'فصل تكامل', report_schedule_saved: 'حفظ تقرير مجدول',
@@ -91,7 +91,7 @@ export function AuditPage({ access, range }: AuditPageProps) {
       action: draftFilters.action,
     };
     const idFields = tab === 'events'
-      ? [['معرّف الموظف', draft.actor_id], ['معرّف الشكوى', draft.complaint_id]] as const
+      ? [['معرّف الموظف', draft.actor_id], ['معرّف الطلب', draft.complaint_id]] as const
       : [['معرّف المستخدم المستهدف', draft.target_id]] as const;
     const invalid = idFields.find(([, value]) => value !== '' && !UUID_PATTERN.test(value));
     if (invalid) {
@@ -131,7 +131,7 @@ export function AuditPage({ access, range }: AuditPageProps) {
       {tab === 'events' ? <>
         <label className="compact-field"><span>الإجراء</span><select aria-label="تصفية حسب الإجراء" value={draftFilters.action} onChange={(event) => setDraftFilters((current) => ({ ...current, action: event.target.value }))}><option value="">كل الإجراءات</option>{ACTION_OPTIONS.map(([action, label]) => <option value={action} key={action}>{label}</option>)}</select></label>
         <label className="compact-field"><span>معرّف الموظف</span><input aria-label="تصفية حسب معرّف الموظف" value={draftFilters.actor_id} onChange={(event) => setDraftFilters((current) => ({ ...current, actor_id: event.target.value }))} placeholder="UUID" dir="ltr" /></label>
-        <label className="compact-field"><span>معرّف الشكوى</span><input aria-label="تصفية حسب معرّف الشكوى" value={draftFilters.complaint_id} onChange={(event) => setDraftFilters((current) => ({ ...current, complaint_id: event.target.value }))} placeholder="UUID" dir="ltr" /></label>
+        <label className="compact-field"><span>معرّف الطلب</span><input aria-label="تصفية حسب معرّف الطلب" value={draftFilters.complaint_id} onChange={(event) => setDraftFilters((current) => ({ ...current, complaint_id: event.target.value }))} placeholder="UUID" dir="ltr" /></label>
       </> : <label className="compact-field"><span>المستخدم المستهدف</span><input aria-label="تصفية حسب المستخدم المستهدف" value={draftFilters.target_id} onChange={(event) => setDraftFilters((current) => ({ ...current, target_id: event.target.value }))} placeholder="UUID" dir="ltr" /></label>}
       <button className="button button-dark" type="submit"><Icon name="filter" size={15} /> تطبيق الفلاتر</button>
       <button className="button button-quiet" type="button" onClick={() => { setDraftFilters(EMPTY_FILTERS); setFilters(EMPTY_FILTERS); setError(''); }}>مسح</button>
@@ -140,7 +140,7 @@ export function AuditPage({ access, range }: AuditPageProps) {
     <section className="surface-card admin-table-card">
       <div className="table-topline"><div><strong>{loading ? 'جارٍ التحميل…' : `${formatNumber(count)} ${tab === 'events' ? 'حدث' : 'تغيير وصول'}`}</strong><span>{tab === 'events' ? `الفترة المحددة · ${range.from} — ${range.to}` : `تغييرات الوصول · ${range.from} — ${range.to}`}</span></div><button className="icon-button small" type="button" onClick={() => { void load(); }} aria-label="تحديث سجل التدقيق" disabled={loading}><Icon name="refresh" size={15} /></button></div>
       <div className="table-wrap"><table className="data-table operations-table">
-        <thead>{tab === 'events' ? <tr><th>الوقت</th><th>الإجراء</th><th>نوع المورد</th><th>معرّف المورد</th><th>معرّف الشكوى</th></tr> : <tr><th>الوقت</th><th>المستخدم المستهدف</th><th>نوع التغيير</th><th>التغيير السابق</th><th>التغيير الجديد</th></tr>}</thead>
+        <thead>{tab === 'events' ? <tr><th>الوقت</th><th>الإجراء</th><th>نوع المورد</th><th>معرّف المورد</th><th>معرّف الطلب</th></tr> : <tr><th>الوقت</th><th>المستخدم المستهدف</th><th>نوع التغيير</th><th>التغيير السابق</th><th>التغيير الجديد</th></tr>}</thead>
         <tbody>
           {loading && <tr><td colSpan={5}><div className="loading-surface compact-loading"><span className="loading-spinner" /> جارٍ تحميل السجل…</div></td></tr>}
           {!loading && tab === 'events' && events.map((event) => <tr key={event.id}><td className="date-cell">{formatDateTime(event.created_at)}</td><td><span className="audit-action"><i />{ACTION_LABELS[event.action] ?? event.action}</span></td><td>{event.resource_type || '—'}</td><td><code className="mono-id">{event.resource_id ?? '—'}</code></td><td><code className="mono-id">{event.complaint_id ?? '—'}</code></td></tr>)}

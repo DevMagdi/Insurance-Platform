@@ -31,7 +31,7 @@ const PRIORITY_LABEL: Record<ComplaintPriority, string> = {
 const TYPE_LABEL: Record<InsuranceType, string> = { health: 'طبي', general: 'عام', both: 'مشترك' };
 const CHANNEL_LABEL: Record<string, string> = { portal: 'بوابة', email: 'بريد', whatsapp: 'واتساب', phone: 'هاتف', ai_voice: 'صوت ذكي' };
 const ALL_COLUMNS = [
-  { id: 'ticket_no', label: 'رقم الشكوى', locked: true },
+  { id: 'ticket_no', label: 'رقم الطلب', locked: true },
   { id: 'subject', label: 'الموضوع' },
   { id: 'company', label: 'شركة التأمين' },
   { id: 'type', label: 'نوع التأمين' },
@@ -50,9 +50,24 @@ interface QueueFilters {
   assigned_agent_id: string;
   priority: ComplaintPriority | '';
   channel: string;
+  /** Requests arrive by phone and WhatsApp, so the mobile number is how
+   *  agents find them when the caller does not know a ticket number. */
+  mobile: string;
+  card_number: string;
+  intake_source: string;
 }
 const EMPTY_FILTERS: QueueFilters = {
   status: '', company_id: '', insurance_type: '', assigned_agent_id: '', priority: '', channel: '',
+  mobile: '', card_number: '', intake_source: '',
+};
+const INTAKE_SOURCE_LABEL: Record<string, string> = {
+  whatsapp: 'واتساب',
+  phone: 'مكالمة هاتفية',
+  email: 'بريد إلكتروني',
+  sms: 'رسالة نصية',
+  portal: 'البوابة',
+  staff: 'إدخال موظف',
+  corporate: 'بوابة الشركة',
 };
 
 interface ComplaintQueueProps {
@@ -86,6 +101,7 @@ export function ComplaintQueue({ access, range, options, companyNames, onOpenTic
   const [filters, setFilters] = useState<QueueFilters>(EMPTY_FILTERS);
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [debouncedMobile, setDebouncedMobile] = useState('');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [sortBy, setSortBy] = useState<SortBy>('created_at');
@@ -108,6 +124,11 @@ export function ComplaintQueue({ access, range, options, companyNames, onOpenTic
     return () => window.clearTimeout(timer);
   }, [search]);
 
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebouncedMobile(filters.mobile.trim()), 320);
+    return () => window.clearTimeout(timer);
+  }, [filters.mobile]);
+
   const bounds = useMemo(() => rangeBounds(range), [range]);
   const params = useMemo(() => queryString({
     ...bounds,
@@ -118,12 +139,15 @@ export function ComplaintQueue({ access, range, options, companyNames, onOpenTic
     assigned_agent_id: filters.assigned_agent_id,
     priority: filters.priority,
     channel: filters.channel,
+    mobile: debouncedMobile,
+    card_number: filters.card_number.trim(),
+    intake_source: filters.intake_source,
     search: debouncedSearch,
     page,
     page_size: pageSize,
     sort_by: sortBy,
     sort_dir: sortDir,
-  }), [bounds, filters, debouncedSearch, page, pageSize, sortBy, sortDir]);
+  }), [bounds, filters, debouncedMobile, debouncedSearch, page, pageSize, sortBy, sortDir]);
 
   const load = useCallback(async () => {
     if (!hasPermission(access, 'complaints.view')) {
@@ -138,7 +162,7 @@ export function ComplaintQueue({ access, range, options, companyNames, onOpenTic
       setError('');
       setSelected((current) => current.filter((id) => items.some((item) => item.id === id)));
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'تعذر تحميل الشكاوى.');
+      setError(cause instanceof Error ? cause.message : 'تعذر تحميل الطلبات.');
       setResult(null);
     } finally {
       setLoading(false);
@@ -193,7 +217,7 @@ export function ComplaintQueue({ access, range, options, companyNames, onOpenTic
     };
   }, [access, params, load]);
 
-  if (!hasPermission(access, 'complaints.view')) return <AccessDenied title="قائمة الشكاوى غير متاحة" />;
+  if (!hasPermission(access, 'complaints.view')) return <AccessDenied title="قائمة الطلبات غير متاحة" />;
 
   const setFilter = <Key extends keyof QueueFilters>(key: Key, value: QueueFilters[Key]) => {
     setFilters((current) => ({ ...current, [key]: value }));
@@ -275,7 +299,7 @@ export function ComplaintQueue({ access, range, options, companyNames, onOpenTic
     <div className="page-stack">
       <SectionTitle
         eyebrow="إدارة الحالات"
-        title="صندوق الشكاوى"
+        title="صندوق الطلبات"
         description="ابحث، صفِّ، وادِر الحالات ضمن نطاق صلاحيتك الحالي."
         action={(
           <div className="queue-heading-actions">
@@ -305,7 +329,7 @@ export function ComplaintQueue({ access, range, options, companyNames, onOpenTic
       )}
 
       <div className="queue-toolbar surface-card">
-        <div className="queue-search-wrap"><Icon name="search" size={17} /><input aria-label="البحث في الشكاوى" placeholder="ابحث برقم الشكوى أو الموضوع…" value={search} onChange={(event) => setSearch(event.target.value)} /><kbd>/</kbd></div>
+        <div className="queue-search-wrap"><Icon name="search" size={17} /><input aria-label="البحث في الطلبات" placeholder="ابحث برقم الطلب أو الموضوع…" value={search} onChange={(event) => setSearch(event.target.value)} /><kbd>/</kbd></div>
         <div className="saved-view-control"><Icon name="filter" size={15} /><select aria-label="العروض المحفوظة" value="" onChange={(event) => { const view = savedViews.find((item) => item.id === event.target.value); if (view) applyView(view); }}><option value="">العروض المحفوظة</option>{savedViews.map((view) => <option value={view.id} key={view.id}>{view.name}</option>)}</select></div>
         <button className="button button-quiet save-view-button" type="button" onClick={() => setShowSaveView(true)}><Icon name="plus" size={15} /> حفظ العرض</button>
       </div>
@@ -317,6 +341,9 @@ export function ComplaintQueue({ access, range, options, companyNames, onOpenTic
         <label className="compact-field"><span>الموظف</span><select value={filters.assigned_agent_id} onChange={(event) => setFilter('assigned_agent_id', event.target.value)}><option value="">كل الموظفين</option>{options.agents.map((agent) => <option value={agent.id} key={agent.id}>{agent.full_name}</option>)}</select></label>
         <label className="compact-field"><span>الأولوية</span><select value={filters.priority} onChange={(event) => setFilter('priority', event.target.value as ComplaintPriority | '')}><option value="">كل الأولويات</option>{options.priorities.map((priority) => <option value={priority} key={priority}>{PRIORITY_LABEL[priority]}</option>)}</select></label>
         <label className="compact-field"><span>القناة</span><select value={filters.channel} onChange={(event) => setFilter('channel', event.target.value)}><option value="">كل القنوات</option>{options.channels.map((channel) => <option value={channel} key={channel}>{CHANNEL_LABEL[channel] ?? channel}</option>)}</select></label>
+        <label className="compact-field"><span>رقم الموبايل</span><input type="tel" inputMode="tel" dir="ltr" placeholder="01xxxxxxxxx" value={filters.mobile} onChange={(event) => setFilter('mobile', event.target.value)} /></label>
+        <label className="compact-field"><span>رقم الكارت</span><input dir="ltr" placeholder="CARD-0000" value={filters.card_number} onChange={(event) => setFilter('card_number', event.target.value)} /></label>
+        <label className="compact-field"><span>مصدر الطلب</span><select value={filters.intake_source} onChange={(event) => setFilter('intake_source', event.target.value)}><option value="">كل المصادر</option>{Object.entries(INTAKE_SOURCE_LABEL).map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select></label>
         <button className="clear-filter-button" type="button" onClick={() => { setFilters(EMPTY_FILTERS); setSearch(''); setPage(1); }}>مسح الفلاتر</button>
       </div>
 
@@ -332,13 +359,13 @@ export function ComplaintQueue({ access, range, options, companyNames, onOpenTic
       {error && <div className="inline-alert error" role="alert">{error}<button type="button" onClick={() => { void load(); }}>إعادة المحاولة</button></div>}
 
       <section className="surface-card complaints-table-card">
-        <div className="table-topline"><div><strong>{loading && !result ? 'جارٍ التحميل…' : `${formatNumber(result?.total)} شكوى`}</strong><span>ضمن الفترة المحددة</span></div><div className="table-range-label"><Icon name="calendar" size={14} />{range.from} — {range.to}</div></div>
+        <div className="table-topline"><div><strong>{loading && !result ? 'جارٍ التحميل…' : `${formatNumber(result?.total)} طلب`}</strong><span>ضمن الفترة المحددة</span></div><div className="table-range-label"><Icon name="calendar" size={14} />{range.from} — {range.to}</div></div>
         <div className="table-wrap">
           <table className="data-table complaints-table">
             <thead>
               <tr>
-                <th className="select-cell"><input aria-label="تحديد كل الشكاوى المعروضة" type="checkbox" checked={selectedAll} onChange={(event) => setSelected(event.target.checked ? result?.items.map((item) => item.id) ?? [] : [])} /></th>
-                <th>رقم الشكوى</th>
+                <th className="select-cell"><input aria-label="تحديد كل الطلبات المعروضة" type="checkbox" checked={selectedAll} onChange={(event) => setSelected(event.target.checked ? result?.items.map((item) => item.id) ?? [] : [])} /></th>
+                <th>رقم الطلب</th>
                 {visibleColumns.includes('subject') && <th>الموضوع</th>}
                 {visibleColumns.includes('company') && <th>شركة التأمين</th>}
                 {visibleColumns.includes('type') && <th>النوع</th>}
@@ -365,7 +392,7 @@ export function ComplaintQueue({ access, range, options, companyNames, onOpenTic
                   <td><span className={statusClass(item.status)}><i />{STATUS_LABEL[item.status]}</span></td>
                 </tr>
               ))}
-              {!loading && result?.items.length === 0 && <tr><td colSpan={10}><div className="empty-table"><span className="empty-icon"><Icon name="inbox" size={22} /></span><strong>لا توجد شكاوى مطابقة</strong><span>جرّب تغيير الفلاتر أو الفترة الزمنية.</span></div></td></tr>}
+              {!loading && result?.items.length === 0 && <tr><td colSpan={10}><div className="empty-table"><span className="empty-icon"><Icon name="inbox" size={22} /></span><strong>لا توجد طلبات مطابقة</strong><span>جرّب تغيير الفلاتر أو الفترة الزمنية.</span></div></td></tr>}
             </tbody>
           </table>
         </div>

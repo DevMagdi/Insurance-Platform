@@ -10,6 +10,7 @@ from fastapi import APIRouter, Header, HTTPException, Path, Request, Response
 
 from app.api.deps import client_ip
 from app.db import purpose_transaction
+from app.domain.schemas import TICKET_PATTERN
 from app.repositories.integrations import IntegrationRepository
 
 router = APIRouter(prefix="/api/public/v1", tags=["public-api"])
@@ -19,7 +20,9 @@ router = APIRouter(prefix="/api/public/v1", tags=["public-api"])
 async def api_key_complaint(
     request: Request,
     response: Response,
-    ticket_no: str = Path(pattern=r"^CMP-[0-9]{4}-[0-9]{6,}$"),
+    # Partner integrations must be able to look up REQ- tickets too; the
+    # canonical pattern accepts both prefixes.
+    ticket_no: str = Path(pattern=TICKET_PATTERN),
     authorization: str | None = Header(default=None, alias="Authorization"),
 ) -> dict[str, Any]:
     if not authorization or not authorization.startswith("ApiKey "):

@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import re
 import zoneinfo
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
+from decimal import Decimal
 from typing import Any, Literal
 from urllib.parse import urlsplit
 from uuid import UUID
@@ -22,8 +23,12 @@ from app.domain.enums import (
     CommunicationChannel,
     ComplaintPriority,
     ComplaintStatus,
+    ContractStatus,
     InsuranceType,
+    IntakeSource,
+    IntakeState,
     OwnershipLevel,
+    PaymentFrequency,
 )
 from app.domain.permissions import PERMISSIONS
 from app.security.national_id import validate_national_id
@@ -40,7 +45,18 @@ def _require_tz(value: datetime) -> datetime:
 
 
 Mobile = Field(pattern=r"^\+201[0-9]{9}$")
-Ticket = Field(pattern=r"^CMP-[0-9]{4}-[0-9]{6,}$")
+# Requests are numbered REQ-YYYY-NNNNNN. CMP- numbers issued before
+# revision 036 stay addressable for ever.
+Ticket = Field(pattern=r"^(REQ|CMP)-[0-9]{4}-[0-9]{6,}$")
+TICKET_PATTERN = r"^(REQ|CMP)-[0-9]{4}-[0-9]{6,}$"
+PolicyNumber = Field(min_length=4, max_length=60, pattern=r"^[A-Za-z0-9][A-Za-z0-9/_-]*$")
+CardNumber = Field(min_length=3, max_length=60, pattern=r"^[A-Za-z0-9][A-Za-z0-9/_ -]*$")
+PolicyNumber_Optional = Field(
+    default=None, min_length=4, max_length=60, pattern=r"^[A-Za-z0-9][A-Za-z0-9/_-]*$"
+)
+CardNumber_Optional = Field(
+    default=None, min_length=3, max_length=60, pattern=r"^[A-Za-z0-9][A-Za-z0-9/_ -]*$"
+)
 
 # One shared e-mail shape. Domain labels must be non-empty, so ``a@b..com``,
 # ``a@.com`` and ``a@b.com.`` are rejected (QA finding L-1) while sub-domains,
@@ -447,18 +463,33 @@ class GuestTrackRequest(StrictModel):
 
 
 class ComplaintCreate(StrictModel):
-    national_id: str
+    """A request submitted through the portal.
+
+    The brokerage identifies a member by their insurance policy number *or*
+    their medical card number, so exactly one of the two is enough. The
+    national ID remains optional evidence, not a precondition for being
+    helped.
+    """
+
     mobile: str = Mobile
     company_id: UUID
     insurance_type: InsuranceType
-    policy_number: str = Field(min_length=5, max_length=60, pattern=r"^[A-Za-z0-9][A-Za-z0-9/_-]*$")
-    subject: str = Field(min_length=8, max_length=160)
-    description: str = Field(min_length=20, max_length=10000)
+    national_id: str | None = None
+    policy_number: str | None = PolicyNumber_Optional
+    card_number: str | None = CardNumber_Optional
+    subject: str = Field(min_length=3, max_length=160)
+    description: str = Field(min_length=5, max_length=10000)
 
     @field_validator("national_id")
     @classmethod
-    def valid_id(cls, value: str) -> str:
-        return validate_national_id(value)
+    def valid_id(cls, value: str | None) -> str | None:
+        return validate_national_id(value) if value else None
+
+    @model_validator(mode="after")
+    def needs_a_reference(self) -> ComplaintCreate:
+        if not self.policy_number and not self.card_number:
+            raise ValueError("Provide an insurance policy number or a card number")
+        return self
 
 
 class ComplaintFilter(StrictModel):
@@ -472,11 +503,40 @@ class ComplaintFilter(StrictModel):
     date_from: datetime | None = None
     date_to: datetime | None = None
     ticket_no: str | None = Field(default=None, max_length=30)
+    # The brokerage's primary lookup: a caller is known by their phone number,
+    # not by a ticket they never wrote down. Partial digits are accepted so an
+    # agent can type the last four while the customer is still on the line.
+    mobile: str | None = Field(default=None, max_length=20)
+    card_number: str | None = Field(default=None, max_length=60)
+    policy_number: str | None = Field(default=None, max_length=60)
+    intake_source: IntakeSource | None = None
+    corporate_client_id: UUID | None = None
+    customer_name: str | None = Field(default=None, max_length=120)
     search: str | None = Field(default=None, max_length=120)
     sort_by: Literal["created_at", "updated_at", "priority", "status"] = "created_at"
     sort_dir: Literal["asc", "desc"] = "desc"
     page: int = Field(default=1, ge=1, le=100)
     page_size: int = Field(default=20, ge=1, le=100)
+
+    @field_validator("mobile", mode="before")
+    @classmethod
+    def mobile_digits_only(cls, value: Any) -> Any:
+        """Reduce the typed number to digits; the repository matches a suffix.
+
+        ``+20 101 234 5678``, ``01012345678`` and ``5678`` all become a digit
+        string, which is what the stored ``+201…`` column is compared against.
+        """
+        if value is None:
+            return None
+        digits = re.sub(r"\D", "", str(value))
+        return digits or None
+
+    @field_validator("customer_name", "card_number", "policy_number", mode="before")
+    @classmethod
+    def blank_text_is_no_filter(cls, value: Any) -> Any:
+        if value is None:
+            return None
+        return str(value).strip() or None
 
     @field_validator("search", mode="before")
     @classmethod
@@ -1014,3 +1074,134 @@ class WebhookCreate(StrictModel):
         if address is not None and (not address.is_global or address.is_multicast):
             raise ValueError("Webhook IP address must be publicly routable")
         return value
+
+
+# ---------------------------------------------------------------------------
+# Revision 036: channel intake and the corporate client portal
+# ---------------------------------------------------------------------------
+
+
+class ChannelRequestCreate(StrictModel):
+    """A request keyed in by staff on behalf of a caller.
+
+    This is the shape behind "log a phone call" and "convert a WhatsApp
+    message": everything the brokerage needs is the member's name, their
+    mobile, and a policy or card number.
+    """
+
+    company_id: UUID
+    mobile: str = Field(min_length=7, max_length=20)
+    full_name: str = Field(min_length=2, max_length=160)
+    subject: str = Field(min_length=3, max_length=160)
+    description: str = Field(min_length=3, max_length=10000)
+    insurance_type: InsuranceType = InsuranceType.HEALTH
+    channel: Literal["whatsapp", "phone", "email", "sms"] = "phone"
+    policy_number: str | None = PolicyNumber_Optional
+    card_number: str | None = CardNumber_Optional
+    corporate_client_id: UUID | None = None
+    intake_reference: str | None = Field(default=None, max_length=256)
+
+    @model_validator(mode="after")
+    def needs_a_reference(self) -> ChannelRequestCreate:
+        if not self.policy_number and not self.card_number:
+            raise ValueError("Provide an insurance policy number or a card number")
+        return self
+
+
+class CallRecordingUpload(StrictModel):
+    """Metadata for a call recording; the audio arrives as a separate part."""
+
+    direction: Literal["inbound", "outbound"] = "inbound"
+    provider: str = Field(default="manual", max_length=60)
+    provider_call_id: str | None = Field(default=None, max_length=256)
+    outcome: str = Field(default="completed", max_length=80)
+    duration_seconds: int = Field(default=0, ge=0, le=86_400)
+    # A recording is personal data. The database refuses to store one without
+    # this flag, which the agent sets only after the caller agrees on the line.
+    consent_confirmed: bool = False
+    transcript: str | None = Field(default=None, max_length=20_000)
+
+
+class IntakeFilter(StrictModel):
+    state: IntakeState | None = None
+    channel: CommunicationChannel | None = None
+    search: str | None = Field(default=None, max_length=120)
+    page: int = Field(default=1, ge=1, le=100)
+    page_size: int = Field(default=25, ge=1, le=100)
+
+
+class CorporateLoginRequest(StrictModel):
+    username: str = Field(min_length=3, max_length=40, pattern=r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
+    password: str = Field(min_length=8, max_length=200)
+
+    @field_validator("username")
+    @classmethod
+    def lowercase(cls, value: str) -> str:
+        return value.lower()
+
+
+class CorporatePasswordChange(StrictModel):
+    current_password: str = Field(min_length=8, max_length=200)
+    new_password: str = Field(min_length=12, max_length=200)
+
+    @model_validator(mode="after")
+    def must_differ(self) -> CorporatePasswordChange:
+        if self.current_password == self.new_password:
+            raise ValueError("The new password must differ from the current one")
+        return self
+
+
+class CorporateMemberFilter(StrictModel):
+    search: str | None = Field(default=None, max_length=120)
+
+
+class CorporateClientUpsert(StrictModel):
+    id: UUID | None = None
+    slug: str = Field(min_length=3, max_length=50, pattern=r"^[a-z0-9][a-z0-9-]*[a-z0-9]$")
+    name_ar: str = Field(min_length=2, max_length=160)
+    name_en: str = Field(min_length=2, max_length=160)
+    tax_id: str | None = Field(default=None, max_length=40)
+    contact_name: str | None = Field(default=None, max_length=160)
+    contact_email: str | None = Field(default=None, max_length=254, pattern=EMAIL_PATTERN)
+    contact_mobile: str | None = Field(default=None, max_length=20)
+    address: str | None = Field(default=None, max_length=400)
+    is_active: bool = True
+
+
+class CorporateContractUpsert(StrictModel):
+    id: UUID | None = None
+    corporate_client_id: UUID
+    contract_no: str = Field(min_length=3, max_length=60)
+    contract_value: Decimal = Field(ge=0, le=Decimal("99999999999.99"))
+    currency: str = Field(default="EGP", pattern=r"^[A-Za-z]{3}$")
+    payment_frequency: PaymentFrequency
+    starts_on: date
+    renews_on: date
+    status: ContractStatus = ContractStatus.ACTIVE
+    headcount: int | None = Field(default=None, ge=0, le=1_000_000)
+    notes: str | None = Field(default=None, max_length=2000)
+
+    @field_validator("currency")
+    @classmethod
+    def upper_currency(cls, value: str) -> str:
+        return value.upper()
+
+    @model_validator(mode="after")
+    def renewal_follows_start(self) -> CorporateContractUpsert:
+        if self.renews_on < self.starts_on:
+            raise ValueError("renews_on must not precede starts_on")
+        return self
+
+
+class CorporateUserCreate(StrictModel):
+    corporate_client_id: UUID
+    username: str = Field(min_length=3, max_length=40, pattern=r"^[a-z0-9][a-z0-9._-]*[a-z0-9]$")
+    full_name: str = Field(min_length=2, max_length=160)
+    email: str | None = Field(default=None, max_length=254, pattern=EMAIL_PATTERN)
+    password: str = Field(min_length=12, max_length=200)
+
+
+class CorporateMemberLink(StrictModel):
+    customer_id: UUID
+    corporate_client_id: UUID
+    employee_code: str | None = Field(default=None, max_length=60)

@@ -607,6 +607,127 @@ export interface paths {
         patch: operations["read_customer_notification_api_customer_notifications__notification_id__read_patch"];
         trace?: never;
     };
+    "/api/corporate/login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Corporate Login
+         * @description Sign in a corporate client user.
+         */
+        post: operations["corporate_login_api_corporate_login_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/corporate/password/change": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Corporate Change Password */
+        post: operations["corporate_change_password_api_corporate_password_change_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/corporate/overview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Corporate Overview
+         * @description Contract value, payment frequency, renewal date and request counters.
+         */
+        get: operations["corporate_overview_api_corporate_overview_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/corporate/members": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Corporate Members
+         * @description The company's employees and their requests, searchable by name.
+         */
+        get: operations["corporate_members_api_corporate_members_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/corporate/documents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Corporate Documents
+         * @description Policies and contract documents the broker shared with this company.
+         */
+        get: operations["corporate_documents_api_corporate_documents_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/corporate/documents/{document_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Corporate Document Download
+         * @description Download one shared document.
+         *
+         *     The database enforces that the document belongs to this client, is marked
+         *     visible, and passed the virus scan; anything else is a 404 so the portal
+         *     cannot be used to probe for document ids.
+         */
+        get: operations["corporate_document_download_api_corporate_documents__document_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/staff/users": {
         parameters: {
             query?: never;
@@ -1037,6 +1158,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/staff/complaints/{complaint_id}/stream": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Staff Complaint Stream
+         * @description Live SSE for the open staff ticket; auth/scope rechecked every poll.
+         */
+        get: operations["staff_complaint_stream_api_staff_complaints__complaint_id__stream_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/staff/complaints/{complaint_id}/attachments": {
         parameters: {
             query?: never;
@@ -1063,6 +1204,29 @@ export interface paths {
         };
         /** Staff Notifications */
         get: operations["staff_notifications_api_staff_notifications_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/staff/users/revision": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Users Revision
+         * @description Cheap change signature for the staff directory (live console polling).
+         *
+         *     Mirrors the ``staff_directory()`` gate: an empty revision means the caller
+         *     cannot read the directory, so the console must not refetch on it.
+         */
+        get: operations["users_revision_api_staff_users_revision_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2742,6 +2906,52 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/staff/customers/revision": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Customer Directory Revision
+         * @description Cheap change signature for the customer directory (live console polling).
+         *
+         *     Mirrors the ``customer_directory()`` gate: an empty revision means the
+         *     caller cannot read the directory, so the console must not refetch on it.
+         */
+        get: operations["customer_directory_revision_api_staff_customers_revision_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/staff/customers/{customer_id}/national-id:reveal": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reveal Customer National Id
+         * @description Reveal a customer's full national ID in the admin full profile.
+         *
+         *     Requires the dedicated reveal permission (route gate) plus, in SQL,
+         *     ``users.view`` with a global scope; every success is audit-logged.
+         */
+        post: operations["reveal_customer_national_id_api_staff_customers__customer_id__national_id_reveal_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/health/live": {
         parameters: {
             query?: never;
@@ -2982,10 +3192,16 @@ export interface components {
              */
             is_active: boolean;
         };
-        /** ComplaintCreate */
+        /**
+         * ComplaintCreate
+         * @description A request submitted through the portal.
+         *
+         *     The brokerage identifies a member by their insurance policy number *or*
+         *     their medical card number, so exactly one of the two is enough. The
+         *     national ID remains optional evidence, not a precondition for being
+         *     helped.
+         */
         ComplaintCreate: {
-            /** National Id */
-            national_id: string;
             /** Mobile */
             mobile: string;
             /**
@@ -2994,8 +3210,12 @@ export interface components {
              */
             company_id: string;
             insurance_type: components["schemas"]["InsuranceType"];
+            /** National Id */
+            national_id?: string | null;
             /** Policy Number */
-            policy_number: string;
+            policy_number?: string | null;
+            /** Card Number */
+            card_number?: string | null;
             /** Subject */
             subject: string;
             /** Description */
@@ -3019,6 +3239,17 @@ export interface components {
             date_to?: string | null;
             /** Ticket No */
             ticket_no?: string | null;
+            /** Mobile */
+            mobile?: string | null;
+            /** Card Number */
+            card_number?: string | null;
+            /** Policy Number */
+            policy_number?: string | null;
+            intake_source?: components["schemas"]["IntakeSource"] | null;
+            /** Corporate Client Id */
+            corporate_client_id?: string | null;
+            /** Customer Name */
+            customer_name?: string | null;
             /** Search */
             search?: string | null;
             /**
@@ -3075,6 +3306,20 @@ export interface components {
             /** Granted */
             granted: boolean;
         };
+        /** CorporateLoginRequest */
+        CorporateLoginRequest: {
+            /** Username */
+            username: string;
+            /** Password */
+            password: string;
+        };
+        /** CorporatePasswordChange */
+        CorporatePasswordChange: {
+            /** Current Password */
+            current_password: string;
+            /** New Password */
+            new_password: string;
+        };
         /** CsatRequest */
         CsatRequest: {
             /** Score */
@@ -3085,10 +3330,15 @@ export interface components {
         /**
          * CustomerProfileUpdate
          * @description Self-service profile edit; identity fields (mobile, national ID) are immutable here.
+         *
+         *     True PATCH semantics: every field is optional and a field the client did not
+         *     send keeps its stored value (the route merges the current profile in before
+         *     calling the definer, which still enforces the full invariants). An empty
+         *     body is rejected so a stray ``{}`` can never reset preferences by accident.
          */
         CustomerProfileUpdate: {
             /** Full Name */
-            full_name: string;
+            full_name?: string | null;
             /** Email */
             email?: string | null;
             /**
@@ -3181,6 +3431,12 @@ export interface components {
          * @enum {string}
          */
         InsuranceType: "health" | "general" | "both";
+        /**
+         * IntakeSource
+         * @description Where a request physically entered the platform.
+         * @enum {string}
+         */
+        IntakeSource: "portal" | "whatsapp" | "email" | "phone" | "sms" | "staff" | "corporate";
         /**
          * IntegrationConfigSpec
          * @description One encrypted provider configuration.
@@ -3341,6 +3597,17 @@ export interface components {
             date_to?: string | null;
             /** Ticket No */
             ticket_no?: string | null;
+            /** Mobile */
+            mobile?: string | null;
+            /** Card Number */
+            card_number?: string | null;
+            /** Policy Number */
+            policy_number?: string | null;
+            intake_source?: components["schemas"]["IntakeSource"] | null;
+            /** Corporate Client Id */
+            corporate_client_id?: string | null;
+            /** Customer Name */
+            customer_name?: string | null;
             /** Search */
             search?: string | null;
             /**
@@ -4414,6 +4681,12 @@ export interface operations {
                 date_from?: string | null;
                 date_to?: string | null;
                 ticket_no?: string | null;
+                mobile?: string | null;
+                card_number?: string | null;
+                policy_number?: string | null;
+                intake_source?: components["schemas"]["IntakeSource"] | null;
+                corporate_client_id?: string | null;
+                customer_name?: string | null;
                 search?: string | null;
                 sort_by?: "created_at" | "updated_at" | "priority" | "status";
                 sort_dir?: "asc" | "desc";
@@ -4500,6 +4773,12 @@ export interface operations {
                 date_from?: string | null;
                 date_to?: string | null;
                 ticket_no?: string | null;
+                mobile?: string | null;
+                card_number?: string | null;
+                policy_number?: string | null;
+                intake_source?: components["schemas"]["IntakeSource"] | null;
+                corporate_client_id?: string | null;
+                customer_name?: string | null;
                 search?: string | null;
                 sort_by?: "created_at" | "updated_at" | "priority" | "status";
                 sort_dir?: "asc" | "desc";
@@ -4928,6 +5207,184 @@ export interface operations {
                     "application/json": {
                         [key: string]: boolean;
                     };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    corporate_login_api_corporate_login_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CorporateLoginRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    corporate_change_password_api_corporate_password_change_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CorporatePasswordChange"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: string;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    corporate_overview_api_corporate_overview_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    corporate_members_api_corporate_members_get: {
+        parameters: {
+            query?: {
+                search?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    corporate_documents_api_corporate_documents_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    corporate_document_download_api_corporate_documents__document_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
             /** @description Validation Error */
@@ -5544,6 +6001,12 @@ export interface operations {
                 date_from?: string | null;
                 date_to?: string | null;
                 ticket_no?: string | null;
+                mobile?: string | null;
+                card_number?: string | null;
+                policy_number?: string | null;
+                intake_source?: components["schemas"]["IntakeSource"] | null;
+                corporate_client_id?: string | null;
+                customer_name?: string | null;
                 search?: string | null;
                 sort_by?: "created_at" | "updated_at" | "priority" | "status";
                 sort_dir?: "asc" | "desc";
@@ -5591,6 +6054,12 @@ export interface operations {
                 date_from?: string | null;
                 date_to?: string | null;
                 ticket_no?: string | null;
+                mobile?: string | null;
+                card_number?: string | null;
+                policy_number?: string | null;
+                intake_source?: components["schemas"]["IntakeSource"] | null;
+                corporate_client_id?: string | null;
+                customer_name?: string | null;
                 search?: string | null;
                 sort_by?: "created_at" | "updated_at" | "priority" | "status";
                 sort_dir?: "asc" | "desc";
@@ -5638,6 +6107,12 @@ export interface operations {
                 date_from?: string | null;
                 date_to?: string | null;
                 ticket_no?: string | null;
+                mobile?: string | null;
+                card_number?: string | null;
+                policy_number?: string | null;
+                intake_source?: components["schemas"]["IntakeSource"] | null;
+                corporate_client_id?: string | null;
+                customer_name?: string | null;
                 search?: string | null;
                 sort_by?: "created_at" | "updated_at" | "priority" | "status";
                 sort_dir?: "asc" | "desc";
@@ -5932,6 +6407,37 @@ export interface operations {
             };
         };
     };
+    staff_complaint_stream_api_staff_complaints__complaint_id__stream_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                complaint_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     complaint_attachments_api_staff_complaints__complaint_id__attachments_get: {
         parameters: {
             query?: never;
@@ -5983,6 +6489,28 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     }[];
+                };
+            };
+        };
+    };
+    users_revision_api_staff_users_revision_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: string;
+                    };
                 };
             };
         };
@@ -6703,6 +7231,12 @@ export interface operations {
                 date_from?: string | null;
                 date_to?: string | null;
                 ticket_no?: string | null;
+                mobile?: string | null;
+                card_number?: string | null;
+                policy_number?: string | null;
+                intake_source?: components["schemas"]["IntakeSource"] | null;
+                corporate_client_id?: string | null;
+                customer_name?: string | null;
                 search?: string | null;
                 sort_by?: "created_at" | "updated_at" | "priority" | "status";
                 sort_dir?: "asc" | "desc";
@@ -6750,6 +7284,12 @@ export interface operations {
                 date_from?: string | null;
                 date_to?: string | null;
                 ticket_no?: string | null;
+                mobile?: string | null;
+                card_number?: string | null;
+                policy_number?: string | null;
+                intake_source?: components["schemas"]["IntakeSource"] | null;
+                corporate_client_id?: string | null;
+                customer_name?: string | null;
                 search?: string | null;
                 sort_by?: "created_at" | "updated_at" | "priority" | "status";
                 sort_dir?: "asc" | "desc";
@@ -6797,6 +7337,12 @@ export interface operations {
                 date_from?: string | null;
                 date_to?: string | null;
                 ticket_no?: string | null;
+                mobile?: string | null;
+                card_number?: string | null;
+                policy_number?: string | null;
+                intake_source?: components["schemas"]["IntakeSource"] | null;
+                corporate_client_id?: string | null;
+                customer_name?: string | null;
                 search?: string | null;
                 sort_by?: "created_at" | "updated_at" | "priority" | "status";
                 sort_dir?: "asc" | "desc";
@@ -9869,6 +10415,68 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     }[];
+                };
+            };
+        };
+    };
+    customer_directory_revision_api_staff_customers_revision_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: string;
+                    };
+                };
+            };
+        };
+    };
+    reveal_customer_national_id_api_staff_customers__customer_id__national_id_reveal_post: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Must equal the csrf_token cookie (double-submit). */
+                "X-CSRF-Token": string;
+            };
+            path: {
+                customer_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RevealReason"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: string;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

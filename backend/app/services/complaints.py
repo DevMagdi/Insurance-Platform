@@ -65,6 +65,10 @@ class ComplaintService:
             "company_id": record.company_id,
             "insurance_type": record.insurance_type,
             "subject": record.subject,
+            "policy_number": record.policy_number,
+            "card_number": record.card_number,
+            "intake_source": record.intake_source,
+            "corporate_client_id": record.corporate_client_id,
             "priority": record.priority,
             "category_id": record.category_id,
             "channel": record.channel,
@@ -86,7 +90,11 @@ class ComplaintService:
     ) -> tuple[Complaint, bool]:
         if scope.actor.scope != "customer":
             raise HTTPException(status_code=403, detail="Customer sign-in required")
-        blind = self.protector.blind_index(item.national_id)
+        # A national ID is optional evidence. When the caller supplies one it
+        # must match the signed-in identity; when they do not, the mobile
+        # number alone identifies them, and the SQL helper still refuses if
+        # that account actually has an ID on file.
+        blind = self.protector.blind_index(item.national_id) if item.national_id else None
         if not await self.repository.identity_matches(db, item.mobile, blind):
             raise HTTPException(status_code=403, detail="Customer identity does not match sign-in")
         if not await self.repository.active_company(db, item.company_id, item.insurance_type):
@@ -110,8 +118,16 @@ class ComplaintService:
                 raise HTTPException(status_code=409, detail="Existing complaint is unavailable")
             return existing, True
         policy_id = await self.repository.policy_for_customer(db, scope.actor.id, item)
+        corporate_client_id = await self.repository.corporate_client_for_customer(
+            db, scope.actor.id
+        )
         return await self.repository.create(
-            db, customer_id=scope.actor.id, item=item, policy_id=policy_id, idempotency=idempotency
+            db,
+            customer_id=scope.actor.id,
+            item=item,
+            policy_id=policy_id,
+            idempotency=idempotency,
+            corporate_client_id=corporate_client_id,
         ), False
 
     async def list(
@@ -299,6 +315,8 @@ class ComplaintService:
                 "status",
                 "subject",
                 "policy_number",
+                "card_number",
+                "intake_source",
             ]
         )
         for row in records:
@@ -311,7 +329,9 @@ class ComplaintService:
                     row.insurance_type.value,
                     row.status.value,
                     safe_csv_cell(row.subject),
-                    safe_csv_cell(row.policy_number),
+                    safe_csv_cell(row.policy_number or ""),
+                    safe_csv_cell(row.card_number or ""),
+                    row.intake_source,
                 ]
             )
         db.add(

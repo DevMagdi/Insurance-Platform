@@ -98,7 +98,7 @@ describe('employee directory', () => {
     expect(within(modal).getByText('Claims specialist')).toBeTruthy();
     expect(within(modal).getByText('أخصائي التعويضات')).toBeTruthy();
     expect(within(modal).getByText('مطالبات العملاء')).toBeTruthy();
-    expect(within(modal).getByText('عرض الشكاوى')).toBeTruthy();
+    expect(within(modal).getByText('عرض الطلبات')).toBeTruthy();
     expect(within(modal).getByText('مفعّلة · إلزامية')).toBeTruthy();
     expect(within(modal).getByText('معلومات الحساب')).toBeTruthy();
     fireEvent.change(within(modal).getByRole('combobox', { name: 'قسم الموظف' }), { target: { value: 'operations' } });

@@ -170,7 +170,7 @@ export function OverviewPage({
 
   const kpis = report?.kpis;
   const metrics = [
-    { label: 'إجمالي الشكاوى', value: formatNumber(kpis?.total), detail: 'وصلت خلال الفترة المختارة', icon: 'inbox' as const, tone: 'metric-gold' },
+    { label: 'إجمالي الطلبات', value: formatNumber(kpis?.total), detail: 'وصلت خلال الفترة المختارة', icon: 'inbox' as const, tone: 'metric-gold' },
     { label: 'جديدة', value: formatNumber(kpis?.new), detail: 'بانتظار المعالجة', icon: 'message' as const, tone: 'metric-blue' },
     { label: 'مُسندة', value: formatNumber(kpis?.assigned), detail: 'لدى فريق مختص', icon: 'check' as const, tone: 'metric-teal' },
     { label: 'قيد المراجعة', value: formatNumber(kpis?.in_review), detail: 'قيد المتابعة الآن', icon: 'clock' as const, tone: 'metric-violet' },
@@ -178,7 +178,7 @@ export function OverviewPage({
     { label: 'محوّلة للشركة', value: formatNumber(kpis?.transferred), detail: 'أُحيلت إلى شركة التأمين', icon: 'arrow' as const, tone: 'metric-orange' },
     { label: 'متوسط زمن الحل', value: kpis?.avg_resolution_hours == null ? '—' : `${formatNumber(kpis.avg_resolution_hours, 1)} س`, detail: 'من الفتح حتى الحل', icon: 'clock' as const, tone: 'metric-blue' },
     { label: 'تجاوزات SLA', value: formatNumber(kpis?.sla_breaches), detail: 'تحتاج إلى انتباه', icon: 'shield' as const, tone: 'metric-red' },
-    { label: 'معدل إعادة الفتح', value: kpis ? `${formatNumber(kpis.reopen_rate * 100, 1)}٪` : '—', detail: `${formatNumber(kpis?.reopened)} شكوى أُعيد فتحها`, icon: 'refresh' as const, tone: 'metric-purple' },
+    { label: 'معدل إعادة الفتح', value: kpis ? `${formatNumber(kpis.reopen_rate * 100, 1)}٪` : '—', detail: `${formatNumber(kpis?.reopened)} طلب أُعيد فتحها`, icon: 'refresh' as const, tone: 'metric-purple' },
     { label: 'رضا العملاء CSAT', value: kpis?.csat_avg == null ? '—' : `${formatNumber(kpis.csat_avg, 1)} / 5`, detail: 'متوسط التقييمات المستلمة', icon: 'chart' as const, tone: 'metric-teal' },
   ];
 
@@ -203,7 +203,7 @@ export function OverviewPage({
       <SectionTitle
         eyebrow="مساحة التحليلات"
         title="نظرة عامة على الأداء"
-        description="ملخص تشغيلي موحّد للشكاوى، جودة المعالجة، ومستوى الخدمة."
+        description="ملخص تشغيلي موحّد للطلبات، جودة المعالجة، ومستوى الخدمة."
         action={(
           <div className="live-status"><span className="scope-live-dot" />
             <span>تحديث مباشر كل ٣٠ ثانية</span>
@@ -240,8 +240,8 @@ export function OverviewPage({
       </div>
       <div className="arrival-summary">
         <span className="arrival-summary-mark"><Icon name="calendar" size={16} /></span>
-        <span>وصلت <strong>{formatNumber(kpis?.total)}</strong> شكوى في النطاق الزمني المحدد.</span>
-        <button type="button" onClick={onOpenComplaints}>عرض قائمة الشكاوى <Icon name="arrow" size={15} /></button>
+        <span>وصلت <strong>{formatNumber(kpis?.total)}</strong> طلب في النطاق الزمني المحدد.</span>
+        <button type="button" onClick={onOpenComplaints}>عرض قائمة الطلبات <Icon name="arrow" size={15} /></button>
       </div>
 
       {loading && !report ? (
@@ -259,7 +259,7 @@ export function OverviewPage({
       ) : report ? (
         <>
           <div className="charts-grid charts-top">
-            <ChartCard title="اتجاه وصول الشكاوى" subtitle="عدد الشكاوى الجديدة يومياً خلال الفترة" className="chart-wide">
+            <ChartCard title="اتجاه وصول الطلبات" subtitle="عدد الطلبات الجديدة يومياً خلال الفترة" className="chart-wide">
               <div className="chart-container trend-chart">
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={report.time_series} margin={{ top: 10, right: 8, left: -16, bottom: 0 }}>
@@ -268,7 +268,7 @@ export function OverviewPage({
                     <XAxis dataKey="date" tickFormatter={(value: string) => value.slice(5)} tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: 'var(--text-muted)' }} />
                     <YAxis allowDecimals={false} tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: 'var(--text-muted)' }} />
                     <Tooltip contentStyle={{ borderRadius: 14, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)' }} labelFormatter={(value) => String(value)} />
-                    <Area type="monotone" dataKey="arrived" name="الشكاوى" stroke="var(--emerald-500)" strokeWidth={2.6} fill="url(#trendFill)" activeDot={{ r: 5, fill: 'var(--gold-500)', stroke: 'var(--surface)', strokeWidth: 2 }} />
+                    <Area type="monotone" dataKey="arrived" name="الطلبات" stroke="var(--emerald-500)" strokeWidth={2.6} fill="url(#trendFill)" activeDot={{ r: 5, fill: 'var(--gold-500)', stroke: 'var(--surface)', strokeWidth: 2 }} />
                   </AreaChart>
                 </ResponsiveContainer>
               </div>
@@ -281,7 +281,7 @@ export function OverviewPage({
                     <XAxis type="number" allowDecimals={false} tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: 'var(--text-muted)' }} />
                     <YAxis type="category" dataKey="label" width={82} tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: 'var(--text-muted)' }} />
                     <Tooltip contentStyle={{ borderRadius: 12, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)' }} />
-                    <Bar dataKey="count" name="الشكاوى" radius={[0, 6, 6, 0]} barSize={12}>
+                    <Bar dataKey="count" name="الطلبات" radius={[0, 6, 6, 0]} barSize={12}>
                       {byStatus.map((entry, index) => <Cell key={entry.status} fill={STATUS_COLORS[entry.status] ?? PALETTE[index % PALETTE.length]} />)}
                     </Bar>
                   </BarChart>
@@ -291,7 +291,7 @@ export function OverviewPage({
           </div>
 
           <div className="charts-grid">
-            <ChartCard title="الشركات الأعلى استقبالاً" subtitle="مقارنة بعدد الشكاوى ضمن النطاق">
+            <ChartCard title="الشركات الأعلى استقبالاً" subtitle="مقارنة بعدد الطلبات ضمن النطاق">
               <div className="chart-container compact-chart">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={report.by_company.slice(0, 6)} margin={{ top: 8, right: 2, left: -20, bottom: 26 }}>
@@ -299,7 +299,7 @@ export function OverviewPage({
                     <XAxis dataKey="name" interval={0} angle={-16} textAnchor="end" tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: 'var(--text-muted)' }} />
                     <YAxis allowDecimals={false} tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: 'var(--text-muted)' }} />
                     <Tooltip contentStyle={{ borderRadius: 12, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)' }} />
-                    <Bar dataKey="count" name="الشكاوى" fill="var(--gold-500)" radius={[6, 6, 0, 0]} barSize={24} />
+                    <Bar dataKey="count" name="الطلبات" fill="var(--gold-500)" radius={[6, 6, 0, 0]} barSize={24} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -322,7 +322,7 @@ export function OverviewPage({
                 </div>
               </div>
             </ChartCard>
-            <ChartCard title="حجم العمل حسب الموظف" subtitle="عدد الشكاوى المسندة ضمن النطاق">
+            <ChartCard title="حجم العمل حسب الموظف" subtitle="عدد الطلبات المسندة ضمن النطاق">
               <div className="chart-container compact-chart">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={byAgent.slice(0, 6)} layout="vertical" margin={{ top: 4, right: 4, left: 4, bottom: 4 }}>
@@ -330,12 +330,12 @@ export function OverviewPage({
                     <XAxis type="number" allowDecimals={false} tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: 'var(--text-muted)' }} />
                     <YAxis type="category" dataKey="name" width={105} tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: 'var(--text-muted)' }} />
                     <Tooltip contentStyle={{ borderRadius: 12, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)' }} />
-                    <Bar dataKey="count" name="الشكاوى" fill="var(--emerald-500)" radius={[0, 6, 6, 0]} barSize={13} />
+                    <Bar dataKey="count" name="الطلبات" fill="var(--emerald-500)" radius={[0, 6, 6, 0]} barSize={13} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
             </ChartCard>
-            <ChartCard title="زمن إغلاق الشكاوى" subtitle="مدة الحل للشكاوى المغلقة">
+            <ChartCard title="زمن إغلاق الطلبات" subtitle="مدة الحل للطلبات المغلقة">
               <div className="chart-container compact-chart">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={resolutionData} margin={{ top: 8, right: 2, left: -18, bottom: 8 }}>
@@ -343,7 +343,7 @@ export function OverviewPage({
                     <XAxis dataKey="name" interval={0} tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: 'var(--text-muted)' }} />
                     <YAxis allowDecimals={false} tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: 'var(--text-muted)' }} />
                     <Tooltip contentStyle={{ borderRadius: 12, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)' }} />
-                    <Bar dataKey="value" name="الشكاوى" fill="var(--info)" radius={[6, 6, 0, 0]} barSize={26} />
+                    <Bar dataKey="value" name="الطلبات" fill="var(--info)" radius={[6, 6, 0, 0]} barSize={26} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -360,7 +360,7 @@ export function OverviewPage({
                     {Array.from({ length: 24 }, (_, hour) => {
                       const value = heatByHour.get(`${weekday}-${hour}`) ?? 0;
                       const opacity = value === 0 ? 0.06 : 0.18 + (value / maxHeat) * 0.78;
-                      return <span className="heatmap-cell" key={hour} title={`${day} · ${hour}:00 — ${formatNumber(value)} شكوى`} style={{ backgroundColor: `color-mix(in srgb, var(--emerald-500) ${Math.round(opacity * 100)}%, transparent)` }} />;
+                      return <span className="heatmap-cell" key={hour} title={`${day} · ${hour}:00 — ${formatNumber(value)} طلب`} style={{ backgroundColor: `color-mix(in srgb, var(--emerald-500) ${Math.round(opacity * 100)}%, transparent)` }} />;
                     })}
                   </div>
                 ))}
@@ -385,7 +385,7 @@ export function OverviewPage({
             <ChartCard title="بطاقات أداء الشركات" subtitle="مقارنة زمن الحل، التجاوزات، ورضا العملاء" className="scorecard-card">
               <div className="table-wrap">
                 <table className="data-table score-table">
-                  <thead><tr><th>شركة التأمين</th><th>الشكاوى</th><th>متوسط الحل</th><th>تجاوزات SLA</th><th>CSAT</th></tr></thead>
+                  <thead><tr><th>شركة التأمين</th><th>الطلبات</th><th>متوسط الحل</th><th>تجاوزات SLA</th><th>CSAT</th></tr></thead>
                   <tbody>{report.company_scorecards.slice(0, 8).map((company) => (
                     <tr key={company.company_id}><td><span className="company-mini-mark">{company.name.slice(0, 1)}</span><strong>{company.name}</strong></td><td>{formatNumber(company.total)}</td><td>{company.avg_resolution_hours == null ? '—' : `${formatNumber(company.avg_resolution_hours, 1)} س`}</td><td><span className={company.sla_breaches > 0 ? 'score-warning' : 'score-good'}>{formatNumber(company.sla_breaches)}</span></td><td>{company.csat_avg == null ? '—' : `${formatNumber(company.csat_avg, 1)} / 5`}</td></tr>
                   ))}</tbody>

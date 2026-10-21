@@ -46,6 +46,7 @@ from app.repositories.complaints import ComplaintRepository
 from app.repositories.integrations import IntegrationRepository
 from app.security.integration_crypto import SecretCipher
 from app.services.email_templates import render_customer_reply, render_insurer_forward
+from app.services.intake import TICKET_RE
 from app.services.integration_providers import (
     PROVIDER_REQUIRED_FIELDS as _PROVIDER_REQUIRED_FIELDS,
 )
@@ -59,7 +60,10 @@ from app.services.integration_providers import (
 )
 from app.services.providers import ProviderUnavailable
 
-_TICKET_RE = re.compile(r"\bCMP-\d{4}-\d{6,}\b", re.IGNORECASE)
+# One canonical ticket pattern for the whole platform. Tickets mint as `REQ-`
+# and the historical `CMP-` stays valid, so a second copy of this regex that
+# knows only one prefix silently drops the other's replies.
+_TICKET_RE = TICKET_RE
 _NATIONAL_ID_RE = re.compile(r"(?<!\d)\d{14}(?!\d)")
 _EGYPT_MOBILE_RE = re.compile(r"(?<!\w)(?:\+?20|0)?1[0125]\d{8}(?!\d)")
 _EMAIL_RE = re.compile(r"\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b", re.IGNORECASE)
@@ -181,6 +185,33 @@ def verify_twilio_signature(
         hmac.new(auth_token.encode("utf-8"), signed.encode("utf-8"), hashlib.sha1).digest()
     ).decode("ascii")
     return hmac.compare_digest(expected, signature)
+
+
+def _whatsapp_media(message: dict[str, Any]) -> list[dict[str, Any]]:
+    """Collect every attachment id on an inbound WhatsApp message.
+
+    Meta nests media under a type key (``image``, ``document``, ``audio``,
+    ``video``, ``sticker``, ``voice``) and never sends the bytes inline: only
+    an id the worker exchanges for a short-lived download URL.
+    """
+    media: list[dict[str, Any]] = []
+    for kind in ("image", "document", "audio", "video", "voice", "sticker"):
+        item = message.get(kind)
+        if not isinstance(item, dict):
+            continue
+        media_id = str(item.get("id") or "")[:256]
+        if not media_id:
+            continue
+        media.append(
+            {
+                "media_id": media_id,
+                "kind": kind,
+                "mime_type": str(item.get("mime_type") or "application/octet-stream")[:180],
+                "filename": str(item.get("filename") or "")[:255] or None,
+                "caption": str(item.get("caption") or "")[:1000] or None,
+            }
+        )
+    return media
 
 
 class IntegrationService:
@@ -352,6 +383,7 @@ class IntegrationService:
             subject=minimize_pii(complaint.subject, max_chars=160),
             details=minimize_pii(complaint.description, max_chars=12_000),
             policy_number=complaint.policy_number,
+            card_number=getattr(complaint, "card_number", None),
             insurance_type=complaint.insurance_type.value,
             locale=request.locale,
             agent_note=(
@@ -1600,25 +1632,43 @@ class IntegrationService:
                 for entry in document.get("entry", []):
                     for change in entry.get("changes", []):
                         value = change.get("value", {})
+                        # The profile name Meta sends with the conversation is
+                        # often the only name the brokerage will ever get.
+                        profiles = {
+                            str(contact.get("wa_id") or ""): str(
+                                contact.get("profile", {}).get("name") or ""
+                            )
+                            for contact in value.get("contacts", [])
+                            if isinstance(contact, dict)
+                        }
                         for message in value.get("messages", []):
                             event_id = str(message.get("id") or "")[:256]
-                            body = str(message.get("text", {}).get("body", ""))[:5000]
                             sender = str(message.get("from") or "")
+                            if not event_id or not sender.isdigit():
+                                continue
+                            body = str(message.get("text", {}).get("body", ""))[:5000]
+                            media = _whatsapp_media(message)
+                            # A real customer writes "محتاج موافقة" and attaches
+                            # a photo of their card. Requiring a quoted ticket
+                            # number here is what used to discard that message;
+                            # intake now opens a request instead.
+                            if not body and not media:
+                                continue
                             ticket_no = (
                                 extract_ticket_no(body)
                                 or str(message.get("context", {}).get("ticket_no", "")).upper()
                             )
-                            if not event_id or not ticket_no or not body or not sender.isdigit():
-                                continue
                             whatsapp_events.append(
                                 (
                                     "inbound_whatsapp",
                                     event_id,
                                     {
-                                        "ticket_no": ticket_no,
+                                        "ticket_no": ticket_no or None,
                                         "external_message_id": event_id,
                                         "sender": f"+{sender}"[:32],
+                                        "sender_name": profiles.get(sender) or None,
                                         "body": body,
+                                        "media": media,
                                     },
                                 )
                             )

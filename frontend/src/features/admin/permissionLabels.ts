@@ -1,10 +1,10 @@
 import type { Permission } from '../../types';
 
 export const PERMISSION_LABELS: Record<Permission, string> = {
-  'complaints.view': 'عرض الشكاوى', 'complaints.create': 'إنشاء شكوى', 'complaints.edit': 'تعديل بيانات الشكوى',
-  'complaints.assign': 'إسناد الشكاوى', 'complaints.reassign': 'إعادة الإسناد', 'complaints.change_status': 'تغيير الحالة',
-  'complaints.reply_public': 'إرسال رد علني', 'complaints.add_internal_note': 'إضافة ملاحظة داخلية', 'complaints.merge': 'دمج الشكاوى',
-  'complaints.escalate': 'تحويل الشكوى', 'complaints.delete': 'حذف الشكاوى', 'complaints.export': 'تصدير الشكاوى',
+  'complaints.view': 'عرض الطلبات', 'complaints.create': 'إنشاء طلب', 'complaints.edit': 'تعديل بيانات الطلب',
+  'complaints.assign': 'إسناد الطلبات', 'complaints.reassign': 'إعادة الإسناد', 'complaints.change_status': 'تغيير الحالة',
+  'complaints.reply_public': 'إرسال رد علني', 'complaints.add_internal_note': 'إضافة ملاحظة داخلية', 'complaints.merge': 'دمج الطلبات',
+  'complaints.escalate': 'تحويل الطلب', 'complaints.delete': 'حذف الطلبات', 'complaints.export': 'تصدير الطلبات',
   'complaints.view_attachments': 'عرض المرفقات', 'complaints.view_full_national_id': 'عرض رقم الهوية كاملاً',
   'analytics.view': 'عرض التحليلات', 'analytics.export': 'تصدير التحليلات', 'users.view': 'عرض المستخدمين',
   'users.create': 'دعوة مستخدم', 'users.edit': 'تعديل بيانات المستخدم', 'users.deactivate': 'تعطيل المستخدم',

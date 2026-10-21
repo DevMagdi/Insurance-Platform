@@ -20,6 +20,7 @@ from app.middleware.policy import policy_for
 from app.observability.logging import bind_actor
 from app.repositories.access import AccessRepository
 from app.repositories.auth import AuthRepository
+from app.repositories.corporate import CorporateRepository
 from app.security.tokens import TokenClaims, TokenManager
 from app.services.complaints import ComplaintService
 from app.services.integrations import IntegrationService
@@ -35,6 +36,7 @@ class RequestContext:
     permissions: frozenset[str]
     snapshot: dict[str, Any] | None
     complaints: ComplaintService
+    corporate_client_id: UUID | None = None
 
 
 def integration_service(request: Request) -> IntegrationService:
@@ -95,6 +97,21 @@ async def load_context(
             None,
             complaints,
         )
+    if claims.subject.scope == "corporate":
+        corporate_client_id = await CorporateRepository().client_id(db)
+        if corporate_client_id is None:
+            raise HTTPException(status_code=401, detail="Corporate access unavailable")
+        return RequestContext(
+            db,
+            claims.subject,
+            record.id,
+            version,
+            AccessScope.for_corporate(claims.subject, corporate_client_id),
+            frozenset({"corporate.view"}),
+            None,
+            complaints,
+            corporate_client_id=corporate_client_id,
+        )
     cache_key = f"access:{claims.subject.id}:{version}"
     cached = await redis.get(cache_key)
     snapshot = json.loads(cached) if cached else await AccessRepository().snapshot(db)
@@ -129,6 +146,15 @@ async def authenticated_context(request: Request) -> AsyncIterator[RequestContex
 async def require_customer(ctx: RequestContext = Depends(authenticated_context)) -> RequestContext:
     if ctx.actor.scope != "customer":
         raise HTTPException(status_code=403, detail="Customer account required")
+    return ctx
+
+
+async def require_corporate(
+    ctx: RequestContext = Depends(authenticated_context),
+) -> RequestContext:
+    """A signed-in corporate client user, bound to its own company's data."""
+    if ctx.actor.scope != "corporate" or ctx.corporate_client_id is None:
+        raise HTTPException(status_code=403, detail="Corporate account required")
     return ctx
 
 

@@ -174,6 +174,12 @@ def world() -> Iterator[dict[str, Any]]:
             " (SELECT id FROM insurance_companies WHERE slug LIKE 'live-%')",
             "DELETE FROM notification_outbox WHERE recipient_customer_id IN "
             " (SELECT id FROM customers WHERE email LIKE 'customer-%@example.test')",
+            # The intake inbox references both the company and the request, so
+            # it has to go before either. Its foreign keys are NO ACTION on
+            # purpose: deleting an insurer must not quietly erase the record of
+            # what arrived from WhatsApp, email or a phone call.
+            "DELETE FROM request_intake_events WHERE company_id IN "
+            " (SELECT id FROM insurance_companies WHERE slug LIKE 'live-%')",
             "DELETE FROM audit_logs WHERE complaint_created_at IS NOT NULL AND complaint_id IN "
             " (SELECT id FROM complaints WHERE company_id IN "
             "   (SELECT id FROM insurance_companies WHERE slug LIKE 'live-%'))",

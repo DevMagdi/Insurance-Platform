@@ -10,6 +10,7 @@ import asyncio
 import base64
 import imaplib
 import json
+import mimetypes
 import re
 import ssl
 import time
@@ -637,6 +638,70 @@ class WhatsAppCloudProvider:
         except (ValueError, KeyError, IndexError, TypeError):
             provider_id = None
         return ProviderResult(provider_id=str(provider_id) if provider_id else None)
+
+    async def fetch_media(self, media_id: str, *, max_bytes: int) -> tuple[bytes, str, str]:
+        """Download an inbound attachment: the bulk of real WhatsApp traffic.
+
+        Meta returns a short-lived, host-pinned URL from the media id, so this
+        is a two-step call. The download is capped and streamed so a hostile
+        or mis-sized media item cannot exhaust worker memory.
+
+        Returns ``(content, mime_type, filename)``.
+        """
+        token = str(self.config.get("access_token", ""))
+        version = str(self.config.get("api_version", "v21.0"))
+        if not token or not re.fullmatch(r"v\d+\.\d+", version):
+            raise IntegrationProviderError("whatsapp_configuration_missing", retryable=False)
+        if not re.fullmatch(r"[A-Za-z0-9_.:-]{1,256}", media_id):
+            raise IntegrationProviderError("whatsapp_media_invalid", retryable=False)
+        headers = {"Authorization": f"Bearer {token}"}
+        try:
+            async with httpx.AsyncClient(timeout=30, follow_redirects=False) as client:
+                lookup = await client.get(
+                    f"https://graph.facebook.com/{version}/{media_id}", headers=headers
+                )
+                if lookup.status_code != 200:
+                    raise IntegrationProviderError(
+                        "whatsapp_media_unavailable",
+                        retryable=lookup.status_code >= 500 or lookup.status_code == 429,
+                    )
+                document = lookup.json()
+                url = str(document.get("url") or "")
+                mime_type = str(document.get("mime_type") or "application/octet-stream")
+                declared = int(document.get("file_size") or 0)
+                # Meta hands back a short-lived URL on one of its own hosts.
+                # Pin to those: the operator never supplies this URL, so an
+                # unexpected host means the response cannot be trusted.
+                host = url.split("/")[2].lower() if url.count("/") >= 2 else ""
+                trusted = host.endswith((".fbcdn.net", ".facebook.com")) or host in {
+                    "graph.facebook.com",
+                    "lookaside.fbsbx.com",
+                }
+                if not url.startswith("https://") or not trusted:
+                    raise IntegrationProviderError("whatsapp_media_untrusted_host", retryable=False)
+                if declared and declared > max_bytes:
+                    raise IntegrationProviderError("whatsapp_media_too_large", retryable=False)
+                buffer = bytearray()
+                async with client.stream("GET", url, headers=headers) as stream:
+                    if stream.status_code != 200:
+                        raise IntegrationProviderError(
+                            "whatsapp_media_unavailable",
+                            retryable=stream.status_code >= 500,
+                        )
+                    async for chunk in stream.aiter_bytes():
+                        buffer.extend(chunk)
+                        if len(buffer) > max_bytes:
+                            raise IntegrationProviderError(
+                                "whatsapp_media_too_large", retryable=False
+                            )
+        except httpx.HTTPError as exc:
+            raise IntegrationProviderError("whatsapp_unreachable") from exc
+        except (ValueError, KeyError, IndexError, TypeError) as exc:
+            raise IntegrationProviderError("whatsapp_media_invalid", retryable=False) from exc
+        if not buffer:
+            raise IntegrationProviderError("whatsapp_media_empty", retryable=False)
+        suffix = mimetypes.guess_extension(mime_type.split(";")[0].strip()) or ".bin"
+        return bytes(buffer), mime_type, f"whatsapp-{media_id[:24]}{suffix}"
 
     async def test_connection(self) -> None:
         token = str(self.config.get("access_token", ""))

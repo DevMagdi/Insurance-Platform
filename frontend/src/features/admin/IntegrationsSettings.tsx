@@ -204,7 +204,7 @@ const PROVIDERS: ProviderSpec[] = [
     label: 'الذكاء الاصطناعي — OpenAI',
     icon: 'spark',
     family: 'ai',
-    summary: 'تحليل الشكاوى باقتراحات تُراجع بشرياً دائماً. بيانات الشخصيات تُخفّض قبل الإرسال.',
+    summary: 'تحليل الطلبات باقتراحات تُراجع بشرياً دائماً. بيانات الشخصيات تُخفّض قبل الإرسال.',
     scope: 'both',
     fields: [
       { key: 'api_key', label: 'API key', secret: true },

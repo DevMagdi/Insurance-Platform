@@ -121,7 +121,13 @@ class Complaint(Base):
     company_id: Mapped[UUID] = mapped_column(ForeignKey("insurance_companies.id"))
     insurance_type: Mapped[InsuranceType] = mapped_column(INSURANCE_ENUM)
     policy_id: Mapped[UUID | None] = mapped_column(ForeignKey("policies.id"))
-    policy_number: Mapped[str] = mapped_column(Text)
+    # Revision 036: a request carries a policy number OR a medical card
+    # number; the database CHECK requires at least one of them.
+    policy_number: Mapped[str | None] = mapped_column(Text)
+    card_number: Mapped[str | None] = mapped_column(Text)
+    intake_source: Mapped[str] = mapped_column(Text, server_default="portal")
+    intake_reference: Mapped[str | None] = mapped_column(Text)
+    corporate_client_id: Mapped[UUID | None] = mapped_column(ForeignKey("corporate_clients.id"))
     subject: Mapped[str] = mapped_column(Text)
     description: Mapped[str] = mapped_column(Text)
     status: Mapped[ComplaintStatus] = mapped_column(STATUS_ENUM, server_default="new")

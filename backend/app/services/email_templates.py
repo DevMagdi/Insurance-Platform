@@ -73,24 +73,42 @@ def render_insurer_forward(
     ticket_no: str,
     subject: str,
     details: str,
-    policy_number: str,
+    policy_number: str | None = None,
+    card_number: str | None = None,
     locale: str,
     agent_note: str | None = None,
     insurance_type: str = "—",
 ) -> tuple[str, str]:
-    """Create the forward body without exposing customer national IDs or mobile numbers."""
+    """Create the forward body without exposing customer national IDs or mobile numbers.
+
+    A request identifies the member by policy number *or* card number, so the
+    reference line follows whichever the request actually carries instead of
+    printing an empty policy field.
+    """
     if locale == "ar":
-        mail_subject = f"شكوى تأمين رقم {ticket_no}: {subject[:160]}"
+        if policy_number:
+            reference = f"رقم الوثيقة: {policy_number}"
+        elif card_number:
+            reference = f"رقم الكارت: {card_number}"
+        else:
+            reference = "رقم الوثيقة/الكارت: غير محدد"
+        mail_subject = f"طلب تأمين رقم {ticket_no}: {subject[:160]}"
         header = (
-            f"يرجى مراجعة الشكوى رقم {ticket_no}.\n\nرقم الوثيقة: {policy_number}\n"
+            f"يرجى مراجعة الطلب رقم {ticket_no}.\n\n{reference}\n"
             f"نوع التأمين: {insurance_type}\n\nالموضوع: {subject}\n\nوصف العميل:\n{details}"
         )
         if agent_note:
             header += f"\n\nملاحظة من الوسيط:\n{agent_note}"
     else:
-        mail_subject = f"Insurance complaint {ticket_no}: {subject[:160]}"
+        if policy_number:
+            reference = f"Policy number: {policy_number}"
+        elif card_number:
+            reference = f"Card number: {card_number}"
+        else:
+            reference = "Policy / card number: not provided"
+        mail_subject = f"Insurance request {ticket_no}: {subject[:160]}"
         header = (
-            f"Please review complaint {ticket_no}.\n\nPolicy number: {policy_number}\n"
+            f"Please review request {ticket_no}.\n\n{reference}\n"
             f"Insurance type: {insurance_type}\n\nSummary / Subject: {subject}\n\n"
             f"Customer-visible description / Details:\n{details}"
         )

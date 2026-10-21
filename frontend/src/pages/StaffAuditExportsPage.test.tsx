@@ -46,7 +46,7 @@ describe('StaffAuditExportsPage', () => {
     render(<StaffExportsPage />, { wrapper: Wrapper });
     const from = await screen.findByLabelText('من');
     const to = screen.getByLabelText('إلى');
-    const request = screen.getByRole('button', { name: /تصدير الشكاوى/ });
+    const request = screen.getByRole('button', { name: /تصدير الطلبات/ });
 
     // Clearing a date must not crash the page and must not send a bad window.
     fireEvent.change(from, { target: { value: '' } });

@@ -36,7 +36,7 @@ function useConsoleTheme(): Theme {
 
 const LINKS: Array<{ path: string; label: string; icon: IconName; permission?: string }> = [
   { path: '/staff', label: 'لوحة المؤشرات', icon: 'overview' },
-  { path: '/staff/complaints', label: 'قائمة الشكاوى', icon: 'inbox', permission: 'complaints.view' },
+  { path: '/staff/complaints', label: 'قائمة الطلبات', icon: 'inbox', permission: 'complaints.view' },
   { path: '/staff/admin', label: 'لوحة الإدارة', icon: 'shield' },
   { path: '/staff/users', label: 'المستخدمون', icon: 'users', permission: 'users.view' },
   { path: '/staff/operations', label: 'العمليات', icon: 'settings' },
@@ -98,7 +98,7 @@ export function StaffShell({ children }: { children: ReactNode }) {
               <div className="topbar-breadcrumb">
                 <span>{brand.platform_name}</span>
                 <Icon name="chevron" size={13} />
-                <strong>مساحة الشكوى</strong>
+                <strong>مساحة الطلب</strong>
               </div>
             </div>
             <nav className="topbar-links" aria-label="staff">
