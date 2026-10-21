@@ -133,15 +133,26 @@ def test_catalog_has_every_required_resource_action_and_frozen_migration() -> No
     phase7 = (ROOT / "backend/alembic/sql/020_staff_console.sql").read_text()
     phase9 = (ROOT / "backend/alembic/sql/023_storage_console.sql").read_text()
     phase10 = (ROOT / "backend/alembic/sql/028_integration_connections.sql").read_text()
+    phase11 = (ROOT / "backend/alembic/sql/036_requests_corporate_intake.sql").read_text()
     assert (
         seeded_permissions
         | {
             "teams.manage",
             "storage.manage",
             "integrations.send_sms",
+            # Revision 036: channel intake and the corporate client portal.
+            "requests.intake",
+            "corporate.view",
+            "corporate.manage",
         }
         == PERMISSIONS
     )
+    for key, resource, action in (
+        ("requests.intake", "requests", "intake"),
+        ("corporate.view", "corporate", "view"),
+        ("corporate.manage", "corporate", "manage"),
+    ):
+        assert f"('{key}', '{resource}', '{action}'" in phase11
     assert "VALUES ('teams.manage', 'teams', 'manage'" in phase7
     assert "VALUES ('storage.manage', 'storage', 'manage'" in phase9
     assert "VALUES ('integrations.send_sms', 'integrations', 'send_sms'" in phase10
@@ -231,6 +242,7 @@ def test_sql_migrations_cover_every_requested_table_and_fail_closed_rls() -> Non
             "017_integrations_ai.sql",
             "021_privacy_operations.sql",
             "029_staff_onboarding.sql",
+            "036_requests_corporate_intake.sql",
         )
     )
     declared_tables = set(re.findall(r"CREATE TABLE (?:public\.)?(\w+) \(", schema + additive))

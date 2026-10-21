@@ -22,7 +22,7 @@ from arq.cron import CronJob
 from pydantic import Field
 from pydantic_settings import BaseSettings
 from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncEngine
+from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
 
 from app.db import make_worker_engine
 from app.observability import metrics
@@ -34,6 +34,7 @@ from app.security.integration_crypto import SecretCipher, derive_idempotency_key
 from app.services.backpressure import DEPTH_KEY
 from app.services.email_templates import branded_email
 from app.services.exports import MAX_EXPORT_BYTES, render_export
+from app.services.intake import InboundEvent, InboundMedia, RequestIntakeService
 from app.services.integration_providers import (
     EMAIL_PROVIDER_CLASSES,
     INBOUND_EMAIL_PROVIDER_CLASSES,
@@ -245,6 +246,133 @@ def _encrypt_call_recording(
         raise IntegrationProviderError("voice_recording_too_large", retryable=False)
     blobs: BlobCipher = ctx["blobs"]
     return blobs.encrypt(recording, purpose=RECORDING, resource_id=call_id)
+
+
+async def _download_whatsapp_media(
+    descriptors: list[Any], config: dict[str, Any], environment: str
+) -> list[InboundMedia]:
+    """Exchange WhatsApp media ids for bytes, skipping whatever fails.
+
+    One unreadable attachment must never cost the brokerage the request, so
+    failures are logged and the message is ingested with whatever arrived.
+    """
+    media: list[InboundMedia] = []
+    if not descriptors:
+        return media
+    provider = WhatsAppCloudProvider(config)
+    for descriptor in descriptors[:10]:
+        if not isinstance(descriptor, dict):
+            continue
+        media_id = str(descriptor.get("media_id") or "")
+        if not media_id:
+            continue
+        declared_mime = str(descriptor.get("mime_type") or "application/octet-stream")
+        try:
+            content, mime_type, filename = await provider.fetch_media(
+                media_id, max_bytes=RequestIntakeService.MAX_MEDIA_BYTES
+            )
+        except IntegrationProviderError as exc:
+            logger.warning(
+                "WhatsApp media was not downloaded media_id=%s error=%s", media_id, exc.code
+            )
+            continue
+        media.append(
+            InboundMedia(
+                media_id=media_id,
+                mime_type=declared_mime or mime_type,
+                filename=str(descriptor.get("filename") or "") or filename,
+                caption=descriptor.get("caption"),
+                content=content,
+            )
+        )
+    return media
+
+
+async def _process_inbound_message(
+    ctx: dict[str, Any],
+    row: Any,
+    kind: str,
+    payload: dict[str, Any],
+    config: dict[str, Any],
+    cipher: SecretCipher,
+    *,
+    job_id: UUID,
+) -> None:
+    """Create or continue a request from an inbound WhatsApp/e-mail message."""
+    channel = "whatsapp" if kind == "inbound_whatsapp" else "email"
+    media: list[InboundMedia] = []
+    if channel == "whatsapp":
+        descriptors = payload.get("media")
+        if isinstance(descriptors, list) and descriptors:
+            with suppress(IntegrationProviderError):
+                media = await _download_whatsapp_media(descriptors, config, _environment(ctx))
+    else:
+        for item in (
+            payload.get("attachments", [])[:10]
+            if isinstance(payload.get("attachments"), list)
+            else []
+        ):
+            if not isinstance(item, dict):
+                continue
+            raw = item.get("content_b64")
+            if not isinstance(raw, str):
+                continue
+            try:
+                content = base64.b64decode(raw, validate=True)
+            except (ValueError, TypeError):
+                continue
+            if not content or len(content) > RequestIntakeService.MAX_MEDIA_BYTES:
+                continue
+            media.append(
+                InboundMedia(
+                    media_id=str(item.get("content_id") or item.get("filename") or "part"),
+                    mime_type=str(item.get("mime_type") or "application/octet-stream")[:180],
+                    filename=str(item.get("filename") or "attachment.bin")[:255],
+                    content=content,
+                )
+            )
+
+    event = InboundEvent(
+        channel=channel,
+        external_event_id=str(payload.get("external_message_id") or job_id)[:256],
+        sender=str(payload.get("sender") or payload.get("from") or "")[:320],
+        body=str(payload.get("body") or "")[:5000],
+        sender_name=(str(payload.get("sender_name")) if payload.get("sender_name") else None),
+        subject=(str(payload.get("subject"))[:300] if payload.get("subject") else None),
+        company_id=row.company_id,
+        media=media,
+    )
+    intake = RequestIntakeService(ctx["blobs"])
+    engine: AsyncEngine = ctx["engine"]
+    async with engine.begin() as connection:
+        await connection.execute(
+            text("SELECT set_config('app.scope','worker',false)"),
+        )
+        session = AsyncSession(bind=connection, expire_on_commit=False)
+        outcome = await intake.ingest(session, event)
+    logger.info(
+        "Inbound %s message intake state=%s ticket=%s attachments=%s",
+        channel,
+        outcome.state,
+        outcome.ticket_no,
+        outcome.attachments,
+    )
+    await _worker_query(
+        ctx["engine"],
+        "SELECT app_security.complete_inbound_event(:id,:attempt,CAST(:data AS jsonb))",
+        {
+            "id": job_id,
+            "attempt": row.attempt,
+            "data": json.dumps(
+                {
+                    **{k: v for k, v in payload.items() if k != "media"},
+                    "ticket_no": outcome.ticket_no or payload.get("ticket_no"),
+                    "intake_state": outcome.state,
+                    "intake_attachments": outcome.attachments,
+                }
+            ),
+        },
+    )
 
 
 async def _complete_integration_job(
@@ -496,13 +624,14 @@ async def _process_integration_job(ctx: dict[str, Any], row: Any) -> None:
                 },
             )
             return
-        if kind in {
-            "inbound_email",
-            "inbound_whatsapp",
-            "email_status",
-            "whatsapp_status",
-            "voice_status",
-        }:
+        if kind in {"inbound_email", "inbound_whatsapp"}:
+            # Revision 036: an inbound message no longer needs to quote a
+            # ticket number. The intake service matches the sender by mobile,
+            # opens a request when there is nothing to continue, downloads any
+            # WhatsApp media, and records the outcome either way.
+            await _process_inbound_message(ctx, row, kind, payload, config, cipher, job_id=job_id)
+            return
+        if kind in {"email_status", "whatsapp_status", "voice_status"}:
             await _worker_query(
                 ctx["engine"],
                 "SELECT app_security.complete_inbound_event(:id,:attempt,CAST(:data AS jsonb))",

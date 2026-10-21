@@ -319,4 +319,39 @@ erDiagram
       boolean id PK
       timestamptz last_success_at
     }
+    CORPORATE_CLIENTS {
+      uuid id PK
+      text slug UK
+      text legal_name
+      boolean is_active
+    }
+    CORPORATE_CONTRACTS {
+      uuid id PK
+      uuid corporate_client_id FK
+      numeric contract_value
+      payment_frequency payment_frequency
+      date renewal_date
+      contract_status status
+    }
+    CORPORATE_CONTRACT_DOCUMENTS {
+      uuid id PK
+      uuid contract_id FK
+      bytea content
+      text scan_status
+      boolean visible_to_client
+    }
+    CORPORATE_USERS {
+      uuid id PK
+      uuid corporate_client_id FK
+      text username UK
+      text password_hash
+      integer token_version
+    }
+    REQUEST_INTAKE_EVENTS {
+      uuid id PK
+      communication_channel channel
+      text external_event_id UK
+      intake_state state
+      uuid complaint_id FK
+    }
 ```

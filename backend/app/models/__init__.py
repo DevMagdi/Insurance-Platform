@@ -26,6 +26,13 @@ from app.models.core import (
     SecuritySettings,
     StaffInvitation,
 )
+from app.models.corporate import (
+    CorporateClient,
+    CorporateContract,
+    CorporateContractDocument,
+    CorporateUser,
+    RequestIntakeEvent,
+)
 from app.models.identity import Customer, InsuranceCompany, Policy
 from app.models.operations import (
     ApiKey,
@@ -76,6 +83,10 @@ __all__ = [
     "ComplaintKey",
     "ComplaintMessage",
     "ConsentRecord",
+    "CorporateClient",
+    "CorporateContract",
+    "CorporateContractDocument",
+    "CorporateUser",
     "CsatResponse",
     "Customer",
     "Department",
@@ -93,6 +104,7 @@ __all__ = [
     "Policy",
     "PrivacyRequest",
     "ReportSchedule",
+    "RequestIntakeEvent",
     "Role",
     "RolePermission",
     "SavedFilter",

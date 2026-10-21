@@ -76,7 +76,11 @@ def create_payload() -> dict[str, object]:
         ("policy_number", "=HYPERLINK()"),
         ("company_id", "wrong"),
         ("insurance_type", "life"),
-        ("description", "short"),
+        # Revision 036 lowered the floor so a real one-line request such as
+        # "محتاج موافقة أشعة" is accepted, but a description still cannot be
+        # a couple of stray characters.
+        ("description", "ab"),
+        ("subject", "a"),
     ],
 )
 def test_complaint_strict_validation(field: str, value: str) -> None:

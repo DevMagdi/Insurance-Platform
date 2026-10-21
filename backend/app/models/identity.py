@@ -45,8 +45,10 @@ class Customer(Base):
 
     id: Mapped[UUID] = mapped_column(primary_key=True, server_default=func.gen_random_uuid())
     full_name: Mapped[str] = mapped_column(Text)
-    national_id_ciphertext: Mapped[bytes] = mapped_column(LargeBinary)
-    national_id_blind_index: Mapped[bytes] = mapped_column(LargeBinary, unique=True)
+    # Revision 036: a WhatsApp message or a phone call carries a mobile and a
+    # name, never a 14-digit national ID. It stays encrypted when known.
+    national_id_ciphertext: Mapped[bytes | None] = mapped_column(LargeBinary)
+    national_id_blind_index: Mapped[bytes | None] = mapped_column(LargeBinary, unique=True)
     national_id_last4: Mapped[str | None] = mapped_column(Text)
     token_version: Mapped[int] = mapped_column(server_default=text("0"))
     mobile: Mapped[str] = mapped_column(Text)
@@ -57,6 +59,9 @@ class Customer(Base):
     notification_preferences: Mapped[dict[str, Any]] = mapped_column(
         JSONB, server_default=text('\'{"email": true, "whatsapp": true, "sms": true}\'::jsonb')
     )
+    # Revision 036: the employer whose contract covers this member.
+    corporate_client_id: Mapped[UUID | None] = mapped_column(ForeignKey("corporate_clients.id"))
+    employee_code: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(server_default=func.now())
 
@@ -69,6 +74,8 @@ class Policy(Base):
     company_id: Mapped[UUID] = mapped_column(ForeignKey("insurance_companies.id"))
     insurance_type: Mapped[InsuranceType] = mapped_column(INSURANCE_ENUM)
     policy_number: Mapped[str] = mapped_column(Text)
+    card_number: Mapped[str | None] = mapped_column(Text)
+    corporate_client_id: Mapped[UUID | None] = mapped_column(ForeignKey("corporate_clients.id"))
     effective_from: Mapped[date | None] = mapped_column(Date)
     expires_at: Mapped[date | None] = mapped_column(Date)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())

@@ -25,12 +25,25 @@ class AccessScope:
     insurance_types: frozenset[InsuranceType] = frozenset()
     ownership: OwnershipLevel | None = None
     team_ids: frozenset[UUID] = frozenset()
+    corporate_client_id: UUID | None = None
 
     @classmethod
     def for_customer(cls, actor: Actor) -> AccessScope:
         if actor.scope != "customer":
             raise ValueError("Expected customer actor")
         return cls(actor)
+
+    @classmethod
+    def for_corporate(cls, actor: Actor, corporate_client_id: UUID) -> AccessScope:
+        """A contracted company sees exactly its own employees' requests.
+
+        The client id is resolved server-side from the signed-in corporate
+        user; it is never read from a request payload, and PostgreSQL RLS
+        repeats the same restriction independently.
+        """
+        if actor.scope != "corporate":
+            raise ValueError("Expected corporate actor")
+        return cls(actor, corporate_client_id=corporate_client_id)
 
     @classmethod
     def for_staff(cls, actor: Actor, snapshot: dict[str, Any]) -> AccessScope:
@@ -52,6 +65,10 @@ class AccessScope:
         """Same explicit condition for list, detail, count, search and export."""
         if self.actor.scope == "customer":
             return Complaint.customer_id == self.actor.id
+        if self.actor.scope == "corporate":
+            if self.corporate_client_id is None:
+                return false()
+            return Complaint.corporate_client_id == self.corporate_client_id
         if not (self.all_companies or self.company_ids) or self.ownership is None:
             return false()
         companies = true() if self.all_companies else Complaint.company_id.in_(self.company_ids)

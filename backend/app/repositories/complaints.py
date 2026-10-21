@@ -28,6 +28,11 @@ from app.models.tickets import (
 )
 
 
+def _escape_like(value: str) -> str:
+    """Neutralise LIKE wildcards so a typed ``%`` cannot widen the filter."""
+    return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+
 class ComplaintRepository:
     def base_query(self, scope: AccessScope, filters: ComplaintFilter) -> Select[tuple[Complaint]]:
         """Single filter builder reused by list, count, counters, search and export."""
@@ -52,6 +57,31 @@ class ComplaintRepository:
             stmt = stmt.where(Complaint.created_at <= filters.date_to)
         if filters.ticket_no is not None:
             stmt = stmt.where(Complaint.ticket_no == filters.ticket_no)
+        if filters.card_number is not None:
+            stmt = stmt.where(Complaint.card_number.ilike(f"%{_escape_like(filters.card_number)}%"))
+        if filters.policy_number is not None:
+            stmt = stmt.where(
+                Complaint.policy_number.ilike(f"%{_escape_like(filters.policy_number)}%")
+            )
+        if filters.intake_source is not None:
+            stmt = stmt.where(Complaint.intake_source == filters.intake_source.value)
+        if filters.corporate_client_id is not None:
+            stmt = stmt.where(Complaint.corporate_client_id == filters.corporate_client_id)
+        # Mobile and name live on the customer, so they become a correlated
+        # EXISTS rather than a join: the outer query keeps returning exactly one
+        # Complaint row per ticket and the RLS predicate above is untouched.
+        if filters.mobile is not None or filters.customer_name is not None:
+            conditions = [Customer.id == Complaint.customer_id]
+            if filters.mobile is not None:
+                # The column is stored as +201XXXXXXXXX. Matching a digit
+                # suffix lets an agent type the last four digits, the local
+                # 010… form, or the full international number.
+                conditions.append(Customer.mobile.like(f"%{_escape_like(filters.mobile)}"))
+            if filters.customer_name is not None:
+                conditions.append(
+                    Customer.full_name.ilike(f"%{_escape_like(filters.customer_name)}%")
+                )
+            stmt = stmt.where(select(1).where(*conditions).exists())
         if filters.search is not None:
             stmt = stmt.where(
                 Complaint.search_vector.op("@@")(func.plainto_tsquery("simple", filters.search))
@@ -308,7 +338,15 @@ class ComplaintRepository:
             )
         )
 
-    async def identity_matches(self, db: AsyncSession, mobile: str, blind: bytes) -> bool:
+    async def corporate_client_for_customer(
+        self, db: AsyncSession, customer_id: UUID
+    ) -> UUID | None:
+        """The employer covering this member, when they are on a group policy."""
+        return await db.scalar(
+            select(Customer.corporate_client_id).where(Customer.id == customer_id)
+        )
+
+    async def identity_matches(self, db: AsyncSession, mobile: str, blind: bytes | None) -> bool:
         return bool(
             await db.scalar(
                 text("SELECT app_security.verify_customer_identity(:mobile, :blind)"),
@@ -322,6 +360,14 @@ class ComplaintRepository:
         customer_id: UUID,
         item: ComplaintCreate,
     ) -> UUID | None:
+        """Resolve the policy row, when the request carries a policy number.
+
+        A card-only request has no policy to attach: the brokerage looks the
+        member up by card at the insurer. Returning ``None`` is correct, not an
+        error, and the composite foreign key tolerates it (MATCH SIMPLE).
+        """
+        if not item.policy_number:
+            return None
         # The helper binds ownership to the authenticated transaction actor, not an input ID.
         result: UUID | None = await db.scalar(
             text("SELECT app_security.ensure_customer_policy(:company, :kind, :number)"),
@@ -371,6 +417,7 @@ class ComplaintRepository:
         item: ComplaintCreate,
         policy_id: UUID | None,
         idempotency: ComplaintIdempotency,
+        corporate_client_id: UUID | None = None,
     ) -> Complaint:
         now = datetime.now(UTC)
         ticket = await db.scalar(
@@ -389,6 +436,9 @@ class ComplaintRepository:
             insurance_type=item.insurance_type,
             policy_id=policy_id,
             policy_number=item.policy_number,
+            card_number=item.card_number,
+            intake_source="portal",
+            corporate_client_id=corporate_client_id,
             subject=item.subject,
             description=item.description,
         )

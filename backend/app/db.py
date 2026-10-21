@@ -18,8 +18,15 @@ from sqlalchemy.ext.asyncio import (
 )
 from sqlalchemy.pool import NullPool
 
-ActorScope = Literal["staff", "customer"]
-PurposeScope = Literal["staff_auth", "customer_auth", "invitation", "guest", "webhook"]
+ActorScope = Literal["staff", "customer", "corporate"]
+PurposeScope = Literal[
+    "staff_auth",
+    "customer_auth",
+    "corporate_auth",
+    "invitation",
+    "guest",
+    "webhook",
+]
 
 
 @dataclass(frozen=True)
