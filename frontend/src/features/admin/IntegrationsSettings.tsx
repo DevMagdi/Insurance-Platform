@@ -350,8 +350,12 @@ const CHANNELS: ChannelSpec[] = [
     setupHint: 'يتطلب صندوق بريد للعمل',
     chooseHint: 'اختر طريقة الاتصال بصندوق البريد. Gmail وOutlook يتطلبان تسجيل دخول Google أو Microsoft.',
     icon: 'mail',
-    color: '#D4AF37',
-    tint: 'rgba(212, 175, 55, 0.12)',
+    /* Amber, matching the email bar on the dashboard's intake breakdown — a
+       channel must look the same everywhere it appears. It was violet, which
+       both clashed with that chart and spent the brand accent on an icon
+       tile sitting next to a violet primary button. */
+    color: '#FBBF24',
+    tint: 'rgba(251, 191, 36, 0.12)',
     providers: ['gmail_oauth', 'outlook_oauth', 'smtp', 'imap', 'sendgrid', 'ses'],
   },
 ];

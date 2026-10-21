@@ -210,7 +210,7 @@ export function Metric({
   className?: string;
 }) {
   const washes: Record<string, string> = {
-    gold: 'rgba(212, 175, 55, 0.16)',
+    gold: 'rgba(139, 92, 246, 0.16)',
     info: 'rgba(96, 165, 250, 0.16)',
     success: 'rgba(16, 185, 129, 0.16)',
     warning: 'rgba(245, 158, 11, 0.16)',

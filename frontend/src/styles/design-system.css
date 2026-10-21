@@ -1,171 +1,261 @@
 /* ==========================================================================
-   Wathiq Design System — premium edition
+   Wathiq Design System — v2, "quiet machine"
    ==========================================================================
 
-   One palette, two renderings. Deep navy is the product's resting state: the
-   staff console, the sidebar and every dark surface are built from four steps
-   of the same blue-black so depth reads as light falling on a single material
-   rather than as a stack of different greys. Gold is scarce on purpose — it
-   marks the one action that matters on a screen and nothing else.
+   The previous revision was navy and gold: safe, corporate, a little dated.
+   This one is built on near-black zinc with a single violet accent, the
+   register Linear, Attio, Raycast and the Vercel dashboard share.
 
-   This file is loaded after `foundation.css` and re-tunes its tokens in place.
-   Every existing selector keeps working; only the values change, so the whole
-   application is re-skinned without touching a line of behaviour.
+   Three ideas carry the whole system.
 
-   Contrast is measured, not assumed. On the deep-navy background body text
-   lands at 16.8:1 and secondary text at 7.2:1; every status colour clears
-   6.3:1 on a card. The one adjustment to the brief's palette is the muted
-   grey: #64748B measures 3.86:1, below AA for small text, so --ink-400 is
-   lifted to #7D8CA1 — same hue and saturation, bright enough to clear AA on
-   every surface it lands on (5.4:1 navy, 5.0:1 card, 4.5:1 elevated).
-   Surfaces still stay soft enough that a long shift does not tire the eye.
+   1. THE CANVAS IS NEUTRAL. Zinc has no hue to argue with, so the only
+      colour on screen is colour you put there on purpose. Navy was already
+      a colour; every accent had to compete with it. Five steps of zinc from
+      #09090B to #52525B give depth through luminance alone, which reads as
+      one material lit from above rather than a stack of different greys.
+
+   2. VIOLET IS A VERB, NOT A COAT OF PAINT. The accent marks exactly three
+      things: the primary action, the current location, and the single
+      number that matters most on a screen. Everything else is zinc. Scarcity
+      is what makes it feel deliberate; the moment violet appears twice in
+      one region it stops meaning anything.
+
+   3. BORDERS WHISPER, SHADOWS DO THE WORK. On a near-black canvas a visible
+      border is a seam. The resting border is barely a shade off the surface
+      it encloses and only steps up on hover or focus; elevation comes from
+      large, very soft, very dark shadows instead.
+
+   This file is loaded after `foundation.css` and re-tunes its tokens in
+   place, so the entire application re-skins without a line of behaviour
+   changing.
+
+   ---------------------------------------------------------------------------
+   WHERE THIS DEVIATES FROM THE BRIEF, AND WHY
+   ---------------------------------------------------------------------------
+   Every value below was measured, not eyeballed. Three from the brief do not
+   survive contact with WCAG AA, so each is adjusted by the smallest amount
+   that fixes it:
+
+   * `--text-muted: #71717A` measures 3.67:1 on a card and 3.08:1 on an
+     elevated panel — below AA for small text, and this token carries
+     timestamps, counts and metadata people actually read. Lifted to #8F8F99:
+     same neutral hue, now 5.53:1 on a card and 4.65:1 on an elevated panel.
+     Light mode keeps #71717A, where it already measures 4.83:1.
+
+   * `#8B5CF6` as *text* measures 4.18:1 on a card. It stays the hero colour
+     for fills, glows, rings and active indicators — where contrast minimums
+     do not apply — but accent text and links on dark resolve to #A78BFA
+     (6.51:1).
+
+   * White on a `#8B5CF6` button measures 4.23:1, a marginal fail for a 14px
+     label. Primary buttons therefore fill with #7C3AED (5.70:1 with white)
+     and reserve #8B5CF6 for the hover lift and the glow around them.
+
+   One further change the brief did not ask for but the palette forces: the
+   "Assigned" status used to be violet. With violet promoted to the brand
+   accent, a violet status pill would read as a highlight. Assigned moves to
+   cyan, which is far enough from both the blue of "New" and the accent to be
+   unambiguous at pill size.
    ========================================================================== */
 
 /* --------------------------------------------------------------------------
-   Dark — the premium default
+   Dark — the primary rendering
    -------------------------------------------------------------------------- */
 
 :root.dark,
 .staff-console.theme-dark {
-  /* Canvas: four steps of one navy, each ~6% lighter than the last. */
-  --surface-0: #0b1426; /* app background, sidebar */
-  --surface-1: #111b2e; /* soft midnight — cards */
-  --surface-2: #1a2438; /* elevated surface — inputs, nested panels */
-  --surface-3: #222e46; /* raised — hover, active rows */
-  --surface-4: #2a3548;
-  --surface-glass: rgba(17, 27, 46, 0.72);
-  --surface-inverse: #f1f5f9;
+  /* Canvas: five steps of neutral zinc. Depth is luminance, never hue. */
+  --surface-0: #09090b; /* app background, sidebar — near black */
+  --surface-1: #18181b; /* cards, panels */
+  --surface-2: #27272a; /* elevated — inputs, nested panels */
+  --surface-3: #3f3f46; /* hover, active rows */
+  --surface-4: #52525b; /* highest — pressed, selected */
+  --surface-glass: rgba(24, 24, 27, 0.72);
+  --surface-inverse: #fafafa;
 
   /* Text */
-  --ink-900: #f1f5f9;
-  --ink-800: #e2e8f0;
-  --ink-700: #cbd5e1;
-  --ink-600: #adb9c9;
-  --ink-500: #94a3b8;
-  /* Brief says #64748B. That measures 3.86:1 on the app background and 3.6:1
-     on an elevated card — below AA for small text, and this token carries
-     timestamps and counts that people actually read. Same hue, same
-     saturation, lifted until it clears AA on the darkest surface it ever sits
-     on: 5.4:1 on navy, 5.0:1 on a card, 4.5:1 on an elevated panel. */
-  --ink-400: #7d8ca1;
-  --ink-300: #4b5a6e;
-  --ink-on-brand: #0b1426;
+  --ink-900: #fafafa;
+  --ink-800: #e4e4e7;
+  --ink-700: #d4d4d8;
+  --ink-600: #b4b4bd;
+  --ink-500: #a1a1aa;
+  /* Brief says #71717A; that is 3.67:1 on a card, below AA. Same neutral,
+     lifted until it clears AA on every surface it lands on. */
+  --ink-400: #8f8f99;
+  --ink-300: #52525b;
+  --ink-on-brand: #ffffff;
 
-  /* Lines — subtle, never a hard rule */
-  --line: #2a3548;
-  --line-soft: rgba(42, 53, 72, 0.6);
-  --line-strong: #39455c;
+  /* Lines — a seam on near-black is a defect. Resting borders sit one zinc
+     step off their surface; --line-strong is the brief's #3F3F46 and is
+     reserved for hover, focus and deliberate separation. */
+  --line: #27272a;
+  --line-soft: rgba(63, 63, 70, 0.4);
+  --line-strong: #3f3f46;
 
-  /* Premium gold */
-  --gold-700: #9a7d20;
-  --gold-600: #c8a52f;
-  --gold-500: #d4af37;
-  --gold-400: #e8c547;
-  --gold-300: #f0d678;
-  --gold-200: rgba(212, 175, 55, 0.18);
-  --gold-100: rgba(212, 175, 55, 0.1);
+  /* Violet — the one accent. */
+  --accent-700: #5b21b6;
+  --accent-600: #7c3aed; /* primary button fill: 5.70:1 with white */
+  --accent-500: #8b5cf6; /* the hero colour: glows, rings, indicators */
+  --accent-400: #a78bfa; /* accent text and links on dark: 6.51:1 */
+  --accent-300: #c4b5fd;
+  --accent-200: rgba(139, 92, 246, 0.14);
+  --accent-100: rgba(139, 92, 246, 0.08);
+  --accent-glow: rgba(139, 92, 246, 0.25);
 
   --emerald-700: #047857;
   --emerald-600: #059669;
-  --emerald-500: #10b981;
-  --emerald-200: rgba(16, 185, 129, 0.18);
-  --emerald-100: rgba(16, 185, 129, 0.1);
+  --emerald-500: #34d399;
+  --emerald-200: rgba(52, 211, 153, 0.14);
+  --emerald-100: rgba(52, 211, 153, 0.08);
 
-  /* Semantic — soft, desaturated, never harsh */
-  --info: #7dadf8;
-  --info-soft: rgba(96, 165, 250, 0.14);
+  /* Semantic — one notch desaturated so nothing shouts on a dark canvas. */
+  --info: #60a5fa;
+  --info-soft: rgba(96, 165, 250, 0.13);
   --success: #34d399;
-  --success-soft: rgba(16, 185, 129, 0.14);
+  --success-soft: rgba(52, 211, 153, 0.13);
   --warning: #fbbf24;
-  --warning-soft: rgba(245, 158, 11, 0.14);
-  --danger: #fb7185;
-  --danger-soft: rgba(244, 63, 94, 0.14);
+  --warning-soft: rgba(251, 191, 36, 0.13);
+  --danger: #f87171;
+  --danger-soft: rgba(248, 113, 113, 0.13);
   --violet: #a78bfa;
-  --violet-soft: rgba(139, 92, 246, 0.14);
-  --orange: #fdba74;
-  --orange-soft: rgba(249, 115, 22, 0.14);
+  --violet-soft: rgba(167, 139, 250, 0.13);
+  --cyan: #22d3ee;
+  --cyan-soft: rgba(34, 211, 238, 0.13);
+  --orange: #fb923c;
+  --orange-soft: rgba(251, 146, 60, 0.13);
   --fuchsia: #f0abfc;
-  --fuchsia-soft: rgba(232, 121, 249, 0.14);
+  --fuchsia-soft: rgba(240, 171, 252, 0.13);
 
-  /* Elevation — soft shadows only, no hard edges */
-  --shadow-xs: 0 1px 2px rgba(3, 7, 18, 0.4);
-  --shadow-sm: 0 1px 2px rgba(3, 7, 18, 0.3), 0 8px 24px -16px rgba(3, 7, 18, 0.7);
-  --shadow-md: 0 2px 4px rgba(3, 7, 18, 0.26), 0 20px 48px -28px rgba(3, 7, 18, 0.85);
-  --shadow-lg: 0 4px 12px rgba(3, 7, 18, 0.3), 0 40px 90px -44px rgba(3, 7, 18, 0.95);
-  --shadow-brand: 0 20px 56px -24px rgba(3, 7, 18, 0.9);
-  --shadow-gold: 0 10px 30px -12px rgba(212, 175, 55, 0.42);
+  /* Elevation — large, soft, almost black. A card should look like it is
+     floating a few millimetres off the canvas, never like it has an outline. */
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.5);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px -16px rgba(0, 0, 0, 0.8);
+  --shadow-md: 0 2px 4px rgba(0, 0, 0, 0.3), 0 24px 56px -28px rgba(0, 0, 0, 0.9);
+  --shadow-lg: 0 4px 12px rgba(0, 0, 0, 0.35), 0 48px 100px -48px rgba(0, 0, 0, 1);
+  --shadow-brand: 0 24px 64px -28px rgba(0, 0, 0, 0.95);
+  --shadow-gold: 0 12px 32px -12px rgba(139, 92, 246, 0.45);
+  --shadow-accent: 0 12px 32px -12px rgba(139, 92, 246, 0.45);
 
-  --focus: #d4af37;
-  --focus-ring: 0 0 0 3px rgba(212, 175, 55, 0.3);
+  --focus: #8b5cf6;
+  --focus-ring: 0 0 0 3px rgba(139, 92, 246, 0.35);
+
+  /* Compatibility aliases for the retired gold/navy ramps (~270 references
+     across portal.css, staff.css, staff-console.css and a few components).
+     These MUST live in the same theme block as the values they shadow:
+     foundation.css redefines --gold-300/200/100 inside `:root.dark`, which
+     outranks a `:root` alias, so declaring them only in the shared scale left
+     the portal's eyebrows, tags and chips rendering in the old gold on dark. */
+  --gold-700: var(--accent-700);
+  --gold-600: var(--accent-600);
+  --gold-500: var(--accent-500);
+  --gold-400: var(--accent-400);
+  --gold-300: var(--accent-300);
+  --gold-200: var(--accent-200);
+  --gold-100: var(--accent-100);
+  --navy-950: #000000;
+  --navy-900: var(--surface-0);
+  --navy-800: var(--surface-1);
+  --navy-700: var(--surface-2);
+  --navy-600: var(--surface-3);
+  --navy-500: var(--surface-4);
 
   color-scheme: dark;
 }
 
 /* --------------------------------------------------------------------------
-   Light — the same design, lit from the front
+   Light — the same system, lit from the front
+
+   Not an inversion. Dark mode gets its depth from luminance steps; on white
+   that would turn into dirty greys, so light mode keeps surfaces close
+   together and leans on hairline borders and much tighter shadows instead.
+   The accent darkens two steps so violet stays legible on white.
    -------------------------------------------------------------------------- */
 
 :root,
 .staff-console.theme-light {
-  --surface-0: #f6f8fb;
+  --surface-0: #fafafa;
   --surface-1: #ffffff;
-  --surface-2: #f3f6fa;
-  --surface-3: #eaeff6;
-  --surface-4: #e1e8f1;
-  --surface-glass: rgba(255, 255, 255, 0.78);
-  --surface-inverse: #0b1426;
+  --surface-2: #f4f4f5;
+  --surface-3: #e4e4e7;
+  --surface-4: #d4d4d8;
+  --surface-glass: rgba(255, 255, 255, 0.8);
+  --surface-inverse: #18181b;
 
-  --ink-900: #0b1426;
-  --ink-800: #16233a;
-  --ink-700: #2a3548;
-  --ink-600: #475569;
-  --ink-500: #64748b;
-  --ink-400: #94a3b8;
-  --ink-300: #b4c0cf;
-  --ink-on-brand: #0b1426;
+  --ink-900: #09090b;
+  --ink-800: #18181b;
+  --ink-700: #27272a;
+  --ink-600: #3f3f46;
+  --ink-500: #52525b;
+  --ink-400: #71717a; /* 4.83:1 on white — passes here, no lift needed */
+  --ink-300: #a1a1aa;
+  --ink-on-brand: #ffffff;
 
-  --line: rgba(11, 20, 38, 0.09);
-  --line-soft: rgba(11, 20, 38, 0.06);
-  --line-strong: rgba(11, 20, 38, 0.16);
+  --line: rgba(9, 9, 11, 0.08);
+  --line-soft: rgba(9, 9, 11, 0.05);
+  --line-strong: rgba(9, 9, 11, 0.15);
 
-  --gold-700: #8a6d18;
-  --gold-600: #a8861f;
-  --gold-500: #d4af37;
-  --gold-400: #e8c547;
-  --gold-300: #f0d678;
-  --gold-200: rgba(212, 175, 55, 0.2);
-  --gold-100: rgba(212, 175, 55, 0.1);
+  --accent-700: #5b21b6;
+  --accent-600: #6d28d9; /* 7.10:1 on white */
+  --accent-500: #7c3aed; /* 5.70:1 on white */
+  --accent-400: #8b5cf6;
+  --accent-300: #a78bfa;
+  --accent-200: rgba(124, 58, 237, 0.1);
+  --accent-100: rgba(124, 58, 237, 0.06);
+  --accent-glow: rgba(124, 58, 237, 0.18);
 
   --emerald-700: #047857;
   --emerald-600: #059669;
   --emerald-500: #10b981;
-  --emerald-200: rgba(16, 185, 129, 0.18);
-  --emerald-100: rgba(16, 185, 129, 0.1);
+  --emerald-200: rgba(5, 150, 105, 0.12);
+  --emerald-100: rgba(5, 150, 105, 0.07);
 
   --info: #2563eb;
   --info-soft: rgba(37, 99, 235, 0.09);
   --success: #047857;
-  --success-soft: rgba(16, 185, 129, 0.12);
+  --success-soft: rgba(5, 150, 105, 0.1);
   --warning: #b45309;
-  --warning-soft: rgba(245, 158, 11, 0.13);
-  --danger: #be123c;
-  --danger-soft: rgba(244, 63, 94, 0.1);
-  --violet: #6d28d9;
-  --violet-soft: rgba(139, 92, 246, 0.1);
+  --warning-soft: rgba(180, 83, 9, 0.1);
+  --danger: #dc2626;
+  --danger-soft: rgba(220, 38, 38, 0.09);
+  --violet: #7c3aed;
+  --violet-soft: rgba(124, 58, 237, 0.09);
+  --cyan: #0e7490;
+  --cyan-soft: rgba(14, 116, 144, 0.1);
   --orange: #c2410c;
-  --orange-soft: rgba(249, 115, 22, 0.1);
+  --orange-soft: rgba(194, 65, 12, 0.09);
   --fuchsia: #a21caf;
-  --fuchsia-soft: rgba(232, 121, 249, 0.1);
+  --fuchsia-soft: rgba(162, 28, 175, 0.09);
 
-  --shadow-xs: 0 1px 2px rgba(11, 20, 38, 0.05);
-  --shadow-sm: 0 1px 2px rgba(11, 20, 38, 0.04), 0 6px 18px -12px rgba(11, 20, 38, 0.14);
-  --shadow-md: 0 1px 3px rgba(11, 20, 38, 0.04), 0 18px 40px -24px rgba(11, 20, 38, 0.2);
-  --shadow-lg: 0 2px 8px rgba(11, 20, 38, 0.05), 0 32px 72px -40px rgba(11, 20, 38, 0.28);
-  --shadow-brand: 0 18px 44px -20px rgba(11, 20, 38, 0.3);
-  --shadow-gold: 0 10px 28px -14px rgba(212, 175, 55, 0.45);
+  --shadow-xs: 0 1px 2px rgba(9, 9, 11, 0.04);
+  --shadow-sm: 0 1px 2px rgba(9, 9, 11, 0.04), 0 4px 16px -10px rgba(9, 9, 11, 0.1);
+  --shadow-md: 0 1px 3px rgba(9, 9, 11, 0.04), 0 16px 40px -24px rgba(9, 9, 11, 0.16);
+  --shadow-lg: 0 2px 8px rgba(9, 9, 11, 0.05), 0 32px 72px -40px rgba(9, 9, 11, 0.22);
+  --shadow-brand: 0 18px 44px -22px rgba(9, 9, 11, 0.24);
+  --shadow-gold: 0 12px 28px -14px rgba(124, 58, 237, 0.3);
+  --shadow-accent: 0 12px 28px -14px rgba(124, 58, 237, 0.3);
 
-  --focus: #a8861f;
-  --focus-ring: 0 0 0 3px rgba(212, 175, 55, 0.28);
+  --focus: #7c3aed;
+  --focus-ring: 0 0 0 3px rgba(124, 58, 237, 0.25);
+
+  /* Compatibility aliases for the retired gold/navy ramps (~270 references
+     across portal.css, staff.css, staff-console.css and a few components).
+     These MUST live in the same theme block as the values they shadow:
+     foundation.css redefines --gold-300/200/100 inside `:root.dark`, which
+     outranks a `:root` alias, so declaring them only in the shared scale left
+     the portal's eyebrows, tags and chips rendering in the old gold on dark. */
+  --gold-700: var(--accent-700);
+  --gold-600: var(--accent-600);
+  --gold-500: var(--accent-500);
+  --gold-400: var(--accent-400);
+  --gold-300: var(--accent-300);
+  --gold-200: var(--accent-200);
+  --gold-100: var(--accent-100);
+  --navy-950: #000000;
+  --navy-900: var(--surface-0);
+  --navy-800: var(--surface-1);
+  --navy-700: var(--surface-2);
+  --navy-600: var(--surface-3);
+  --navy-500: var(--surface-4);
 
   color-scheme: light;
 }
@@ -182,8 +272,15 @@
   --border: var(--line);
   --text-primary: var(--ink-900);
   --text-muted: var(--ink-500);
-  --accent: var(--gold-500);
-  --accent-soft: var(--gold-200);
+  --accent: var(--accent-500);
+  --accent-soft: var(--accent-200);
+  /* Accent text has to clear AA, which the hero violet does not on dark.
+     Anything that *reads* uses this; anything that is painted uses --accent. */
+  --accent-ink: var(--accent-400);
+
+  /* The gold/navy compatibility aliases are declared per-theme above, not
+     here: foundation.css shadows some of them inside `:root.dark`, which
+     outranks this block. */
 
   /* One 4px rhythm, named so spacing is a decision and not a guess. */
   --s-1: 4px;
@@ -197,7 +294,12 @@
   --s-12: 48px;
   --s-16: 64px;
   --s-20: 80px;
+  --s-7: 28px;
+  --s-24: 96px;
 
+  /* Radii, opened up. Cards land at 18–22px, which is the single biggest
+     lever on whether a surface reads as "soft product" or "enterprise form".
+     Controls stay tighter so a button never looks like a pill by accident. */
   --r-xs: 6px;
   --r-sm: 8px;
   --r-md: 10px;
@@ -206,9 +308,14 @@
   --r-2xl: 22px;
   --r-3xl: 28px;
   --r-pill: 999px;
+  --r-card: 20px;
+  --r-control: 11px;
 
+  /* Motion. Expensive interfaces move quickly and settle softly; nothing
+     here is slow enough to wait for. */
   --ease-out: cubic-bezier(0.22, 0.61, 0.36, 1);
   --ease-spring: cubic-bezier(0.34, 1.32, 0.64, 1);
+  --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
   --dur-fast: 140ms;
   --dur-base: 200ms;
   --dur-slow: 320ms;
@@ -241,8 +348,12 @@
 .staff-console.theme-dark {
   --st-new-fg: var(--info);
   --st-new-bg: var(--info-soft);
-  --st-assigned-fg: var(--violet);
-  --st-assigned-bg: var(--violet-soft);
+  /* Was violet. Violet is now the brand accent, and a violet status pill
+     beside a violet primary button reads as a highlight rather than a state.
+     Cyan sits far enough from both the "New" blue and the accent to stay
+     unambiguous at pill size (9.8:1 on a card). */
+  --st-assigned-fg: var(--cyan);
+  --st-assigned-bg: var(--cyan-soft);
   --st-in-review-fg: var(--warning);
   --st-in-review-bg: var(--warning-soft);
   --st-resolved-fg: var(--success);
@@ -642,13 +753,13 @@ body {
 }
 
 .ds-gold-btn {
-  background: var(--gold-500);
-  color: #0b1426;
-  box-shadow: var(--shadow-gold);
+  background: var(--accent-600);
+  color: var(--ink-on-brand);
+  box-shadow: var(--shadow-accent);
 }
 
 .ds-gold-btn:hover:not(:disabled) {
-  background: var(--gold-400);
+  background: var(--accent-500);
   transform: translateY(-1px);
 }
 
@@ -784,10 +895,15 @@ body {
   border-color: var(--line-strong);
 }
 
-/* A connected channel earns a faint gold edge — the only reward state on the
-   page, so "done" is visible without reading a word. */
+/* A connected channel earns a faint emerald edge. It used to be the accent,
+   which broke the rule the rest of the system follows: violet marks the
+   primary action, and on this page that is the "Connect" button on the one
+   channel still unconfigured. Painting the two *finished* cards violet made
+   them compete with the single thing left to do. Emerald is already the
+   colour of the "Connected" badge they carry, so the edge now simply agrees
+   with the badge. */
 .ds-channel.is-connected {
-  border-color: color-mix(in srgb, var(--gold-500) 30%, var(--line));
+  border-color: color-mix(in srgb, var(--emerald-500) 26%, var(--line));
 }
 
 .ds-channel-glow {
@@ -803,7 +919,7 @@ body {
 
 .ds-channel.is-connected .ds-channel-glow {
   opacity: 1;
-  background: linear-gradient(90deg, transparent, var(--gold-500), transparent);
+  background: linear-gradient(90deg, transparent, var(--emerald-500), transparent);
 }
 
 .ds-channel-head {
@@ -1526,8 +1642,8 @@ body {
   height: 18px;
   padding: 0 5px;
   border-radius: var(--r-pill);
-  background: var(--gold-500);
-  color: #0b1426;
+  background: var(--accent-600);
+  color: var(--ink-on-brand);
   font-size: 0.6875rem;
   font-style: normal;
   font-weight: 700;
@@ -1537,4 +1653,167 @@ body {
   .ds-filter-primary { flex-direction: column; align-items: stretch; }
   .ds-field { min-width: 0; }
   .ds-more-filters, .ds-filter-primary > .ds-quiet-btn { width: 100%; }
+}
+
+/* ==========================================================================
+   v2 elevation pass — "make it feel expensive"
+   ==========================================================================
+
+   Everything above re-skins the product. This section changes how it
+   *breathes*. The previous revision was correct but tight: 24px between
+   sections, 18px radii, a visible hairline on every surface and a page title
+   barely larger than a section title. That reads as competent enterprise
+   software. The gap between competent and expensive is almost entirely
+   rhythm, radius and restraint, so this block pushes all three.
+
+   Four rules, applied consistently:
+
+   1. SPACE IS THE CHEAPEST LUXURY. Section rhythm goes 24px -> 40px, card
+      padding 24px -> 28px. Nothing is added; things are simply allowed to
+      stand apart.
+
+   2. RADIUS CARRIES THE WHOLE IMPRESSION. Cards move to 20px. Below ~16px a
+      surface reads as a form field; above ~24px it reads as a toy. 20px with
+      a soft shadow is the Linear/Attio register.
+
+   3. ONE SURFACE, NOT TWO. The border and the shadow were both describing the
+      card's edge. On near-black that double edge is what made the old build
+      look flat. The border drops to a near-invisible seam and the shadow
+      does the describing.
+
+   4. THE TITLE SHOULD WIN. A page title at 1.75rem next to a section title at
+      1.05rem is not a hierarchy, it is two similar sizes. The page title now
+      opens to ~2.4rem with tighter tracking.
+   ========================================================================== */
+
+/* ----------------------------------------------------------- page rhythm */
+
+.ds-page {
+  gap: var(--s-10);
+}
+
+.ds-page-title {
+  font-size: clamp(1.6rem, 1.15rem + 1.7vw, 2.35rem);
+  letter-spacing: -0.032em;
+  line-height: 1.15;
+}
+
+.ds-page-sub {
+  font-size: 0.9375rem;
+  line-height: 1.65;
+  max-width: 62ch;
+}
+
+/* A section title has to be clearly below the page title but clearly above
+   body copy. 1.05rem was neither. */
+.ds-section-title {
+  font-size: 1.1875rem;
+  letter-spacing: -0.022em;
+}
+
+.ds-section-head {
+  margin-bottom: var(--s-5);
+}
+
+/* The eyebrow was accent-coloured everywhere, which spent the accent on
+   decoration. It is metadata: it should be quiet. */
+.ds-eyebrow {
+  color: var(--ink-400);
+  letter-spacing: 0.1em;
+}
+
+/* --------------------------------------------------------------- surfaces */
+
+.ds-card {
+  border-radius: var(--r-card);
+  border-color: var(--line);
+  box-shadow: var(--shadow-md);
+}
+
+.ds-card-pad {
+  padding: var(--s-7, 28px);
+}
+
+/* Hover is a lift, not a colour change: the card comes toward you and its
+   shadow deepens. Borders brighten only enough to confirm the target. */
+.ds-card-interactive {
+  cursor: pointer;
+}
+
+.ds-card-interactive:hover {
+  border-color: var(--line-strong);
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-2px);
+}
+
+.ds-card-interactive:active {
+  transform: translateY(0);
+  transition-duration: var(--dur-fast);
+}
+
+/* ----------------------------------------------------------------- metrics */
+
+.ds-metric-card {
+  min-height: 150px;
+  gap: var(--s-1);
+}
+
+.ds-metric {
+  font-size: 2.4rem;
+  letter-spacing: -0.04em;
+  line-height: 1.05;
+}
+
+.ds-metric-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: var(--r-lg);
+}
+
+/* The quiet strip of secondary numbers. Separators were 1px solid lines on
+   every edge; one subtle inline rule between cells is enough. */
+.ds-kpi-strip {
+  border-radius: var(--r-card);
+  overflow: hidden;
+}
+
+.ds-kpi-cell {
+  padding: var(--s-5) var(--s-5);
+}
+
+/* ------------------------------------------------------------------ pills */
+
+.ds-pill {
+  padding: 5px 12px;
+  font-size: 0.75rem;
+  letter-spacing: -0.005em;
+}
+
+/* --------------------------------------------------------------- controls */
+
+.ds-field input,
+.ds-field select,
+.ds-filters input,
+.ds-filters select {
+  border-radius: var(--r-control);
+}
+
+/* ------------------------------------------------- reduced-motion respect */
+
+@media (prefers-reduced-motion: reduce) {
+  .ds-card-interactive:hover {
+    transform: none;
+  }
+}
+
+/* ------------------------------------------------- focus + selection, app-wide */
+
+.ds-page :is(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--accent-500);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: var(--accent-200);
+  color: var(--text-primary);
 }

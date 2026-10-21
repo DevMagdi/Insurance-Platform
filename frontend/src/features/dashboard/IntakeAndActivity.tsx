@@ -23,10 +23,16 @@ interface SourceSpec {
   tint: string;
 }
 
+/**
+ * Each channel carries its own hue so the three bars stay tellable apart at a
+ * glance. None of them is the brand violet: these are data, and the accent is
+ * reserved for actions and the current location. Email was violet and read as
+ * "the important one" purely because it matched the primary button.
+ */
 const SOURCES: SourceSpec[] = [
   { id: 'whatsapp', label: 'واتساب', icon: 'message', color: '#25D366', tint: 'rgba(37, 211, 102, 0.14)' },
   { id: 'phone', label: 'مكالمات', icon: 'phone', color: '#60A5FA', tint: 'rgba(96, 165, 250, 0.14)' },
-  { id: 'email', label: 'بريد إلكتروني', icon: 'mail', color: '#D4AF37', tint: 'rgba(212, 175, 55, 0.14)' },
+  { id: 'email', label: 'بريد إلكتروني', icon: 'mail', color: '#FBBF24', tint: 'rgba(251, 191, 36, 0.14)' },
 ];
 
 export function IntakeBreakdown({ filterQuery, onPick }: { filterQuery: string; onPick?: (source: string) => void }) {

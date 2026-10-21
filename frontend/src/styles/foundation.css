@@ -15,8 +15,8 @@
 
   --gold-700: #8f7127;
   --gold-600: #a98634;
-  --gold-500: #d4af37;
-  --gold-400: #d4af37;
+  --gold-500: #8b5cf6;
+  --gold-400: #8b5cf6;
   --gold-300: #e6c888;
   --gold-200: #f2e2bd;
   --gold-100: #faf3e2;
@@ -47,9 +47,9 @@
   --ink-on-brand: #f4f6f8;
 
   /* Lines */
-  --line: rgba(11, 20, 38, 0.09);
-  --line-soft: rgba(11, 20, 38, 0.06);
-  --line-strong: rgba(11, 20, 38, 0.16);
+  --line: rgba(9, 9, 11, 0.09);
+  --line-soft: rgba(9, 9, 11, 0.06);
+  --line-strong: rgba(9, 9, 11, 0.16);
 
   /* Semantic */
   --info: #2468c7;
@@ -86,12 +86,12 @@
   --r-pill: 999px;
 
   /* Elevation — soft, layered, never muddy */
-  --shadow-xs: 0 1px 2px rgba(3, 7, 18, 0.05);
-  --shadow-sm: 0 1px 2px rgba(3, 7, 18, 0.04), 0 6px 18px -10px rgba(3, 7, 18, 0.12);
-  --shadow-md: 0 1px 3px rgba(3, 7, 18, 0.04), 0 18px 44px -22px rgba(3, 7, 18, 0.24);
-  --shadow-lg: 0 2px 8px rgba(3, 7, 18, 0.04), 0 32px 80px -36px rgba(3, 7, 18, 0.34);
-  --shadow-brand: 0 18px 44px -18px rgba(3, 7, 18, 0.42);
-  --shadow-gold: 0 12px 28px -14px rgba(212, 175, 55, 0.55);
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04), 0 6px 18px -10px rgba(0, 0, 0, 0.12);
+  --shadow-md: 0 1px 3px rgba(0, 0, 0, 0.04), 0 18px 44px -22px rgba(0, 0, 0, 0.24);
+  --shadow-lg: 0 2px 8px rgba(0, 0, 0, 0.04), 0 32px 80px -36px rgba(0, 0, 0, 0.34);
+  --shadow-brand: 0 18px 44px -18px rgba(0, 0, 0, 0.42);
+  --shadow-gold: 0 12px 28px -14px rgba(139, 92, 246, 0.55);
 
   /* Motion */
   --ease-out: cubic-bezier(0.22, 0.61, 0.36, 1);
@@ -102,7 +102,7 @@
 
   /* Focus */
   --focus: #b08a2e;
-  --focus-ring: 0 0 0 3px rgba(212, 175, 55, 0.24);
+  --focus-ring: 0 0 0 3px rgba(139, 92, 246, 0.24);
 
   /* Typography */
   --font-arabic: 'Cairo', 'Tajawal', 'Inter', system-ui, sans-serif;
@@ -141,7 +141,7 @@
   --line-strong: rgba(255, 255, 255, 0.16);
 
   --gold-600: #d3ad62;
-  --gold-500: #d4af37;
+  --gold-500: #8b5cf6;
   --gold-400: #e3c583;
   --gold-300: #efd9ab;
   --gold-200: #4a3d22;
@@ -168,8 +168,8 @@
   --shadow-lg: 0 3px 10px rgba(0, 0, 0, 0.35), 0 40px 100px -44px rgba(0, 0, 0, 0.9);
   --shadow-brand: 0 18px 54px -20px rgba(0, 0, 0, 0.8);
 
-  --focus: #d4af37;
-  --focus-ring: 0 0 0 3px rgba(212, 175, 55, 0.26);
+  --focus: #8b5cf6;
+  --focus-ring: 0 0 0 3px rgba(139, 92, 246, 0.26);
 
   color-scheme: dark;
 }
@@ -293,7 +293,7 @@ table {
 }
 
 ::selection {
-  background: rgba(212, 175, 55, 0.22);
+  background: rgba(139, 92, 246, 0.22);
   color: inherit;
 }
 
@@ -520,17 +520,17 @@ html[lang='ar'] .eyebrow {
   --btn-bg: var(--navy-900);
   --btn-fg: #f8fafc;
   --btn-border: transparent;
-  box-shadow: 0 1px 2px rgba(3, 7, 18, 0.24), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.24), inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
 .btn-primary:hover:not(:disabled) {
   --btn-bg: var(--navy-800);
-  box-shadow: 0 10px 24px -14px rgba(3, 7, 18, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  box-shadow: 0 10px 24px -14px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
 .dark .btn-primary {
-  --btn-bg: #eef2f7;
-  --btn-fg: #0b1426;
+  --btn-bg: #fafafa;
+  --btn-fg: #18181b;
 }
 
 .dark .btn-primary:hover:not(:disabled) {
@@ -538,9 +538,16 @@ html[lang='ar'] .eyebrow {
 }
 
 .btn-gold {
-  --btn-bg: linear-gradient(180deg, var(--gold-400), var(--gold-500));
-  --btn-fg: #201a09;
-  box-shadow: var(--shadow-gold), inset 0 1px 0 rgba(255, 255, 255, 0.32);
+  /* Violet fill, white label. --accent-600 rather than the hero --accent-500
+     because white on #8B5CF6 is 4.23:1, a marginal AA fail at label size;
+     on #7C3AED it is 5.70:1. The hero violet returns on hover. */
+  --btn-bg: var(--accent-600);
+  --btn-fg: var(--ink-on-brand);
+  box-shadow: var(--shadow-accent), inset 0 1px 0 rgba(255, 255, 255, 0.14);
+}
+
+.btn-gold:hover:not(:disabled) {
+  --btn-bg: var(--accent-500);
 }
 
 .btn-gold:hover:not(:disabled) {
@@ -842,7 +849,7 @@ html[dir='rtl'] .select {
   height: 16px;
   border-radius: 50%;
   background: #fff;
-  box-shadow: 0 1px 3px rgba(3, 7, 18, 0.3);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
   transition: transform var(--dur-base) var(--ease-spring);
 }
 
@@ -957,7 +964,7 @@ html[dir='rtl'] .switch[aria-checked='true'] .switch-thumb {
 .dark .chip-gold {
   background: var(--gold-100);
   color: var(--gold-300);
-  border-color: rgba(212, 175, 55, 0.2);
+  border-color: rgba(139, 92, 246, 0.2);
 }
 
 .chip-emerald {
