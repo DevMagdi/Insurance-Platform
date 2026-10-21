@@ -29,6 +29,7 @@ from app.api import (
     auth,
     catalog,
     corporate,
+    corporate_admin,
     customer,
     exports,
     integration_webhooks,
@@ -232,6 +233,7 @@ app.add_middleware(RequestContextMiddleware)
 app.include_router(auth.router)
 app.include_router(customer.router)
 app.include_router(corporate.router)
+app.include_router(corporate_admin.router)
 app.include_router(staff.router)
 app.include_router(workflow.router)
 app.include_router(analytics.router)

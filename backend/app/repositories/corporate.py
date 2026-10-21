@@ -8,6 +8,7 @@ is re-evaluated by PostgreSQL even if an API-layer guard is ever missed.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import date
 from typing import Any
 from uuid import UUID
 
@@ -90,6 +91,41 @@ class CorporateRepository:
             text("SELECT app_security.corporate_members(:search)"), {"search": search}
         )
         return list(result) if isinstance(result, list) else []
+
+    async def archive(
+        self,
+        db: AsyncSession,
+        *,
+        search: str | None,
+        status: str | None,
+        source: str | None,
+        date_from: date | None,
+        date_to: date | None,
+        limit: int,
+        offset: int,
+    ) -> dict[str, Any]:
+        result = await db.scalar(
+            text(
+                "SELECT app_security.corporate_request_archive("
+                ":search, :status, :source, :date_from, :date_to, :limit, :offset)"
+            ),
+            {
+                "search": search,
+                "status": status,
+                "source": source,
+                "date_from": date_from,
+                "date_to": date_to,
+                "limit": limit,
+                "offset": offset,
+            },
+        )
+        return result if isinstance(result, dict) else {}
+
+    async def timeline(self, db: AsyncSession, request_id: UUID) -> dict[str, Any] | None:
+        result = await db.scalar(
+            text("SELECT app_security.corporate_request_timeline(:id)"), {"id": request_id}
+        )
+        return result if isinstance(result, dict) else None
 
     async def directory(self, db: AsyncSession) -> list[dict[str, Any]]:
         result = await db.scalar(text("SELECT app_security.corporate_directory()"))

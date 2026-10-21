@@ -13,6 +13,7 @@ RLS policies restrict each query to that one client.
 
 from __future__ import annotations
 
+from datetime import date
 from typing import Any
 from uuid import UUID
 
@@ -77,6 +78,46 @@ async def corporate_members(
 ) -> dict[str, Any]:
     """The company's employees and their requests, searchable by name."""
     return await service.members(ctx.db, search)
+
+
+@router.get("/archive")
+async def corporate_archive(
+    search: str | None = Query(default=None, max_length=120),
+    status: str | None = Query(default=None, max_length=40),
+    source: str | None = Query(default=None, max_length=40),
+    date_from: date | None = Query(default=None),
+    date_to: date | None = Query(default=None),
+    limit: int = Query(default=25, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+    ctx: RequestContext = Depends(require_corporate),
+    service: CorporateService = Depends(_service),
+) -> dict[str, Any]:
+    """The company's whole request history, filtered and paged.
+
+    One search box covers ticket number, subject, employee name, mobile,
+    policy and card number, because that is how someone actually looks for a
+    request they half-remember.
+    """
+    return await service.archive(
+        ctx.db,
+        search=search,
+        status=status,
+        source=source,
+        date_from=date_from,
+        date_to=date_to,
+        limit=limit,
+        offset=offset,
+    )
+
+
+@router.get("/archive/{request_id}")
+async def corporate_archive_detail(
+    request_id: UUID,
+    ctx: RequestContext = Depends(require_corporate),
+    service: CorporateService = Depends(_service),
+) -> dict[str, Any]:
+    """One archived request: its messages, attachments, calls and events."""
+    return await service.timeline(ctx.db, request_id)
 
 
 @router.get("/documents")

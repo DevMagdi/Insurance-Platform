@@ -27,6 +27,8 @@ import hashlib
 import re
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
+from email.header import decode_header
+from email.utils import parseaddr
 from typing import Any
 from uuid import UUID
 
@@ -121,6 +123,7 @@ _NAME_STOPS = tuple(
         "with",
     ]
 )
+_EMAIL_IN_HEADER_RE = re.compile(r"[^\s<>,;\"]+@[^\s<>,;\"]+\.[A-Za-z]{2,}")
 _NAME_RE = re.compile(
     r"(?:اسمي|إسمي|انا|أنا|معاك|معك|my name is|i am|i'm|this is)\s+((?:[^\W\d_]+[ \t]*){1,5})",
     re.IGNORECASE | re.UNICODE,
@@ -180,6 +183,43 @@ def extract_name(text_value: str, fallback: str | None = None) -> str | None:
         if len(cleaned) >= 2:
             return cleaned
     return None
+
+
+def split_from_header(value: Any) -> tuple[str | None, str]:
+    """Split an e-mail ``From`` header into its display name and address.
+
+    ``"سعاد فؤاد" <soad@acme.test>`` carries the sender's real name, which is
+    very often the only name the brokerage will ever learn for an e-mail
+    request — without it the request is filed under the placeholder the
+    database generates from the row counter.
+
+    Returns ``(None, "")`` for anything that is not a usable address, which
+    the caller treats as "not an inbound message".
+    """
+    raw = value if isinstance(value, str) else ""
+    name, address = parseaddr(raw.strip())
+    if "@" not in address:
+        # parseaddr gives up on headers like `a@b.test <a@b.test>`, where the
+        # display name is itself an unquoted address. Senders really do that,
+        # and dropping the mail over it would lose a customer's request.
+        fallback = _EMAIL_IN_HEADER_RE.search(raw)
+        if fallback is None:
+            return None, ""
+        name, address = "", fallback.group(0)
+    decoded: list[str] = []
+    for chunk, charset in decode_header(name):
+        if isinstance(chunk, bytes):
+            try:
+                decoded.append(chunk.decode(charset or "utf-8", errors="replace"))
+            except LookupError:
+                decoded.append(chunk.decode("utf-8", errors="replace"))
+        else:
+            decoded.append(chunk)
+    display = " ".join("".join(decoded).split())[:160].strip("\"' ")
+    # A display name that is just the address again tells us nothing.
+    if display.casefold() == address.casefold():
+        display = ""
+    return (display or None), address[:254]
 
 
 def derive_subject(body: str, intake_source: str) -> str:

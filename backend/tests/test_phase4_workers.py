@@ -183,9 +183,16 @@ def test_ai_result_minimization_bounds_nested_untrusted_values() -> None:
     assert _minimize_ai_value(object()).__class__ is str
 
 
-async def test_imap_poll_queues_only_ticket_matched_mail_and_acknowledges_messages(
+async def test_imap_poll_queues_mail_with_or_without_a_ticket_and_skips_only_junk(
     monkeypatch: pytest.MonkeyPatch, cipher: SecretCipher
 ) -> None:
+    """A customer who writes in without quoting a ticket still gets a request.
+
+    This used to drop every ticket-less mail on the floor: no ticket meant
+    mark-as-seen and discard, so the message was gone from the mailbox and
+    absent from the platform. Only mail with no usable sender, or no content
+    at all, may be skipped now.
+    """
     company_id = uuid4()
     config = {"host": "imap.example.test", "username": "support", "password": "private"}
     config_ciphertext = cipher.encrypt_json(config, associated_data=config_aad(company_id, "imap"))
@@ -215,11 +222,17 @@ async def test_imap_poll_queues_only_ticket_matched_mail_and_acknowledges_messag
             assert limit == 20
             return [
                 IncomingEmail(
-                    "1", "message-1", "customer@example.test", "Re: CMP-2026-000003", "Please help"
+                    "1", "message-1", "customer@example.test", "Re: REQ-2026-000003", "Please help"
                 ),
                 IncomingEmail(
-                    "2", "message-2", "customer@example.test", "General question", "No ticket"
+                    "2",
+                    "message-2",
+                    '"سعاد فؤاد" <soad@example.test>',
+                    "General question",
+                    "No ticket",
                 ),
+                # No sender to reply to and nothing to act on: this one is junk.
+                IncomingEmail("3", "message-3", "", "", ""),
             ]
 
         async def mark_seen(self, sequence_id: str) -> None:
@@ -235,14 +248,23 @@ async def test_imap_poll_queues_only_ticket_matched_mail_and_acknowledges_messag
             "integration_idempotency_key": b"i" * 32,
         }
     )
-    assert result == "queued 1 inbound email message(s)"
-    assert mailbox.marked == ["1", "2"]
-    assert len(queued) == 1
-    assert queued[0]["kind"] == "inbound_email"
-    assert queued[0]["provider"] == "imap"
-    payload = cipher.decrypt_json(queued[0]["cipher"], associated_data=job_aad(queued[0]["idem"]))
-    assert payload["ticket_no"] == "CMP-2026-000003"
-    assert calls == 2
+    assert result == "queued 2 inbound email message(s)"
+    # Every message is acknowledged so the mailbox does not re-deliver it.
+    assert mailbox.marked == ["1", "2", "3"]
+    assert len(queued) == 2
+    assert {row["kind"] for row in queued} == {"inbound_email"}
+    assert {row["provider"] for row in queued} == {"imap"}
+
+    first = cipher.decrypt_json(queued[0]["cipher"], associated_data=job_aad(queued[0]["idem"]))
+    assert first["ticket_no"] == "REQ-2026-000003"
+
+    second = cipher.decrypt_json(queued[1]["cipher"], associated_data=job_aad(queued[1]["idem"]))
+    assert second["ticket_no"] is None
+    assert second["sender"] == "soad@example.test"
+    # The display name is carried through so the new request is not anonymous.
+    assert second["sender_name"] == "سعاد فؤاد"
+    assert second["subject"] == "General question"
+    assert calls == 3
 
 
 async def test_worker_empty_queue_reports_zero_jobs(monkeypatch: pytest.MonkeyPatch) -> None:

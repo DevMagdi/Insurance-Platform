@@ -22,6 +22,7 @@ from arq.cron import CronJob
 from pydantic import Field
 from pydantic_settings import BaseSettings
 from sqlalchemy import text
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
 
 from app.db import make_worker_engine
@@ -39,6 +40,7 @@ from app.services.intake import (
     InboundEvent,
     InboundMedia,
     RequestIntakeService,
+    split_from_header,
 )
 from app.services.integration_providers import (
     EMAIL_PROVIDER_CLASSES,
@@ -96,6 +98,11 @@ class WorkerConfig(BaseSettings):
     log_json: bool = Field(default=True, validation_alias="LOG_JSON")
     retention_session_days: int = Field(default=30, validation_alias="RETENTION_SESSION_DAYS")
     retention_outbox_days: int = Field(default=180, validation_alias="RETENTION_OUTBOX_DAYS")
+    # How far ahead the brokerage wants to hear about a contract renewal,
+    # and how long a request may sit answered-and-ignored before it closes
+    # itself. Zero disables auto-closing entirely.
+    renewal_reminder_days: int = Field(default=30, validation_alias="RENEWAL_REMINDER_DAYS")
+    auto_close_quiet_days: int = Field(default=14, validation_alias="AUTO_CLOSE_QUIET_DAYS")
     redis_url: str = "redis://redis:6379/0"
     smtp_host: str | None = None
     smtp_port: int = 587
@@ -380,6 +387,112 @@ async def _process_inbound_message(
     )
 
 
+async def _process_inbound_call(
+    ctx: dict[str, Any],
+    row: Any,
+    payload: dict[str, Any],
+    cipher: SecretCipher,
+    *,
+    job_id: UUID,
+) -> None:
+    """Turn a telephone call into a request, with its recording attached.
+
+    Somebody ringing the brokerage is usually opening something new rather
+    than quoting a REQ- number down the phone, so the call goes through the
+    same intake service as WhatsApp and e-mail: matched to a customer by the
+    number they called from, continued if they already have something open,
+    opened fresh otherwise.
+
+    The recording is only kept when the caller consented — the database
+    refuses it otherwise — and it is encrypted before it ever reaches a
+    column.
+    """
+    caller = str(payload.get("sender") or payload.get("caller") or "")[:32]
+    transcript_text = str(payload.get("body") or payload.get("text") or "")[:8000]
+    event = InboundEvent(
+        channel="phone",
+        external_event_id=str(payload.get("external_message_id") or job_id)[:256],
+        sender=caller,
+        body=transcript_text,
+        sender_name=(str(payload.get("sender_name")) if payload.get("sender_name") else None),
+        company_id=row.company_id,
+    )
+    intake = RequestIntakeService(ctx["blobs"])
+    engine: AsyncEngine = ctx["engine"]
+    async with engine.begin() as connection:
+        await connection.execute(text("SELECT set_config('app.scope','worker',false)"))
+        session = AsyncSession(bind=connection, expire_on_commit=False)
+        outcome = await intake.ingest(session, event)
+
+    if outcome.complaint_id is None or outcome.complaint_created_at is None:
+        logger.warning(
+            "call.intake.unmatched",
+            extra={"event": "call.intake.unmatched", "error_code": outcome.error_code},
+        )
+        await _complete_integration_job(ctx, row, state="sent")
+        return
+
+    provider_call_id = str(payload.get("provider_call_id") or event.external_event_id)[:256]
+    call_id = uuid5(
+        NAMESPACE_URL,
+        f"insurance-platform:inbound-call:{row.company_id}:{provider_call_id}",
+    )
+    consent = payload.get("consent_confirmed") is True
+    transcript = (
+        cipher.encrypt(
+            minimize_pii(transcript_text, max_chars=8000).encode("utf-8"),
+            associated_data=call_transcript_aad(call_id),
+        )
+        if transcript_text
+        else None
+    )
+    recording: bytes | None = None
+    raw_recording = payload.get("recording_b64")
+    # Without consent the recording is not merely unstored, it is never
+    # decoded: the database rejects it and keeping it in memory serves
+    # nothing.
+    if consent and isinstance(raw_recording, str) and len(raw_recording) <= 40_000_000:
+        try:
+            decoded = base64.b64decode(raw_recording)
+        except (ValueError, TypeError):
+            decoded = None
+        if decoded:
+            try:
+                recording = _encrypt_call_recording(ctx, call_id, decoded)
+            except IntegrationProviderError as exc:
+                logger.warning(
+                    "Inbound call recording was not stored call_id=%s error=%s", call_id, exc.code
+                )
+    await _worker_query(
+        ctx["engine"],
+        "SELECT app_security.record_request_call(:complaint, :created,"
+        " CAST('inbound' AS public.message_direction), :provider, :provider_call_id,"
+        " :recording, :transcript, :outcome, :consent, :duration)",
+        {
+            "complaint": outcome.complaint_id,
+            "created": outcome.complaint_created_at,
+            "provider": row.provider,
+            "provider_call_id": provider_call_id,
+            "recording": recording,
+            "transcript": transcript,
+            "outcome": str(payload.get("outcome") or "completed")[:80],
+            "consent": consent,
+            "duration": payload.get("duration_seconds"),
+        },
+    )
+    logger.info(
+        "call.intake",
+        extra={
+            "event": "call.intake",
+            "state": outcome.state,
+            "ticket_no": outcome.ticket_no,
+            "recorded": recording is not None,
+            "consent": consent,
+        },
+    )
+    await _complete_integration_job(ctx, row, state="sent")
+
+
 async def _complete_integration_job(
     ctx: dict[str, Any],
     row: Any,
@@ -636,6 +749,11 @@ async def _process_integration_job(ctx: dict[str, Any], row: Any) -> None:
             # WhatsApp media, and records the outcome either way.
             await _process_inbound_message(ctx, row, kind, payload, config, cipher, job_id=job_id)
             return
+        if kind == "inbound_call":
+            # A call with no ticket number quoted: intake decides whether it
+            # continues an open request or opens a new one.
+            await _process_inbound_call(ctx, row, payload, cipher, job_id=job_id)
+            return
         if kind in {"email_status", "whatsapp_status", "voice_status"}:
             await _worker_query(
                 ctx["engine"],
@@ -781,15 +899,30 @@ async def poll_imap_inboxes(ctx: dict[str, Any]) -> str:
             # A prefix-specific copy here silently drops the other's replies —
             # and marks them seen, so the message is lost for good.
             ticket_no_match = TICKET_RE.search(f"{message.subject}\n{message.body}")
-            if not ticket_no_match or not message.body.strip():
+            sender_name, sender_address = split_from_header(message.sender)
+            # Matching the e-mail webhook: a mail no longer has to quote a
+            # ticket number to be accepted — intake matches the sender and
+            # opens a request when there is nothing to continue. Only a mail
+            # we cannot reply to or act on is marked seen and skipped, and
+            # that decision is logged rather than silent.
+            if not sender_address or not (message.body.strip() or message.subject.strip()):
+                logger.info(
+                    "mailbox.skipped",
+                    extra={
+                        "event": "mailbox.skipped",
+                        "reason": "no_sender" if not sender_address else "empty",
+                        "company_id": str(company_id),
+                    },
+                )
                 with suppress(IntegrationProviderError):
                     await mailbox.mark_seen(message.sequence_id)
                 continue
-            ticket_no = ticket_no_match.group(0).upper()
             payload = {
-                "ticket_no": ticket_no,
+                "ticket_no": ticket_no_match.group(0).upper() if ticket_no_match else None,
                 "external_message_id": message.external_message_id,
-                "sender": message.sender,
+                "sender": sender_address,
+                "sender_name": sender_name,
+                "subject": message.subject[:300] or None,
                 "body": message.body[:5000],
             }
             raw_payload = json.dumps(
@@ -897,6 +1030,131 @@ async def check_sla(ctx: dict[str, Any]) -> str:
         {"limit": 20},
     )
     return f"breached {rows[0].processed} SLA deadline(s)"
+
+
+async def acknowledge_requests(ctx: dict[str, Any]) -> str:
+    """Send every new inbound request its ticket number, unprompted.
+
+    A customer who writes on WhatsApp gets a reply with REQ-… within the
+    minute, without anyone opening the console. ``acknowledge_request`` claims
+    the ledger slot and enqueues the notice in one transaction, so a crash
+    between the two is not possible and a second worker polling the same row
+    simply gets false back.
+    """
+    engine: AsyncEngine = ctx["engine"]
+    pending = await _worker_query(
+        engine,
+        "SELECT * FROM app_security.pending_request_acknowledgements(:limit, :max_age)",
+        {"limit": 50, "max_age": 24},
+    )
+    sent = 0
+    for row in pending:
+        try:
+            acknowledged = await _worker_query(
+                engine,
+                "SELECT app_security.acknowledge_request(:id, :created, :channel) AS ok",
+                {
+                    "id": row.complaint_id,
+                    "created": row.complaint_created_at,
+                    "channel": row.channel,
+                },
+            )
+        except SQLAlchemyError:
+            # A request that cannot be acknowledged must not stall the batch,
+            # and must not be retried forever either.
+            logger.warning(
+                "request.acknowledge.failed",
+                extra={"event": "request.acknowledge.failed", "ticket_no": row.ticket_no},
+            )
+            with suppress(SQLAlchemyError):
+                await _worker_query(
+                    engine,
+                    "SELECT app_security.mark_request_acknowledged("
+                    ":id, :created, :channel, 'failed', CAST(:detail AS jsonb))",
+                    {
+                        "id": row.complaint_id,
+                        "created": row.complaint_created_at,
+                        "channel": row.channel,
+                        "detail": json.dumps({"reason": "enqueue_failed"}),
+                    },
+                )
+            continue
+        if acknowledged and acknowledged[0].ok:
+            sent += 1
+    logger.info(
+        "request.acknowledged",
+        extra={"event": "request.acknowledged", "sent": sent, "pending": len(pending)},
+    )
+    return f"acknowledged {sent} new request(s)"
+
+
+async def remind_contract_renewals(ctx: dict[str, Any]) -> str:
+    """Raise a staff notice before a corporate contract reaches its renewal date.
+
+    The reminder is keyed on the renewal date, so moving the date forward when
+    the contract is renewed re-arms it for next year, while the cron running
+    daily does not re-send it.
+    """
+    engine: AsyncEngine = ctx["engine"]
+    config: WorkerConfig | None = ctx.get("config")
+    horizon = config.renewal_reminder_days if config else 30
+    due = await _worker_query(
+        engine,
+        "SELECT * FROM app_security.pending_contract_renewals(:days, :limit)",
+        {"days": horizon, "limit": 100},
+    )
+    notified = 0
+    for row in due:
+        detail = {
+            "client_name": row.client_name,
+            "contract_no": row.contract_no,
+            "renews_on": str(row.renews_on),
+            "days_to_renewal": row.days_to_renewal,
+            "contract_value": str(row.contract_value),
+            "currency": row.currency,
+            "payment_frequency": row.payment_frequency,
+        }
+        claimed = await _worker_query(
+            engine,
+            "SELECT app_security.mark_contract_renewal_notified("
+            ":id, :renews_on, 'done', CAST(:detail AS jsonb)) AS ok",
+            {"id": row.contract_id, "renews_on": row.renews_on, "detail": json.dumps(detail)},
+        )
+        if claimed and claimed[0].ok:
+            notified += 1
+            logger.info(
+                "corporate.renewal_due",
+                extra={"event": "corporate.renewal_due", **detail},
+            )
+    return f"flagged {notified} contract renewal(s) within {horizon} day(s)"
+
+
+async def close_quiet_requests(ctx: dict[str, Any]) -> str:
+    """Resolve requests the brokerage answered and the customer left alone.
+
+    Only a *public* outbound message starts the quiet clock — an internal note
+    is the brokerage talking to itself — and any inbound message resets it.
+    """
+    engine: AsyncEngine = ctx["engine"]
+    config: WorkerConfig | None = ctx.get("config")
+    quiet_days = config.auto_close_quiet_days if config else 14
+    if quiet_days <= 0:
+        return "auto-close is disabled"
+    candidates = await _worker_query(
+        engine,
+        "SELECT * FROM app_security.pending_request_auto_close(:days, :limit)",
+        {"days": quiet_days, "limit": 100},
+    )
+    closed = 0
+    for row in candidates:
+        result = await _worker_query(
+            engine,
+            "SELECT app_security.auto_close_request(:id, :created, :days) AS ok",
+            {"id": row.complaint_id, "created": row.complaint_created_at, "days": quiet_days},
+        )
+        if result and result[0].ok:
+            closed += 1
+    return f"auto-closed {closed} request(s) quiet for {quiet_days} day(s)"
 
 
 async def deliver_insurer(ctx: dict[str, Any]) -> str:
@@ -1173,6 +1431,7 @@ class WorkerSettings:
     cron_jobs: ClassVar[list[CronJob]] = [
         cron(deliver_notices, second=0, run_at_startup=True),
         cron(assign_tickets, second=5, run_at_startup=True),
+        cron(acknowledge_requests, second=8, run_at_startup=True),
         cron(scan_pending, second=15, run_at_startup=True),
         cron(warn_sla, second=18, run_at_startup=True),
         cron(check_sla, second=20, run_at_startup=True),
@@ -1185,6 +1444,8 @@ class WorkerSettings:
         cron(scan_duplicates, minute={5, 35}, second=15, run_at_startup=True),
         cron(refresh_analytics_rollup, minute={2, 32}, second=20, run_at_startup=True),
         cron(publish_queue_metrics, second=40, run_at_startup=True),
+        cron(close_quiet_requests, hour={2}, minute={11}, second=0),
+        cron(remind_contract_renewals, hour={6}, minute={0}, second=0),
         cron(apply_retention, hour={3}, minute={17}, second=0),
     ]
     on_startup = startup

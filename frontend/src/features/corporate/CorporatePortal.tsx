@@ -8,6 +8,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ApiError } from '../../api';
 import { navigate } from '../../lib/router';
+import { RequestArchive } from './RequestArchive';
 import {
   CONTRACT_STATUS_LABEL,
   INTAKE_SOURCE_LABEL,
@@ -22,7 +23,7 @@ import {
   type CorporateOverview,
 } from '../../lib/corporate';
 
-type Tab = 'overview' | 'members' | 'documents';
+type Tab = 'overview' | 'members' | 'archive' | 'documents';
 
 function statusLabel(status: string): string {
   return REQUEST_STATUS_LABEL[status] ?? status;
@@ -408,6 +409,9 @@ export function CorporatePortal() {
         <button type="button" className={tab === 'members' ? 'is-active' : ''} onClick={() => setTab('members')}>
           طلبات الموظفين
         </button>
+        <button type="button" className={tab === 'archive' ? 'is-active' : ''} onClick={() => setTab('archive')}>
+          أرشيف الطلبات
+        </button>
         <button type="button" className={tab === 'documents' ? 'is-active' : ''} onClick={() => setTab('documents')}>
           الوثائق والمستندات
         </button>
@@ -415,6 +419,7 @@ export function CorporatePortal() {
 
       {tab === 'overview' && <OverviewTab data={overview} />}
       {tab === 'members' && <MembersTab />}
+      {tab === 'archive' && <RequestArchive />}
       {tab === 'documents' && <DocumentsTab overview={overview} />}
     </div>
   );

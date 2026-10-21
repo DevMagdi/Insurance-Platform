@@ -37,6 +37,7 @@ from app.models.identity import Customer, InsuranceCompany, Policy
 from app.models.operations import (
     ApiKey,
     AssignmentRule,
+    AutomationRun,
     CannedReply,
     ExportJob,
     ExportJobRow,
@@ -73,6 +74,7 @@ __all__ = [
     "AttachmentUpload",
     "AuditLog",
     "AuthSession",
+    "AutomationRun",
     "Base",
     "CallLog",
     "CannedReply",

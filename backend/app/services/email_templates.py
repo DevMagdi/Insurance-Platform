@@ -32,22 +32,20 @@ def render_customer_notice(
         locale = "en"
     if locale == "ar":
         translated = _STATUS_AR.get(status, status)
-        subject = (
-            f"تم استلام شكواك {ticket_no}" if kind == "created" else f"تحديث الشكوى {ticket_no}"
-        )
+        subject = f"تم استلام طلبك {ticket_no}" if kind == "created" else f"تحديث الطلب {ticket_no}"
         body = (
-            f"تم تحديث الشكوى رقم {ticket_no}. الحالة الحالية: {translated}.\n"
-            "يمكنك متابعة الشكوى من بوابة العملاء."
+            f"تم تحديث الطلب رقم {ticket_no}. الحالة الحالية: {translated}.\n"
+            "يمكنك متابعة الطلب من بوابة العملاء."
         )
         return subject, body
     translated = _STATUS_EN.get(status, status)
-    subject = f"Complaint update — {ticket_no}"
+    subject = f"Request update — {ticket_no}"
     body = (
-        f"Your complaint {ticket_no} has been updated. Current status: {translated}.\n"
-        "You can follow the complaint from the customer portal."
+        f"Your request {ticket_no} has been updated. Current status: {translated}.\n"
+        "You can follow the request from the customer portal."
     )
     if kind == "created":
-        subject = f"We received your complaint — {ticket_no}"
+        subject = f"We received your request — {ticket_no}"
     return subject, body
 
 
@@ -56,13 +54,13 @@ def render_customer_reply(ticket_no: str, body: str, locale: str = "en") -> tupl
     safe_body = body.strip()[:5000]
     if locale == "ar":
         return (
-            f"رد جديد على الشكوى {ticket_no}",
-            f"ردنا على الشكوى رقم {ticket_no}:\n\n{safe_body}\n\nيمكنك الرد من بوابة العملاء.",
+            f"رد جديد على الطلب {ticket_no}",
+            f"ردنا على الطلب رقم {ticket_no}:\n\n{safe_body}\n\nيمكنك الرد من بوابة العملاء.",
         )
     return (
-        f"Response to complaint {ticket_no}",
+        f"Response to request {ticket_no}",
         (
-            f"Our response to complaint {ticket_no}:\n\n{safe_body}\n\n"
+            f"Our response to request {ticket_no}:\n\n{safe_body}\n\n"
             "You can reply from the customer portal."
         ),
     )
