@@ -347,7 +347,7 @@ async def test_email_and_whatsapp_services_queue_scoped_messages_and_hmac_webhoo
     reply_payload = cipher.decrypt_json(
         reply_job["payload_ciphertext"], associated_data=integrations.job_aad(reply_digest)
     )
-    assert reply_payload["subject"].startswith("Response to complaint")
+    assert reply_payload["subject"].startswith("Response to request")
 
     customer = SimpleNamespace(mobile="+201012345678", whatsapp_available=True)
     db.execute.return_value = Rows([customer])

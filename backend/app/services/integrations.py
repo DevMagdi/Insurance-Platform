@@ -46,7 +46,7 @@ from app.repositories.complaints import ComplaintRepository
 from app.repositories.integrations import IntegrationRepository
 from app.security.integration_crypto import SecretCipher
 from app.services.email_templates import render_customer_reply, render_insurer_forward
-from app.services.intake import TICKET_RE
+from app.services.intake import TICKET_RE, split_from_header
 from app.services.integration_providers import (
     PROVIDER_REQUIRED_FIELDS as _PROVIDER_REQUIRED_FIELDS,
 )
@@ -64,6 +64,17 @@ from app.services.providers import ProviderUnavailable
 # and the historical `CMP-` stays valid, so a second copy of this regex that
 # knows only one prefix silently drops the other's replies.
 _TICKET_RE = TICKET_RE
+
+
+def _positive_int(value: Any) -> int | None:
+    """Coerce a provider-supplied duration to a sane non-negative integer."""
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError):
+        return None
+    return parsed if 0 <= parsed <= 86_400 else None
+
+
 _NATIONAL_ID_RE = re.compile(r"(?<!\d)\d{14}(?!\d)")
 _EGYPT_MOBILE_RE = re.compile(r"(?<!\w)(?:\+?20|0)?1[0125]\d{8}(?!\d)")
 _EMAIL_RE = re.compile(r"\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b", re.IGNORECASE)
@@ -1605,16 +1616,26 @@ class IntegrationService:
                 ticket_no = str(
                     candidate.get("ticket_no") or extract_ticket_no(subject, body) or ""
                 ).upper()
-                if event_id and ticket_no and body:
+                attachments = candidate.get("attachments")
+                has_attachments = isinstance(attachments, list) and bool(attachments)
+                sender_name, sender_address = split_from_header(candidate.get("from"))
+                # Matching WhatsApp: an e-mail no longer has to quote a ticket
+                # number to be accepted. Intake matches the sender and opens a
+                # request when there is nothing to continue. A mail with
+                # neither text nor an attachment is still nothing to act on.
+                if event_id and sender_address and (body or subject or has_attachments):
                     email_events.append(
                         (
                             "inbound_email",
                             event_id,
                             {
-                                "ticket_no": ticket_no,
+                                "ticket_no": ticket_no or None,
                                 "external_message_id": event_id,
-                                "sender": str(candidate.get("from") or "")[:254],
+                                "sender": sender_address,
+                                "sender_name": sender_name,
+                                "subject": subject or None,
                                 "body": body,
+                                "attachments": attachments if has_attachments else [],
                             },
                         )
                     )
@@ -1779,29 +1800,59 @@ class IntegrationService:
                     )
                 ]
             event_id = str(document.get("event_id") or provider_call_id)[:256]
-            ticket_no = str(
-                document.get("ticket_no")
-                or extract_ticket_no(
-                    str(document.get("text") or document.get("SpeechResult") or "")
-                )
-                or ""
-            ).upper()
+            # Providers disagree on where the speech-to-text lands: Twilio
+            # sends SpeechResult, others send text or transcript. Reading only
+            # some of them means a caller who *did* quote their ticket number
+            # gets a second, duplicate request opened instead of joining it.
+            spoken = " ".join(
+                str(document.get(key) or "") for key in ("text", "SpeechResult", "transcript")
+            )
+            ticket_no = str(document.get("ticket_no") or extract_ticket_no(spoken) or "").upper()
             caller_value = (
                 document.get("caller") or document.get("from") or document.get("From") or ""
             )
             if isinstance(caller_value, dict):
                 caller_value = caller_value.get("number", "")
-            if not event_id or not ticket_no:
-                raise HTTPException(
-                    status_code=422, detail="Voice webhook requires event ID and ticket number"
-                )
+            caller = str(caller_value)[:32]
+            if not event_id:
+                raise HTTPException(status_code=422, detail="Voice webhook requires an event ID")
+            transcript = str(document.get("transcript") or "")[:8000]
+            if not ticket_no:
+                # Revision 036 made the telephone a first-class intake channel:
+                # most people who ring the brokerage are opening something new,
+                # not quoting a REQ- number down the phone. Without a ticket we
+                # route the call through the same intake service WhatsApp and
+                # e-mail use, which matches the caller by mobile and opens a
+                # request when there is nothing to continue.
+                if not caller:
+                    raise HTTPException(
+                        status_code=422,
+                        detail="Voice webhook requires a ticket number or a caller number",
+                    )
+                return [
+                    (
+                        "inbound_call",
+                        event_id,
+                        {
+                            "provider_call_id": provider_call_id or event_id,
+                            "external_message_id": event_id,
+                            "sender": caller,
+                            "sender_name": str(document.get("caller_name") or "")[:120] or None,
+                            "body": transcript,
+                            "consent_confirmed": document.get("consent_confirmed") is True,
+                            "duration_seconds": _positive_int(document.get("duration_seconds")),
+                            "outcome": str(document.get("outcome") or "completed")[:80],
+                            "recording_b64": document.get("recording_b64"),
+                        },
+                    )
+                ]
             voice_payload: dict[str, Any] = {
                 "provider_call_id": provider_call_id or event_id,
                 "ticket_no": ticket_no,
                 "consent_confirmed": document.get("consent_confirmed") is True,
                 "request_human": document.get("request_human") is True,
-                "caller": str(caller_value)[:32],
-                "text": str(document.get("transcript") or "")[:8000],
+                "caller": caller,
+                "text": transcript,
             }
             return [("inbound_voice", event_id, voice_payload)]
         raise HTTPException(status_code=422, detail="Unsupported inbound provider")

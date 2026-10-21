@@ -9,6 +9,7 @@ nothing about the brokerage's internal workflow, is reachable from here.
 
 from __future__ import annotations
 
+from datetime import date
 from typing import Any
 from uuid import UUID
 
@@ -128,6 +129,47 @@ class CorporateService:
             "mime_type": getattr(row, "mime_type", None),
             "content": bytes(row.content),
         }
+
+    async def archive(
+        self,
+        db: AsyncSession,
+        *,
+        search: str | None = None,
+        status: str | None = None,
+        source: str | None = None,
+        date_from: date | None = None,
+        date_to: date | None = None,
+        limit: int = 25,
+        offset: int = 0,
+    ) -> dict[str, Any]:
+        """Every request this company ever raised, filtered and paged.
+
+        The database returns the page, the total and the counters from one
+        snapshot so they cannot disagree while intake is running.
+        """
+        if date_from is not None and date_to is not None and date_from > date_to:
+            raise HTTPException(status_code=422, detail="The date range is reversed")
+        return await self.repository.archive(
+            db,
+            search=search,
+            status=status,
+            source=source,
+            date_from=date_from,
+            date_to=date_to,
+            limit=limit,
+            offset=offset,
+        )
+
+    async def timeline(self, db: AsyncSession, request_id: UUID) -> dict[str, Any]:
+        """One request in full: messages, attachments, calls and status events.
+
+        A request belonging to another client is indistinguishable from one
+        that does not exist, so the portal cannot be used to probe for ids.
+        """
+        data = await self.repository.timeline(db, request_id)
+        if data is None:
+            raise HTTPException(status_code=404, detail="Request not found")
+        return data
 
     async def directory(self, db: AsyncSession) -> dict[str, Any]:
         rows = await self.repository.directory(db)

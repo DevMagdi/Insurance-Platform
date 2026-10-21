@@ -102,6 +102,119 @@ export interface CorporateDocumentList {
   total: number;
 }
 
+/** One row of the archive: a request plus what is attached to it. */
+export interface ArchiveRequest {
+  id: string;
+  ticket_no: string;
+  subject: string | null;
+  status: string;
+  priority: string | null;
+  channel: string | null;
+  intake_source: string | null;
+  policy_number: string | null;
+  card_number: string | null;
+  employee_id: string | null;
+  employee_name: string | null;
+  employee_code: string | null;
+  employee_mobile: string | null;
+  messages_count: number;
+  attachments_count: number;
+  calls_count: number;
+  created_at: string;
+  updated_at: string | null;
+  resolved_at: string | null;
+}
+
+export interface ArchiveSummary {
+  by_status: Record<string, number>;
+  by_source: Record<string, number>;
+  open: number;
+  first_at: string | null;
+  last_at: string | null;
+}
+
+export interface ArchivePage {
+  items: ArchiveRequest[];
+  total: number;
+  summary: ArchiveSummary;
+  limit: number;
+  offset: number;
+}
+
+export interface ArchiveFilters {
+  search?: string;
+  status?: string;
+  source?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export interface TimelineMessage {
+  id: string;
+  direction: string;
+  channel: string | null;
+  created_at: string;
+  body: string | null;
+  delivery_status: string | null;
+}
+
+export interface TimelineAttachment {
+  id: string;
+  filename: string | null;
+  mime_type: string | null;
+  size_bytes: number | null;
+  scan_status: string | null;
+  created_at: string;
+}
+
+export interface TimelineCall {
+  id: string;
+  direction: string;
+  provider: string | null;
+  outcome: string | null;
+  status: string | null;
+  started_at: string | null;
+  ended_at: string | null;
+  duration_seconds: number | null;
+  recorded: boolean;
+  consented: boolean;
+}
+
+export interface TimelineEvent {
+  event_type: string;
+  occurred_at: string;
+  from_status: string | null;
+  to_status: string | null;
+}
+
+export interface RequestTimeline {
+  id: string;
+  ticket_no: string;
+  subject: string | null;
+  status: string;
+  priority: string | null;
+  channel: string | null;
+  intake_source: string | null;
+  policy_number: string | null;
+  card_number: string | null;
+  created_at: string;
+  updated_at: string | null;
+  resolved_at: string | null;
+  employee: {
+    id: string;
+    full_name: string;
+    mobile: string | null;
+    email: string | null;
+    employee_code: string | null;
+  } | null;
+  messages: TimelineMessage[];
+  attachments: TimelineAttachment[];
+  calls: TimelineCall[];
+  events: TimelineEvent[];
+}
+
 export interface CorporateLoginResult {
   next_step: 'authenticated' | 'change_password';
   full_name: string;
@@ -187,6 +300,26 @@ export const corporateApi = {
 
   documents: () => corporateRequest<CorporateDocumentList>('/api/corporate/documents'),
 
+  /**
+   * The whole request history, filtered and paged. Empty filters are dropped
+   * rather than sent blank, so the URL reads as what the user actually chose.
+   */
+  archive: (filters: ArchiveFilters = {}) => {
+    const query = new URLSearchParams();
+    const search = (filters.search ?? '').trim();
+    if (search) query.set('search', search);
+    if (filters.status) query.set('status', filters.status);
+    if (filters.source) query.set('source', filters.source);
+    if (filters.dateFrom) query.set('date_from', filters.dateFrom);
+    if (filters.dateTo) query.set('date_to', filters.dateTo);
+    query.set('limit', String(filters.limit ?? 25));
+    query.set('offset', String(filters.offset ?? 0));
+    return corporateRequest<ArchivePage>(`/api/corporate/archive?${query.toString()}`);
+  },
+
+  requestTimeline: (requestId: string) =>
+    corporateRequest<RequestTimeline>(`/api/corporate/archive/${requestId}`),
+
   documentUrl: (documentId: string) => `/api/corporate/documents/${documentId}`,
 };
 
@@ -252,3 +385,31 @@ export function renewalNotice(days: number | null): { text: string; tone: 'calm'
   if (days <= 30) return { text: `يُجدَّد خلال ${days} يوم`, tone: 'warn' };
   return { text: `يُجدَّد خلال ${days} يوم`, tone: 'calm' };
 }
+
+/** A call length reads as minutes and seconds, never as a raw count. */
+export function formatDuration(seconds: number | null): string {
+  if (seconds === null || Number.isNaN(seconds) || seconds < 0) return '—';
+  const minutes = Math.floor(seconds / 60);
+  const rest = seconds % 60;
+  if (minutes === 0) return `${formatNumber(rest)} ثانية`;
+  return `${formatNumber(minutes)}:${String(rest).padStart(2, '0')} دقيقة`;
+}
+
+/** Attachment sizes: the archive lists them before anyone downloads them. */
+export function formatBytes(size: number | null): string {
+  if (size === null || Number.isNaN(size) || size < 0) return '—';
+  if (size < 1024) return `${formatNumber(size)} بايت`;
+  if (size < 1024 * 1024) return `${formatNumber(Math.round(size / 1024))} ك.ب`;
+  return `${formatNumber(Math.round((size / (1024 * 1024)) * 10) / 10, 1)} م.ب`;
+}
+
+export const EVENT_TYPE_LABEL: Record<string, string> = {
+  created: 'تم إنشاء الطلب',
+  auto_acknowledged: 'تم إرسال إشعار الاستلام تلقائياً',
+  auto_closed: 'أُغلق تلقائياً لعدم وجود رد',
+  status_changed: 'تغيّرت الحالة',
+  assigned: 'تم التعيين',
+  reopened: 'أُعيد فتح الطلب',
+  inbound_voice_call: 'مكالمة هاتفية واردة',
+  resolved: 'تم الحل',
+};

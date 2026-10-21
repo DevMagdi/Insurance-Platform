@@ -319,6 +319,15 @@ erDiagram
       boolean id PK
       timestamptz last_success_at
     }
+    AUTOMATION_RUNS {
+      uuid id PK
+      text kind
+      uuid subject_id
+      text subject_key
+      text status
+      jsonb detail
+      timestamptz created_at
+    }
     CORPORATE_CLIENTS {
       uuid id PK
       text slug UK

@@ -1660,6 +1660,129 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+  /api/corporate/archive:
+    get:
+      tags:
+      - corporate
+      summary: Corporate Archive
+      description: 'The company''s whole request history, filtered and paged.
+
+
+        One search box covers ticket number, subject, employee name, mobile,
+
+        policy and card number, because that is how someone actually looks for a
+
+        request they half-remember.'
+      operationId: corporate_archive_api_corporate_archive_get
+      parameters:
+      - name: search
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            maxLength: 120
+          - type: 'null'
+          title: Search
+      - name: status
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            maxLength: 40
+          - type: 'null'
+          title: Status
+      - name: source
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            maxLength: 40
+          - type: 'null'
+          title: Source
+      - name: date_from
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: date
+          - type: 'null'
+          title: Date From
+      - name: date_to
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: date
+          - type: 'null'
+          title: Date To
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 100
+          minimum: 1
+          default: 25
+          title: Limit
+      - name: offset
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 0
+          default: 0
+          title: Offset
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Corporate Archive Api Corporate Archive Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/corporate/archive/{request_id}:
+    get:
+      tags:
+      - corporate
+      summary: Corporate Archive Detail
+      description: 'One archived request: its messages, attachments, calls and events.'
+      operationId: corporate_archive_detail_api_corporate_archive__request_id__get
+      parameters:
+      - name: request_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Request Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Corporate Archive Detail Api Corporate Archive  Request
+                  Id  Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
   /api/corporate/documents:
     get:
       tags:
@@ -1704,6 +1827,137 @@ paths:
           content:
             application/json:
               schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/staff/corporate:
+    get:
+      tags:
+      - corporate-admin
+      summary: List Corporate Clients
+      description: Every corporate client with its contracts and portal users.
+      operationId: list_corporate_clients_api_staff_corporate_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response List Corporate Clients Api Staff Corporate Get
+  /api/staff/corporate/clients:
+    put:
+      tags:
+      - corporate-admin
+      summary: Upsert Corporate Client
+      description: Register a company, or amend one already registered.
+      operationId: upsert_corporate_client_api_staff_corporate_clients_put
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CorporateClientUpsert'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response Upsert Corporate Client Api Staff Corporate Clients
+                  Put
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/staff/corporate/contracts:
+    put:
+      tags:
+      - corporate-admin
+      summary: Upsert Corporate Contract
+      description: Record or amend the contract a company signed with the brokerage.
+      operationId: upsert_corporate_contract_api_staff_corporate_contracts_put
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CorporateContractUpsert'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response Upsert Corporate Contract Api Staff Corporate Contracts
+                  Put
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/staff/corporate/users:
+    post:
+      tags:
+      - corporate-admin
+      summary: Create Corporate User
+      description: Issue the username and password a company signs in with.
+      operationId: create_corporate_user_api_staff_corporate_users_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CorporateUserCreate'
+        required: true
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response Create Corporate User Api Staff Corporate Users Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/staff/corporate/members:
+    post:
+      tags:
+      - corporate-admin
+      summary: Link Corporate Member
+      description: Attach an existing customer to a company as one of its employees.
+      operationId: link_corporate_member_api_staff_corporate_members_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CorporateMemberLink'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response Link Corporate Member Api Staff Corporate Members
+                  Post
         '422':
           description: Validation Error
           content:
@@ -9048,6 +9302,146 @@ components:
       - purpose
       - granted
       title: ConsentUpdate
+    ContractStatus:
+      type: string
+      enum:
+      - draft
+      - active
+      - suspended
+      - expired
+      - terminated
+      title: ContractStatus
+    CorporateClientUpsert:
+      properties:
+        id:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Id
+        slug:
+          type: string
+          maxLength: 50
+          minLength: 3
+          pattern: ^[a-z0-9][a-z0-9-]*[a-z0-9]$
+          title: Slug
+        name_ar:
+          type: string
+          maxLength: 160
+          minLength: 2
+          title: Name Ar
+        name_en:
+          type: string
+          maxLength: 160
+          minLength: 2
+          title: Name En
+        tax_id:
+          anyOf:
+          - type: string
+            maxLength: 40
+          - type: 'null'
+          title: Tax Id
+        contact_name:
+          anyOf:
+          - type: string
+            maxLength: 160
+          - type: 'null'
+          title: Contact Name
+        contact_email:
+          anyOf:
+          - type: string
+            maxLength: 254
+            pattern: ^[^@\s]+@[^@\s.]+(\.[^@\s.]+)+$
+          - type: 'null'
+          title: Contact Email
+        contact_mobile:
+          anyOf:
+          - type: string
+            maxLength: 20
+          - type: 'null'
+          title: Contact Mobile
+        address:
+          anyOf:
+          - type: string
+            maxLength: 400
+          - type: 'null'
+          title: Address
+        is_active:
+          type: boolean
+          title: Is Active
+          default: true
+      additionalProperties: false
+      type: object
+      required:
+      - slug
+      - name_ar
+      - name_en
+      title: CorporateClientUpsert
+    CorporateContractUpsert:
+      properties:
+        id:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Id
+        corporate_client_id:
+          type: string
+          format: uuid
+          title: Corporate Client Id
+        contract_no:
+          type: string
+          maxLength: 60
+          minLength: 3
+          title: Contract No
+        contract_value:
+          anyOf:
+          - type: number
+            maximum: 99999999999.99
+            minimum: 0.0
+          - type: string
+          title: Contract Value
+        currency:
+          type: string
+          pattern: ^[A-Za-z]{3}$
+          title: Currency
+          default: EGP
+        payment_frequency:
+          $ref: '#/components/schemas/PaymentFrequency'
+        starts_on:
+          type: string
+          format: date
+          title: Starts On
+        renews_on:
+          type: string
+          format: date
+          title: Renews On
+        status:
+          $ref: '#/components/schemas/ContractStatus'
+          default: active
+        headcount:
+          anyOf:
+          - type: integer
+            maximum: 1000000.0
+            minimum: 0.0
+          - type: 'null'
+          title: Headcount
+        notes:
+          anyOf:
+          - type: string
+            maxLength: 2000
+          - type: 'null'
+          title: Notes
+      additionalProperties: false
+      type: object
+      required:
+      - corporate_client_id
+      - contract_no
+      - contract_value
+      - payment_frequency
+      - starts_on
+      - renews_on
+      title: CorporateContractUpsert
     CorporateLoginRequest:
       properties:
         username:
@@ -9067,6 +9461,28 @@ components:
       - username
       - password
       title: CorporateLoginRequest
+    CorporateMemberLink:
+      properties:
+        customer_id:
+          type: string
+          format: uuid
+          title: Customer Id
+        corporate_client_id:
+          type: string
+          format: uuid
+          title: Corporate Client Id
+        employee_code:
+          anyOf:
+          - type: string
+            maxLength: 60
+          - type: 'null'
+          title: Employee Code
+      additionalProperties: false
+      type: object
+      required:
+      - customer_id
+      - corporate_client_id
+      title: CorporateMemberLink
     CorporatePasswordChange:
       properties:
         current_password:
@@ -9085,6 +9501,43 @@ components:
       - current_password
       - new_password
       title: CorporatePasswordChange
+    CorporateUserCreate:
+      properties:
+        corporate_client_id:
+          type: string
+          format: uuid
+          title: Corporate Client Id
+        username:
+          type: string
+          maxLength: 40
+          minLength: 3
+          pattern: ^[a-z0-9][a-z0-9._-]*[a-z0-9]$
+          title: Username
+        full_name:
+          type: string
+          maxLength: 160
+          minLength: 2
+          title: Full Name
+        email:
+          anyOf:
+          - type: string
+            maxLength: 254
+            pattern: ^[^@\s]+@[^@\s.]+(\.[^@\s.]+)+$
+          - type: 'null'
+          title: Email
+        password:
+          type: string
+          maxLength: 200
+          minLength: 12
+          title: Password
+      additionalProperties: false
+      type: object
+      required:
+      - corporate_client_id
+      - username
+      - full_name
+      - password
+      title: CorporateUserCreate
     CsatRequest:
       properties:
         score:
@@ -9478,6 +9931,15 @@ components:
       - team
       - all
       title: OwnershipLevel
+    PaymentFrequency:
+      type: string
+      enum:
+      - monthly
+      - quarterly
+      - semi_annual
+      - annual
+      title: PaymentFrequency
+      description: Billing cadence of a brokerage contract with a corporate client.
     PlatformBrandRequest:
       properties:
         platform_name:

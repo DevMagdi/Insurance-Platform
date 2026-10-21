@@ -263,3 +263,26 @@ class ExportJobRow(Base):
     )
     complaint_id: Mapped[UUID] = mapped_column(primary_key=True)
     complaint_created_at: Mapped[datetime]
+
+
+class AutomationRun(Base):
+    """One action the platform took without a human asking.
+
+    Acknowledgements, renewal reminders and auto-closures all land here. The
+    unique index on (kind, subject_id, subject_key) is what makes the
+    scheduled jobs exactly-once: a worker claims the slot with the insert and
+    only acts if the insert was the one that won.
+    """
+
+    __tablename__ = "automation_runs"
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, server_default=func.gen_random_uuid())
+    kind: Mapped[str] = mapped_column(Text)
+    subject_id: Mapped[UUID]
+    # The renewal date for a contract reminder, empty for per-request actions:
+    # it is what re-arms an action when the underlying fact legitimately moves.
+    subject_key: Mapped[str] = mapped_column(Text, server_default="")
+    status: Mapped[str] = mapped_column(Text, server_default="done")
+    channel: Mapped[str | None] = mapped_column(Text)
+    detail: Mapped[dict[str, Any]] = mapped_column(JSONB, server_default=text("'{}'::jsonb"))
+    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
