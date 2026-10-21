@@ -497,14 +497,19 @@ LANGUAGE sql STABLE SECURITY DEFINER SET search_path = pg_catalog, public AS $fu
                        'employee_name', g.employee_name,
                        'employee_code', g.employee_code,
                        'employee_mobile', g.employee_mobile,
+                       -- Public only, exactly like the timeline below. A raw
+                       -- count would otherwise tell the company that an
+                       -- internal staff note exists even though it is hidden.
                        'messages_count', (
                            SELECT count(*) FROM public.complaint_messages x
                            WHERE x.complaint_id = g.id
-                             AND x.complaint_created_at = g.created_at),
+                             AND x.complaint_created_at = g.created_at
+                             AND x.visibility = 'public'),
                        'attachments_count', (
                            SELECT count(*) FROM public.attachments x
                            WHERE x.complaint_id = g.id
-                             AND x.complaint_created_at = g.created_at),
+                             AND x.complaint_created_at = g.created_at
+                             AND x.visibility = 'public'),
                        'calls_count', (
                            SELECT count(*) FROM public.call_logs x
                            WHERE x.complaint_id = g.id

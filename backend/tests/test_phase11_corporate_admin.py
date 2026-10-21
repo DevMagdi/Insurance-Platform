@@ -62,10 +62,10 @@ class FakeSession:
     async def flush(self) -> None:
         return None
 
-    def begin_nested(self) -> "FakeSession":
+    def begin_nested(self) -> FakeSession:
         return self
 
-    async def __aenter__(self) -> "FakeSession":
+    async def __aenter__(self) -> FakeSession:
         return self
 
     async def __aexit__(self, *_: object) -> bool:

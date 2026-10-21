@@ -274,6 +274,50 @@ def test_the_archive_counts_messages_attachments_and_calls(data: Fixture) -> Non
     assert item["calls_count"] == 0
 
 
+def test_the_archive_counters_do_not_leak_internal_notes(data: Fixture) -> None:
+    """A count is a disclosure too.
+
+    The timeline hides internal staff notes, but an unfiltered counter on the
+    list row would still tell the company one exists: two messages shown, the
+    row claiming three. Both must agree.
+    """
+    request_id, created_at = data.requests["soad2"]
+    with psycopg.connect(data.dsn, autocommit=True) as conn, conn.cursor() as cur:
+        for body, visibility in (("رد للعميل", "public"), ("ملاحظة داخلية", "internal")):
+            cur.execute(
+                "INSERT INTO public.complaint_messages (complaint_id, complaint_created_at,"
+                " body, visibility, channel, direction) VALUES (%s, %s, %s,"
+                " CAST(%s AS public.message_visibility), 'whatsapp', 'outbound')",
+                (request_id, created_at, body, visibility),
+            )
+        for name, visibility in (("ظاهر.pdf", "public"), ("داخلي.pdf", "internal")):
+            cur.execute(
+                "INSERT INTO public.attachments (complaint_id, complaint_created_at, storage_key,"
+                " original_filename, mime_type, size_bytes, checksum_sha256, scan_status,"
+                " visibility) VALUES (%s, %s, %s, %s, 'application/pdf', 1024, %s, 'clean',"
+                " CAST(%s AS public.message_visibility))",
+                (
+                    request_id,
+                    created_at,
+                    f"attachments/{uuid4()}",
+                    name,
+                    uuid4().hex * 2,
+                    visibility,
+                ),
+            )
+
+    item = next(i for i in _archive(data)["items"] if i["id"] == str(request_id))
+
+    with psycopg.connect(data.dsn) as conn:
+        _as_client(conn, data.user_a)
+        with conn.cursor() as cur:
+            cur.execute("SELECT app_security.corporate_request_timeline(%s)", (request_id,))
+            timeline = cur.fetchone()[0]
+
+    assert item["messages_count"] == len(timeline["messages"]) == 1
+    assert item["attachments_count"] == len(timeline["attachments"]) == 1
+
+
 def test_the_timeline_hides_internal_staff_notes(data: Fixture) -> None:
     """The brokerage's working notes about a company are not for that company."""
     request_id, created_at = data.requests["karim"]
@@ -342,7 +386,9 @@ def test_an_acknowledgement_is_sent_exactly_once(data: Fixture) -> None:
 def test_an_acknowledged_request_leaves_the_pending_queue(data: Fixture) -> None:
     with psycopg.connect(data.dsn, autocommit=True) as conn, conn.cursor() as cur:
         _as_worker(cur)
-        cur.execute("SELECT complaint_id FROM app_security.pending_request_acknowledgements(100,24)")
+        cur.execute(
+            "SELECT complaint_id FROM app_security.pending_request_acknowledgements(100,24)"
+        )
         pending = {row[0] for row in cur.fetchall()}
     assert data.requests["soad2"][0] not in pending
 

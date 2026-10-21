@@ -12,8 +12,8 @@ from typing import Any
 import pytest
 from fastapi import HTTPException
 
-from app.services.integrations import IntegrationService
 from app.services.intake import split_from_header
+from app.services.integrations import IntegrationService
 
 
 @pytest.mark.parametrize(
@@ -45,7 +45,7 @@ def test_from_header_is_split_into_name_and_address(
 
 
 def test_display_name_is_length_capped() -> None:
-    name, address = split_from_header(f"{'ا' * 400} <long@acme.test>")
+    name, address = split_from_header(f"{'ا' * 400} <long@acme.test>")  # noqa: RUF001
     assert address == "long@acme.test"
     assert name is not None
     assert len(name) <= 160
