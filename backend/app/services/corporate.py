@@ -113,6 +113,22 @@ class CorporateService:
         rows = await self.repository.members(db, search)
         return {"items": rows, "total": len(rows)}
 
+    async def document(self, db: AsyncSession, document_id: UUID) -> dict[str, Any] | None:
+        """One shared document, decrypted, or None when it is not visible here.
+
+        read_contract_document() enforces ownership, the visible_to_client
+        flag and a clean virus scan, so a miss is indistinguishable from a
+        document that does not exist.
+        """
+        row = await self.repository.document(db, document_id)
+        if row is None or getattr(row, "content", None) is None:
+            return None
+        return {
+            "filename": getattr(row, "filename", None),
+            "mime_type": getattr(row, "mime_type", None),
+            "content": bytes(row.content),
+        }
+
     async def directory(self, db: AsyncSession) -> dict[str, Any]:
         rows = await self.repository.directory(db)
         return {"items": rows, "total": len(rows)}

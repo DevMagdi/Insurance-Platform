@@ -1432,3 +1432,56 @@ CREATE INDEX CONCURRENTLY IF NOT EXISTS ix_policies_corporate
 CREATE INDEX CONCURRENTLY IF NOT EXISTS ix_policies_card_number
     ON public.policies (card_number)
     WHERE card_number IS NOT NULL;
+
+-- ============================================================================
+-- Section 18: corporate member search fix
+-- ----------------------------------------------------------------------------
+-- The first version matched the search term against the mobile number after
+-- stripping non-digits. For a name such as 'Karim' that strip produces an
+-- empty string, so the clause degraded to `mobile LIKE '%%'` and every
+-- employee matched — the name filter silently did nothing. The digit clause
+-- now only applies when the term actually contains digits.
+-- ============================================================================
+
+CREATE OR REPLACE FUNCTION app_security.corporate_members(p_search text DEFAULT NULL)
+RETURNS jsonb
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path = pg_catalog, public AS $function$
+    WITH term AS (
+        SELECT
+            btrim(COALESCE(p_search, '')) AS raw,
+            NULLIF(regexp_replace(COALESCE(p_search, ''), '\D', '', 'g'), '') AS digits
+    )
+    SELECT CASE WHEN app_security.corporate_client_id() IS NULL THEN '[]'::jsonb ELSE
+        COALESCE((
+        SELECT jsonb_agg(member ORDER BY member->>'full_name')
+        FROM (
+            SELECT jsonb_build_object(
+                'id', e.id, 'full_name', e.full_name, 'mobile', e.mobile,
+                'email', e.email, 'employee_code', e.employee_code,
+                'requests_count', (SELECT count(*) FROM public.complaints x
+                                   WHERE x.customer_id = e.id
+                                     AND x.corporate_client_id = e.corporate_client_id),
+                'requests', COALESCE((
+                    SELECT jsonb_agg(jsonb_build_object(
+                        'id', x.id, 'ticket_no', x.ticket_no, 'subject', x.subject,
+                        'status', x.status::text, 'channel', x.channel::text,
+                        'intake_source', x.intake_source,
+                        'policy_number', x.policy_number, 'card_number', x.card_number,
+                        'created_at', x.created_at, 'updated_at', x.updated_at)
+                        ORDER BY x.created_at DESC)
+                    FROM public.complaints x
+                    WHERE x.customer_id = e.id
+                      AND x.corporate_client_id = e.corporate_client_id), '[]'::jsonb)
+            ) AS member
+            FROM public.customers e, term t
+            WHERE e.corporate_client_id = app_security.corporate_client_id()
+              AND (
+                    t.raw = ''
+                    OR e.full_name ILIKE '%' || t.raw || '%'
+                    OR e.employee_code ILIKE '%' || t.raw || '%'
+                    OR (t.digits IS NOT NULL AND e.mobile LIKE '%' || t.digits || '%')
+                  )
+            LIMIT 500
+        ) rows), '[]'::jsonb)
+    END
+$function$;

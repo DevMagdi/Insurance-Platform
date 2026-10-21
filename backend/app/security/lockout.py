@@ -35,6 +35,11 @@ POLICIES: dict[str, LockoutPolicy] = {
     "staff_totp": LockoutPolicy(threshold=5, window=900, base_lock=300),
     "staff_sms_otp": LockoutPolicy(threshold=5, window=900, base_lock=300),
     "otp_verify": LockoutPolicy(threshold=8, window=3600, base_lock=900),
+    # The corporate portal is a password login like staff, but one shared
+    # company account can have several people behind it, so the per-identity
+    # threshold is slightly more forgiving while the per-IP one is not.
+    "corporate_login": LockoutPolicy(threshold=8, window=900, base_lock=300),
+    "corporate_login_ip": LockoutPolicy(threshold=30, window=900, base_lock=600),
 }
 
 

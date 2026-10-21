@@ -18,7 +18,9 @@ from fastapi import HTTPException, Request
 from app.observability import metrics
 
 logger = logging.getLogger("app.security")
-CaptchaAction = Literal["otp_start", "guest_track", "staff_login", "invite_accept"]
+CaptchaAction = Literal[
+    "otp_start", "guest_track", "staff_login", "invite_accept", "corporate_login"
+]
 TURNSTILE_VERIFY_URL = "https://challenges.cloudflare.com/turnstile/v0/siteverify"
 
 

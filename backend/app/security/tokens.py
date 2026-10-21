@@ -109,7 +109,11 @@ class TokenManager:
                     ]
                 },
             )
-            if payload["typ"] != expected_type or payload["kind"] not in ("staff", "customer"):
+            if payload["typ"] != expected_type or payload["kind"] not in (
+                "staff",
+                "customer",
+                "corporate",
+            ):
                 raise ValueError("Wrong token kind")
             if type(payload["tv"]) is not int or payload["tv"] < 0:
                 raise ValueError("Invalid token version")
