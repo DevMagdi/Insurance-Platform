@@ -22,8 +22,8 @@ describe('Phase 6 customer portal shell', () => {
       vi.fn(async () => new Response('{"detail":"unauthorized"}', { status: 401 })),
     );
     renderApp('/');
-    expect(screen.getByRole('heading', { name: /شكواك تستحق متابعة/ })).toBeTruthy();
-    expect(screen.getByText('قدّم شكوى جديدة')).toBeTruthy();
+    expect(screen.getByRole('heading', { name: /طلبك تستحق متابعة/ })).toBeTruthy();
+    expect(screen.getByText('قدّم طلب جديد')).toBeTruthy();
     expect(document.documentElement.dir === 'rtl' || document.documentElement.lang === 'ar').toBe(true);
   });
 
@@ -46,7 +46,7 @@ describe('Phase 6 customer portal shell', () => {
     });
     vi.stubGlobal('fetch', fetchMock);
     renderApp('/track');
-    fireEvent.click(screen.getByText('تتبع الشكوى'));
+    fireEvent.click(screen.getByText('تتبع الطلب'));
     await waitFor(() => expect(screen.getByText(/رقم التذكرة بصيغة/)).toBeTruthy());
     expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/api/guest/track'))).toBe(false);
   });
@@ -57,7 +57,7 @@ describe('Phase 6 customer portal shell', () => {
       vi.fn(async () => new Response('{"detail":"unauthorized"}', { status: 401 })),
     );
     renderApp('/complaints/track');
-    expect(await screen.findByText('تتبع شكوى بدون حساب')).toBeTruthy();
+    expect(await screen.findByText('تتبع طلب بدون حساب')).toBeTruthy();
   });
 
   it('mounts the Phase 7 operations console without replacing customer routes', async () => {

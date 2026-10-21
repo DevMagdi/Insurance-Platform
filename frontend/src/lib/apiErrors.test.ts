@@ -38,8 +38,8 @@ describe('describeApiError', () => {
     expect(describeApiError(409, 'Identity cannot be registered')).toContain('الدعم');
     expect(describeApiError(409, 'Complaint cannot be reopened')).toContain('إعادة فتح');
     expect(describeApiError(503, 'Service temporarily unavailable; please retry shortly.')).toContain('مؤقتاً');
-    expect(describeApiError(404, 'Ticket and national ID pair not found')).toContain('رقم الشكوى');
-    expect(describeApiError(404, 'Complaint unavailable')).toContain('غير متاحة');
+    expect(describeApiError(404, 'Ticket and national ID pair not found')).toContain('رقم الطلب');
+    expect(describeApiError(404, 'Complaint unavailable')).toContain('الطلب غير متاح');
     expect(describeApiError(404, 'Department unavailable')).toContain('القسم');
     expect(describeApiError(404, 'Team not found')).toContain('الفريق');
     expect(describeApiError(401, 'Invalid or revoked API key')).toContain('مفتاح الواجهة');

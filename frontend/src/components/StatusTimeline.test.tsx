@@ -15,7 +15,7 @@ describe('StatusTimeline', () => {
     expect(screen.getByText('جديدة')).toBeTruthy();
     expect(screen.getAllByText('قيد المراجعة').length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText('تم الحل').length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByText('تم إنشاء الشكوى')).toBeTruthy();
+    expect(screen.getByText('تم إنشاء الطلب')).toBeTruthy();
     expect(screen.getAllByText('تم الإسناد').length).toBeGreaterThanOrEqual(1);
   });
 

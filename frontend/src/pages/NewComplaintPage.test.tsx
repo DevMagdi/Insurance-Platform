@@ -52,9 +52,9 @@ describe('complaint wizard', () => {
     fireEvent.change(screen.getByLabelText(/رقم البوليصة/), { target: { value: 'POL-000123' } });
     fireEvent.click(screen.getByText('التالي'));
 
-    await waitFor(() => expect(screen.getByLabelText(/عنوان الشكوى/)).toBeTruthy());
-    fireEvent.change(screen.getByLabelText(/عنوان الشكوى/), { target: { value: 'تأخر صرف التعويض' } });
-    fireEvent.change(screen.getByLabelText(/تفاصيل الشكوى/), {
+    await waitFor(() => expect(screen.getByLabelText(/عنوان الطلب/)).toBeTruthy());
+    fireEvent.change(screen.getByLabelText(/عنوان الطلب/), { target: { value: 'تأخر صرف التعويض' } });
+    fireEvent.change(screen.getByLabelText(/تفاصيل الطلب/), {
       target: { value: 'تأخر صرف تعويض العملية الجراحية منذ أكثر من شهرين دون رد واضح.' },
     });
     fireEvent.click(screen.getByText('التالي'));
@@ -68,7 +68,7 @@ describe('complaint wizard', () => {
     expect(screen.getByText('+201123456789')).toBeTruthy();
 
     // PDPL: submission is blocked until explicit consent is given.
-    fireEvent.click(screen.getByText('إرسال الشكوى الآن'));
+    fireEvent.click(screen.getByText('إرسال الطلب الآن'));
     await waitFor(() => expect(screen.getByText(/يلزم الموافقة على معالجة البيانات/)).toBeTruthy());
     expect(screen.getByTestId('privacy-consent')).toBeTruthy();
 

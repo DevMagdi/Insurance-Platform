@@ -119,7 +119,7 @@ export function TicketWorkspace({ id, access, options, onBack, onOpenTicket, onR
     } catch (cause) {
       if (!silent) {
         setTicket(null);
-        setError(cause instanceof Error ? cause.message : 'هذه الشكوى غير متاحة ضمن نطاق صلاحيتك.');
+        setError(cause instanceof Error ? cause.message : 'هذه الطلب غير متاح ضمن نطاق صلاحيتك.');
       }
       if (cause && typeof cause === 'object' && 'status' in cause && (cause as { status: number }).status === 403) {
         await onRefreshAccess();
@@ -190,7 +190,7 @@ export function TicketWorkspace({ id, access, options, onBack, onOpenTicket, onR
         method: 'POST', body: jsonBody({ body: reply.trim() }),
       });
       setReply('');
-      setNotice(replyMode === 'public' ? 'تم إرسال الرد إلى سجل الشكوى.' : 'تمت إضافة الملاحظة الداخلية.' );
+      setNotice(replyMode === 'public' ? 'تم إرسال الرد إلى سجل الطلب.' : 'تمت إضافة الملاحظة الداخلية.' );
       await refresh();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'تعذر إرسال الرسالة.');
@@ -279,7 +279,7 @@ export function TicketWorkspace({ id, access, options, onBack, onOpenTicket, onR
       setNotice('تم تحديث الإسناد بنجاح.');
       await refresh();
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'تعذر إسناد الشكوى.');
+      setError(cause instanceof Error ? cause.message : 'تعذر إسناد الطلب.');
       if (cause && typeof cause === 'object' && 'status' in cause && (cause as { status: number }).status === 403) await onRefreshAccess();
     } finally { setActionBusy(false); }
   };
@@ -294,10 +294,10 @@ export function TicketWorkspace({ id, access, options, onBack, onOpenTicket, onR
       });
       setShowTransfer(false);
       setReason('');
-      setNotice(result.delivery === 'queued' ? 'تم تحويل الشكوى إلى الشركة ووضع البريد في قائمة الإرسال.' : 'تم تحويل الشكوى.');
+      setNotice(result.delivery === 'queued' ? 'تم تحويل الطلب إلى الشركة ووضع البريد في قائمة الإرسال.' : 'تم تحويل الطلب.');
       await refresh();
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'تعذر تحويل الشكوى.');
+      setError(cause instanceof Error ? cause.message : 'تعذر تحويل الطلب.');
       if (cause && typeof cause === 'object' && 'status' in cause && (cause as { status: number }).status === 403) await onRefreshAccess();
     } finally { setActionBusy(false); }
   };
@@ -307,10 +307,10 @@ export function TicketWorkspace({ id, access, options, onBack, onOpenTicket, onR
     try {
       await api(`/api/staff/complaints/${encodeURIComponent(id)}/merge`, { method: 'POST', body: jsonBody({ target_id: targetId }) });
       setShowDuplicates(false);
-      setNotice('تم دمج الشكوى.');
+      setNotice('تم دمج الطلب.');
       await refresh();
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'تعذر دمج الشكويين.');
+      setError(cause instanceof Error ? cause.message : 'تعذر دمج الطلبين.');
     } finally { setActionBusy(false); }
   };
 
@@ -343,7 +343,7 @@ export function TicketWorkspace({ id, access, options, onBack, onOpenTicket, onR
         key: `event-${event.id}`,
         date: event.occurred_at,
         kind: 'event',
-        content: <><strong>{event.event_type === 'status_changed' ? 'تغيّرت حالة الشكوى' : event.event_type.replaceAll('_', ' ')}</strong>{event.from_status && event.to_status && <span className="timeline-transition">{STATUS_LABEL[event.from_status]} <Icon name="arrow" size={13} /> {STATUS_LABEL[event.to_status]}</span>}</>,
+        content: <><strong>{event.event_type === 'status_changed' ? 'تغيّرت حالة الطلب' : event.event_type.replaceAll('_', ' ')}</strong>{event.from_status && event.to_status && <span className="timeline-transition">{STATUS_LABEL[event.from_status]} <Icon name="arrow" size={13} /> {STATUS_LABEL[event.to_status]}</span>}</>,
       });
     }
     for (const message of timeline?.messages ?? []) {
@@ -360,17 +360,17 @@ export function TicketWorkspace({ id, access, options, onBack, onOpenTicket, onR
     return items.sort((left, right) => new Date(left.date).getTime() - new Date(right.date).getTime());
   }, [timeline, audit]);
 
-  if (!hasPermission(access, 'complaints.view')) return <AccessDenied title="الشكوى غير متاحة" />;
+  if (!hasPermission(access, 'complaints.view')) return <AccessDenied title="الطلب غير متاح" />;
 
   return (
     <div className="page-stack">
-      <div className="workspace-back-row"><button className="back-link" type="button" onClick={onBack}><Icon name="arrow" size={16} /> العودة إلى الشكاوى</button><span className="workspace-scope"><Icon name="shield" size={14} /> عرض ضمن النطاق المصرّح</span></div>
-      {loading && !ticket ? <div className="loading-surface"><span className="loading-spinner" /><span>جارٍ تحميل الشكوى…</span></div> : !ticket ? (
-        <section className="surface-card unavailable-ticket"><span className="empty-icon"><Icon name="lock" size={22} /></span><h2>الشكوى غير متاحة</h2><p>قد تكون الشكوى غير موجودة أو خارج نطاق صلاحيتك. لم يتم عرض أي تفاصيل.</p><button className="button button-dark" type="button" onClick={onBack}>العودة إلى القائمة</button></section>
+      <div className="workspace-back-row"><button className="back-link" type="button" onClick={onBack}><Icon name="arrow" size={16} /> العودة إلى الطلبات</button><span className="workspace-scope"><Icon name="shield" size={14} /> عرض ضمن النطاق المصرّح</span></div>
+      {loading && !ticket ? <div className="loading-surface"><span className="loading-spinner" /><span>جارٍ تحميل الطلب…</span></div> : !ticket ? (
+        <section className="surface-card unavailable-ticket"><span className="empty-icon"><Icon name="lock" size={22} /></span><h2>الطلب غير متاح</h2><p>قد تكون الطلب غير موجودة أو خارج نطاق صلاحيتك. لم يتم عرض أي تفاصيل.</p><button className="button button-dark" type="button" onClick={onBack}>العودة إلى القائمة</button></section>
       ) : (
         <>
           <div className="ticket-heading surface-card">
-            <div className="ticket-heading-main"><div className="ticket-breadcrumb"><span>الشكاوى</span><Icon name="chevron" size={13} /><strong>{ticket.ticket_no}</strong></div><h1>{ticket.subject}</h1><div className="ticket-heading-meta"><StatusPill status={ticket.status} /><span className="meta-divider" /> <span>{companyName}</span><span className="meta-dot">·</span><span>{ticket.insurance_type === 'health' ? 'تأمين طبي' : ticket.insurance_type === 'general' ? 'تأمين عام' : 'تأمين مشترك'}</span><span className="meta-dot">·</span><span>وصلت {formatDateTime(ticket.created_at)}</span></div></div>
+            <div className="ticket-heading-main"><div className="ticket-breadcrumb"><span>الطلبات</span><Icon name="chevron" size={13} /><strong>{ticket.ticket_no}</strong></div><h1>{ticket.subject}</h1><div className="ticket-heading-meta"><StatusPill status={ticket.status} /><span className="meta-divider" /> <span>{companyName}</span><span className="meta-dot">·</span><span>{ticket.insurance_type === 'health' ? 'تأمين طبي' : ticket.insurance_type === 'general' ? 'تأمين عام' : 'تأمين مشترك'}</span><span className="meta-dot">·</span><span>وصلت {formatDateTime(ticket.created_at)}</span></div></div>
             <div className="ticket-heading-actions">
               {canAssign && <button className="button button-light" type="button" onClick={() => { setSelectedAgent(ticket.assigned_agent_id ?? ''); setShowAssign(true); }}><Icon name="users" size={15} />{ticket.assigned_agent_id ? 'إعادة إسناد' : 'إسناد'}</button>}
               {hasPermission(access, 'complaints.escalate') && hasPermission(access, 'integrations.send_email') && ticket.status !== 'transferred' && <button className="button button-gold" type="button" onClick={() => setShowTransfer(true)}><Icon name="mail" size={15} /> إرسال للشركة بالبريد</button>}
@@ -383,7 +383,7 @@ export function TicketWorkspace({ id, access, options, onBack, onOpenTicket, onR
           <div className="workspace-grid">
             <div className="workspace-main-column">
               <section className="surface-card customer-summary-card">
-                <div className="panel-heading"><div><p className="eyebrow">بيانات الشكوى</p><h2>ملخص الحالة</h2></div><span className="ticket-id-chip">{ticket.ticket_no}</span></div>
+                <div className="panel-heading"><div><p className="eyebrow">بيانات الطلب</p><h2>ملخص الحالة</h2></div><span className="ticket-id-chip">{ticket.ticket_no}</span></div>
                 <div className="detail-grid">
                   <div><span>اسم العميل</span><strong>{ticket.customer_name ?? 'عميل'}</strong></div>
                   <div><span>رقم الهوية</span><strong dir="ltr">{ticket.national_id_masked ?? '**************'}</strong></div>
@@ -394,8 +394,8 @@ export function TicketWorkspace({ id, access, options, onBack, onOpenTicket, onR
                   <div><span>موظف المتابعة</span><strong>{currentAgent ?? 'غير مُسند'}</strong></div>
                   <div><span>موعد SLA</span><strong className={ticket.sla_breached_at ? 'text-danger' : ''}>{formatDateTime(ticket.sla_due_at)}{ticket.sla_breached_at ? ' · متجاوز' : ''}</strong></div>
                 </div>
-                <div className="ticket-description"><h3>تفاصيل الشكوى</h3><p>{ticket.description}</p></div>
-                {ticket.merged_into_id && <div className="merged-callout">تم دمج هذه الشكوى في سجل آخر ضمن النطاق.</div>}
+                <div className="ticket-description"><h3>تفاصيل الطلب</h3><p>{ticket.description}</p></div>
+                {ticket.merged_into_id && <div className="merged-callout">تم دمج هذا الطلب في سجل آخر ضمن النطاق.</div>}
               </section>
 
               <section className="surface-card conversation-card">
@@ -443,7 +443,7 @@ export function TicketWorkspace({ id, access, options, onBack, onOpenTicket, onR
 
               <section className="surface-card attachments-panel">
                 <div className="panel-heading"><div><p className="eyebrow">الملفات</p><h2>المرفقات <span className="heading-count">{formatNumber(attachments.length)}</span></h2></div><Icon name="paperclip" size={17} /></div>
-                {!hasPermission(access, 'complaints.view_attachments') ? <p className="muted small-copy">لا تتوفر لديك صلاحية عرض المرفقات.</p> : attachments.length === 0 ? <p className="muted small-copy">لا توجد مرفقات مرتبطة بهذه الشكوى.</p> : <div className="attachment-list">{attachments.map((attachment) => { const scanLabel = { clean: 'آمن', pending: 'معلّق', infected: 'مصاب', error: 'خطأ في الفحص' }[attachment.scan_status]; const scanHint = { clean: 'تم الفحص', pending: 'بانتظار الفحص', infected: 'تم رفض الملف', error: 'تعذر إكمال الفحص' }[attachment.scan_status]; return <button className="attachment-row" key={attachment.id} type="button" disabled={attachment.scan_status !== 'clean'} title={attachment.scan_status !== 'clean' ? 'المرفق غير متاح للفتح حتى يصبح آمناً' : 'فتح المرفق'} onClick={() => { void downloadAttachment(attachment); }}><span className="attachment-file-icon"><Icon name="paperclip" size={15} /></span><span className="attachment-copy"><strong>{attachment.filename}</strong><small>{(attachment.size_bytes / 1024).toFixed(0)} KB · {scanHint}</small></span><span className={`scan-state scan-${attachment.scan_status}`}>{scanLabel}</span></button>; })}</div>}
+                {!hasPermission(access, 'complaints.view_attachments') ? <p className="muted small-copy">لا تتوفر لديك صلاحية عرض المرفقات.</p> : attachments.length === 0 ? <p className="muted small-copy">لا توجد مرفقات مرتبطة بهذا الطلب.</p> : <div className="attachment-list">{attachments.map((attachment) => { const scanLabel = { clean: 'آمن', pending: 'معلّق', infected: 'مصاب', error: 'خطأ في الفحص' }[attachment.scan_status]; const scanHint = { clean: 'تم الفحص', pending: 'بانتظار الفحص', infected: 'تم رفض الملف', error: 'تعذر إكمال الفحص' }[attachment.scan_status]; return <button className="attachment-row" key={attachment.id} type="button" disabled={attachment.scan_status !== 'clean'} title={attachment.scan_status !== 'clean' ? 'المرفق غير متاح للفتح حتى يصبح آمناً' : 'فتح المرفق'} onClick={() => { void downloadAttachment(attachment); }}><span className="attachment-file-icon"><Icon name="paperclip" size={15} /></span><span className="attachment-copy"><strong>{attachment.filename}</strong><small>{(attachment.size_bytes / 1024).toFixed(0)} KB · {scanHint}</small></span><span className={`scan-state scan-${attachment.scan_status}`}>{scanLabel}</span></button>; })}</div>}
               </section>
 
               <section className="surface-card call-panel">
@@ -456,9 +456,9 @@ export function TicketWorkspace({ id, access, options, onBack, onOpenTicket, onR
             </aside>
           </div>
 
-          {showAssign && <Modal title={ticket.assigned_agent_id ? 'إعادة إسناد الشكوى' : 'إسناد الشكوى'} eyebrow="توزيع العمل" onClose={() => setShowAssign(false)}><p className="modal-intro">اختر موظفاً من قائمة الشكاوى الظاهرة ضمن نطاق صلاحيتك.</p><form onSubmit={(event) => { void assign(event); }}><label className="field-label">الموظف المسؤول<select autoFocus value={selectedAgent} onChange={(event) => setSelectedAgent(event.target.value)} required><option value="">اختر موظفاً</option>{options.agents.map((agent: AgentOption) => <option key={agent.id} value={agent.id}>{agent.full_name}</option>)}</select></label><div className="modal-actions"><button className="button button-light" type="button" onClick={() => setShowAssign(false)}>إلغاء</button><button className="button button-dark" type="submit" disabled={actionBusy || !selectedAgent}>تأكيد الإسناد</button></div></form></Modal>}
+          {showAssign && <Modal title={ticket.assigned_agent_id ? 'إعادة إسناد الطلب' : 'إسناد الطلب'} eyebrow="توزيع العمل" onClose={() => setShowAssign(false)}><p className="modal-intro">اختر موظفاً من قائمة الطلبات الظاهرة ضمن نطاق صلاحيتك.</p><form onSubmit={(event) => { void assign(event); }}><label className="field-label">الموظف المسؤول<select autoFocus value={selectedAgent} onChange={(event) => setSelectedAgent(event.target.value)} required><option value="">اختر موظفاً</option>{options.agents.map((agent: AgentOption) => <option key={agent.id} value={agent.id}>{agent.full_name}</option>)}</select></label><div className="modal-actions"><button className="button button-light" type="button" onClick={() => setShowAssign(false)}>إلغاء</button><button className="button button-dark" type="submit" disabled={actionBusy || !selectedAgent}>تأكيد الإسناد</button></div></form></Modal>}
           {showTransfer && <Modal title="إرسال إلى شركة التأمين" eyebrow="تحويل آمن بالبريد" onClose={() => setShowTransfer(false)}><div className="transfer-notice"><Icon name="mail" size={18} /><span>سيتم تحويل الحالة وإنشاء إشعار بريد إلى جهة الاتصال المسجلة للشركة. الإرسال الفعلي يعتمد على إعداد موفّر البريد.</span></div><form onSubmit={(event) => { void transfer(event); }}><label className="field-label">سبب التحويل<textarea autoFocus rows={4} minLength={10} maxLength={500} value={reason} onChange={(event) => setReason(event.target.value)} placeholder="اكتب ملخصاً واضحاً لمبررات الإحالة (١٠ أحرف على الأقل)…" required /></label><div className="modal-actions"><button className="button button-light" type="button" onClick={() => setShowTransfer(false)}>إلغاء</button><button className="button button-gold" type="submit" disabled={actionBusy || reason.trim().length < 10}>تحويل وإرسال</button></div></form></Modal>}
-          {showDuplicates && <Modal title="سجلات قد تكون مكررة" eyebrow="مراجعة يدوية" onClose={() => setShowDuplicates(false)} wide><p className="modal-intro">لا يتم الدمج تلقائياً. راجع كل سجل واختر دمج الشكوى الحالية فيه عند التأكد.</p>{duplicates.length === 0 ? <div className="empty-inline">لم يتم العثور على شكاوى مشابهة ضمن نطاقك.</div> : <div className="duplicate-list">{duplicates.map((candidate) => <article className="duplicate-card" key={candidate.id}><div><strong>{candidate.ticket_no}</strong><StatusPill status={candidate.status} /><p>{candidate.subject}</p><small>{formatDateTime(candidate.created_at)}</small></div><button className="button button-light button-small" type="button" disabled={actionBusy} onClick={() => { void mergeInto(candidate.id); }}>دمج في هذا السجل</button><button className="text-link-button" type="button" onClick={() => { setShowDuplicates(false); onOpenTicket(candidate.id); }}>فتح <Icon name="external" size={13} /></button></article>)}</div>}</Modal>}
+          {showDuplicates && <Modal title="سجلات قد تكون مكررة" eyebrow="مراجعة يدوية" onClose={() => setShowDuplicates(false)} wide><p className="modal-intro">لا يتم الدمج تلقائياً. راجع كل سجل واختر دمج الطلب الحالية فيه عند التأكد.</p>{duplicates.length === 0 ? <div className="empty-inline">لم يتم العثور على طلبات مشابهة ضمن نطاقك.</div> : <div className="duplicate-list">{duplicates.map((candidate) => <article className="duplicate-card" key={candidate.id}><div><strong>{candidate.ticket_no}</strong><StatusPill status={candidate.status} /><p>{candidate.subject}</p><small>{formatDateTime(candidate.created_at)}</small></div><button className="button button-light button-small" type="button" disabled={actionBusy} onClick={() => { void mergeInto(candidate.id); }}>دمج في هذا السجل</button><button className="text-link-button" type="button" onClick={() => { setShowDuplicates(false); onOpenTicket(candidate.id); }}>فتح <Icon name="external" size={13} /></button></article>)}</div>}</Modal>}
         </>
       )}
     </div>

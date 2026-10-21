@@ -11,13 +11,13 @@ import type { NotificationItem } from '../types';
  */
 
 const NOTICE_LABELS: Record<string, string> = {
-  created: 'شكوى جديدة وصلت',
+  created: 'طلب جديد وصلت',
   reply: 'رسالة جديدة من عميل',
-  reopened: 'أُعيد فتح شكوى',
-  status_changed: 'تغيّرت حالة شكوى',
-  assigned: 'أُسندت إليك شكوى',
-  complaint_assigned: 'أُسندت إليك شكوى',
-  sla_breached: 'تجاوز مهلة SLA على شكوى',
+  reopened: 'أُعيد فتح طلب',
+  status_changed: 'تغيّرت حالة طلب',
+  assigned: 'أُسندت إليك طلب',
+  complaint_assigned: 'أُسندت إليك طلب',
+  sla_breached: 'تجاوز مهلة SLA على طلب',
   access_changed: 'تم تحديث صلاحياتك',
   team_membership_changed: 'تم تحديث عضويتك في فريق',
 };

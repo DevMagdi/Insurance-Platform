@@ -14,7 +14,7 @@ const snapshot: StaffAccess = {
 };
 const options = {
   roles: [
-    { id: 'claims', name: 'أخصائي التعويضات', description: 'متابعة الشكاوى', is_system: false, permissions: ['complaints.view'] },
+    { id: 'claims', name: 'أخصائي التعويضات', description: 'متابعة الطلبات', is_system: false, permissions: ['complaints.view'] },
     { id: 'support', name: 'خدمة العملاء', description: 'خدمة الفريق', is_system: false, permissions: ['users.view'] },
   ],
   companies: [
@@ -43,7 +43,7 @@ describe('access editor', () => {
     fireEvent.click(within(dialog).getByRole('radio', { name: /شركات محددة/ }));
     fireEvent.click(within(dialog).getByRole('checkbox', { name: 'شركة الأمان' }));
     fireEvent.change(within(dialog).getByLabelText('البحث في الصلاحيات'), { target: { value: 'تعديل بيانات المستخدم' } });
-    expect(within(dialog).queryByRole('combobox', { name: 'تجاوز عرض الشكاوى' })).toBeNull();
+    expect(within(dialog).queryByRole('combobox', { name: 'تجاوز عرض الطلبات' })).toBeNull();
     fireEvent.click(within(dialog).getByRole('button', { name: 'منع الكل' }));
     expect((within(dialog).getByRole('combobox', { name: 'تجاوز تعديل بيانات المستخدم' }) as HTMLSelectElement).value).toBe('deny');
     fireEvent.click(within(dialog).getByRole('button', { name: /عرض كـ Mona/ }));

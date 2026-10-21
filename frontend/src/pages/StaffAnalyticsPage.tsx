@@ -9,7 +9,7 @@ import { StaffShell } from '../components/StaffShell';
 import { EmptyState, ErrorState, Field, LoadingState, TextInput } from '../components/ui';
 
 const KPI_LABELS: Record<string, string> = {
-  total: 'إجمالي الشكاوى',
+  total: 'إجمالي الطلبات',
   new: 'جديدة',
   assigned: 'مُسندة',
   in_review: 'قيد المراجعة',
@@ -97,7 +97,7 @@ export function StaffAnalyticsPage() {
               ))}
             </div>
 
-            <h3 className="mt-7 font-black">الشكاوى الواردة يومياً</h3>
+            <h3 className="mt-7 font-black">الطلبات الواردة يومياً</h3>
             <div className="mt-3 flex h-40 items-end gap-1 overflow-x-auto" aria-label="daily arrivals">
               {data.time_series.map((item) => (
                 <div key={item.date} className="flex min-w-3 flex-1 flex-col items-center gap-1">

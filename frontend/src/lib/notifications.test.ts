@@ -10,10 +10,10 @@ describe('staff notice presentation', () => {
   });
 
   it('labels every kind the server can emit, in Arabic', () => {
-    expect(noticeLabel('created')).toBe('شكوى جديدة وصلت');
+    expect(noticeLabel('created')).toBe('طلب جديد وصلت');
     expect(noticeLabel('reply')).toBe('رسالة جديدة من عميل');
-    expect(noticeLabel('assigned')).toBe('أُسندت إليك شكوى');
-    expect(noticeLabel('sla_breached')).toBe('تجاوز مهلة SLA على شكوى');
+    expect(noticeLabel('assigned')).toBe('أُسندت إليك طلب');
+    expect(noticeLabel('sla_breached')).toBe('تجاوز مهلة SLA على طلب');
     expect(noticeLabel('some_future_kind')).toBe('some future kind');
   });
 });
