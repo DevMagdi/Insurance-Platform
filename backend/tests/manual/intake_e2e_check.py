@@ -64,7 +64,22 @@ async def main() -> int:
             " OR mobile LIKE '+2011888%' OR mobile LIKE '+2012777%'",
         ):
             await conn.execute(text(statement))
-        company = await conn.scalar(text("SELECT id FROM public.insurance_companies LIMIT 1"))
+        # Intake must attach a request to a broker company. Seed one when the
+        # database is empty so this check runs against a freshly migrated
+        # instance, not only against a developer's already-seeded database.
+        company = await conn.scalar(
+            text("SELECT id FROM public.insurance_companies ORDER BY created_at LIMIT 1")
+        )
+        if company is None:
+            company = await conn.scalar(
+                text(
+                    "INSERT INTO public.insurance_companies (slug, name_en, name_ar)"
+                    " VALUES ('intake-check-co', 'Intake Check Insurance', 'شركة فحص الاستقبال')"
+                    " ON CONFLICT (slug) DO UPDATE SET name_en = EXCLUDED.name_en"
+                    " RETURNING id"
+                )
+            )
+            print(f"  (seeded insurance company {company} for this run)")
 
     keyring = build_keyring(env["APP_ENCRYPTION_KEY"], int(env.get("APP_ENCRYPTION_KEY_ID", 1)))
     intake = RequestIntakeService(BlobCipher(keyring))
