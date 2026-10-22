@@ -13,8 +13,12 @@ from app.db import purpose_transaction
 
 router = APIRouter(prefix="/api/webhooks", tags=["public-webhooks"])
 Provider = Literal[
-    "email_webhook", "whatsapp_cloud", "mock_voice", "twilio", "twilio_sms", "vonage"
+    "email_webhook", "whatsapp_cloud", "whatsapp", "mock_voice", "twilio", "twilio_sms", "vonage"
 ]
+# Meta registers a single callback URL and uses it for both the subscription
+# handshake and every message delivery, so both spellings of the WhatsApp path
+# have to answer both methods. Deliveries to /whatsapp are the same provider.
+_PROVIDER_ALIASES = {"whatsapp": "whatsapp_cloud"}
 _MAX_BODY_BYTES = 1_048_576
 
 
@@ -40,13 +44,14 @@ async def provider_webhook(
         return await integration_service(request).receive_webhook(
             db,
             company_id=company_id,
-            provider=provider,
+            provider=_PROVIDER_ALIASES.get(provider, provider),
             raw_body=body,
             headers={key.lower(): value for key, value in request.headers.items()},
         )
 
 
 @router.get("/whatsapp/{company_id}", response_class=PlainTextResponse)
+@router.get("/whatsapp_cloud/{company_id}", response_class=PlainTextResponse)
 async def verify_whatsapp_webhook(
     company_id: UUID,
     request: Request,

@@ -7376,6 +7376,7 @@ paths:
           enum:
           - email_webhook
           - whatsapp_cloud
+          - whatsapp
           - mock_voice
           - twilio
           - twilio_sms
@@ -7399,6 +7400,59 @@ paths:
                 additionalProperties: true
                 title: Response Provider Webhook Api Webhooks  Provider   Company
                   Id  Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+  /api/webhooks/whatsapp_cloud/{company_id}:
+    get:
+      tags:
+      - public-webhooks
+      summary: Verify Whatsapp Webhook
+      operationId: verify_whatsapp_webhook_api_webhooks_whatsapp_cloud__company_id__get
+      parameters:
+      - name: company_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Company Id
+      - name: hub.mode
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Hub.Mode
+      - name: hub.verify_token
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Hub.Verify Token
+      - name: hub.challenge
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Hub.Challenge
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            text/plain:
+              schema:
+                type: string
         '422':
           description: Validation Error
           content:

@@ -51,7 +51,13 @@ def _error_code(exc: BaseException) -> str:
     # A database rejection carries the real reason; SQLAlchemy's own ``.code``
     # is only a documentation shortlink ("f405") and must not win here.
     original = getattr(exc, "orig", None)
-    message = getattr(getattr(original, "diag", None), "message_primary", None)
+    # asyncpg exposes ``.message``; psycopg puts the same text behind
+    # ``.diag.message_primary``. Reading only the psycopg attribute meant every
+    # database rejection degraded to a bare "sqlstate_22023", which hides the
+    # reason an operator needs and made real defects very hard to find.
+    message = getattr(original, "message", None) or getattr(
+        getattr(original, "diag", None), "message_primary", None
+    )
     if isinstance(message, str) and message:
         return message.strip().splitlines()[0][:120]
     sqlstate = getattr(original, "sqlstate", None)
@@ -61,6 +67,11 @@ def _error_code(exc: BaseException) -> str:
 
 
 TICKET_RE = re.compile(r"\b(?:REQ|CMP)-\d{4}-\d{6,}\b", re.IGNORECASE)
+
+# Egyptian mobiles, with or without the country code: 01x……… / +201x……… .
+# Shared with ``minimize_pii`` so the pattern that redacts a number and the
+# pattern that recognises one can never drift apart.
+EGYPT_MOBILE_RE = re.compile(r"(?<!\w)(?:\+?20|0)?1[0125]\d{8}(?!\d)")
 
 # An optional "رقم" / "no." may sit between the keyword and the value, which
 # is how people actually write it: "رقم الكارت: 12345", "الكارت رقم 998877",
@@ -146,6 +157,21 @@ def extract_card_number(text_value: str) -> str | None:
 def extract_policy_number(text_value: str) -> str | None:
     match = POLICY_RE.search(text_value or "")
     return match.group(1).strip() if match else None
+
+
+def extract_mobile(*values: str) -> str | None:
+    """The mobile that identifies the sender.
+
+    On WhatsApp, SMS and the telephone the sender *is* a number, so the first
+    value matches. E-mail carries an address instead, and the database rejects
+    anything ``normalize_eg_mobile`` cannot parse, so the message text is the
+    only place a number can come from.
+    """
+    for value in values:
+        match = EGYPT_MOBILE_RE.search(value or "")
+        if match:
+            return match.group(0)
+    return None
 
 
 def _is_stop_word(word: str) -> bool:
@@ -387,7 +413,11 @@ class RequestIntakeService:
                 {
                     "ticket": extract_ticket_no(searchable),
                     "sender": event.sender,
-                    "window": f"{int(self.CONTINUATION_WINDOW.total_seconds())} seconds",
+                    # PostgreSQL resolves a bare parameter inside CAST(... AS
+                    # interval) to the interval type itself, so asyncpg demands
+                    # a timedelta and rejects a string client-side. That broke
+                    # intake on *every* channel before any request was created.
+                    "window": self.CONTINUATION_WINDOW,
                 },
             )
         ).one_or_none()
@@ -405,6 +435,12 @@ class RequestIntakeService:
             # placeholder so the customer is never turned away; the intake
             # inbox flags it for an agent to complete.
             card = "PENDING-REF"
+        # The sender is already a number on WhatsApp/SMS/telephone; an e-mail
+        # address is not, and the database refuses a request it cannot tie to
+        # a customer, so fall back to a number quoted in the message itself.
+        mobile = extract_mobile(event.sender) or extract_mobile(searchable)
+        if mobile is None:
+            raise IntakeError("sender_mobile_missing")
         row = (
             await db.execute(
                 text(
@@ -417,7 +453,7 @@ class RequestIntakeService:
                     "company": company_id,
                     "channel": event.channel,
                     "source": event.intake_source,
-                    "mobile": event.sender,
+                    "mobile": mobile,
                     "name": extract_name(searchable, event.sender_name),
                     "subject": event.subject or derive_subject(event.body, event.intake_source),
                     "description": event.body or event.subject or "(رسالة بدون نص)",

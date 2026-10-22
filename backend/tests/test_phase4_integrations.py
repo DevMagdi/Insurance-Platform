@@ -798,3 +798,86 @@ def _async_result(value: Any) -> Any:
     from unittest.mock import AsyncMock
 
     return AsyncMock(return_value=value)
+
+
+class _StubSession:
+    """Enough of AsyncSession for purpose_transaction to open and close."""
+
+    async def __aenter__(self) -> _StubSession:
+        return self
+
+    async def __aexit__(self, *_exc: Any) -> None:
+        return None
+
+    def begin(self) -> _StubSession:
+        return self
+
+    async def execute(self, *_args: Any, **_kwargs: Any) -> None:
+        return None
+
+
+class _RecordingService:
+    """Captures the provider name the router dispatches with."""
+
+    def __init__(self) -> None:
+        self.provider: str | None = None
+        self.verified: tuple[Any, ...] | None = None
+
+    async def receive_webhook(self, _db: Any, **kwargs: Any) -> dict[str, Any]:
+        self.provider = kwargs["provider"]
+        return {"accepted": 1, "job_ids": []}
+
+    async def verify_whatsapp_subscription(
+        self, _db: Any, company_id: Any, mode: Any, token: Any, challenge: Any
+    ) -> str:
+        self.verified = (company_id, mode, token, challenge)
+        return str(challenge)
+
+
+def _webhook_client() -> tuple[Any, _RecordingService]:
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+
+    from app.api.integration_webhooks import router
+
+    service = _RecordingService()
+    app = FastAPI()
+    app.include_router(router)
+    app.state.integrations = service
+    app.state.factory = _StubSession
+    app.state.auth = None
+    return TestClient(app), service
+
+
+# Meta's dashboard takes one callback URL and sends both the GET handshake and
+# every POST delivery to it, so each WhatsApp path must answer both methods.
+# Previously /whatsapp answered only GET and /whatsapp_cloud only POST, which
+# made a real number impossible to connect: whichever URL was registered, one
+# half of the exchange failed.
+@pytest.mark.parametrize("path", ["whatsapp", "whatsapp_cloud"])
+def test_whatsapp_callback_url_serves_both_verification_and_delivery(path: str) -> None:
+    client, service = _webhook_client()
+    company_id = uuid4()
+
+    handshake = client.get(
+        f"/api/webhooks/{path}/{company_id}",
+        params={
+            "hub.mode": "subscribe",
+            "hub.verify_token": "token",
+            "hub.challenge": "31415",
+        },
+    )
+    assert handshake.status_code == 200
+    assert handshake.text == "31415"
+    assert service.verified == (company_id, "subscribe", "token", "31415")
+
+    delivery = client.post(f"/api/webhooks/{path}/{company_id}", json={"entry": []})
+    assert delivery.status_code == 202
+    # Both spellings reach the one provider that holds the credentials.
+    assert service.provider == "whatsapp_cloud"
+
+
+def test_other_providers_are_not_rewritten_by_the_whatsapp_alias() -> None:
+    client, service = _webhook_client()
+    assert client.post(f"/api/webhooks/twilio/{uuid4()}", json={}).status_code == 202
+    assert service.provider == "twilio"
