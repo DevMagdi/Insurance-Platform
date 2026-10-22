@@ -313,7 +313,7 @@ export function ComplaintQueue({ access, range, options, companyNames, onOpenTic
       <SectionTitle
         eyebrow="إدارة الحالات"
         title="صندوق الطلبات"
-        description="ابحث، صفِّ، وادِر الحالات ضمن نطاق صلاحيتك الحالي."
+        description="كل الطلبات التي تخصّك في مكان واحد — ابحث، صفِّ، وابدأ من الأهم."
         action={(
           /* Columns, CSV and print are all incidental: none of them is "the
              action on this screen", so none of them gets the primary fill.
@@ -463,7 +463,7 @@ export function ComplaintQueue({ access, range, options, companyNames, onOpenTic
                   <td><span className={statusClass(item.status)}><i />{STATUS_LABEL[item.status]}</span></td>
                 </tr>
               ))}
-              {!loading && result?.items.length === 0 && <tr><td colSpan={10}><div className="empty-table"><span className="empty-icon"><Icon name="inbox" size={22} /></span><strong>لا توجد طلبات مطابقة</strong><span>جرّب تغيير الفلاتر أو الفترة الزمنية.</span></div></td></tr>}
+              {!loading && result?.items.length === 0 && <tr><td colSpan={10}><div className="empty-table"><span className="empty-icon"><Icon name="inbox" size={22} /></span><strong>لا توجد طلبات هنا الآن</strong><span>وسّع الفترة الزمنية أو امسح الفلاتر لرؤية المزيد.</span></div></td></tr>}
             </tbody>
           </table>
         </div>

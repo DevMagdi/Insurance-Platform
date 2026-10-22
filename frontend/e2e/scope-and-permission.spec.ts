@@ -103,7 +103,7 @@ test('one-company scope is reflected in charts, list search, export, and direct 
   await expect(page.getByText('Scoped claim review')).toBeVisible();
   const search = page.getByRole('textbox', { name: 'البحث في الطلبات' });
   await search.fill('OUTSIDE-CLAIM');
-  await expect(page.getByText('لا توجد طلبات مطابقة')).toBeVisible();
+  await expect(page.getByText('لا توجد طلبات هنا الآن')).toBeVisible();
   await search.fill('');
   await expect(page.getByText('Scoped claim review')).toBeVisible();
 

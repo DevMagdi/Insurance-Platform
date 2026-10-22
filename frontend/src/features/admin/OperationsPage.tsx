@@ -49,7 +49,13 @@ function canOpenTab(access: StaffAccess, tab: TabSpec): boolean {
   return true;
 }
 
-interface OperationsPageProps { access: StaffAccess; range: DateRange; inScopeCompanies: CompanyOption[]; }
+/**
+ * `focus` pins the page to a single tab and drops the tab strip. The sidebar
+ * entry «إعدادات القنوات» uses it to open the existing three-channel
+ * integrations view on its own, so an operator who only needs to check
+ * WhatsApp does not have to walk past SLA rules and report schedules.
+ */
+interface OperationsPageProps { access: StaffAccess; range: DateRange; inScopeCompanies: CompanyOption[]; focus?: OperationsTab; }
 
 function recordValue(record: AdminRecord | undefined, key: string): unknown {
   if (!record) return undefined;
@@ -460,9 +466,14 @@ function OperationEditor({
 
 function DataTable({ title, subtitle, children }: { title: string; subtitle: string; children: ReactNode }) { return <section className="surface-card admin-table-card"><div className="table-topline"><div><strong>{title}</strong><span>{subtitle}</span></div><Icon name="settings" size={16} /></div>{children}</section>; }
 
-export function OperationsPage({ access, inScopeCompanies }: OperationsPageProps) {
+export function OperationsPage({ access, inScopeCompanies, focus }: OperationsPageProps) {
   const tabs = TAB_SPECS.filter((tab) => canOpenTab(access, tab));
-  const [tab, setTab] = useState<OperationsTab>(tabs[0]?.id ?? 'companies');
+  // A focused page has no tab state to hold: the prop *is* the tab. Deriving
+  // it rather than mirroring it into state means no effect has to chase the
+  // prop, and switching between /staff/channels and /staff/operations cannot
+  // leave a stale tab behind.
+  const [pickedTab, setTab] = useState<OperationsTab>(tabs[0]?.id ?? 'companies');
+  const tab = focus ?? pickedTab;
   // Rows are kept together with the tab they belong to: a response that lands
   // after the operator switched tabs is dropped instead of being rendered by
   // another tab's renderer (the `reading 'join'` crash).
@@ -481,10 +492,11 @@ export function OperationsPage({ access, inScopeCompanies }: OperationsPageProps
   useEffect(() => {
     let active = true;
     queueMicrotask(() => {
-      if (active && !allowedTabs.some((item) => item.id === tab) && allowedTabs[0]) setTab(allowedTabs[0].id);
+      if (!active || focus) return;
+      if (!allowedTabs.some((item) => item.id === tab) && allowedTabs[0]) setTab(allowedTabs[0].id);
     });
     return () => { active = false; };
-  }, [allowedTabs, tab]);
+  }, [allowedTabs, tab, focus]);
 
   useEffect(() => {
     let active = true;
@@ -576,10 +588,14 @@ export function OperationsPage({ access, inScopeCompanies }: OperationsPageProps
   const visibleRows = term ? rows.filter((row) => safeJson(row).toLocaleLowerCase().includes(term)) : rows;
   const table = normalizeTable(tab, visibleRows);
 
-  if (tab === 'integrations') return <div className="page-stack"><SectionTitle eyebrow="إعدادات مساحة العمل" title="العمليات والكتالوج" description="إدارة شركات التأمين، تصنيفات الطلبات، الفرق، الأتمتة، والتكاملات ضمن صلاحيتك." />
-    <BrandSettings access={access} />
+  if (tab === 'integrations') return <div className="page-stack">
+    {/* Focused view: IntegrationsSettings already opens with its own
+        operator-language header, so a second title would only repeat the
+        sidebar label back at the reader. */}
+    {!focus && <SectionTitle eyebrow="إعدادات مساحة العمل" title="العمليات والكتالوج" description="إدارة شركات التأمين، تصنيفات الطلبات، الفرق، الأتمتة، والتكاملات ضمن صلاحيتك." />}
+    {!focus && <BrandSettings access={access} />}
     {toast && <div className="inline-alert success" role="status">{toast}<button className="notice-close" type="button" onClick={() => setToast('')} aria-label="إخفاء"><Icon name="close" size={14} /></button></div>}
-    <div className="operation-tabs" role="tablist" aria-label="إعدادات الإدارة">{tabs.map((item) => <button role="tab" aria-selected={tab === item.id} className={tab === item.id ? 'active' : ''} key={item.id} type="button" onClick={() => { setTab(item.id); setTabSearch(''); }}><Icon name={item.icon} size={15} />{item.label}</button>)}</div>
+    {!focus && <div className="operation-tabs" role="tablist" aria-label="إعدادات الإدارة">{tabs.map((item) => <button role="tab" aria-selected={tab === item.id} className={tab === item.id ? 'active' : ''} key={item.id} type="button" onClick={() => { setTab(item.id); setTabSearch(''); }}><Icon name={item.icon} size={15} />{item.label}</button>)}</div>}
     {error && <div className="inline-alert error" role="alert">{error}<button type="button" onClick={() => { void load(); }}>إعادة المحاولة</button></div>}
     <IntegrationsSettings companies={inScopeCompanies} />
   </div>;
