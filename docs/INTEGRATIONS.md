@@ -206,7 +206,7 @@ invalidates the refresh token silently — re-run the test probe to detect it.
 | --- | --- | --- |
 | Twilio SMS status | `POST /api/webhooks/twilio_sms/{config_id}` | Twilio SHA-256 HMAC over `url + params`, signed with the row's `auth_token`; replay window 10 minutes. |
 | Twilio SMS inbound | same route (`MessageSid` inbound) | Same signature; body text → `extract_ticket_no`, else 422. |
-| WhatsApp Cloud | `POST /api/webhooks/whatsapp_cloud` | Subscription GET (`hub.mode/hub.verify_token/hub.challenge`) then `X-Hub-Signature-256` HMAC-SHA256 with `app_secret`. |
+| WhatsApp Cloud | `POST /api/webhooks/whatsapp_cloud/{company_id}` (also `/whatsapp/{company_id}`) | Subscription GET (`hub.mode/hub.verify_token/hub.challenge`) then `X-Hub-Signature-256` HMAC-SHA256 with `app_secret`. |
 | Mail delivery events | `POST /api/webhooks/email_webhook` | Timestamped HMAC with `inbound_email_webhook_secret`. |
 | Voice status | `POST /api/webhooks/voice_status` | Timestamped HMAC with `inbound_voice_webhook_secret`. |
 
@@ -221,6 +221,76 @@ tunneling:
 # example: any HTTPS tunnel you trust, then set PUBLIC_APP_URL accordingly
 ngrok http 8080
 ```
+
+### 7.1 WhatsApp Cloud: live setup on Meta's test number
+
+Meta provisions a test number with every new app. It sends and receives real
+messages to **up to five recipients you verify**, needs no payment method and
+no business verification, which makes it the cheapest honest end-to-end test
+of the WhatsApp channel.
+
+**In the Meta App Dashboard** (`developers.facebook.com`, a *Business* app
+with the WhatsApp product added — in Development Mode the sidebar may read
+*API Testing* rather than *API Setup*):
+
+| Value | Where | Shape |
+| --- | --- | --- |
+| Phone number id | WhatsApp ▸ API Setup, under the **From** dropdown | 15–17 digits — **not** the phone number |
+| Access token | same page, *Generate access token* | starts `EAA`, expires in **24 h** |
+| App secret | Settings ▸ Basic, *Show* | 32 lowercase hex characters |
+| Recipient allowlist | API Setup ▸ **To** ▸ Manage phone number list | up to 5, each confirms a code |
+
+The verify token is **not** issued by Meta — invent one and use the same
+string on both sides.
+
+**On this platform:**
+
+```powershell
+# 1. store the credentials (app_secret authenticates deliveries;
+#    verify_token answers the subscription handshake)
+py scripts\dev\connect_provider.py --email you@broker.test `
+    --base-url "http://localhost:8080" --provider whatsapp_cloud --company <UUID> `
+    --set "app_secret=<32 hex from Settings ▸ Basic>" `
+    --set "access_token=<EAA...>" `
+    --set "phone_number_id=<digits>" `
+    --set "verify_token=<a string you invent>"
+
+# 2. expose the API, then prove the handshake answers before Meta tries it
+ngrok http 8080
+py scripts\dev\verify_whatsapp_webhook.py `
+    --base-url "https://<subdomain>.ngrok-free.dev" `
+    --company <UUID> --token "<the same verify_token>"
+```
+
+Only when that prints `PASS` paste the printed callback URL and the verify
+token into **WhatsApp ▸ Configuration ▸ Webhook**, click *Verify and Save*,
+then **Manage** the subscribed fields and tick `messages`. Without that
+subscription the handshake succeeds and no message is ever delivered.
+
+```powershell
+# 3. a real message on a real handset, straight through Meta
+py scripts\dev\send_whatsapp_message.py --phone-number-id <digits> --to "+20..."
+
+# 4. reply from the phone — intake opens or continues a request
+```
+
+Gotchas that cost the most time:
+
+- **The 24-hour window.** Free text is only accepted while the customer has
+  written within the last 24 hours. Outside it Meta answers `131047` and only
+  an approved template (`hello_world`) goes through. Replying from the handset
+  reopens the window.
+- **`131030`** means the recipient is not on the allowlist. It is an exact
+  string match against what you registered.
+- **`190` exactly a day later** is the dashboard token expiring. Generate a
+  system user token (Business settings ▸ System users) with
+  `whatsapp_business_messaging` and `whatsapp_business_management`.
+- **The free ngrok hostname changes on every restart**, and the callback URL
+  in Meta does not follow it. Re-verify after each restart.
+- A continuation window of 72 hours means a WhatsApp message from a mobile
+  that already has an open request is **appended to it** rather than opening
+  a second one (`RequestIntakeService.CONTINUATION_WINDOW`). Check
+  `request_intake_events.state` — `linked` is not a failure.
 
 ---
 
