@@ -1,6 +1,6 @@
 import { act, cleanup, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { api } from '../../api';
+import { api, apiResponse } from '../../api';
 import type { ComplaintFilterOptions, StaffAccess } from '../../types';
 import { TicketWorkspace } from './TicketWorkspace';
 
@@ -85,5 +85,68 @@ describe('TicketWorkspace live updates', () => {
     expect(screen.getByText('رد العميل الجديد')).toBeTruthy();
     expect(signals).toEqual(['staff:data-changed']);
     window.removeEventListener('staff:data-changed', onDataChanged);
+  });
+});
+
+describe('TicketWorkspace call recordings', () => {
+  function mockApiWithCall(call: Record<string, unknown>) {
+    vi.mocked(api).mockImplementation(async (path: string) => {
+      if (path === '/api/staff/complaints/ticket-1') return ticket as never;
+      if (path === '/api/staff/complaints/ticket-1/timeline') return { events: [], messages: [] } as never;
+      if (path === '/api/staff/complaints/ticket-1/inbox') {
+        return { ticket_no: 'CMP-2026-000001', items: [{ kind: 'call', ...call }] } as never;
+      }
+      return [] as never;
+    });
+  }
+
+  const recordedCall = {
+    id: 'call-1', direction: 'inbound', status: 'completed', outcome: 'completed',
+    transcript: 'العميل بيسأل عن تأخر التعويض', consent_at: '2026-10-22T16:30:35Z',
+    started_at: '2026-10-22T16:30:00Z', ended_at: '2026-10-22T16:30:31Z',
+    has_recording: true, duration_seconds: 31,
+  };
+
+  it('plays a recorded call from the conversation instead of hiding it behind a URL', async () => {
+    vi.stubGlobal('EventSource', FakeEventSource);
+    mockApiWithCall(recordedCall);
+    const created: string[] = [];
+    // Replace only the two object-URL helpers: stubbing the whole URL global
+    // takes the constructor with it, and jsdom needs that for cookies.
+    const originalCreate = URL.createObjectURL;
+    const originalRevoke = URL.revokeObjectURL;
+    URL.createObjectURL = ((blob: Blob) => { created.push(blob.type); return 'blob:recording-1'; }) as typeof URL.createObjectURL;
+    URL.revokeObjectURL = (() => undefined) as typeof URL.revokeObjectURL;
+    vi.mocked(apiResponse).mockResolvedValue({
+      blob: async () => new Blob([new Uint8Array([1, 2, 3])], { type: 'audio/mpeg' }),
+    } as never);
+
+    render(<TicketWorkspace id="ticket-1" access={access} options={options} onBack={() => undefined} onOpenTicket={() => undefined} onRefreshAccess={async () => undefined} />);
+
+    expect(await screen.findByText('مكالمة واردة')).toBeTruthy();
+    expect(screen.getByText('31 ثانية')).toBeTruthy();
+    expect(screen.getByText('العميل بيسأل عن تأخر التعويض')).toBeTruthy();
+
+    const play = screen.getByRole('button', { name: /تشغيل التسجيل/ });
+    await act(async () => { play.click(); });
+
+    // The audited route is the only way to the bytes, and the player gets a
+    // typed blob so the browser will actually render controls for it.
+    expect(vi.mocked(apiResponse).mock.calls[0][0]).toBe('/api/staff/complaints/ticket-1/calls/call-1/recording');
+    expect(created).toEqual(['audio/mpeg']);
+    expect(document.querySelector('audio')?.getAttribute('src')).toBe('blob:recording-1');
+
+    URL.createObjectURL = originalCreate;
+    URL.revokeObjectURL = originalRevoke;
+  });
+
+  it('explains a call with no recording instead of offering a dead button', async () => {
+    vi.stubGlobal('EventSource', FakeEventSource);
+    mockApiWithCall({ ...recordedCall, has_recording: false, consent_at: null, transcript: null });
+
+    render(<TicketWorkspace id="ticket-1" access={access} options={options} onBack={() => undefined} onOpenTicket={() => undefined} onRefreshAccess={async () => undefined} />);
+
+    expect(await screen.findByText('المتصل لم يوافق على التسجيل.')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /تشغيل التسجيل/ })).toBeNull();
   });
 });

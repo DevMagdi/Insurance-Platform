@@ -316,6 +316,13 @@ class RequestIntakeService:
     # A follow-up message within this window continues the conversation
     # instead of opening a duplicate request.
     CONTINUATION_WINDOW = timedelta(hours=72)
+    # A phone call is not a follow-up message. Somebody who dials in is
+    # starting a conversation, and folding their call into whatever request
+    # they happen to have open -- an unrelated e-mail from that morning, say
+    # -- files the recording under the wrong subject and hides it from the
+    # person waiting for a new one. A caller who quotes a ticket number is
+    # still routed to it; that branch runs before this window is consulted.
+    CALL_CONTINUATION_WINDOW = timedelta(0)
     MAX_MEDIA_BYTES = 10 * 1024 * 1024
 
     def __init__(self, blobs: Any, default_company_id: UUID | None = None) -> None:
@@ -402,7 +409,14 @@ class RequestIntakeService:
 
         Routed through a SECURITY DEFINER helper because the worker login
         holds no table privileges on complaints/customers.
+
+        A phone call passes a zero window, which leaves the ticket-number
+        branch intact and makes the mobile branch match nothing: the call
+        opens its own request against the caller's number.
         """
+        window = (
+            self.CALL_CONTINUATION_WINDOW if event.channel == "phone" else self.CONTINUATION_WINDOW
+        )
         row = (
             await db.execute(
                 text(
@@ -417,7 +431,7 @@ class RequestIntakeService:
                     # interval) to the interval type itself, so asyncpg demands
                     # a timedelta and rejects a string client-side. That broke
                     # intake on *every* channel before any request was created.
-                    "window": self.CONTINUATION_WINDOW,
+                    "window": window,
                 },
             )
         ).one_or_none()

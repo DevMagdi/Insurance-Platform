@@ -13,8 +13,10 @@ import type {
   Complaint,
   ComplaintFilterOptions,
   ComplaintStatus,
+  InboxCall,
   StaffAccess,
   TicketTimeline,
+  UnifiedInbox,
 } from '../../types';
 
 const STATUS_LABEL: Record<ComplaintStatus, string> = {
@@ -78,6 +80,12 @@ const EVENT_LABEL: Record<string, string> = {
   attachment_added: 'أُضيف مرفق',
 };
 
+function formatCallDuration(seconds: number): string {
+  const minutes = Math.floor(seconds / 60);
+  const rest = seconds % 60;
+  return minutes ? `${minutes} د ${rest} ث` : `${rest} ثانية`;
+}
+
 function eventLabel(eventType: string): string {
   return EVENT_LABEL[eventType] ?? eventType.replaceAll('_', ' ');
 }
@@ -86,6 +94,10 @@ export function TicketWorkspace({ id, access, options, onBack, onOpenTicket, onR
   const [ticket, setTicket] = useState<Complaint | null>(null);
   const [timeline, setTimeline] = useState<TicketTimeline | null>(null);
   const [audit, setAudit] = useState<AuditEvent[]>([]);
+  const [calls, setCalls] = useState<InboxCall[]>([]);
+  const [playingCall, setPlayingCall] = useState('');
+  const [callAudio, setCallAudio] = useState<Record<string, string>>({});
+  const objectUrls = useRef<string[]>([]);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [cannedReplies, setCannedReplies] = useState<CannedReply[]>([]);
   const [duplicates, setDuplicates] = useState<DuplicateCandidate[]>([]);
@@ -125,6 +137,7 @@ export function TicketWorkspace({ id, access, options, onBack, onOpenTicket, onR
       if (hasPermission(access, 'complaints.reply_public')) requests.push(api<CannedReply[]>(`/api/staff/complaints/${encodeURIComponent(id)}/canned-replies`));
       if (hasPermission(access, 'complaints.view')) requests.push(api<DuplicateCandidate[]>(`/api/staff/complaints/${encodeURIComponent(id)}/duplicates`));
       if (hasPermission(access, 'audit.view')) requests.push(api<AuditEvent[]>(`/api/staff/audit/events?complaint_id=${encodeURIComponent(id)}&limit=100`));
+      requests.push(api<UnifiedInbox>(`/api/staff/complaints/${encodeURIComponent(id)}/inbox`));
       const resolved = await Promise.allSettled(requests);
       if (resolved[0]?.status === 'fulfilled') setTimeline(resolved[0].value as TicketTimeline);
       let cursor = 1;
@@ -144,6 +157,16 @@ export function TicketWorkspace({ id, access, options, onBack, onOpenTicket, onR
         const item = resolved[cursor++];
         if (item?.status === 'fulfilled') setAudit(item.value as AuditEvent[]);
       } else setAudit([]);
+      const inbox = resolved[cursor++];
+      // The inbox is the only source of phone calls; the timeline endpoint
+      // carries messages and status changes but has never known about them.
+      setCalls(
+        inbox?.status === 'fulfilled'
+          ? ((inbox.value as UnifiedInbox).items ?? []).filter(
+              (item): item is InboxCall => item.kind === 'call',
+            )
+          : [],
+      );
     } catch (cause) {
       if (!silent) {
         setTicket(null);
@@ -342,6 +365,41 @@ export function TicketWorkspace({ id, access, options, onBack, onOpenTicket, onR
     } finally { setActionBusy(false); }
   };
 
+  const openRecording = useCallback(async (call: InboxCall) => {
+    if (callAudio[call.id] || playingCall === call.id) return;
+    setPlayingCall(call.id);
+    try {
+      // Every fetch of this route is a separately audited access, so the
+      // object URL is kept and reused rather than re-requested on replay.
+      const response = await apiResponse(
+        `/api/staff/complaints/${encodeURIComponent(id)}/calls/${encodeURIComponent(call.id)}/recording`,
+      );
+      const blob = await response.blob();
+      if (!blob.type.startsWith('audio/')) {
+        // The server could not identify the container, so it offered a
+        // download instead of claiming a type no player would accept.
+        const objectUrl = URL.createObjectURL(blob);
+        const anchor = document.createElement('a');
+        anchor.href = objectUrl;
+        anchor.download = `call-${call.id}`;
+        anchor.click();
+        URL.revokeObjectURL(objectUrl);
+        return;
+      }
+      const objectUrl = URL.createObjectURL(blob);
+      objectUrls.current.push(objectUrl);
+      setCallAudio((current) => ({ ...current, [call.id]: objectUrl }));
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'تعذر فتح تسجيل المكالمة.');
+    } finally {
+      setPlayingCall('');
+    }
+  }, [callAudio, id, playingCall]);
+
+  // Revoke on unmount only. Keying this to callAudio would release the URL
+  // of the clip that was just added, the moment the next one is created.
+  useEffect(() => () => { objectUrls.current.forEach((url) => URL.revokeObjectURL(url)); }, []);
+
   const downloadAttachment = async (attachment: Attachment) => {
     if (attachment.scan_status !== 'clean') return;
     try {
@@ -365,7 +423,7 @@ export function TicketWorkspace({ id, access, options, onBack, onOpenTicket, onR
   };
 
   const timelineItems = useMemo(() => {
-    const items: Array<{ key: string; date: string; kind: 'event' | 'message' | 'audit'; content: React.ReactNode }> = [];
+    const items: Array<{ key: string; date: string; kind: 'event' | 'message' | 'audit' | 'call'; content: React.ReactNode }> = [];
     for (const event of timeline?.events ?? []) {
       items.push({
         key: `event-${event.id}`,
@@ -385,8 +443,33 @@ export function TicketWorkspace({ id, access, options, onBack, onOpenTicket, onR
     for (const row of audit) {
       items.push({ key: `audit-${row.id}`, date: row.created_at, kind: 'audit', content: <><strong>سجل تدقيق · {row.action.replaceAll('_', ' ')}</strong><span className="timeline-meta">{row.resource_type}{row.actor_staff_id ? ` · ${row.actor_staff_id.slice(0, 8)}` : ''}</span></> });
     }
+    for (const call of calls) {
+      items.push({
+        key: `call-${call.id}`,
+        date: call.started_at ?? call.ended_at ?? new Date(0).toISOString(),
+        kind: 'call',
+        content: (
+          <div className="timeline-call">
+            <div className="timeline-call-meta">
+              <strong>{call.direction === 'inbound' ? 'مكالمة واردة' : 'مكالمة صادرة'}</strong>
+              {call.duration_seconds !== null && <span>{formatCallDuration(call.duration_seconds)}</span>}
+            </div>
+            {call.has_recording ? (
+              callAudio[call.id]
+                ? <audio className="timeline-call-player" controls autoPlay preload="none" src={callAudio[call.id]}>متصفحك لا يدعم تشغيل الصوت.</audio>
+                : <button type="button" className="timeline-call-play" disabled={playingCall === call.id} onClick={() => { void openRecording(call); }}>
+                    <Icon name="phone" size={14} /> {playingCall === call.id ? 'جارٍ فتح التسجيل…' : 'تشغيل التسجيل'}
+                  </button>
+            ) : (
+              <p className="timeline-call-note">{call.consent_at ? 'لم يُحفظ تسجيل لهذه المكالمة.' : 'المتصل لم يوافق على التسجيل.'}</p>
+            )}
+            {call.transcript && <p className="timeline-call-transcript">{call.transcript}</p>}
+          </div>
+        ),
+      });
+    }
     return items.sort((left, right) => new Date(left.date).getTime() - new Date(right.date).getTime());
-  }, [timeline, audit]);
+  }, [timeline, audit, calls, callAudio, playingCall, openRecording]);
 
   if (!hasPermission(access, 'complaints.view')) return <AccessDenied title="الطلب غير متاح" />;
 
@@ -430,7 +513,7 @@ export function TicketWorkspace({ id, access, options, onBack, onOpenTicket, onR
                 <div className="panel-heading"><div><p className="eyebrow">سجل المحادثة</p><h2>الرسائل والتحديثات</h2></div><span className="unified-inbox-badge"><Icon name="inbox" size={14} /> صندوق موحّد</span></div>
                 <div className="channel-legend"><span><i className="channel-dot portal" /> بوابة العملاء</span><span><i className="channel-dot email" /> بريد إلكتروني</span><span><i className="channel-dot whatsapp" /> واتساب</span><span><i className="channel-dot call" /> مكالمات</span></div>
                 <div className="timeline-list">
-                  {timelineItems.map((item) => <article className={`timeline-item timeline-${item.kind}`} key={item.key}><span className={`timeline-marker marker-${item.kind}`}>{item.kind === 'message' ? <Icon name="message" size={13} /> : item.kind === 'audit' ? <Icon name="shield" size={13} /> : <Icon name="check" size={13} />}</span><div className="timeline-item-body"><time>{formatDateTime(item.date)}</time>{item.content}</div></article>)}
+                  {timelineItems.map((item) => <article className={`timeline-item timeline-${item.kind}`} key={item.key}><span className={`timeline-marker marker-${item.kind}`}>{item.kind === 'message' ? <Icon name="message" size={13} /> : item.kind === 'audit' ? <Icon name="shield" size={13} /> : item.kind === 'call' ? <Icon name="phone" size={13} /> : <Icon name="check" size={13} />}</span><div className="timeline-item-body"><time>{formatDateTime(item.date)}</time>{item.content}</div></article>)}
                   {timelineItems.length === 0 && <div className="empty-inline">لا توجد رسائل أو تغييرات مسجلة بعد.</div>}
                 </div>
 

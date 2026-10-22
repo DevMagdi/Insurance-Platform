@@ -259,3 +259,50 @@ def test_sqlstate_is_still_reported_when_no_message_is_available() -> None:
     bare.orig = SimpleNamespace(sqlstate="22023")  # type: ignore[attr-defined]
 
     assert _error_code(bare) == "sqlstate_22023"
+
+
+def _call_event(sender: str = "+201004594694", body: str = "") -> InboundEvent:
+    return InboundEvent(
+        channel="phone",
+        external_event_id="CA0123456789",
+        sender=sender,
+        body=body,
+        company_id=uuid4(),
+    )
+
+
+async def test_a_phone_call_opens_its_own_request_instead_of_joining_an_open_one() -> None:
+    """Somebody dialling in is starting something, not replying to something.
+
+    The continuation window exists for follow-up messages. Applied to a call
+    it filed the recording under whatever request the caller happened to have
+    open -- an unrelated e-mail from that morning, in the case this fixes --
+    so the call never appeared as the new request the operator was waiting
+    for. A zero window leaves the mobile branch of find_intake_target with
+    nothing to match.
+    """
+    session = _FakeSession()
+    await _service()._resolve_target(session, _call_event(), "عايز أعرف موقف الشكوى")
+
+    _sql, params = session.calls[-1]
+    assert params["window"] == timedelta(0)
+    assert params["sender"] == "+201004594694"
+
+
+async def test_a_caller_who_quotes_a_ticket_still_reaches_it() -> None:
+    """The ticket branch runs before the window, so it is unaffected."""
+    session = _FakeSession()
+    await _service()._resolve_target(session, _call_event(), "بخصوص REQ-2026-000009")
+
+    _sql, params = session.calls[-1]
+    assert params["ticket"] == "REQ-2026-000009"
+    assert params["window"] == timedelta(0)
+
+
+async def test_other_channels_keep_continuing_a_recent_conversation() -> None:
+    """A reply e-mail is a follow-up and must not fork a second request."""
+    session = _FakeSession()
+    await _service()._resolve_target(session, _email_event(), "نص الرسالة")
+
+    _sql, params = session.calls[-1]
+    assert params["window"] == timedelta(hours=72)
