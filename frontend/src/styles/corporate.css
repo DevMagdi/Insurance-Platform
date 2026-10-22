@@ -70,23 +70,14 @@
   font-weight: 600;
 }
 
+/* Surface, border, radius and focus ring come from the design system; only
+   the sizing this form needs is declared here. */
 .corporate-auth-form input {
   width: 100%;
   min-height: 44px;
   padding: 0 14px;
-  border-radius: var(--r-md);
-  border: 1px solid var(--line-strong);
-  background: var(--surface-2);
-  color: var(--text-primary);
   font-size: 15px;
   font-family: var(--font-latin);
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
-}
-
-.corporate-auth-form input:focus-visible {
-  outline: none;
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
 .corporate-auth-form .field-hint {
@@ -109,78 +100,150 @@
 
 /* --- Shell -------------------------------------------------------------- */
 
+/* The portal is a full page, not a card floating in a column: the top bar
+   bleeds edge to edge like the console's, and only the content is measured. */
 .corporate-shell {
+  min-height: 100vh;
+  background: var(--surface-0);
+  color: var(--ink-900);
+}
+
+.corporate-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-4);
+  height: var(--header-height);
+  padding: 0 var(--s-6);
+  background: color-mix(in srgb, var(--surface-chrome) 86%, transparent);
+  backdrop-filter: saturate(150%) blur(12px);
+  -webkit-backdrop-filter: saturate(150%) blur(12px);
+  border-bottom: 1px solid var(--line);
+}
+
+.corporate-brand {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  min-width: 0;
+}
+
+.corporate-brand > div {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+  min-width: 0;
+}
+
+.corporate-brand strong {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+}
+
+.corporate-brand small {
+  font-size: 0.6875rem;
+  color: var(--ink-400);
+}
+
+.corporate-topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+}
+
+.corporate-icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--r-control);
+  border: 1px solid var(--line);
+  background: var(--surface-1);
+  color: var(--ink-500);
+  cursor: pointer;
+  transition:
+    background-color var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out);
+}
+
+.corporate-icon-button:hover {
+  background: var(--surface-2);
+  color: var(--ink-900);
+  border-color: var(--line-strong);
+}
+
+.corporate-body {
   max-width: 1120px;
   margin: 0 auto;
-  padding: 28px 20px 72px;
+  padding: var(--s-10) var(--s-6) var(--s-20);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-6);
 }
 
 .corporate-header {
   display: flex;
   flex-wrap: wrap;
-  gap: 16px;
+  gap: var(--s-4);
   align-items: flex-end;
   justify-content: space-between;
-  margin-bottom: 24px;
 }
 
 .corporate-header h1 {
-  font-size: 28px;
-  font-weight: 800;
+  font-size: clamp(1.5rem, 1.2rem + 1.1vw, 1.95rem);
+  font-weight: 700;
+  letter-spacing: -0.025em;
   margin: 0;
 }
 
+.corporate-header-sub {
+  margin: 8px 0 0;
+  font-size: 0.875rem;
+  line-height: 1.7;
+  color: var(--ink-500);
+  max-width: 62ch;
+}
+
+.corporate-title-skeleton {
+  width: 280px;
+  max-width: 60vw;
+  height: 34px;
+  border-radius: var(--r-md);
+}
+
+/* Geometry and states come from `.ds-segment`; the portal only says that its
+   strip spans the content and wraps on a phone. */
 .corporate-tabs {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
-  padding: 4px;
-  margin-bottom: 24px;
-  border-radius: var(--r-pill);
-  background: var(--surface-2);
-  border: 1px solid var(--line-soft);
-}
-
-.corporate-tabs button {
-  flex: 1 1 auto;
-  min-height: 40px;
-  padding: 0 20px;
-  border: 0;
-  border-radius: var(--r-pill);
-  background: transparent;
-  color: var(--text-muted);
-  font-family: inherit;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.18s ease, color 0.18s ease;
-}
-
-.corporate-tabs button:hover {
-  color: var(--text-primary);
-}
-
-.corporate-tabs button.is-active {
-  background: var(--surface-1);
-  color: var(--text-primary);
-  box-shadow: var(--shadow-xs);
+  align-self: flex-start;
+  max-width: 100%;
 }
 
 .corporate-section {
-  margin-top: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+  margin-top: var(--s-6);
 }
 
 .corporate-section h2 {
-  font-size: 17px;
+  font-size: 1.05rem;
   font-weight: 700;
-  margin: 0 0 14px;
+  letter-spacing: -0.015em;
+  margin: 0;
 }
 
-.corporate-empty,
 .corporate-result-count {
-  color: var(--text-muted);
-  font-size: 14px;
-  margin: 0 0 12px;
+  color: var(--ink-400);
+  font-size: 0.8125rem;
+  margin: 0;
 }
 
 .corporate-error,
@@ -206,37 +269,20 @@
 
 /* --- Overview ----------------------------------------------------------- */
 
-.corporate-stat-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
-  gap: 14px;
-}
+/* KPI cards come from `.ds-kpi-grid` + <Metric>, shared with the console. */
 
-.corporate-stat {
-  display: grid;
-  gap: 6px;
-  padding: 18px 20px;
-  border-radius: var(--r-lg);
-  background: var(--surface-1);
-  border: 1px solid var(--line);
-  box-shadow: var(--shadow-xs);
-}
-
-.corporate-stat-label {
-  font-size: 13px;
-  color: var(--text-muted);
-}
-
-.corporate-stat-value {
-  font-size: 28px;
-  font-weight: 800;
-  line-height: 1.1;
+.corporate-overview,
+.corporate-members,
+.corporate-documents {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-6);
 }
 
 .corporate-contract-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
+  gap: var(--s-4);
 }
 
 .corporate-contract {
@@ -529,22 +575,8 @@
   transition: background 0.16s ease, border-color 0.16s ease, opacity 0.16s ease;
 }
 
-.corporate-shell .button-dark,
-.corporate-auth .button-dark {
-  background: var(--navy-800);
-  color: var(--ink-on-brand);
-}
-
-.corporate-shell .button-dark:hover:not(:disabled),
-.corporate-auth .button-dark:hover:not(:disabled) {
-  background: var(--navy-700);
-}
-
-.corporate-shell .button-dark:disabled,
-.corporate-auth .button-dark:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-}
+/* `.button-dark` is the design system's primary fill; it used to resolve
+   from --navy-800, which the zinc palette aliases to white. */
 
 .corporate-shell .button-light,
 .corporate-auth .button-light {
@@ -864,4 +896,12 @@
     flex: 1 1 100%;
     min-width: 0;
   }
+}
+
+/* A one-line "nothing in this sub-section" note. The full .ds-blank treatment
+   would be louder than the group it sits in. */
+.archive-none {
+  margin: 0;
+  color: var(--ink-400);
+  font-size: 0.8125rem;
 }

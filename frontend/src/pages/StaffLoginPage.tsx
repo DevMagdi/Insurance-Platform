@@ -90,8 +90,15 @@ export function StaffLoginPage() {
   };
 
   return (
-    <section className="mx-auto max-w-xl rounded-3xl border border-border bg-[var(--surface-glass)] p-6 shadow-[var(--shadow-lg)] backdrop-blur-xl">
-      <p className="text-xs font-bold uppercase tracking-widest text-amber-600 dark:text-amber-300">{brand.platform_name}</p>
+    /* The staff sign-in used to be a lone card pinned to the top of an empty
+       page, headed by an amber eyebrow left over from the gold palette. It is
+       the first screen an operator sees; it gets the same treatment as the
+       corporate sign-in — centred, branded, accent used once. */
+    <section className="staff-auth-card">
+      <span className="staff-auth-mark" aria-hidden="true">
+        <img src={brand.logo_url} alt="" />
+      </span>
+      <p className="eyebrow">{brand.platform_name}</p>
       <h1 className="mt-2 text-3xl font-black">{t('staff.loginTitle')}</h1>
       <p className="mt-2 text-text-muted">{t('staff.loginSubtitle')}</p>
       {error && <div className="mt-4"><ErrorState message={error} /></div>}

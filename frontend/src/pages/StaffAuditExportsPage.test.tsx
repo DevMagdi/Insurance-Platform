@@ -50,7 +50,7 @@ describe('StaffAuditExportsPage', () => {
 
     // Clearing a date must not crash the page and must not send a bad window.
     fireEvent.change(from, { target: { value: '' } });
-    await waitFor(() => expect(screen.getByText(/366/)).toBeTruthy());
+    await waitFor(() => expect(screen.getByText(/حدّد تاريخ بداية ونهاية صالحين/)).toBeTruthy());
     expect((request as HTMLButtonElement).disabled).toBe(true);
     expect(createExport).not.toHaveBeenCalled();
 

@@ -378,12 +378,30 @@ export function formatDate(value: string | null): string {
  * same-day contract reads correctly instead of showing "-3 يوم".
  */
 export function renewalNotice(days: number | null): { text: string; tone: 'calm' | 'warn' | 'alert' } {
+  // Arabic-Indic, like every other number the portal prints. This line used
+  // to render "يُجدَّد خلال 72 يوم" directly beside "EGP ٢٬٥٠٠٬٠٠٠".
   if (days === null || Number.isNaN(days)) return { text: 'غير محدد', tone: 'calm' };
-  if (days < 0) return { text: `انتهى منذ ${Math.abs(days)} يوم`, tone: 'alert' };
+  if (days < 0) return { text: `انتهى منذ ${formatNumber(Math.abs(days))} يوم`, tone: 'alert' };
   if (days === 0) return { text: 'يُجدَّد اليوم', tone: 'alert' };
   if (days === 1) return { text: 'يُجدَّد غداً', tone: 'alert' };
-  if (days <= 30) return { text: `يُجدَّد خلال ${days} يوم`, tone: 'warn' };
-  return { text: `يُجدَّد خلال ${days} يوم`, tone: 'calm' };
+  if (days <= 30) return { text: `يُجدَّد خلال ${formatNumber(days)} يوم`, tone: 'warn' };
+  return { text: `يُجدَّد خلال ${formatNumber(days)} يوم`, tone: 'calm' };
+}
+
+/** Backend document kinds, in Arabic. A raw `contract` slug in an Arabic
+ *  metadata line is the same bug as a raw enum in the staff timeline. */
+export const DOCUMENT_KIND_LABEL: Record<string, string> = {
+  contract: 'عقد',
+  policy: 'وثيقة تأمين',
+  invoice: 'فاتورة',
+  addendum: 'ملحق',
+  report: 'تقرير',
+  other: 'مستند',
+};
+
+export function documentKindLabel(kind: string | null): string {
+  if (!kind) return 'مستند';
+  return DOCUMENT_KIND_LABEL[kind] ?? kind;
 }
 
 /** A call length reads as minutes and seconds, never as a raw count. */

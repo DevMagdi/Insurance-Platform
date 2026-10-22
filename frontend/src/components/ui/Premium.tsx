@@ -52,6 +52,36 @@ export function Stagger({
   );
 }
 
+/**
+ * A panel that crossfades when its `routeKey` changes — tab bodies, wizard
+ * steps, anything that swaps in place. Without it a tab switch is a hard cut
+ * and the eye has to re-acquire the whole region; 180ms of fade plus 6px of
+ * rise keeps the thread.
+ */
+export function SwapPanel({
+  swapKey,
+  children,
+  className,
+}: {
+  swapKey: string;
+  children: ReactNode;
+  className?: string;
+}) {
+  const reduced = useReducedMotion();
+  if (reduced) return <div className={className}>{children}</div>;
+  return (
+    <motion.div
+      key={swapKey}
+      className={className}
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.18, ease: EASE }}
+    >
+      {children}
+    </motion.div>
+  );
+}
+
 export function StaggerItem({
   children,
   className,
@@ -209,44 +239,22 @@ export function Metric({
   tone?: 'gold' | 'info' | 'success' | 'warning' | 'danger' | 'violet';
   className?: string;
 }) {
-  const washes: Record<string, string> = {
-    gold: 'rgba(139, 92, 246, 0.16)',
-    info: 'rgba(96, 165, 250, 0.16)',
-    success: 'rgba(16, 185, 129, 0.16)',
-    warning: 'rgba(245, 158, 11, 0.16)',
-    danger: 'rgba(244, 63, 94, 0.14)',
-    violet: 'rgba(139, 92, 246, 0.16)',
-  };
-  const fg: Record<string, string> = {
-    gold: 'var(--gold-500)',
-    info: 'var(--info)',
-    success: 'var(--success)',
-    warning: 'var(--warning)',
-    danger: 'var(--danger)',
-    violet: 'var(--violet)',
-  };
+  /* Tone is declared, never painted here. The alphas that read as "a hint of
+     hue" on near-black read as pastel confetti on white, so the two sets live
+     in `design-system.css` behind `--wash-*` and this component only says
+     which one it wants. */
   return (
-    <Panel wash={washes[tone]} className={cn('ds-metric-card', className)}>
-      <div className="flex items-start justify-between gap-3">
-        <span className="text-[0.8125rem] font-semibold" style={{ color: 'var(--ink-500)' }}>
-          {label}
-        </span>
+    <Panel data-tone={tone} className={cn('ds-metric-card ds-wash', className)}>
+      <div className="ds-metric-top">
+        <span className="ds-metric-label">{label}</span>
         {icon && (
-          <span
-            className="ds-metric-icon"
-            style={{ color: fg[tone], background: washes[tone] }}
-            aria-hidden="true"
-          >
+          <span className="ds-metric-icon" aria-hidden="true">
             {icon}
           </span>
         )}
       </div>
-      <div className="ds-metric mt-3 text-[2rem]">{value}</div>
-      {hint && (
-        <div className="mt-1.5 text-[0.75rem]" style={{ color: 'var(--ink-400)' }}>
-          {hint}
-        </div>
-      )}
+      <div className="ds-metric ds-metric-value">{value}</div>
+      {hint && <div className="ds-metric-hint">{hint}</div>}
     </Panel>
   );
 }

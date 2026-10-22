@@ -109,7 +109,7 @@ export function StaffExportsPage() {
           <Field label={t('staff.from')}><TextInput type="datetime-local" value={window.date_from?.slice(0, 16)} onChange={(e) => setWindow((w) => ({ ...w, date_from: toIsoDateTime(e.target.value) }))} /></Field>
           <Field label={t('staff.to')}><TextInput type="datetime-local" value={window.date_to?.slice(0, 16)} onChange={(e) => setWindow((w) => ({ ...w, date_to: toIsoDateTime(e.target.value) }))} /></Field>
         </div>
-        {!windowValid && <p className="mt-3 text-sm text-amber-700 dark:text-amber-300">حدّد تاريخ بداية ونهاية صالحين، وبفارق لا يتجاوز 366 يوماً.</p>}
+        {!windowValid && <p className="mt-3 text-sm" style={{ color: 'var(--warning)' }}>حدّد تاريخ بداية ونهاية صالحين، وبفارق لا يتجاوز ٣٦٦ يوماً.</p>}
         {create.isError && <p className="mt-3 text-sm text-red-600 dark:text-red-400">{create.error instanceof Error ? create.error.message : 'تعذر إنشاء التصدير.'}</p>}
         <div className="mt-4 flex flex-wrap gap-2">
           <button type="button" className={primaryButton} disabled={create.isPending || !windowValid} onClick={() => create.mutate('complaints')}>تصدير الطلبات (CSV)</button>
@@ -125,7 +125,7 @@ export function StaffExportsPage() {
               <li key={job.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-surface-elevated px-3 py-2 text-sm">
                 <span>{EXPORT_KIND[job.kind] ?? job.kind} · {EXPORT_STATUS[job.status] ?? job.status} · {new Date(job.created_at).toLocaleString('ar-EG')}</span>
                 {job.status === 'completed' && (
-                  <button type="button" className="font-bold text-amber-600 dark:text-amber-300" onClick={() => void staffApi.downloadExport(job.id)}>{t('common.download')}</button>
+                  <button type="button" className="button button-quiet" onClick={() => void staffApi.downloadExport(job.id)}>{t('common.download')}</button>
                 )}
               </li>
             ))}

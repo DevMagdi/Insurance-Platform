@@ -72,6 +72,17 @@
   --surface-4: #52525b; /* highest — pressed, selected */
   --surface-glass: rgba(24, 24, 27, 0.72);
   --surface-inverse: #fafafa;
+  /* The app chrome (sidebar, top bar, site header). On dark it melts into the
+     canvas and the cards float off it; on light it has to be the *lighter*
+     plane or the whole console reads as one flat sheet of paper. */
+  --surface-chrome: #09090b;
+  /* Every text input in the product resolves here. Before this token the
+     portal painted fields white, the corporate login painted them grey and
+     the console painted them elevated — three different answers to the same
+     question on three screens of one product. */
+  --field-bg: #27272a;
+  --field-bg-hover: #3f3f46;
+  --field-border: #3f3f46;
 
   /* Text */
   --ink-900: #fafafa;
@@ -84,6 +95,11 @@
   --ink-400: #8f8f99;
   --ink-300: #52525b;
   --ink-on-brand: #ffffff;
+  /* Deliberately inverted surfaces — the CTA band, the track promo panel,
+     brand chips. These are the same in both themes on purpose; building them
+     out of theme tokens is what turned them white in light mode. */
+  --slab-1: #1f1f24;
+  --slab-2: #09090b;
 
   /* Lines — a seam on near-black is a defect. Resting borders sit one zinc
      step off their surface; --line-strong is the brief's #3F3F46 and is
@@ -139,6 +155,15 @@
   --focus: #8b5cf6;
   --focus-ring: 0 0 0 3px rgba(139, 92, 246, 0.35);
 
+  /* KPI washes. These used to be hard-coded in TSX, which meant one set of
+     alphas tuned for near-black was also being painted on white, where they
+     turned into pastel confetti. Declared per theme, they stay a hint. */
+  --wash-accent: rgba(139, 92, 246, 0.15);
+  --wash-info: rgba(96, 165, 250, 0.14);
+  --wash-success: rgba(52, 211, 153, 0.14);
+  --wash-warning: rgba(251, 191, 36, 0.14);
+  --wash-danger: rgba(248, 113, 113, 0.13);
+
   /* Compatibility aliases for the retired gold/navy ramps (~270 references
      across portal.css, staff.css, staff-console.css and a few components).
      These MUST live in the same theme block as the values they shadow:
@@ -180,6 +205,13 @@
   --surface-4: #d4d4d8;
   --surface-glass: rgba(255, 255, 255, 0.8);
   --surface-inverse: #18181b;
+  /* White chrome over an off-white canvas: the sidebar and the top bar read
+     as the frame, the canvas reads as the page, and a card can still be the
+     brightest thing on screen because it carries the shadow. */
+  --surface-chrome: #ffffff;
+  --field-bg: #ffffff;
+  --field-bg-hover: #fafafa;
+  --field-border: rgba(9, 9, 11, 0.14);
 
   --ink-900: #09090b;
   --ink-800: #18181b;
@@ -189,6 +221,11 @@
   --ink-400: #71717a; /* 4.83:1 on white — passes here, no lift needed */
   --ink-300: #a1a1aa;
   --ink-on-brand: #ffffff;
+  /* Deliberately inverted surfaces — the CTA band, the track promo panel,
+     brand chips. These are the same in both themes on purpose; building them
+     out of theme tokens is what turned them white in light mode. */
+  --slab-1: #1f1f24;
+  --slab-2: #09090b;
 
   --line: rgba(9, 9, 11, 0.08);
   --line-soft: rgba(9, 9, 11, 0.05);
@@ -226,16 +263,29 @@
   --fuchsia: #a21caf;
   --fuchsia-soft: rgba(162, 28, 175, 0.09);
 
-  --shadow-xs: 0 1px 2px rgba(9, 9, 11, 0.04);
-  --shadow-sm: 0 1px 2px rgba(9, 9, 11, 0.04), 0 4px 16px -10px rgba(9, 9, 11, 0.1);
-  --shadow-md: 0 1px 3px rgba(9, 9, 11, 0.04), 0 16px 40px -24px rgba(9, 9, 11, 0.16);
-  --shadow-lg: 0 2px 8px rgba(9, 9, 11, 0.05), 0 32px 72px -40px rgba(9, 9, 11, 0.22);
+  /* Light-mode elevation was a whisper of a whisper (4% black, no spread),
+     so cards sat *in* the page rather than on it and the whole theme read as
+     flat paper. Each step now pairs a crisp 1px contact shadow with a wide,
+     very soft ambient one — the physics of a sheet a few millimetres up,
+     which is what makes Linear and Attio feel expensive on white. */
+  --shadow-xs: 0 1px 1px rgba(9, 9, 11, 0.04);
+  --shadow-sm: 0 1px 2px rgba(9, 9, 11, 0.05), 0 6px 16px -10px rgba(9, 9, 11, 0.14);
+  --shadow-md: 0 1px 2px rgba(9, 9, 11, 0.05), 0 10px 20px -12px rgba(9, 9, 11, 0.14), 0 24px 48px -28px rgba(9, 9, 11, 0.2);
+  --shadow-lg: 0 2px 4px rgba(9, 9, 11, 0.05), 0 18px 36px -18px rgba(9, 9, 11, 0.16), 0 48px 88px -44px rgba(9, 9, 11, 0.26);
   --shadow-brand: 0 18px 44px -22px rgba(9, 9, 11, 0.24);
-  --shadow-gold: 0 12px 28px -14px rgba(124, 58, 237, 0.3);
-  --shadow-accent: 0 12px 28px -14px rgba(124, 58, 237, 0.3);
+  --shadow-gold: 0 10px 24px -12px rgba(124, 58, 237, 0.32);
+  --shadow-accent: 0 10px 24px -12px rgba(124, 58, 237, 0.32);
 
   --focus: #7c3aed;
   --focus-ring: 0 0 0 3px rgba(124, 58, 237, 0.25);
+
+  /* Same hues as dark, a third of the alpha: on white a 16% wash is a block
+     of colour, not a hint, and four of them side by side read as candy. */
+  --wash-accent: rgba(124, 58, 237, 0.07);
+  --wash-info: rgba(37, 99, 235, 0.06);
+  --wash-success: rgba(5, 150, 105, 0.07);
+  --wash-warning: rgba(180, 83, 9, 0.06);
+  --wash-danger: rgba(220, 38, 38, 0.06);
 
   /* Compatibility aliases for the retired gold/navy ramps (~270 references
      across portal.css, staff.css, staff-console.css and a few components).
@@ -543,7 +593,9 @@ body {
   white-space: nowrap;
 }
 
-/* Soft gradient wash for KPI cards — a hint of hue, never a block of colour. */
+/* Soft gradient wash for KPI cards — a hint of hue, never a block of colour.
+   `--wash` and `--wash-ink` are set by `[data-tone]` below (or inline, for the
+   handful of callers that pass a literal). */
 .ds-wash {
   position: relative;
   overflow: hidden;
@@ -557,9 +609,17 @@ body {
   width: 72%;
   aspect-ratio: 1;
   border-radius: 50%;
-  background: radial-gradient(circle, var(--wash, rgba(212, 175, 55, 0.14)), transparent 68%);
+  background: radial-gradient(circle, var(--wash, var(--wash-accent)), transparent 68%);
   pointer-events: none;
 }
+
+/* One declaration per tone, resolved from the per-theme `--wash-*` ramp. */
+[data-tone='gold'],
+[data-tone='violet'] { --wash: var(--wash-accent); --wash-ink: var(--accent-ink); }
+[data-tone='info'] { --wash: var(--wash-info); --wash-ink: var(--info); }
+[data-tone='success'] { --wash: var(--wash-success); --wash-ink: var(--success); }
+[data-tone='warning'] { --wash: var(--wash-warning); --wash-ink: var(--warning); }
+[data-tone='danger'] { --wash: var(--wash-danger); --wash-ink: var(--danger); }
 
 /* Focus: one ring everywhere. */
 .ds-focusable:focus-visible,
@@ -631,6 +691,31 @@ body {
   min-height: 132px;
 }
 
+.ds-metric-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--s-3);
+}
+
+.ds-metric-label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--ink-500);
+  line-height: 1.5;
+}
+
+.ds-metric-value {
+  margin-top: var(--s-3);
+  font-size: 2rem;
+}
+
+.ds-metric-hint {
+  margin-top: 6px;
+  font-size: 0.75rem;
+  color: var(--ink-400);
+}
+
 .ds-metric-icon {
   display: inline-flex;
   align-items: center;
@@ -639,6 +724,15 @@ body {
   height: 34px;
   border-radius: var(--r-md);
   flex: none;
+  color: var(--wash-ink, var(--accent-ink));
+  background: var(--wash, var(--wash-accent));
+}
+
+/* On white, a 7% wash behind a 17px glyph is not enough to read as a chip;
+   the icon keeps a touch more fill than the card's corner bloom. */
+:root:not(.dark) .ds-metric-icon,
+.staff-console.theme-light .ds-metric-icon {
+  background: color-mix(in srgb, var(--wash-ink, var(--accent-ink)) 10%, transparent);
 }
 
 .ds-blank {
@@ -1249,10 +1343,21 @@ body {
    actions, then the two blocks a shift lead actually reads.
    ========================================================================== */
 
+/* Four headline numbers, one row. `auto-fit` wrapped them 3 + 1 at common
+   desktop widths, which left a card-shaped hole beside the fourth KPI — the
+   single most obvious piece of dead space on the dashboard. */
 .ds-kpi-grid {
   display: grid;
   gap: var(--s-4);
-  grid-template-columns: repeat(auto-fit, minmax(min(212px, 100%), 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+@media (max-width: 1180px) {
+  .ds-kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 560px) {
+  .ds-kpi-grid { grid-template-columns: minmax(0, 1fr); }
 }
 
 /* Supporting numbers: real, but deliberately quieter than the four above. */
@@ -1285,10 +1390,12 @@ body {
 
 /* Quick actions sit above the fold: the dashboard is a launchpad, not a
    read-only report. */
+/* Same wrapping problem as the KPI row: at 230px the four quick actions
+   broke 3 + 1 and left a hole under the last one. */
 .ds-quick-grid {
   display: grid;
   gap: var(--s-3);
-  grid-template-columns: repeat(auto-fit, minmax(min(230px, 100%), 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(190px, 100%), 1fr));
 }
 
 .ds-quick {
@@ -1587,9 +1694,9 @@ body {
 .ds-field > select {
   height: 38px;
   padding: 0 12px;
-  border-radius: var(--r-md);
-  border: 1px solid var(--line);
-  background: var(--surface-2);
+  border-radius: var(--r-control);
+  border: 1px solid var(--field-border);
+  background: var(--field-bg);
   color: var(--ink-900);
   font-family: inherit;
   font-size: 0.8125rem;
@@ -1621,15 +1728,17 @@ body {
 
 .ds-field > input::placeholder { color: var(--ink-400); }
 
-.ds-field > input:hover,
-.ds-field > select:hover { border-color: var(--line-strong); }
+.ds-field > input:hover:not(:focus),
+.ds-field > select:hover:not(:focus) {
+  border-color: var(--line-strong);
+  background: var(--field-bg-hover);
+}
 
 .ds-field > input:focus,
 .ds-field > select:focus {
   outline: none;
-  border-color: var(--gold-500);
+  border-color: var(--accent-500);
   box-shadow: var(--focus-ring);
-  background: var(--surface-1);
 }
 
 .ds-more-filters { position: relative; }
@@ -1816,4 +1925,466 @@ body {
 ::selection {
   background: var(--accent-200);
   color: var(--text-primary);
+}
+
+/* ==========================================================================
+   v3 — final polish
+   --------------------------------------------------------------------------
+   One contract for the things that were being answered three different ways
+   in three different files: what a field looks like, what a disabled button
+   looks like, what "loading" looks like, what "nothing here yet" looks like,
+   and what focus looks like. Everything below is written once here and the
+   per-app sheets defer to it instead of restating it.
+
+   The rule that drove this pass: if two screens of one product disagree about
+   a primitive, the primitive belongs in this file.
+   ========================================================================== */
+
+/* ------------------------------------------------------- controls, unified */
+
+/* Three sheets painted inputs three ways — portal white, corporate grey,
+   console elevated — which is why the customer login and the corporate login
+   did not look like the same product. One surface, one border, one radius,
+   one focus ring, everywhere. */
+.portal-shell input[type='text'],
+.portal-shell input[type='tel'],
+.portal-shell input[type='email'],
+.portal-shell input[type='search'],
+.portal-shell input[type='password'],
+.portal-shell input[type='number'],
+.portal-shell input[type='date'],
+.portal-shell textarea,
+.portal-shell select,
+.corporate-auth-form input,
+.corporate-shell input,
+.corporate-shell select,
+.staff-console input:not([type='checkbox']):not([type='radio']),
+.staff-console select,
+.staff-console textarea {
+  border-radius: var(--r-control);
+  border: 1px solid var(--field-border);
+  background: var(--field-bg);
+  color: var(--ink-900);
+  font-family: inherit;
+  box-shadow: var(--shadow-xs);
+  transition:
+    border-color var(--dur-fast) var(--ease-out),
+    background-color var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-fast) var(--ease-out);
+}
+
+.portal-shell input:hover:not(:disabled):not(:focus),
+.portal-shell textarea:hover:not(:disabled):not(:focus),
+.portal-shell select:hover:not(:disabled):not(:focus),
+.corporate-shell input:hover:not(:disabled):not(:focus),
+.corporate-auth-form input:hover:not(:disabled):not(:focus),
+.staff-console input:hover:not(:disabled):not(:focus),
+.staff-console select:hover:not(:disabled):not(:focus),
+.staff-console textarea:hover:not(:disabled):not(:focus) {
+  border-color: var(--line-strong);
+  background: var(--field-bg-hover);
+}
+
+.portal-shell input::placeholder,
+.portal-shell textarea::placeholder,
+.corporate-shell input::placeholder,
+.corporate-auth-form input::placeholder,
+.staff-console input::placeholder,
+.staff-console textarea::placeholder {
+  color: var(--ink-400);
+  opacity: 1;
+}
+
+/* Focus: the border goes accent and the ring sits outside it. Two layers,
+   never an outline, so the control does not jump by a pixel. */
+.portal-shell input:focus,
+.portal-shell textarea:focus,
+.portal-shell select:focus,
+.corporate-shell input:focus,
+.corporate-shell select:focus,
+.corporate-auth-form input:focus,
+.staff-console input:focus,
+.staff-console select:focus,
+.staff-console textarea:focus {
+  outline: none;
+  border-color: var(--accent-500);
+  box-shadow: var(--focus-ring);
+}
+
+.portal-shell input:disabled,
+.portal-shell textarea:disabled,
+.portal-shell select:disabled,
+.corporate-shell input:disabled,
+.staff-console input:disabled,
+.staff-console select:disabled,
+.staff-console textarea:disabled {
+  background: var(--surface-2);
+  color: var(--ink-400);
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+/* ----------------------------------------------------------- press states */
+
+/* Expensive software acknowledges a click in under 100ms. Every control in
+   the product now drops 1px on press and springs back — small enough to feel
+   mechanical rather than bouncy. */
+.portal-shell .btn:active:not(:disabled),
+.corporate-shell .button:active:not(:disabled),
+.corporate-auth .button:active:not(:disabled),
+.staff-console .button:active:not(:disabled),
+.staff-console .icon-button:active:not(:disabled),
+.ds-gold-btn:active:not(:disabled),
+.ds-ghost-btn:active:not(:disabled),
+.ds-quiet-btn:active:not(:disabled) {
+  transform: translateY(0) scale(0.985);
+  transition-duration: 60ms;
+}
+
+/* ------------------------------------------------------- disabled buttons */
+
+/* `.button-dark` on the corporate login resolved its fill from --navy-800,
+   which the zinc palette aliases to --surface-1 — white, under white text.
+   The sign-in button was literally invisible until you tabbed to it. A
+   disabled primary must stay recognisably the primary action: same fill,
+   less of it, and a label you can still read. */
+.corporate-shell .button:disabled,
+.corporate-auth .button:disabled,
+.portal-shell .btn:disabled,
+.staff-console .button:disabled,
+.staff-console .btn:disabled {
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* A disabled control still has to be legible. `.btn` inside the console was
+   inheriting a blanket opacity and the export screen shipped a primary
+   button whose label was invisible against the card. Fade the chrome, never
+   the text below the contrast floor. */
+.staff-console .btn:disabled,
+.portal-shell .btn:disabled {
+  opacity: 1;
+  color: var(--ink-400);
+  background: var(--surface-2);
+  border-color: var(--line);
+}
+
+.staff-console .btn-primary:disabled {
+  background: color-mix(in srgb, var(--accent-600) 38%, var(--surface-2));
+  border-color: transparent;
+  color: color-mix(in srgb, var(--ink-on-brand) 72%, transparent);
+}
+
+.corporate-shell .button-dark,
+.corporate-auth .button-dark {
+  background: var(--accent-600);
+  border-color: transparent;
+  color: var(--ink-on-brand);
+  box-shadow: var(--shadow-accent);
+}
+
+.corporate-shell .button-dark:hover:not(:disabled),
+.corporate-auth .button-dark:hover:not(:disabled) {
+  background: var(--accent-500);
+}
+
+.corporate-shell .button-dark:disabled,
+.corporate-auth .button-dark:disabled,
+.portal-shell .btn-primary:disabled,
+.staff-console .button-dark:disabled {
+  opacity: 1;
+  background: color-mix(in srgb, var(--accent-600) 38%, var(--surface-2));
+  color: color-mix(in srgb, var(--ink-on-brand) 70%, transparent);
+}
+
+/* --------------------------------------------------------- loading states */
+
+/* One shimmer, one radius, one speed. `.skeleton` (portal + console) and
+   `.ds-skeleton` (design system) were two different animations at two
+   different speeds on two halves of the same product. */
+.skeleton,
+.ds-skeleton {
+  border-radius: var(--r-md);
+  background: linear-gradient(
+    90deg,
+    var(--surface-2) 25%,
+    color-mix(in srgb, var(--surface-3) 70%, var(--surface-2)) 50%,
+    var(--surface-2) 75%
+  );
+  background-size: 200% 100%;
+  animation: ds-shimmer 1.6s ease-in-out infinite;
+}
+
+/* A spinner is a last resort: it says "wait" without saying what for. Where
+   one is unavoidable it is a thin accent arc, not a thick grey ring. */
+.loading-spinner,
+.ds-spinner {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid var(--line-strong);
+  border-top-color: var(--accent-500);
+  animation: ds-spin 720ms linear infinite;
+}
+
+@keyframes ds-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* The canonical loading block: a few skeleton lines inside the card the real
+   content will occupy, so the layout does not jump when data lands. */
+.ds-loading-lines {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+}
+
+.ds-loading-lines > span {
+  display: block;
+  height: 12px;
+  border-radius: var(--r-pill);
+  background: linear-gradient(
+    90deg,
+    var(--surface-2) 25%,
+    color-mix(in srgb, var(--surface-3) 70%, var(--surface-2)) 50%,
+    var(--surface-2) 75%
+  );
+  background-size: 200% 100%;
+  animation: ds-shimmer 1.6s ease-in-out infinite;
+}
+
+.ds-loading-lines > span:nth-child(2) { width: 82%; }
+.ds-loading-lines > span:nth-child(3) { width: 64%; }
+.ds-loading-lines > span:nth-child(4) { width: 73%; }
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton,
+  .ds-skeleton,
+  .ds-loading-lines > span { animation: none; }
+  .loading-spinner,
+  .ds-spinner { animation-duration: 2.4s; }
+}
+
+/* ----------------------------------------------------------- empty states */
+
+/* Five class names described the same idea — `.empty`, `.empty-table`,
+   `.admin-empty`, `.corporate-empty`, `.portal-empty` — each with its own
+   padding and its own grey. They are one component now: a disc, a line of
+   consequence, a line of explanation, and at most one way forward. */
+.ds-blank,
+.corporate-empty,
+.portal-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 6px;
+  padding: var(--s-12) var(--s-6);
+  color: var(--ink-400);
+  font-size: 0.8125rem;
+  line-height: 1.75;
+}
+
+.ds-blank-icon {
+  position: relative;
+  background:
+    radial-gradient(circle at 50% 35%, var(--accent-100), transparent 70%),
+    var(--surface-2);
+}
+
+/* A soft concentric halo instead of a hard second border: the icon reads as
+   placed on the surface rather than cut out of it. */
+.ds-blank-icon::after {
+  content: '';
+  position: absolute;
+  inset: -10px;
+  border-radius: inherit;
+  border: 1px solid var(--line-soft);
+  pointer-events: none;
+}
+
+.ds-blank-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-2);
+  margin-top: var(--s-5);
+  flex-wrap: wrap;
+}
+
+/* --------------------------------------------------------- segmented tabs */
+
+/* The corporate portal, the archive filters and the ticket workspace each
+   rolled their own tab strip. One primitive: a recessed track, a raised
+   thumb, and the accent reserved for the label of the current section. */
+.ds-segment {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  border-radius: var(--r-control);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+}
+
+.ds-segment > button {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--ink-500);
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  padding: 7px 14px;
+  border-radius: calc(var(--r-control) - 3px);
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    background-color var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-fast) var(--ease-out);
+}
+
+.ds-segment > button:hover:not(.is-active) {
+  color: var(--ink-800);
+  background: color-mix(in srgb, var(--surface-1) 60%, transparent);
+}
+
+.ds-segment > button.is-active {
+  background: var(--surface-1);
+  color: var(--ink-900);
+  box-shadow: var(--shadow-xs);
+}
+
+/* --------------------------------------------------- focus + selection, app-wide */
+
+/* One ring. It was previously declared four times with three different
+   offsets, so tabbing across the product changed the shape of the caret. */
+:where(.portal-shell, .corporate-shell, .corporate-auth, .staff-console)
+  :is(a, button, summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--accent-500);
+  outline-offset: 2px;
+  border-radius: var(--r-xs);
+}
+
+::selection {
+  background: var(--accent-200);
+  color: var(--text-primary);
+}
+
+.staff-console ::selection {
+  background: var(--accent-200);
+  color: var(--ink-900);
+}
+
+/* ------------------------------------------------------ micro-interactions */
+
+/* Hover is a 140ms promise that something will happen; it should never be
+   the thing you notice. Three gestures, used everywhere:
+     · a surface lifts 2px and gains a shadow,
+     · a row tints,
+     · a control's border steps up one notch.
+   Nothing changes hue on hover — colour is reserved for meaning. */
+.ds-card-interactive,
+.ds-quick,
+.ds-channel,
+.corporate-contract,
+.corporate-member,
+.corporate-policy,
+.corporate-doc {
+  transition:
+    border-color var(--dur-fast) var(--ease-out),
+    background-color var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-base) var(--ease-out),
+    transform var(--dur-base) var(--ease-out);
+}
+
+.corporate-contract:hover,
+.corporate-member:hover,
+.corporate-policy:hover {
+  border-color: var(--line-strong);
+  box-shadow: var(--shadow-md);
+}
+
+/* Links and quiet text buttons get an underline that grows from the start
+   edge rather than appearing all at once. RTL-safe: it is anchored to the
+   inline start, so it opens right-to-left in Arabic. */
+.ds-text-link,
+.corporate-auth-foot a,
+.portal-shell .link-quiet {
+  position: relative;
+  text-decoration: none;
+}
+
+.ds-text-link::after,
+.corporate-auth-foot a::after,
+.portal-shell .link-quiet::after {
+  content: '';
+  position: absolute;
+  inset-inline-start: 0;
+  bottom: -2px;
+  width: 100%;
+  height: 1px;
+  background: currentColor;
+  transform: scaleX(0);
+  transform-origin: inline-start;
+  transition: transform var(--dur-base) var(--ease-out);
+}
+
+.ds-text-link:hover::after,
+.corporate-auth-foot a:hover::after,
+.portal-shell .link-quiet:hover::after {
+  transform: scaleX(1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ds-card-interactive,
+  .ds-quick,
+  .ds-channel,
+  .corporate-contract,
+  .corporate-member,
+  .corporate-policy,
+  .corporate-doc,
+  .ds-text-link::after,
+  .corporate-auth-foot a::after,
+  .portal-shell .link-quiet::after {
+    transition: none;
+  }
+}
+
+/* ------------------------------------------------------------ staff sign-in */
+
+/* `/staff/login` and `/invite` render outside both shells, so they have no
+   chrome to inherit. They get their own small page: a centred card with the
+   brand mark above the eyebrow, and enough vertical room that the card sits
+   in the optical centre rather than clinging to the top edge. */
+.staff-auth-card {
+  width: min(100%, 460px);
+  margin-inline: auto;
+  margin-block: clamp(32px, 10vh, 104px);
+  padding: var(--s-7) var(--s-6) var(--s-6);
+  border-radius: var(--r-card);
+  border: 1px solid var(--line);
+  background: var(--surface-1);
+  box-shadow: var(--shadow-lg);
+}
+
+.staff-auth-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  margin-bottom: var(--s-5);
+  border-radius: 13px;
+  background: var(--accent-200);
+  border: 1px solid color-mix(in srgb, var(--accent-500) 22%, transparent);
+}
+
+.staff-auth-mark img {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
 }

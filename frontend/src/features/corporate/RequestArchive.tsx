@@ -12,6 +12,8 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ApiError } from '../../api';
+import { Icon } from '../../components/Icon';
+import { Blank } from '../../components/ui/Premium';
 import {
   EVENT_TYPE_LABEL,
   INTAKE_SOURCE_LABEL,
@@ -94,7 +96,11 @@ function TimelinePanel({ requestId, onClose }: { requestId: string; onClose: () 
         </button>
       </header>
 
-      {loading && <p className="corporate-empty">جارٍ التحميل…</p>}
+      {loading && (
+        <div className="ds-loading-lines" aria-busy="true" aria-label="جارٍ تحميل تفاصيل الطلب">
+          <span /><span /><span />
+        </div>
+      )}
       {error && (
         <div className="corporate-error" role="alert">
           {error}
@@ -133,7 +139,7 @@ function TimelinePanel({ requestId, onClose }: { requestId: string; onClose: () 
           <section className="archive-group">
             <h4>المراسلات ({timeline.messages.length})</h4>
             {timeline.messages.length === 0 ? (
-              <p className="corporate-empty">لا توجد مراسلات ظاهرة.</p>
+              <p className="archive-none">لا توجد مراسلات ظاهرة.</p>
             ) : (
               <ul className="archive-messages">
                 {timeline.messages.map((message) => (
@@ -152,7 +158,7 @@ function TimelinePanel({ requestId, onClose }: { requestId: string; onClose: () 
           <section className="archive-group">
             <h4>المرفقات ({timeline.attachments.length})</h4>
             {timeline.attachments.length === 0 ? (
-              <p className="corporate-empty">لا توجد مرفقات.</p>
+              <p className="archive-none">لا توجد مرفقات.</p>
             ) : (
               <ul className="archive-attachments">
                 {timeline.attachments.map((attachment) => (
@@ -170,7 +176,7 @@ function TimelinePanel({ requestId, onClose }: { requestId: string; onClose: () 
           <section className="archive-group">
             <h4>المكالمات ({timeline.calls.length})</h4>
             {timeline.calls.length === 0 ? (
-              <p className="corporate-empty">لا توجد مكالمات.</p>
+              <p className="archive-none">لا توجد مكالمات.</p>
             ) : (
               <ul className="archive-calls">
                 {timeline.calls.map((call) => (
@@ -393,9 +399,17 @@ export function RequestArchive() {
             {error}
           </div>
         )}
-        {loading && <p className="corporate-empty">جارٍ التحميل…</p>}
+        {loading && (
+          <div className="ds-loading-lines" aria-busy="true" aria-label="جارٍ تحميل الأرشيف">
+            <span /><span /><span /><span /><span />
+          </div>
+        )}
         {!loading && !error && items.length === 0 && (
-          <p className="corporate-empty">لا توجد طلبات مطابقة.</p>
+          <Blank
+            icon={<Icon name="inbox" size={22} />}
+            title="لا توجد طلبات مطابقة"
+            body="جرّب توسيع الفترة الزمنية أو إزالة فلتر الحالة والمصدر."
+          />
         )}
 
         {items.length > 0 && (

@@ -315,10 +315,13 @@ export function ComplaintQueue({ access, range, options, companyNames, onOpenTic
         title="صندوق الطلبات"
         description="ابحث، صفِّ، وادِر الحالات ضمن نطاق صلاحيتك الحالي."
         action={(
+          /* Columns, CSV and print are all incidental: none of them is "the
+             action on this screen", so none of them gets the primary fill.
+             Printing used to be the loudest control on the page. */
           <div className="queue-heading-actions">
             <button className="button button-light" type="button" onClick={() => setShowColumns((current) => !current)}><Icon name="columns" size={16} /> الأعمدة</button>
             {hasPermission(access, 'complaints.export') && <div className="export-group"><button className="button button-light" type="button" onClick={() => { void exportAs(); }}><Icon name="download" size={15} /> CSV · Excel-ready</button></div>}
-            {hasPermission(access, 'complaints.export') && <button className="button button-dark" type="button" onClick={() => window.print()}><Icon name="download" size={15} /> PDF / طباعة</button>}
+            {hasPermission(access, 'complaints.export') && <button className="button button-light" type="button" onClick={() => window.print()}><Icon name="download" size={15} /> PDF / طباعة</button>}
           </div>
         )}
       />
@@ -341,17 +344,21 @@ export function ComplaintQueue({ access, range, options, companyNames, onOpenTic
         </div>
       )}
 
-      <div className="queue-toolbar surface-card">
-        <div className="queue-search-wrap"><Icon name="search" size={17} /><input aria-label="البحث في الطلبات" placeholder="ابحث برقم الطلب أو الموضوع…" value={search} onChange={(event) => setSearch(event.target.value)} /><kbd>/</kbd></div>
-        <div className="saved-view-control"><Icon name="filter" size={15} /><select aria-label="العروض المحفوظة" value="" onChange={(event) => { const view = savedViews.find((item) => item.id === event.target.value); if (view) applyView(view); }}><option value="">العروض المحفوظة</option>{savedViews.map((view) => <option value={view.id} key={view.id}>{view.name}</option>)}</select></div>
-        <button className="button button-quiet save-view-button" type="button" onClick={() => setShowSaveView(true)}><Icon name="plus" size={15} /> حفظ العرض</button>
-      </div>
-
       {/* Hierarchy over density. Mobile number and intake source are how a
           request is actually found on the phone with a customer waiting, so
           they sit in the primary row with status; the remaining six filters
-          are real but rarely needed and fold away behind a count. */}
+          are real but rarely needed and fold away behind a count.
+
+          Search and the filters used to be two stacked cards describing one
+          job — "narrow this list" — with a hairline, a shadow and 24px of
+          gap between them. One card, three rows. */}
       <div className="ds-filters">
+        <div className="queue-toolbar">
+          <div className="queue-search-wrap"><Icon name="search" size={17} /><input aria-label="البحث في الطلبات" placeholder="ابحث برقم الطلب أو الموضوع…" value={search} onChange={(event) => setSearch(event.target.value)} /><kbd>/</kbd></div>
+          <div className="saved-view-control"><Icon name="filter" size={15} /><select aria-label="العروض المحفوظة" value="" onChange={(event) => { const view = savedViews.find((item) => item.id === event.target.value); if (view) applyView(view); }}><option value="">العروض المحفوظة</option>{savedViews.map((view) => <option value={view.id} key={view.id}>{view.name}</option>)}</select></div>
+          <button className="button button-quiet save-view-button" type="button" onClick={() => setShowSaveView(true)}><Icon name="plus" size={15} /> حفظ العرض</button>
+        </div>
+
         <div className="ds-filter-primary">
           <label className="ds-field ds-field-grow">
             <span>رقم الموبايل</span>
