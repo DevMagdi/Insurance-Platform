@@ -27,7 +27,6 @@ import argparse
 import getpass
 import http.cookiejar
 import json
-import sys
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -51,13 +50,17 @@ def _request(opener, url, *, method="GET", body=None, headers=None):
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--base-url", default="http://localhost:8000")
-    parser.add_argument("--email", required=True, help="staff account with integrations.manage")
+    parser.add_argument(
+        "--email", required=True, help="staff account with integrations.manage"
+    )
     parser.add_argument("--password", default="", help="prompted for when omitted")
     parser.add_argument("--list-companies", action="store_true")
     parser.add_argument("--provider", choices=WEBHOOK_PROVIDERS)
     parser.add_argument("--company", help="company UUID; required for these providers")
     parser.add_argument("--secret", help="value stored as webhook_secret")
-    parser.add_argument("--disable", action="store_true", help="turn the provider off instead")
+    parser.add_argument(
+        "--disable", action="store_true", help="turn the provider off instead"
+    )
     args = parser.parse_args()
 
     base = args.base_url.rstrip("/")
@@ -78,7 +81,9 @@ def main() -> int:
     step = result.get("next_step")
     if step and step != "authenticated":
         print(f"login needs a further step: {step}")
-        print("finish it in the browser, this script only handles password-only accounts")
+        print(
+            "finish it in the browser, this script only handles password-only accounts"
+        )
         return 1
     print("signed in")
 
@@ -95,7 +100,9 @@ def main() -> int:
             return 1
         print(f"\n{'id':38}name")
         for row in rows:
-            print(f"{str(row.get('id','')):38}{row.get('name_ar') or row.get('name_en') or ''}")
+            print(
+                f"{row.get('id', '')!s:38}{row.get('name_ar') or row.get('name_en') or ''}"
+            )
         return 0
 
     if not args.provider or not args.secret:
@@ -134,7 +141,11 @@ def main() -> int:
     print(f"\n{args.provider} {state} for company {args.company}")
     print(f"status: {saved.get('connection_status', 'saved')}")
     if not args.disable:
-        script = "send_test_email.py" if args.provider == "email_webhook" else "send_test_call.py"
+        script = (
+            "send_test_email.py"
+            if args.provider == "email_webhook"
+            else "send_test_call.py"
+        )
         print(f"\nnow send one through it:\n  python scripts/dev/{script} \\")
         print(f"      --company {args.company} --secret {args.secret}")
     return 0

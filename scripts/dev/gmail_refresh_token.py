@@ -46,7 +46,7 @@ class _Catcher(http.server.BaseHTTPRequestHandler):
     state: str | None = None
     error: str | None = None
 
-    def do_GET(self) -> None:  # noqa: N802 - stdlib naming
+    def do_GET(self) -> None:
         query = urllib.parse.parse_qs(urllib.parse.urlsplit(self.path).query)
         _Catcher.code = (query.get("code") or [None])[0]
         _Catcher.state = (query.get("state") or [None])[0]
@@ -77,18 +77,22 @@ def main() -> int:
 
     redirect_uri = f"http://localhost:{args.port}/callback"
     state = secrets.token_urlsafe(16)
-    url = AUTH_URL + "?" + urllib.parse.urlencode(
-        {
-            "client_id": args.client_id,
-            "redirect_uri": redirect_uri,
-            "response_type": "code",
-            "scope": SCOPES,
-            # Without these two Google returns an access token only, and the
-            # second time round it stops returning a refresh token at all.
-            "access_type": "offline",
-            "prompt": "consent",
-            "state": state,
-        }
+    url = (
+        AUTH_URL
+        + "?"
+        + urllib.parse.urlencode(
+            {
+                "client_id": args.client_id,
+                "redirect_uri": redirect_uri,
+                "response_type": "code",
+                "scope": SCOPES,
+                # Without these two Google returns an access token only, and the
+                # second time round it stops returning a refresh token at all.
+                "access_type": "offline",
+                "prompt": "consent",
+                "state": state,
+            }
+        )
     )
 
     print(f"\nredirect URI to register in Google Cloud Console:\n  {redirect_uri}\n")
@@ -137,7 +141,9 @@ def main() -> int:
         ) as response:
             token = json.loads(response.read())
     except urllib.error.HTTPError as exc:
-        print(f"\ntoken exchange failed: {exc.code} {exc.read().decode('utf-8', 'replace')}")
+        print(
+            f"\ntoken exchange failed: {exc.code} {exc.read().decode('utf-8', 'replace')}"
+        )
         return 1
 
     refresh = token.get("refresh_token")

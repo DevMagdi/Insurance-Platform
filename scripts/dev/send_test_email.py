@@ -42,12 +42,16 @@ def sign(secret: str, timestamp: str, raw: bytes) -> str:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--base-url", default="http://localhost:8000")
-    parser.add_argument("--company", required=True, help="company UUID the provider is bound to")
+    parser.add_argument(
+        "--company", required=True, help="company UUID the provider is bound to"
+    )
     parser.add_argument("--secret", required=True, help="the provider's webhook_secret")
     parser.add_argument("--from", dest="sender", default="customer@example.test")
     parser.add_argument("--name", default="", help="display name, e.g. 'Sara Mounir'")
     parser.add_argument("--subject", default="طلب جديد عبر البريد")
-    parser.add_argument("--body", default="هذه رسالة اختبار للتأكد من وصول الطلبات عبر البريد.")
+    parser.add_argument(
+        "--body", default="هذه رسالة اختبار للتأكد من وصول الطلبات عبر البريد."
+    )
     parser.add_argument(
         "--event-id",
         default="",

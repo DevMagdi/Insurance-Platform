@@ -42,13 +42,19 @@ def sign(secret: str, timestamp: str, raw: bytes) -> str:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--base-url", default="http://localhost:8000")
-    parser.add_argument("--company", required=True, help="company UUID the provider is bound to")
+    parser.add_argument(
+        "--company", required=True, help="company UUID the provider is bound to"
+    )
     parser.add_argument("--secret", required=True, help="the provider's webhook_secret")
     parser.add_argument(
         "--provider", default="mock_voice", choices=("mock_voice", "twilio", "vonage")
     )
-    parser.add_argument("--caller", default="+201012345678", help="the number that rang in")
-    parser.add_argument("--caller-name", default="", help="display name, when the carrier sends one")
+    parser.add_argument(
+        "--caller", default="+201012345678", help="the number that rang in"
+    )
+    parser.add_argument(
+        "--caller-name", default="", help="display name, when the carrier sends one"
+    )
     parser.add_argument(
         "--transcript",
         default="اتصلت للاستفسار عن طلب التعويض المقدم من أسبوعين ولم يصلني رد.",
@@ -58,7 +64,9 @@ def main() -> int:
         default="",
         help="continue an existing request instead of opening one, e.g. REQ-2026-000100",
     )
-    parser.add_argument("--duration", type=int, default=95, help="call length in seconds")
+    parser.add_argument(
+        "--duration", type=int, default=95, help="call length in seconds"
+    )
     parser.add_argument(
         "--no-consent",
         action="store_true",
