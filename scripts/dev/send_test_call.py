@@ -12,6 +12,11 @@ matching, request creation, transcript — can be exercised locally.
         --caller  +201012345678 \
         --transcript "اتصلت بخصوص تأخر صرف التعويض"
 
+Attach real audio with `--recording ./clip.mp3`; the file is base64-encoded
+into the event, stored encrypted against the call, and becomes playable in
+the request's conversation. Consent is implied — the database refuses a
+recording without it — so `--recording` and `--no-consent` are incompatible.
+
 Also drives a real provider in development: pass `--provider twilio`. Twilio's
 own signature is only checked when an x-twilio-signature header is present, so
 without one the endpoint falls back to this same timestamped HMAC.
@@ -23,13 +28,47 @@ the background worker running for the job to become a request.
 from __future__ import annotations
 
 import argparse
+import base64
 import hashlib
 import hmac
 import json
+import pathlib
 import time
 import urllib.error
 import urllib.request
 import uuid
+
+# The endpoint caps a webhook body at 1 MiB and base64 inflates by a third,
+# so the raw clip has to leave room for the encoding and the JSON around it.
+MAX_RECORDING_BYTES = 740_000
+
+# Magic numbers for the containers the API serves inline. Mirrors the server's
+# allowlist closely enough to warn early; the server decides for real.
+_AUDIO_MAGIC: tuple[tuple[int, bytes, str], ...] = (
+    (0, b"ID3", "mp3"),
+    (0, b"RIFF", "wav"),
+    (0, b"OggS", "ogg"),
+    (0, b"fLaC", "flac"),
+    (4, b"ftyp", "m4a"),
+    (0, b"FORM", "aiff"),
+)
+
+
+def describe_audio(data: bytes) -> str | None:
+    """Name the container, or None when these bytes are not known audio."""
+    if len(data) < 12:
+        return None
+    for offset, magic, label in _AUDIO_MAGIC:
+        if not data.startswith(magic, offset):
+            continue
+        if magic == b"RIFF" and not data.startswith(b"WAVE", 8):
+            continue
+        if magic == b"FORM" and not data.startswith(b"AIFF", 8):
+            continue
+        return label
+    if data[0] == 0xFF and (data[1] & 0xE0) == 0xE0:
+        return "mp3"
+    return None
 
 
 def sign(secret: str, timestamp: str, raw: bytes) -> str:
@@ -73,7 +112,39 @@ def main() -> int:
         help="omit recording consent; intake routes the call to a human instead",
     )
     parser.add_argument("--event-id", default="", help="defaults to a fresh uuid")
+    parser.add_argument(
+        "--recording",
+        default="",
+        help="path to an audio file to attach as the call recording",
+    )
     args = parser.parse_args()
+
+    recording_b64 = ""
+    if args.recording:
+        if args.no_consent:
+            # The worker never even decodes audio without consent, and the
+            # database refuses to store it, so this combination is a typo.
+            print("error: --recording needs consent; drop --no-consent")
+            return 2
+        path = pathlib.Path(args.recording).expanduser()
+        try:
+            audio = path.read_bytes()
+        except OSError as exc:
+            print(f"error: cannot read {path}: {exc.strerror}")
+            return 2
+        if len(audio) > MAX_RECORDING_BYTES:
+            print(
+                f"error: {path.name} is {len(audio) / 1024:,.0f} KB; the webhook body"
+                f" caps at 1 MiB and base64 adds a third, so keep the clip under"
+                f" {MAX_RECORDING_BYTES // 1024} KB"
+            )
+            return 2
+        if describe_audio(audio) is None:
+            print(
+                f"warning: {path.name} is not a recognised audio container, so the"
+                " console will offer it as a download instead of playing it"
+            )
+        recording_b64 = base64.b64encode(audio).decode("ascii")
 
     call_id = args.event_id or f"dev-call-{uuid.uuid4()}"
     document = {
@@ -90,6 +161,8 @@ def main() -> int:
         "duration_seconds": args.duration,
         "outcome": "completed",
     }
+    if recording_b64:
+        document["recording_b64"] = recording_b64
     if args.ticket:
         document["ticket_no"] = args.ticket.upper()
 
@@ -120,6 +193,12 @@ def main() -> int:
         }.get(exc.code)
         if hint:
             print(f"hint: {hint}")
+        return 1
+    except urllib.error.URLError as exc:
+        # Nothing answered at all: a stack trace here tells the reader less
+        # than the address they got wrong.
+        print(f"error: cannot reach {url}: {exc.reason}")
+        print("hint: is the API up, and is --base-url the address it listens on?")
         return 1
     return 0
 
