@@ -10,8 +10,9 @@ import re
 import secrets
 from datetime import UTC, datetime, timedelta
 from typing import Any, Literal
-from urllib.parse import parse_qs, urlencode
+from urllib.parse import parse_qs, urlencode, urlsplit
 from uuid import NAMESPACE_URL, UUID, uuid4, uuid5
+from xml.sax.saxutils import escape, quoteattr
 
 from fastapi import HTTPException
 from sqlalchemy import func, select, text
@@ -64,6 +65,41 @@ from app.services.providers import ProviderUnavailable
 # and the historical `CMP-` stays valid, so a second copy of this regex that
 # knows only one prefix silently drops the other's replies.
 _TICKET_RE = TICKET_RE
+
+
+# Spoken to the caller by Twilio's text to speech. Polly.Zeina is Twilio's
+# Modern Standard Arabic voice; the basic man/woman voices cannot say Arabic
+# at all, so a plain language attribute would read the prompt as gibberish.
+VOICE_LANGUAGE = "arb"
+VOICE_NAME = "Polly.Zeina"
+VOICE_GREETING = (
+    "أهلا بك في خدمة الطلبات. لتسجيل طلبك بصوتك والموافقة على حفظ التسجيل، "
+    "اضغط واحد. للمتابعة بدون تسجيل، انتظر قليلا."
+)
+VOICE_RECORD_PROMPT = "تفضل بذكر طلبك بعد الصافرة، وعند الانتهاء اضغط مربع أو أغلق الخط."
+VOICE_THANKS = "شكرا لك. تم استلام طلبك وسيتواصل معك أحد موظفينا."
+VOICE_NO_CONSENT = "تم استلام طلبك بدون حفظ تسجيل صوتي. سيتواصل معك أحد موظفينا."
+
+
+def _voice_counterparty(fields: dict[str, str]) -> str:
+    """The customer's number, whichever end of the call they are on.
+
+    On a call the customer placed, that is From. On one the platform placed,
+    From is the brokerage's own line and the customer is To. Reading From
+    unconditionally would file every outbound call against the company's own
+    number, which is not a mobile intake can match.
+    """
+    if str(fields.get("Direction", "")).lower().startswith("outbound"):
+        return str(fields.get("To") or fields.get("Called") or "")[:32]
+    return str(fields.get("From") or fields.get("Caller") or "")[:32]
+
+
+def _say(text_value: str) -> str:
+    """One <Say> verb, with both the attributes and the body escaped."""
+    return (
+        f"<Say voice={quoteattr(VOICE_NAME)} language={quoteattr(VOICE_LANGUAGE)}>"
+        f"{escape(text_value)}</Say>"
+    )
 
 
 def _positive_int(value: Any) -> int | None:
@@ -1476,6 +1512,205 @@ class IntegrationService:
         if not await self.repository.requeue_dead_letter(db, job_id):
             raise HTTPException(status_code=404, detail="Dead-letter job unavailable")
 
+    # ------------------------------------------------------------------
+    # Inbound telephony.
+    #
+    # Twilio treats the number's "A call comes in" URL as a script: it reads
+    # the XML back and performs it. Answering with JSON makes the caller hear
+    # "an application error has occurred" and hangs up, which is why a real
+    # inbound call never reached intake however the number was configured.
+    #
+    # The exchange is three requests. The greeting asks for consent, because
+    # the database refuses to store a recording without it. Consent leads to
+    # <Record>, whose recordingStatusCallback carries the audio URL once the
+    # file exists. That callback is the only one Twilio always sends — the
+    # action URL is skipped when the caller simply hangs up — so it is the
+    # single point at which the call is queued, and the caller's number rides
+    # on its query string because Twilio omits From from that request.
+    # ------------------------------------------------------------------
+
+    async def _voice_config(self, db: AsyncSession, company_id: UUID) -> dict[str, Any]:
+        row = await self.repository.webhook_config(db, company_id, "twilio")
+        if row is None:
+            raise HTTPException(status_code=404, detail="Twilio voice is not connected")
+        config_company_id, ciphertext = row
+        try:
+            return self.cipher.decrypt_json(
+                ciphertext, associated_data=config_aad(config_company_id, "twilio")
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=503, detail="Twilio configuration is invalid") from exc
+
+    @staticmethod
+    def _voice_base_url(config: dict[str, Any]) -> tuple[str, str]:
+        """Return the public origin and the configured voice path.
+
+        Twilio signs the absolute URL it dialled, which the application cannot
+        observe from behind a tunnel and a reverse proxy: it sees the internal
+        host. The origin therefore comes from the stored incoming_url, which
+        only an operator with integrations.manage can set.
+        """
+        parts = urlsplit(str(config.get("incoming_url", "")))
+        if parts.scheme != "https" or not parts.netloc or not parts.path:
+            raise HTTPException(status_code=404, detail="Twilio incoming_url is not configured")
+        return f"{parts.scheme}://{parts.netloc}", parts.path.rstrip("/")
+
+    def _verified_voice_fields(
+        self,
+        config: dict[str, Any],
+        *,
+        origin: str,
+        path: str,
+        query: str,
+        form: dict[str, list[str]],
+        signature: str | None,
+    ) -> dict[str, str]:
+        """Check Twilio's signature over the URL it actually requested."""
+        requested = f"{origin}{path}" + (f"?{query}" if query else "")
+        if not verify_twilio_signature(
+            requested, form, signature, str(config.get("auth_token", ""))
+        ):
+            raise HTTPException(status_code=401, detail="Invalid webhook signature")
+        return {key: values[-1] for key, values in form.items() if values}
+
+    async def inbound_voice_answer(
+        self,
+        db: AsyncSession,
+        company_id: UUID,
+        *,
+        path: str,
+        query: str,
+        form: dict[str, list[str]],
+        signature: str | None,
+    ) -> str:
+        """Greet the caller and ask for recording consent on a single keypress."""
+        config = await self._voice_config(db, company_id)
+        origin, base_path = self._voice_base_url(config)
+        self._verified_voice_fields(
+            config, origin=origin, path=path, query=query, form=form, signature=signature
+        )
+        consent_url = f"{origin}{base_path}/consent"
+        return (
+            '<?xml version="1.0" encoding="UTF-8"?>'
+            "<Response>"
+            f'<Gather numDigits="1" timeout="7" method="POST" action="{escape(consent_url)}">'
+            f"{_say(VOICE_GREETING)}"
+            "</Gather>"
+            # No keypress is not a refusal to be helped, only a refusal to be
+            # recorded, so the silent caller still reaches the consent step and
+            # still has a request opened for them.
+            f'<Redirect method="POST">{escape(consent_url)}</Redirect>'
+            "</Response>"
+        )
+
+    async def inbound_voice_consent(
+        self,
+        db: AsyncSession,
+        company_id: UUID,
+        *,
+        path: str,
+        query: str,
+        form: dict[str, list[str]],
+        signature: str | None,
+    ) -> str:
+        config = await self._voice_config(db, company_id)
+        origin, base_path = self._voice_base_url(config)
+        fields = self._verified_voice_fields(
+            config, origin=origin, path=path, query=query, form=form, signature=signature
+        )
+        caller = _voice_counterparty(fields)
+        call_sid = str(fields.get("CallSid") or "")[:256]
+        if fields.get("Digits") == "1":
+            recording_url = f"{origin}{base_path}/recording?" + urlencode({"caller": caller})
+            return (
+                '<?xml version="1.0" encoding="UTF-8"?>'
+                "<Response>"
+                f"{_say(VOICE_RECORD_PROMPT)}"
+                f'<Record maxLength="120" timeout="5" playBeep="true" finishOnKey="#"'
+                f' recordingStatusCallback="{escape(recording_url)}"'
+                ' recordingStatusCallbackMethod="POST"'
+                ' recordingStatusCallbackEvent="completed"/>'
+                f"{_say(VOICE_THANKS)}"
+                "<Hangup/>"
+                "</Response>"
+            )
+        if caller and call_sid:
+            await self._enqueue_inbound_events(
+                db,
+                company_id,
+                "twilio",
+                [
+                    (
+                        "inbound_call",
+                        f"{call_sid}:no-consent",
+                        {
+                            "provider_call_id": call_sid,
+                            "external_message_id": f"{call_sid}:no-consent",
+                            "sender": caller,
+                            "sender_name": None,
+                            "body": "",
+                            "consent_confirmed": False,
+                            "duration_seconds": None,
+                            "outcome": "no_recording_consent",
+                        },
+                    )
+                ],
+            )
+        return (
+            '<?xml version="1.0" encoding="UTF-8"?>'
+            f"<Response>{_say(VOICE_NO_CONSENT)}<Hangup/></Response>"
+        )
+
+    async def inbound_voice_recording(
+        self,
+        db: AsyncSession,
+        company_id: UUID,
+        *,
+        path: str,
+        query: str,
+        form: dict[str, list[str]],
+        signature: str | None,
+        caller: str,
+    ) -> dict[str, Any]:
+        """Queue the finished call, carrying the URL of the audio Twilio holds."""
+        config = await self._voice_config(db, company_id)
+        origin, _base_path = self._voice_base_url(config)
+        fields = self._verified_voice_fields(
+            config, origin=origin, path=path, query=query, form=form, signature=signature
+        )
+        if str(fields.get("RecordingStatus") or "completed") != "completed":
+            return {"accepted": 0, "job_ids": []}
+        call_sid = str(fields.get("CallSid") or "")[:256]
+        recording_url = str(fields.get("RecordingUrl") or "")
+        caller = str(caller)[:32]
+        if not call_sid or not caller or not recording_url:
+            raise HTTPException(status_code=422, detail="Recording callback is incomplete")
+        return await self._enqueue_inbound_events(
+            db,
+            company_id,
+            "twilio",
+            [
+                (
+                    "inbound_call",
+                    f"{call_sid}:recording",
+                    {
+                        "provider_call_id": call_sid,
+                        "external_message_id": f"{call_sid}:recording",
+                        "sender": caller,
+                        "sender_name": None,
+                        "body": "",
+                        # Reaching this callback at all means the caller pressed
+                        # 1 at the consent prompt; <Record> is unreachable
+                        # otherwise.
+                        "consent_confirmed": True,
+                        "duration_seconds": _positive_int(fields.get("RecordingDuration")),
+                        "outcome": "completed",
+                        "recording_url": recording_url[:1024],
+                    },
+                )
+            ],
+        )
+
     async def receive_webhook(
         self,
         db: AsyncSession,
@@ -1557,6 +1792,16 @@ class IntegrationService:
         ):
             raise HTTPException(status_code=422, detail="Webhook body must be an object")
         events = self._normalize_webhook(provider, document)
+        return await self._enqueue_inbound_events(db, company_id, provider, events)
+
+    async def _enqueue_inbound_events(
+        self,
+        db: AsyncSession,
+        company_id: UUID,
+        provider: str,
+        events: list[tuple[str, str, dict[str, Any]]],
+    ) -> dict[str, Any]:
+        """Encrypt and queue normalized inbound events under their idempotency key."""
         queued_ids: list[UUID] = []
         for job_kind, event_id, payload in events:
             idem = self._inbound_digest(company_id, provider, event_id)

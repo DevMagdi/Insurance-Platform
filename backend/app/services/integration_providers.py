@@ -23,7 +23,7 @@ from email.message import EmailMessage
 from email.policy import default as email_policy
 from email.utils import formatdate, make_msgid, parseaddr
 from typing import Any, Protocol
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlsplit, urlunsplit
 from xml.sax.saxutils import escape
 
 import aiosmtplib
@@ -924,6 +924,54 @@ class MockVoiceProvider:
         # Deterministic in-process adapter; nothing remote to probe. The worker
         # refuses mock providers whenever ENVIRONMENT=production.
         return None
+
+
+# Twilio hands over a URL, not the audio, so the recording has to be
+# collected with the account credentials attached. That makes the host an
+# access-control decision rather than a detail: sending Basic auth to a URL
+# that merely arrived in a payload would hand the account token to whoever
+# supplied it. Only Twilio's own API hosts are ever dialled.
+_TWILIO_RECORDING_HOST = re.compile(r"\Aapi(?:\.[a-z0-9-]+)?\.twilio\.com\Z")
+MAX_RECORDING_BYTES = 25 * 1024 * 1024
+
+
+async def fetch_twilio_recording(
+    recording_url: str, config: dict[str, Any], *, max_bytes: int = MAX_RECORDING_BYTES
+) -> bytes:
+    """Download a finished Twilio recording as MP3 bytes."""
+    account_sid = str(config.get("account_sid", ""))
+    auth_token = str(config.get("auth_token", ""))
+    if not account_sid or not auth_token:
+        raise IntegrationProviderError("twilio_voice_configuration_missing", retryable=False)
+    parsed = urlsplit(recording_url)
+    if parsed.scheme != "https" or not _TWILIO_RECORDING_HOST.fullmatch(parsed.hostname or ""):
+        raise IntegrationProviderError("voice_recording_url_rejected", retryable=False)
+    # The bare resource URL answers with the recording's metadata; the audio
+    # itself is under an explicit media extension.
+    path = parsed.path if parsed.path.endswith((".mp3", ".wav")) else f"{parsed.path}.mp3"
+    url = urlunsplit((parsed.scheme, parsed.netloc, path, "", ""))
+    collected = bytearray()
+    try:
+        # httpx drops the Authorization header when a redirect leaves the
+        # origin, so the hop to Twilio's media CDN carries no credentials.
+        async with (
+            httpx.AsyncClient(timeout=30, follow_redirects=True, max_redirects=3) as client,
+            client.stream("GET", url, auth=(account_sid, auth_token)) as response,
+        ):
+            if response.status_code != 200:
+                raise IntegrationProviderError(
+                    "voice_recording_unavailable",
+                    retryable=response.status_code >= 500 or response.status_code == 429,
+                )
+            async for chunk in response.aiter_bytes():
+                collected.extend(chunk)
+                if len(collected) > max_bytes:
+                    raise IntegrationProviderError("voice_recording_too_large", retryable=False)
+    except httpx.HTTPError as exc:
+        raise IntegrationProviderError("voice_recording_unreachable") from exc
+    if not collected:
+        raise IntegrationProviderError("voice_recording_empty", retryable=True)
+    return bytes(collected)
 
 
 class TwilioVoiceProvider:

@@ -7408,6 +7408,98 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
       security:
       - AccessCookie: []
+  /api/webhooks/twilio/{company_id}/voice:
+    post:
+      tags:
+      - public-webhooks
+      summary: Twilio Voice Answer
+      description: 'The number''s ''A call comes in'' URL: greets and asks for consent.'
+      operationId: twilio_voice_answer_api_webhooks_twilio__company_id__voice_post
+      parameters:
+      - name: company_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Company Id
+      responses:
+        '200':
+          description: Successful Response
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+  /api/webhooks/twilio/{company_id}/voice/consent:
+    post:
+      tags:
+      - public-webhooks
+      summary: Twilio Voice Consent
+      description: Either start recording or open the request without audio.
+      operationId: twilio_voice_consent_api_webhooks_twilio__company_id__voice_consent_post
+      parameters:
+      - name: company_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Company Id
+      responses:
+        '200':
+          description: Successful Response
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+  /api/webhooks/twilio/{company_id}/voice/recording:
+    post:
+      tags:
+      - public-webhooks
+      summary: Twilio Voice Recording
+      description: Twilio's recordingStatusCallback, which omits the caller's number.
+      operationId: twilio_voice_recording_api_webhooks_twilio__company_id__voice_recording_post
+      parameters:
+      - name: company_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Company Id
+      - name: caller
+        in: query
+        required: false
+        schema:
+          type: string
+          default: ''
+          title: Caller
+      responses:
+        '202':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Twilio Voice Recording Api Webhooks Twilio  Company
+                  Id  Voice Recording Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
   /api/webhooks/whatsapp_cloud/{company_id}:
     get:
       tags:

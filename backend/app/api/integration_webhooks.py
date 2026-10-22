@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 from typing import Any, Literal
+from urllib.parse import parse_qs
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query, Request
-from fastapi.responses import PlainTextResponse
+from fastapi.responses import PlainTextResponse, Response
 
 from app.api.deps import client_ip, integration_service
 from app.db import purpose_transaction
@@ -47,6 +48,76 @@ async def provider_webhook(
             provider=_PROVIDER_ALIASES.get(provider, provider),
             raw_body=body,
             headers={key.lower(): value for key, value in request.headers.items()},
+        )
+
+
+async def _twilio_form(request: Request) -> dict[str, list[str]]:
+    """Twilio always posts form-encoded calls; its signature covers those fields."""
+    body = await request.body()
+    if len(body) > _MAX_BODY_BYTES:
+        raise HTTPException(status_code=413, detail="Webhook payload is too large")
+    try:
+        return parse_qs(body.decode("utf-8"), keep_blank_values=True)
+    except UnicodeDecodeError as exc:
+        raise HTTPException(status_code=422, detail="Twilio body must be form encoded") from exc
+
+
+def _twiml(document: str) -> Response:
+    # Twilio reads the response as the call's script and needs an XML media
+    # type to parse it; anything else ends the call with a spoken error.
+    return Response(content=document, media_type="text/xml; charset=utf-8")
+
+
+@router.post("/twilio/{company_id}/voice", response_class=Response)
+async def twilio_voice_answer(company_id: UUID, request: Request) -> Response:
+    """The number's 'A call comes in' URL: greets and asks for consent."""
+    await _limit(request, "integration:webhook:ip", 600)
+    form = await _twilio_form(request)
+    async with purpose_transaction(request.app.state.factory, "webhook") as db:
+        document = await integration_service(request).inbound_voice_answer(
+            db,
+            company_id,
+            path=request.url.path,
+            query=request.url.query,
+            form=form,
+            signature=request.headers.get("x-twilio-signature"),
+        )
+    return _twiml(document)
+
+
+@router.post("/twilio/{company_id}/voice/consent", response_class=Response)
+async def twilio_voice_consent(company_id: UUID, request: Request) -> Response:
+    """Either start recording or open the request without audio."""
+    await _limit(request, "integration:webhook:ip", 600)
+    form = await _twilio_form(request)
+    async with purpose_transaction(request.app.state.factory, "webhook") as db:
+        document = await integration_service(request).inbound_voice_consent(
+            db,
+            company_id,
+            path=request.url.path,
+            query=request.url.query,
+            form=form,
+            signature=request.headers.get("x-twilio-signature"),
+        )
+    return _twiml(document)
+
+
+@router.post("/twilio/{company_id}/voice/recording", status_code=202)
+async def twilio_voice_recording(
+    company_id: UUID, request: Request, caller: str = Query(default="")
+) -> dict[str, Any]:
+    """Twilio's recordingStatusCallback, which omits the caller's number."""
+    await _limit(request, "integration:webhook:ip", 600)
+    form = await _twilio_form(request)
+    async with purpose_transaction(request.app.state.factory, "webhook") as db:
+        return await integration_service(request).inbound_voice_recording(
+            db,
+            company_id,
+            path=request.url.path,
+            query=request.url.query,
+            form=form,
+            signature=request.headers.get("x-twilio-signature"),
+            caller=caller,
         )
 
 
