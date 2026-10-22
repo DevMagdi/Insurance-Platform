@@ -1234,3 +1234,172 @@
 .staff-console .avatar-circle.avatar-active {
   color: var(--ink-on-brand);
 }
+
+/* ==========================================================================
+   v5 — a sidebar for a shift, not for a platform
+
+   Three items an operator uses every day stay in «مساحة العمل». Everything
+   that governs the platform sits behind a disclosure that is shut until
+   someone asks for it. Nothing was removed; the weight was.
+   ========================================================================== */
+
+.staff-console .nav-section-more {
+  margin-top: 2px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line-soft);
+}
+
+.staff-console .nav-more-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink-400);
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 650;
+  cursor: pointer;
+  transition:
+    color var(--dur-fast) var(--ease-out),
+    background-color var(--dur-fast) var(--ease-out);
+}
+
+.staff-console .nav-more-toggle:hover {
+  color: var(--ink-700);
+  background: var(--surface-2);
+}
+
+.staff-console .nav-more-toggle svg {
+  flex: none;
+  /* The base chevron points inline-end; a caret has no handedness, so the
+     same rotation reads correctly in both writing directions. */
+  transform: rotate(90deg);
+  transition: transform var(--dur-base) var(--ease-out);
+}
+
+.staff-console .nav-section-more.is-open .nav-more-toggle svg {
+  transform: rotate(-90deg);
+}
+
+.staff-console .nav-more-items {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 4px;
+}
+
+.staff-console .nav-more-items[hidden] {
+  display: none;
+}
+
+/* Administration is secondary by weight as well as by position. */
+.staff-console .nav-more-items .nav-link {
+  color: var(--ink-500);
+  font-weight: 500;
+}
+
+.staff-console .nav-more-items .nav-link:hover {
+  color: var(--ink-800);
+}
+
+.staff-console .nav-more-items .nav-link.active {
+  color: var(--ink-900);
+  font-weight: 600;
+}
+
+/* Collapsed rail: the disclosure label has nowhere to go, so the admin items
+   simply follow the workspace ones behind a hairline. */
+.staff-console .sidebar.is-collapsed .nav-more-toggle {
+  display: none;
+}
+
+.staff-console .sidebar.is-collapsed .nav-more-items[hidden] {
+  display: flex;
+}
+
+/* ------------------------------------------------- active state, stronger */
+
+/* One unmistakable current location: a violet spine, a violet wash and
+   violet ink. It used to be a 3px bar and nothing else. */
+.staff-console .nav-link.active {
+  background: var(--accent-200);
+  color: var(--accent-400);
+}
+
+.staff-console.theme-light .nav-link.active {
+  color: var(--accent-600);
+}
+
+.staff-console .nav-link.active .nav-icon {
+  color: inherit;
+}
+
+.staff-console .nav-link.active::before {
+  inset-inline-start: 0;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: var(--accent-500);
+  box-shadow: 0 0 12px -1px var(--accent-500);
+}
+
+html[dir='ltr'] .staff-console .nav-link.active::before {
+  border-radius: 3px 0 0 3px;
+}
+
+/* --------------------------------------------- KPI strips and small charts
+
+   Three separate noise sources on the admin dashboard: type set at 8.5–9.5px
+   (small enough to read as texture rather than words), two unrelated hues
+   racing each other across two bar lists, and KPI cards that used a tighter
+   radius and no shadow than every other card on the page. Calm all three.
+   -------------------------------------------------------------------------- */
+
+.staff-console .admin-kpi {
+  padding: 15px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-xl);
+  background: var(--surface-1);
+  box-shadow: var(--shadow-xs);
+}
+
+.staff-console .admin-kpi-head {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0;
+  color: var(--ink-400);
+}
+
+.staff-console .admin-kpi-head svg {
+  opacity: 0.7;
+}
+
+.staff-console .admin-kpi > small {
+  margin-top: 6px;
+  font-size: 10.5px;
+  line-height: 1.45;
+}
+
+/* One accent, two weights: the eye compares lengths instead of decoding
+   a colour key that was never explained anywhere. */
+.staff-console .admin-bar-track span,
+.staff-console .admin-bar-track.company span {
+  background: var(--accent-500);
+}
+
+.staff-console .admin-bar-track.company span {
+  background: color-mix(in srgb, var(--accent-500) 55%, transparent);
+}
+
+.staff-console .admin-bar-row {
+  gap: 10px;
+  font-size: 11px;
+}
+
+.staff-console .admin-bar-row strong {
+  font-size: 11px;
+}

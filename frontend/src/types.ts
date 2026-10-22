@@ -315,6 +315,7 @@ export type AppRoute =
   | { page: 'users' }
   | { page: 'customers' }
   | { page: 'roles' }
+  | { page: 'channels' }
   | { page: 'operations' }
   | { page: 'audit' }
   | { page: 'storage' };

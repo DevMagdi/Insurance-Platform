@@ -49,21 +49,32 @@ interface NavigationItem {
   page: AppRoute['page'];
   label: string;
   icon: IconName;
-  section: 'workspace' | 'admin';
+  section: 'workspace' | 'more';
   permission?: Permission;
   extraPermission?: Permission;
 }
 
+/**
+ * Two groups, deliberately lopsided.
+ *
+ * An agent opens this console to work a queue, not to administer a platform.
+ * `workspace` holds the three things that belong to a shift — the queue, the
+ * channels requests arrive through, and the numbers — and everything that
+ * governs the platform moves behind a disclosure that is shut by default.
+ * Nothing was removed: every page, route and permission check below is the
+ * one that was already there.
+ */
 const NAVIGATION: NavigationItem[] = [
-  { page: 'overview', label: 'لوحة المؤشرات', icon: 'overview', section: 'workspace', permission: 'analytics.view', extraPermission: 'complaints.view' },
   { page: 'complaints', label: 'قائمة الطلبات', icon: 'inbox', section: 'workspace', permission: 'complaints.view' },
-  { page: 'admin', label: 'لوحة الإدارة', icon: 'overview', section: 'admin', permission: 'analytics.view', extraPermission: 'complaints.view' },
-  { page: 'users', label: 'المستخدمون', icon: 'users', section: 'admin', permission: 'users.view' },
-  { page: 'customers', label: 'العملاء', icon: 'users', section: 'admin', permission: 'users.view' },
-  { page: 'roles', label: 'الأدوار والصلاحيات', icon: 'roles', section: 'admin', permission: 'roles.manage' },
-  { page: 'operations', label: 'العمليات والكتالوج', icon: 'settings', section: 'admin' },
-  { page: 'audit', label: 'سجل التدقيق', icon: 'audit', section: 'admin', permission: 'audit.view' },
-  { page: 'storage', label: 'مركز التخزين', icon: 'layers', section: 'admin', permission: 'storage.manage' },
+  { page: 'channels', label: 'إعدادات القنوات', icon: 'plug', section: 'workspace', permission: 'integrations.manage' },
+  { page: 'overview', label: 'لوحة المؤشرات', icon: 'chart', section: 'workspace', permission: 'analytics.view', extraPermission: 'complaints.view' },
+  { page: 'admin', label: 'لوحة الإدارة', icon: 'overview', section: 'more', permission: 'analytics.view', extraPermission: 'complaints.view' },
+  { page: 'users', label: 'المستخدمون', icon: 'users', section: 'more', permission: 'users.view' },
+  { page: 'customers', label: 'العملاء', icon: 'users', section: 'more', permission: 'users.view' },
+  { page: 'roles', label: 'الأدوار والصلاحيات', icon: 'roles', section: 'more', permission: 'roles.manage' },
+  { page: 'operations', label: 'العمليات والكتالوج', icon: 'settings', section: 'more' },
+  { page: 'audit', label: 'سجل التدقيق', icon: 'audit', section: 'more', permission: 'audit.view' },
+  { page: 'storage', label: 'مركز التخزين', icon: 'layers', section: 'more', permission: 'storage.manage' },
 ];
 const OPERATION_REQUIREMENTS: Array<{ permissions: Permission[]; global?: boolean }> = [
   { permissions: ['companies.manage'] }, { permissions: ['categories.manage'] },
@@ -85,6 +96,7 @@ function routeFromPath(pathname: string): AppRoute {
   if (path === '/staff/users') return { page: 'users' };
   if (path === '/staff/customers') return { page: 'customers' };
   if (path === '/staff/roles') return { page: 'roles' };
+  if (path === '/staff/channels') return { page: 'channels' };
   if (path === '/staff/operations') return { page: 'operations' };
   if (path === '/staff/audit') return { page: 'audit' };
   if (path === '/staff/storage') return { page: 'storage' };
@@ -110,10 +122,19 @@ function operationsAllowed(access: StaffAccess): boolean {
 function storageAllowed(access: StaffAccess): boolean {
   return hasGlobalAdminScope(access) && hasPermission(access, 'storage.manage');
 }
+/**
+ * Where an operator lands after signing in.
+ *
+ * This used to open the admin dashboard for anyone who could see it, so the
+ * first thing most of the team met every morning was a governance screen.
+ * The queue comes first now; the admin fallbacks below are unchanged and
+ * still catch accounts that cannot see complaints at all.
+ */
 function defaultPage(access: StaffAccess): AppRoute {
+  if (hasPermission(access, 'complaints.view')) return { page: 'complaints' };
   if (canViewAdminDashboard(access)) return { page: 'admin' };
   if (hasPermission(access, 'analytics.view') && hasPermission(access, 'complaints.view')) return { page: 'overview' };
-  if (hasPermission(access, 'complaints.view')) return { page: 'complaints' };
+  if (hasPermission(access, 'integrations.manage')) return { page: 'channels' };
   if (hasPermission(access, 'users.view')) return { page: 'users' };
   if (hasPermission(access, 'roles.manage')) return { page: 'roles' };
   if (operationsAllowed(access)) return { page: 'operations' };
@@ -174,6 +195,9 @@ function App() {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const { items: notifications, unread, loading: notificationsLoading, markRead: markNotificationRead } = useStaffNotifications(access);
   const [collapsed, setCollapsed] = useState(() => window.localStorage.getItem('wasiq-sidebar') === 'collapsed');
+  // Administration is shut by default. Once an operator opens it the choice
+  // sticks, so the people who do live there are not re-collapsing it daily.
+  const [moreOpen, setMoreOpen] = useState(() => window.localStorage.getItem('wasiq-sidebar-more') === 'open');
   const [notice, setNotice] = useState('');
   const [theme, setTheme] = useState<Theme>(readTheme);
 
@@ -191,8 +215,17 @@ function App() {
       }
       setAccess((current) => current && JSON.stringify(current) === JSON.stringify(result.access) ? current : result.access);
       setSessionState('authenticated'); setSessionError('');
+      // `/staff` is where sign-in drops you. It used to fall through to the
+      // metrics page for anyone who could read analytics, so the first screen
+      // of the day was a dashboard rather than the queue. Resolve the bare
+      // path against `defaultPage`; an explicit `/staff/overview` still opens
+      // the metrics page.
+      const landing = window.location.pathname.replace(/^\/dashboard(?=\/|$)/, '/staff');
+      const isBareLanding = landing === '/staff' || landing === '/staff/';
       const current = routeFromPath(window.location.pathname);
-      if (current.page === 'overview' && !(hasPermission(result.access, 'analytics.view') && hasPermission(result.access, 'complaints.view'))) {
+      const overviewDenied = current.page === 'overview'
+        && !(hasPermission(result.access, 'analytics.view') && hasPermission(result.access, 'complaints.view'));
+      if (isBareLanding || overviewDenied) {
         const fallback = defaultPage(result.access);
         window.history.replaceState({}, '', pathForRoute(fallback)); setRoute(fallback);
       }
@@ -227,6 +260,9 @@ function App() {
   useEffect(() => {
     window.localStorage.setItem('wasiq-sidebar', collapsed ? 'collapsed' : 'expanded');
   }, [collapsed]);
+  useEffect(() => {
+    window.localStorage.setItem('wasiq-sidebar-more', moreOpen ? 'open' : 'closed');
+  }, [moreOpen]);
   useEffect(() => {
     if (!userMenuOpen) return;
     const close = (event: MouseEvent) => {
@@ -299,7 +335,7 @@ function App() {
   const pageContent = route.page === 'admin'
     ? <AdminDashboard access={access} range={range} onNavigate={navigate} />
     : route.page === 'overview'
-    ? <OverviewPage access={access} range={range} companies={filterOptions.companies} companyId={effectiveCompanyId} insuranceType={effectiveInsuranceType} onCompany={setCompanyId} onInsuranceType={setInsuranceType} onOpenComplaints={() => navigate({ page: 'complaints' })} onOpenTicket={(id) => navigate({ page: 'ticket', id })} onOpenSettings={() => navigate({ page: 'admin' })} onOpenAudit={hasPermission(access, 'audit.view') ? () => navigate({ page: 'audit' }) : undefined} />
+    ? <OverviewPage access={access} range={range} companies={filterOptions.companies} companyId={effectiveCompanyId} insuranceType={effectiveInsuranceType} onCompany={setCompanyId} onInsuranceType={setInsuranceType} onOpenComplaints={() => navigate({ page: 'complaints' })} onOpenTicket={(id) => navigate({ page: 'ticket', id })} onOpenChannels={hasPermission(access, 'integrations.manage') ? () => navigate({ page: 'channels' }) : undefined} onOpenAudit={hasPermission(access, 'audit.view') ? () => navigate({ page: 'audit' }) : undefined} />
     : route.page === 'complaints'
       ? <ComplaintQueue access={access} range={range} options={filterOptions} companyNames={companyNames} onOpenTicket={(id) => navigate({ page: 'ticket', id })} />
       : route.page === 'ticket'
@@ -310,12 +346,31 @@ function App() {
             ? <CustomersPage access={access} />
             : route.page === 'roles'
             ? <RolesPage access={access} />
+            : route.page === 'channels'
+            ? <OperationsPage access={access} range={range} inScopeCompanies={scopeCompanies} focus="integrations" />
             : route.page === 'operations'
               ? <OperationsPage access={access} range={range} inScopeCompanies={scopeCompanies} />
               : route.page === 'storage'
                 ? <StoragePage access={access} />
                 : <AuditPage access={access} range={range} />;
-  const navSections: Array<{ id: 'workspace' | 'admin'; title: string }> = [{ id: 'workspace', title: 'مساحة العمل' }, { id: 'admin', title: 'الإدارة والحوكمة' }];
+  const workspaceLinks = visibleNavigation.filter((item) => item.section === 'workspace');
+  const moreLinks = visibleNavigation.filter((item) => item.section === 'more');
+  // A collapsed group must never hide where you actually are.
+  const currentIsAdmin = moreLinks.some((item) => item.page === currentNav);
+  const moreExpanded = moreOpen || currentIsAdmin;
+  const navLink = (item: NavigationItem) => (
+    <button
+      type="button"
+      className={`nav-link${currentNav === item.page ? ' active' : ''}`}
+      key={item.page}
+      aria-current={currentNav === item.page ? 'page' : undefined}
+      onClick={() => navigate({ page: item.page } as AppRoute)}
+    >
+      <span className="nav-icon"><Icon name={item.icon} size={17} /></span>
+      <span>{item.label}</span>
+      {item.page === 'complaints' && <small className="nav-shortcut">Q</small>}
+    </button>
+  );
 
   return <div className={`staff-console theme-${theme}`}><div className="app-shell" dir="rtl">
     {mobileNav && <button className="mobile-scrim" type="button" aria-label="إغلاق القائمة" onClick={() => setMobileNav(false)} />}
@@ -332,11 +387,31 @@ function App() {
         <Icon name="chevron" size={13} />
       </button>
       <div className="sidebar-user"><span className="avatar-circle avatar-active">{initials(access.full_name)}</span><span><strong>{access.full_name}</strong><small>عضو فريق</small></span><button type="button" className="icon-button small sidebar-user-menu" aria-label="تسجيل الخروج" title="تسجيل الخروج" onClick={() => { void logout(); }}><Icon name="logout" size={14} /></button></div>
-      <div className="sidebar-nav-scroll">{navSections.map((section) => {
-        const links = visibleNavigation.filter((item) => item.section === section.id);
-        if (!links.length) return null;
-        return <nav className="nav-section" aria-label={section.title} key={section.id}><p className="nav-section-title">{section.title}</p>{links.map((item) => <button type="button" className={`nav-link${currentNav === item.page ? ' active' : ''}`} key={item.page} aria-current={currentNav === item.page ? 'page' : undefined} onClick={() => navigate({ page: item.page } as AppRoute)}><span className="nav-icon"><Icon name={item.icon} size={17} /></span><span>{item.label}</span>{item.page === 'complaints' && <small className="nav-shortcut">Q</small>}</button>)}</nav>;
-      })}</div>
+      <div className="sidebar-nav-scroll">
+        {workspaceLinks.length > 0 && (
+          <nav className="nav-section" aria-label="مساحة العمل">
+            <p className="nav-section-title">مساحة العمل</p>
+            {workspaceLinks.map(navLink)}
+          </nav>
+        )}
+        {moreLinks.length > 0 && (
+          <nav className={`nav-section nav-section-more${moreExpanded ? ' is-open' : ''}`} aria-label="المزيد">
+            <button
+              type="button"
+              className="nav-more-toggle"
+              aria-expanded={moreExpanded}
+              aria-controls="nav-more-items"
+              onClick={() => setMoreOpen((value) => !value)}
+            >
+              <span>المزيد</span>
+              <Icon name="chevron" size={13} />
+            </button>
+            <div className="nav-more-items" id="nav-more-items" hidden={!moreExpanded}>
+              {moreLinks.map(navLink)}
+            </div>
+          </nav>
+        )}
+      </div>
       <div className="sidebar-bottom"><div className="sidebar-scope-label"><Icon name="shield" size={14} /> النطاق الفعّال</div><ScopeBadge access={access} companies={scopeCompanies} /><div className="sidebar-footer"><span><i /> النظام متصل</span><span>v7.0</span></div></div>
     </aside>
 
@@ -360,7 +435,7 @@ function App() {
       <main className="main-content"><div className="main-content-inner">
         {notice && <div className="inline-alert info global-notice" role="status">{notice}<button className="notice-close" type="button" aria-label="إخفاء" onClick={() => setNotice('')}><Icon name="close" size={14} /></button></div>}
         <Suspense fallback={<div className="loading-surface"><span className="loading-spinner" /> جارٍ تحميل مساحة العمل…</div>}>
-          {route.page === 'admin' && !canViewAdminDashboard(access) ? <AccessDenied title="لوحة الإدارة غير متاحة" /> : route.page === 'overview' && !(hasPermission(access, 'analytics.view') && hasPermission(access, 'complaints.view')) ? <AccessDenied title="لوحة المؤشرات غير متاحة" /> : route.page === 'complaints' || route.page === 'ticket' ? pageContent : route.page === 'users' && !hasPermission(access, 'users.view') ? <AccessDenied title="إدارة المستخدمين غير متاحة" /> : route.page === 'roles' && !hasPermission(access, 'roles.manage') ? <AccessDenied title="إدارة الأدوار غير متاحة" /> : route.page === 'operations' && !operationsAllowed(access) ? <AccessDenied title="إعدادات الإدارة غير متاحة" /> : route.page === 'storage' && !storageAllowed(access) ? <AccessDenied title="مركز التخزين غير متاح" /> : route.page === 'audit' && !hasPermission(access, 'audit.view') ? <AccessDenied title="سجل التدقيق غير متاح" /> : pageContent}
+          {route.page === 'admin' && !canViewAdminDashboard(access) ? <AccessDenied title="لوحة الإدارة غير متاحة" /> : route.page === 'overview' && !(hasPermission(access, 'analytics.view') && hasPermission(access, 'complaints.view')) ? <AccessDenied title="لوحة المؤشرات غير متاحة" /> : route.page === 'complaints' || route.page === 'ticket' ? pageContent : route.page === 'users' && !hasPermission(access, 'users.view') ? <AccessDenied title="إدارة المستخدمين غير متاحة" /> : route.page === 'roles' && !hasPermission(access, 'roles.manage') ? <AccessDenied title="إدارة الأدوار غير متاحة" /> : route.page === 'channels' && !hasPermission(access, 'integrations.manage') ? <AccessDenied title="إعدادات القنوات غير متاحة" /> : route.page === 'operations' && !operationsAllowed(access) ? <AccessDenied title="إعدادات الإدارة غير متاحة" /> : route.page === 'storage' && !storageAllowed(access) ? <AccessDenied title="مركز التخزين غير متاح" /> : route.page === 'audit' && !hasPermission(access, 'audit.view') ? <AccessDenied title="سجل التدقيق غير متاح" /> : pageContent}
         </Suspense>
       </div></main>
       <footer className="app-footer"><span>{brand.platform_name}</span><span><Icon name="shield" size={13} /> كل إجراء محمي بنطاق الوصول الفعّال</span><button type="button" onClick={() => setShortcutsOpen(true)}><Icon name="keyboard" size={13} /> اختصارات لوحة المفاتيح</button></footer>

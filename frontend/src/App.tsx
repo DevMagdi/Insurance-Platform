@@ -48,7 +48,7 @@ function App() {
   // and linked from older emails, so route it to the same console and rewrite the
   // address bar once, instead of rendering a leftover page outside the shell.
   const legacyConsole = /^\/dashboard(?:\/|$)/.test(path);
-  const staffConsoleRoute = legacyConsole || /^\/staff(?:\/(?:overview|admin|complaints|users|customers|roles|operations|audit|storage))?$/.test(path);
+  const staffConsoleRoute = legacyConsole || /^\/staff(?:\/(?:overview|admin|complaints|users|customers|roles|channels|operations|audit|storage))?$/.test(path);
 
   // A staff ticket belongs to the staff console, not the customer layout:
   // rendering it through <Layout> dropped the console chrome, its dark theme

@@ -65,7 +65,7 @@ interface OverviewPageProps {
   onOpenComplaints: () => void;
   /** Optional deep links used by the quick-action row and activity feed. */
   onOpenTicket?: (id: string) => void;
-  onOpenSettings?: () => void;
+  onOpenChannels?: () => void;
   onOpenAudit?: () => void;
 }
 
@@ -93,7 +93,7 @@ export function OverviewPage({
   insuranceType,
   onOpenComplaints,
   onOpenTicket,
-  onOpenSettings,
+  onOpenChannels,
   onOpenAudit,
 }: OverviewPageProps) {
   const [report, setReport] = useState<AnalyticsOverview | null>(null);
@@ -281,7 +281,7 @@ export function OverviewPage({
         actions={[
           { label: 'قائمة الطلبات', hint: 'كل الطلبات المفتوحة', icon: 'inbox', onClick: onOpenComplaints, primary: true },
           { label: 'الطلبات الجديدة', hint: 'التي لم تُسند بعد', icon: 'message', onClick: onOpenComplaints },
-          ...(onOpenSettings ? [{ label: 'قنوات الاستقبال', hint: 'واتساب · مكالمات · بريد', icon: 'plug' as const, onClick: onOpenSettings }] : []),
+          ...(onOpenChannels ? [{ label: 'قنوات الاستقبال', hint: 'واتساب · مكالمات · بريد', icon: 'plug' as const, onClick: onOpenChannels }] : []),
           ...(onOpenAudit ? [{ label: 'سجل التدقيق', hint: 'آخر الإجراءات', icon: 'audit' as const, onClick: onOpenAudit }] : []),
         ]}
       />
