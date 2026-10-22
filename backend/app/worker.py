@@ -479,10 +479,15 @@ async def _process_inbound_call(
             )
     await _worker_query(
         ctx["engine"],
+        # The recording and transcript above are sealed against ``call_id``,
+        # so that identifier has to become the row's primary key: every reader
+        # rebuilds the decryption context from ``call_logs.id``. Passing it
+        # also makes a redelivered callback a no-op instead of a second row.
         "SELECT app_security.record_request_call(:complaint, :created,"
         " CAST('inbound' AS public.message_direction), :provider, :provider_call_id,"
-        " :recording, :transcript, :outcome, :consent, :duration)",
+        " :recording, :transcript, :outcome, :consent, :duration, :call_id)",
         {
+            "call_id": call_id,
             "complaint": outcome.complaint_id,
             "created": outcome.complaint_created_at,
             "provider": row.provider,

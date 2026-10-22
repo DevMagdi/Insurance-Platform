@@ -1194,3 +1194,136 @@ async def test_a_call_the_platform_placed_is_filed_against_the_customer(
         },
     )
     assert repo.queued[0][1]["sender"] == "+201004594694"
+
+
+class _CallIntakeEngine:
+    """``engine.begin()`` as an async context manager over a stub connection."""
+
+    class _Connection:
+        async def execute(self, *_args: Any, **_kwargs: Any) -> None:
+            return None
+
+    def begin(self) -> Any:
+        connection = self._Connection()
+
+        class _Transaction:
+            async def __aenter__(self) -> Any:
+                return connection
+
+            async def __aexit__(self, *_exc: Any) -> None:
+                return None
+
+        return _Transaction()
+
+
+async def _run_inbound_call(
+    monkeypatch: pytest.MonkeyPatch,
+    blobs: BlobCipher,
+    cipher: SecretCipher,
+    payload: dict[str, Any],
+    company_id: Any = None,
+) -> dict[str, Any]:
+    """Drive ``_process_inbound_call`` and hand back the SQL it would run."""
+    from app.worker import _process_inbound_call
+
+    complaint_id, created_at = uuid4(), datetime(2026, 10, 22, tzinfo=UTC)
+    calls: list[tuple[str, dict[str, Any]]] = []
+
+    async def query(_engine: object, sql: str, params: dict[str, Any]) -> None:
+        calls.append((sql, params))
+
+    class _Intake:
+        def __init__(self, _blobs: Any) -> None:
+            pass
+
+        async def ingest(self, _session: Any, _event: Any) -> Any:
+            return SimpleNamespace(
+                complaint_id=complaint_id,
+                complaint_created_at=created_at,
+                error_code=None,
+                state="created",
+                ticket_no="REQ-2026-000009",
+            )
+
+    monkeypatch.setattr("app.worker._worker_query", query)
+    monkeypatch.setattr("app.worker.RequestIntakeService", _Intake)
+    monkeypatch.setattr("app.worker.AsyncSession", lambda **_kwargs: SimpleNamespace())
+    await _process_inbound_call(
+        {"engine": _CallIntakeEngine(), "blobs": blobs, "integration_cipher": cipher},
+        SimpleNamespace(
+            company_id=company_id or uuid4(), provider="twilio", job_id=uuid4(), attempt=1
+        ),
+        payload,
+        {},
+        cipher,
+        job_id=uuid4(),
+    )
+    sql, params = next(c for c in calls if "record_request_call" in c[0])
+    # The identifier has to reach the function, or it invents its own primary
+    # key and the ciphertexts below are bound to a value no reader can derive.
+    assert ":call_id" in sql
+    return params
+
+
+async def test_inbound_call_recording_is_sealed_against_the_row_that_stores_it(
+    monkeypatch: pytest.MonkeyPatch, cipher: SecretCipher
+) -> None:
+    """The decryption context must be rebuildable from ``call_logs.id`` alone.
+
+    Readers -- the staff download route, the request timeline and the key
+    rotation job -- only have the stored row, so they derive the associated
+    data from its primary key. Before revision 038 the worker sealed inbound
+    audio against a uuid5 of its own while the database generated an unrelated
+    primary key, and every phone recording became permanently unreadable.
+    """
+    blobs = BlobCipher(b"b" * 32)
+    audio = b"RIFF....the caller speaking"
+    params = await _run_inbound_call(
+        monkeypatch,
+        blobs,
+        cipher,
+        {
+            "caller": "+201004594694",
+            "provider_call_id": "CA0123456789",
+            "consent_confirmed": True,
+            "recording_b64": base64.b64encode(audio).decode(),
+            "text": "The caller asked about the delay on their claim",
+            "duration_seconds": 31,
+        },
+    )
+    row_id = params["call_id"]
+    assert blobs.decrypt(params["recording"], purpose=RECORDING, resource_id=row_id) == audio
+    assert (
+        cipher.decrypt(
+            params["transcript"], associated_data=integrations.call_transcript_aad(row_id)
+        ).decode()
+        == "The caller asked about the delay on their claim"
+    )
+
+
+async def test_inbound_call_identifier_is_derived_so_a_redelivery_is_the_same_row(
+    monkeypatch: pytest.MonkeyPatch, cipher: SecretCipher
+) -> None:
+    """Twilio retries its recording callback; the key must not change.
+
+    The primary key is now derived from the company and the provider's call
+    id, which is what lets ``ON CONFLICT (id) DO NOTHING`` in revision 038
+    collapse a redelivered callback into the row that already exists instead
+    of logging the same conversation a second time.
+    """
+    blobs = BlobCipher(b"b" * 32)
+    company = uuid4()
+    payload = {
+        "caller": "+201004594694",
+        "provider_call_id": "CA0123456789",
+        "consent_confirmed": True,
+        "recording_b64": base64.b64encode(b"same audio twice").decode(),
+    }
+    first = await _run_inbound_call(monkeypatch, blobs, cipher, dict(payload), company)
+    second = await _run_inbound_call(monkeypatch, blobs, cipher, dict(payload), company)
+    assert first["call_id"] == second["call_id"]
+    # A different call from the same company must still be its own row.
+    other = await _run_inbound_call(
+        monkeypatch, blobs, cipher, {**payload, "provider_call_id": "CA9876543210"}, company
+    )
+    assert other["call_id"] != first["call_id"]
