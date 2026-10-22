@@ -6,7 +6,7 @@ import base64
 import hashlib
 import hmac
 import json
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 from typing import Any
 from unittest.mock import AsyncMock
@@ -1327,3 +1327,57 @@ async def test_inbound_call_identifier_is_derived_so_a_redelivery_is_the_same_ro
         monkeypatch, blobs, cipher, {**payload, "provider_call_id": "CA9876543210"}, company
     )
     assert other["call_id"] != first["call_id"]
+
+
+async def test_unified_inbox_reports_a_recording_without_loading_it() -> None:
+    """A conversation view must not read megabytes of audio to render a badge.
+
+    ``select(CallLog)`` pulled ``recording_content`` for every call on the
+    request -- up to a hundred rows of up to 25 MB each -- and then nothing
+    in the response said whether a recording existed, so the console could
+    never offer to play one. The column is deferred and the existence test is
+    pushed into SQL.
+    """
+    started = datetime(2026, 10, 22, 16, 30, tzinfo=UTC)
+    call = SimpleNamespace(
+        id=uuid4(),
+        direction=SimpleNamespace(value="inbound"),
+        status="completed",
+        outcome="completed",
+        transcript_ciphertext=None,
+        consent_at=started,
+        scheduled_at=None,
+        started_at=started,
+        ended_at=started + timedelta(seconds=31),
+        sender_staff_id=None,
+    )
+    statements: list[Any] = []
+
+    class _Db:
+        async def scalars(self, _statement: Any) -> list[Any]:
+            return []
+
+        async def execute(self, statement: Any) -> list[tuple[Any, bool]]:
+            statements.append(statement)
+            return [(call, True)]
+
+    complaint = SimpleNamespace(id=uuid4(), created_at=started, ticket_no="REQ-2026-000009")
+    service = integrations.IntegrationService.__new__(integrations.IntegrationService)
+    service.cipher = SecretCipher(b"p" * 32)
+    service.complaints = SimpleNamespace(get=AsyncMock(return_value=complaint))
+
+    scope = AccessScope(
+        actor=Actor(id=uuid4(), scope="staff"),
+        all_companies=True,
+        ownership=OwnershipLevel.ALL,
+    )
+    inbox = await service.unified_inbox(_Db(), scope, complaint.id, include_calls=True)
+
+    item = next(entry for entry in inbox["items"] if entry["kind"] == "call")
+    assert item["has_recording"] is True
+    assert item["duration_seconds"] == 31
+    compiled = str(statements[0].compile())
+    # The database answers the question...
+    assert "recording_content IS NOT NULL" in compiled
+    # ...and the blob is not in the column list that comes back with the row.
+    assert compiled.split("FROM")[0].count("call_logs.recording_content") == 1

@@ -1403,3 +1403,81 @@ html[dir='ltr'] .staff-console .nav-link.active::before {
 .staff-console .admin-bar-row strong {
   font-size: 11px;
 }
+
+/* A phone call on the conversation rail. It reads like a message card so the
+   eye does not have to learn a second shape, but the leading edge is the
+   accent: a recording is the only timeline entry an operator can open and
+   listen to, and it should be findable in one scan. */
+.staff-console .timeline-call {
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--surface-1);
+  padding: 12px var(--s-4);
+  position: relative;
+  overflow: hidden;
+}
+
+.staff-console .timeline-call::before {
+  content: '';
+  position: absolute;
+  inset-inline-start: 0;
+  inset-block: 0;
+  width: 3px;
+  background: var(--accent-600);
+}
+
+.staff-console .timeline-call-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  margin-bottom: 8px;
+}
+
+.staff-console .timeline-call-meta strong { font-size: 0.75rem; font-weight: 650; }
+
+.staff-console .timeline-call-meta span {
+  font-size: 0.6875rem;
+  color: var(--ink-400);
+  padding: 2px 8px;
+  border-radius: var(--r-pill);
+  background: var(--surface-2);
+}
+
+.staff-console .timeline-call-play {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #fff;
+  background: var(--accent-600);
+  border: 0;
+  border-radius: var(--r-pill);
+  padding: 7px 14px;
+  cursor: pointer;
+}
+
+.staff-console .timeline-call-play:hover:not(:disabled) { background: var(--accent-500); }
+.staff-console .timeline-call-play:disabled { opacity: 0.6; cursor: progress; }
+
+/* The native control is the right call here: it already ships keyboard
+   support, scrubbing and a volume control that behave the way the operating
+   system does. It only needs to sit inside the card. */
+.staff-console .timeline-call-player { width: 100%; height: 36px; display: block; }
+
+.staff-console .timeline-call-note,
+.staff-console .timeline-call-transcript {
+  margin: 8px 0 0;
+  font-size: 0.8125rem;
+  line-height: 1.8;
+  color: var(--ink-400);
+}
+
+.staff-console .timeline-call-transcript {
+  color: var(--ink-600);
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+}
+
+.staff-console .timeline-marker.marker-call { background: var(--accent-600); color: #fff; }

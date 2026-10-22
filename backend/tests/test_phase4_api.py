@@ -296,3 +296,45 @@ async def test_public_api_key_route_checks_hash_permissions_and_scope(
             request, Response(), ticket["ticket_no"], f"ApiKey {token}"
         )
     assert denied.value.status_code == 403
+
+
+@pytest.mark.parametrize(
+    ("audio", "media_type", "disposition"),
+    [
+        (b"ID3\x04\x00\x00\x00\x00\x00\x00\xff\xfb\x90\x64", "audio/mpeg", "inline"),
+        (b"\xff\xfb\x90\x64" + b"\x00" * 16, "audio/mpeg", "inline"),
+        (b"RIFF\x24\x08\x00\x00WAVEfmt ", "audio/wav", "inline"),
+        (b"OggS\x00\x02\x00\x00\x00\x00\x00\x00", "audio/ogg", "inline"),
+        # Not audio: never claim a type it has not earned, offer a download.
+        (b"<html><body>listen</body></html>", "application/octet-stream", "attachment"),
+    ],
+)
+async def test_call_recording_is_typed_so_a_browser_will_play_it(
+    audio: bytes, media_type: str, disposition: str
+) -> None:
+    """``nosniff`` means an untyped body is a body that never plays.
+
+    The column stores whatever container the provider sent, with no label, so
+    the type has to come from the bytes. Anything unrecognised stays an
+    attachment rather than being guessed into an audio element.
+    """
+    call_id, complaint_id = uuid4(), uuid4()
+    call = SimpleNamespace(
+        id=call_id,
+        complaint_id=complaint_id,
+        complaint_created_at=datetime.now(UTC),
+        recording_content=b"sealed",
+    )
+    blobs = SimpleNamespace(decrypt=lambda *_a, **_k: audio)
+    request = make_request(SimpleNamespace(), blobs=blobs)
+    ctx = make_context({"integrations.ai_call"})
+    ctx.db = SimpleNamespace(
+        scalar=AsyncMock(return_value=call), add=lambda _row: None, flush=AsyncMock()
+    )
+
+    response = await integrations.call_recording(complaint_id, call_id, request, ctx)
+
+    assert response.media_type == media_type
+    assert response.headers["content-disposition"].startswith(disposition)
+    assert response.headers["x-content-type-options"] == "nosniff"
+    assert response.body == audio

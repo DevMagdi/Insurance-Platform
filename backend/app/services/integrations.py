@@ -18,6 +18,7 @@ from fastapi import HTTPException
 from sqlalchemy import func, select, text
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import defer
 
 from app.domain.access import AccessScope
 from app.domain.enums import CommunicationChannel, MessageDirection, MessageVisibility
@@ -100,6 +101,13 @@ def _say(text_value: str) -> str:
         f"<Say voice={quoteattr(VOICE_NAME)} language={quoteattr(VOICE_LANGUAGE)}>"
         f"{escape(text_value)}</Say>"
     )
+
+
+def _call_duration_seconds(call: CallLog) -> int | None:
+    """How long the conversation actually lasted, when both ends are known."""
+    if call.started_at is None or call.ended_at is None:
+        return None
+    return max(int((call.ended_at - call.started_at).total_seconds()), 0)
 
 
 def _positive_int(value: Any) -> int | None:
@@ -905,8 +913,14 @@ class IntegrationService:
                 }
             )
         if include_calls:
-            calls = await db.scalars(
-                select(CallLog)
+            # The recording itself is megabytes and is never part of this
+            # response: the conversation only needs to know a recording
+            # exists, so it is tested in SQL and the column stays on disk.
+            # Loading it here pulled every stored call into memory to answer
+            # a question that is one boolean wide.
+            rows = await db.execute(
+                select(CallLog, CallLog.recording_content.is_not(None).label("has_recording"))
+                .options(defer(CallLog.recording_content))
                 .where(
                     CallLog.complaint_id == complaint.id,
                     CallLog.complaint_created_at == complaint.created_at,
@@ -914,7 +928,7 @@ class IntegrationService:
                 .order_by(CallLog.started_at, CallLog.scheduled_at, CallLog.id)
                 .limit(100)
             )
-            for call in calls:
+            for call, has_recording in rows:
                 transcript = None
                 if call.transcript_ciphertext:
                     try:
@@ -938,6 +952,11 @@ class IntegrationService:
                         "started_at": call.started_at,
                         "ended_at": call.ended_at,
                         "sender_staff_id": call.sender_staff_id,
+                        # Without these two the console cannot tell a recorded
+                        # call from one the caller declined to have recorded,
+                        # so it could never offer to play anything.
+                        "has_recording": bool(has_recording),
+                        "duration_seconds": _call_duration_seconds(call),
                     }
                 )
         items.sort(

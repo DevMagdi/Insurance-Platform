@@ -21,6 +21,7 @@ from app.domain.schemas import (
 from app.models.tickets import AuditLog, CallLog
 from app.security.blobs import RECORDING, BlobCipher
 from app.security.tokens import csrf_required
+from app.services.audio_types import DOWNLOAD_MEDIA_TYPE, detect_audio_media_type
 from app.services.backpressure import backpressure
 
 router = APIRouter(prefix="/api/staff", tags=["integrations"])
@@ -252,12 +253,20 @@ async def call_recording(
         )
     )
     await ctx.db.flush()
+    # The column stores whatever container the provider sent, unlabelled. A
+    # player needs the real type -- the response is nosniff, so an untyped
+    # body is a body the browser refuses to play -- and anything we cannot
+    # positively identify stays an attachment rather than being guessed at.
+    media_type = detect_audio_media_type(audio)
+    extension = media_type.split("/")[1] if media_type else "audio"
     return Response(
         content=audio,
-        media_type="application/octet-stream",
+        media_type=media_type or DOWNLOAD_MEDIA_TYPE,
         headers={
             "Cache-Control": "no-store",
-            "Content-Disposition": f'attachment; filename="call-{call.id}.audio"',
+            "Content-Disposition": (
+                f'{"inline" if media_type else "attachment"}; filename="call-{call.id}.{extension}"'
+            ),
             "X-Content-Type-Options": "nosniff",
         },
     )

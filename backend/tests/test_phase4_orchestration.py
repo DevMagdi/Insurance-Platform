@@ -545,10 +545,15 @@ async def test_similar_ticket_search_voice_consent_scheduling_and_unified_inbox(
         ended_at=datetime.now(UTC),
         sender_staff_id=staff_scope.actor.id,
     )
-    db.scalars.side_effect = [Rows([message]), Rows([]), Rows([call])]
+    db.scalars.side_effect = [Rows([message]), Rows([])]
+    # Calls now come back as (row, has_recording): the recording column is
+    # deferred, so whether audio exists is answered in SQL rather than by
+    # loading it.
+    db.execute.side_effect = [Rows([(call, False)])]
     inbox = await service.unified_inbox(db, staff_scope, complaint.id, include_calls=True)
     assert len(inbox["items"]) == 2
     assert any(item.get("transcript") == "We called about the ticket." for item in inbox["items"])
+    assert any(item.get("has_recording") is False for item in inbox["items"])
 
 
 async def test_integration_admin_config_webhook_key_and_dlq_lifecycle(

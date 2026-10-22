@@ -160,6 +160,27 @@ export interface TicketTimeline {
   page: number;
 }
 
+/** A phone call as the unified inbox reports it. */
+export interface InboxCall {
+  id: string;
+  kind: 'call';
+  direction: 'inbound' | 'outbound';
+  status: string;
+  outcome: string | null;
+  transcript: string | null;
+  consent_at: string | null;
+  started_at: string | null;
+  ended_at: string | null;
+  /** The audio lives behind a separately audited route; this only says it exists. */
+  has_recording: boolean;
+  duration_seconds: number | null;
+}
+
+export interface UnifiedInbox {
+  ticket_no: string;
+  items: Array<{ kind: string } & Partial<InboxCall>>;
+}
+
 export interface AnalyticsKpis {
   total: number;
   new: number;
