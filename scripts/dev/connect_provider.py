@@ -54,7 +54,10 @@ REQUIRED_FIELDS: dict[str, frozenset[str]] = {
 # compares hub.verify_token against the stored verify_token.
 PRACTICALLY_REQUIRED: dict[str, tuple[str, ...]] = {
     "mock_voice": ("webhook_secret",),
-    "twilio": ("webhook_secret",),
+    # Twilio signs its own callbacks with the auth token, so no webhook_secret
+    # is involved. incoming_url is what the platform signs against, and the
+    # base it builds the consent and recording callbacks from.
+    "twilio": ("incoming_url",),
     "vonage": ("webhook_secret",),
     "whatsapp_cloud": ("verify_token",),
 }

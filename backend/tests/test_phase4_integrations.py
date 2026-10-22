@@ -10,7 +10,7 @@ from datetime import UTC, datetime
 from types import SimpleNamespace
 from typing import Any
 from unittest.mock import AsyncMock
-from urllib.parse import urlencode
+from urllib.parse import parse_qs, urlencode
 from uuid import uuid4
 
 import httpx
@@ -833,6 +833,9 @@ class _RecordingService:
         self.verified = (company_id, mode, token, challenge)
         return str(challenge)
 
+    async def inbound_voice_answer(self, _db: Any, _company: Any, **_kwargs: Any) -> str:
+        return '<?xml version="1.0" encoding="UTF-8"?><Response><Hangup/></Response>'
+
 
 def _webhook_client() -> tuple[Any, _RecordingService]:
     from fastapi import FastAPI
@@ -881,3 +884,313 @@ def test_other_providers_are_not_rewritten_by_the_whatsapp_alias() -> None:
     client, service = _webhook_client()
     assert client.post(f"/api/webhooks/twilio/{uuid4()}", json={}).status_code == 202
     assert service.provider == "twilio"
+
+
+# --- Inbound telephony -----------------------------------------------------
+# Twilio performs the XML it is given, so the number's voice URL has to answer
+# TwiML. It used to answer JSON, which the caller hears as "an application
+# error has occurred", and the recording arrives as a URL rather than audio.
+
+VOICE_AUTH_TOKEN = "voice-auth-token"
+VOICE_ORIGIN = "https://calls.example.test"
+
+
+def _voice_signature(url: str, fields: dict[str, str]) -> str:
+    signed = url + "".join(key + fields[key] for key in sorted(fields))
+    return base64.b64encode(
+        hmac.new(VOICE_AUTH_TOKEN.encode(), signed.encode(), hashlib.sha1).digest()
+    ).decode()
+
+
+class _VoiceRepo:
+    def __init__(self, cipher: SecretCipher, company_id: Any, voice_path: str) -> None:
+        self.cipher = cipher
+        self.company_id = company_id
+        self.voice_path = voice_path
+        self.queued: list[tuple[str, dict[str, Any]]] = []
+
+    async def webhook_config(self, *_args: Any) -> tuple[Any, bytes]:
+        config = {
+            "account_sid": "AC123",
+            "auth_token": VOICE_AUTH_TOKEN,
+            "from_number": "+15005550006",
+            "incoming_url": f"{VOICE_ORIGIN}{self.voice_path}",
+        }
+        return self.company_id, self.cipher.encrypt_json(
+            config, associated_data=integrations.config_aad(self.company_id, "twilio")
+        )
+
+    async def enqueue_inbound(
+        self,
+        _db: Any,
+        _company: Any,
+        _provider: str,
+        kind: str,
+        ciphertext: bytes,
+        idem: bytes,
+        _digest: bytes,
+    ) -> dict[str, Any]:
+        payload = self.cipher.decrypt_json(ciphertext, associated_data=integrations.job_aad(idem))
+        self.queued.append((kind, payload))
+        return {"job_id": uuid4()}
+
+
+def _voice_service(cipher: SecretCipher, company_id: Any, voice_path: str) -> Any:
+    repository = _VoiceRepo(cipher, company_id, voice_path)
+    service = integrations.IntegrationService(cipher, b"v" * 32, repository=repository)
+    return service, repository
+
+
+async def _speak(
+    service: Any, company_id: Any, method: str, path: str, fields: dict[str, str], query: str = ""
+) -> Any:
+    url = f"{VOICE_ORIGIN}{path}" + (f"?{query}" if query else "")
+    kwargs: dict[str, Any] = {
+        "path": path,
+        "query": query,
+        "form": {key: [value] for key, value in fields.items()},
+        "signature": _voice_signature(url, fields),
+    }
+    if method == "recording":
+        kwargs["caller"] = parse_qs(query).get("caller", [""])[0]
+    return await getattr(service, f"inbound_voice_{method}")(
+        SimpleNamespace(), company_id, **kwargs
+    )
+
+
+async def test_inbound_call_is_answered_with_twiml_not_json(cipher: SecretCipher) -> None:
+    company_id = uuid4()
+    path = f"/api/webhooks/twilio/{company_id}/voice"
+    service, _repo = _voice_service(cipher, company_id, path)
+
+    document = await _speak(
+        service, company_id, "answer", path, {"CallSid": "CA1", "From": "+201004594694"}
+    )
+
+    assert document.startswith("<?xml")
+    assert "<Response>" in document and "</Response>" in document
+    # Consent is asked for before anything is recorded, because the database
+    # refuses to store a recording without it.
+    assert f"{VOICE_ORIGIN}{path}/consent" in document
+    assert "<Gather" in document
+    assert "Polly.Zeina" in document
+
+
+async def test_inbound_voice_refuses_an_unsigned_caller(cipher: SecretCipher) -> None:
+    company_id = uuid4()
+    path = f"/api/webhooks/twilio/{company_id}/voice"
+    service, _repo = _voice_service(cipher, company_id, path)
+
+    with pytest.raises(HTTPException) as error:
+        await service.inbound_voice_answer(
+            SimpleNamespace(),
+            company_id,
+            path=path,
+            query="",
+            form={"CallSid": ["CA1"]},
+            signature="not-the-signature",
+        )
+    assert error.value.status_code == 401
+
+
+async def test_consent_keypress_records_and_reports_the_caller(cipher: SecretCipher) -> None:
+    company_id = uuid4()
+    base = f"/api/webhooks/twilio/{company_id}/voice"
+    service, repo = _voice_service(cipher, company_id, base)
+
+    document = await _speak(
+        service,
+        company_id,
+        "consent",
+        f"{base}/consent",
+        {"CallSid": "CA1", "From": "+201004594694", "Digits": "1"},
+    )
+
+    assert "<Record " in document
+    # Twilio leaves From out of the recording callback, so the number travels
+    # on the query string it is told to call back on.
+    assert "caller=%2B201004594694" in document
+    assert repo.queued == []  # nothing is queued until there is a recording
+
+
+async def test_declining_consent_still_opens_a_request(cipher: SecretCipher) -> None:
+    company_id = uuid4()
+    base = f"/api/webhooks/twilio/{company_id}/voice"
+    service, repo = _voice_service(cipher, company_id, base)
+
+    document = await _speak(
+        service,
+        company_id,
+        "consent",
+        f"{base}/consent",
+        {"CallSid": "CA1", "From": "+201004594694", "Digits": "9"},
+    )
+
+    assert "<Record" not in document
+    assert "<Hangup/>" in document
+    # Somebody who refuses to be recorded still rang up with a problem.
+    assert len(repo.queued) == 1
+    kind, payload = repo.queued[0]
+    assert kind == "inbound_call"
+    assert payload["sender"] == "+201004594694"
+    assert payload["consent_confirmed"] is False
+    assert "recording_url" not in payload
+
+
+async def test_recording_callback_queues_the_call_with_its_audio(cipher: SecretCipher) -> None:
+    company_id = uuid4()
+    base = f"/api/webhooks/twilio/{company_id}/voice"
+    service, repo = _voice_service(cipher, company_id, base)
+
+    result = await _speak(
+        service,
+        company_id,
+        "recording",
+        f"{base}/recording",
+        {
+            "CallSid": "CA1",
+            "RecordingStatus": "completed",
+            "RecordingUrl": "https://api.twilio.com/2010-04-01/Accounts/AC123/Recordings/RE9",
+            "RecordingDuration": "17",
+        },
+        query=urlencode({"caller": "+201004594694"}),
+    )
+
+    assert result["accepted"] == 1
+    kind, payload = repo.queued[0]
+    assert kind == "inbound_call"
+    assert payload["sender"] == "+201004594694"
+    assert payload["consent_confirmed"] is True
+    assert payload["duration_seconds"] == 17
+    assert payload["recording_url"].endswith("/Recordings/RE9")
+
+
+async def test_recording_callback_signature_covers_the_query_string(
+    cipher: SecretCipher,
+) -> None:
+    company_id = uuid4()
+    base = f"/api/webhooks/twilio/{company_id}/voice"
+    service, _repo = _voice_service(cipher, company_id, base)
+    path = f"{base}/recording"
+    fields = {
+        "CallSid": "CA1",
+        "RecordingUrl": "https://api.twilio.com/x",
+        "RecordingStatus": "completed",
+    }
+
+    # Signed without the query string: the caller could otherwise be swapped
+    # for somebody else's number on an otherwise valid callback.
+    with pytest.raises(HTTPException) as error:
+        await service.inbound_voice_recording(
+            SimpleNamespace(),
+            company_id,
+            path=path,
+            query=urlencode({"caller": "+201004594694"}),
+            form={key: [value] for key, value in fields.items()},
+            signature=_voice_signature(f"{VOICE_ORIGIN}{path}", fields),
+            caller="+201004594694",
+        )
+    assert error.value.status_code == 401
+
+
+async def test_recording_is_never_fetched_from_a_host_that_is_not_twilio(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # The URL arrives in a payload and the download carries the account
+    # credentials, so an unexpected host must not be dialled at all.
+    requests = install_httpx_mock(monkeypatch, lambda _r: httpx.Response(200, content=b"audio"))
+    config = {"account_sid": "AC123", "auth_token": VOICE_AUTH_TOKEN}
+
+    for hostile in (
+        "https://api.twilio.com.attacker.test/Recordings/RE9",
+        "http://api.twilio.com/Recordings/RE9",
+        "https://169.254.169.254/latest/meta-data/",
+    ):
+        with pytest.raises(IntegrationProviderError) as error:
+            await integration_providers.fetch_twilio_recording(hostile, config)
+        assert error.value.code == "voice_recording_url_rejected"
+    assert requests == []
+
+
+async def test_recording_is_fetched_as_mp3_with_the_account_credentials(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    requests = install_httpx_mock(
+        monkeypatch, lambda _r: httpx.Response(200, content=b"ID3-audio-bytes")
+    )
+    config = {"account_sid": "AC123", "auth_token": VOICE_AUTH_TOKEN}
+
+    audio = await integration_providers.fetch_twilio_recording(
+        "https://api.twilio.com/2010-04-01/Accounts/AC123/Recordings/RE9", config
+    )
+
+    assert audio == b"ID3-audio-bytes"
+    assert str(requests[0].url).endswith("/Recordings/RE9.mp3")
+    assert requests[0].headers["authorization"].startswith("Basic ")
+
+
+async def test_oversized_recording_is_refused_rather_than_buffered(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    install_httpx_mock(monkeypatch, lambda _r: httpx.Response(200, content=b"x" * 4096))
+    config = {"account_sid": "AC123", "auth_token": VOICE_AUTH_TOKEN}
+
+    with pytest.raises(IntegrationProviderError) as error:
+        await integration_providers.fetch_twilio_recording(
+            "https://api.twilio.com/Recordings/RE9.mp3", config, max_bytes=1024
+        )
+    assert error.value.code == "voice_recording_too_large"
+
+
+def test_voice_route_answers_with_an_xml_media_type() -> None:
+    # Twilio parses the body as TwiML only when the media type says XML;
+    # with application/json it reports a document parse failure and the
+    # caller hears an error message instead of the greeting.
+    client, _service = _webhook_client()
+
+    response = client.post(f"/api/webhooks/twilio/{uuid4()}/voice", data={"CallSid": "CA1"})
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/xml")
+    assert response.text.startswith("<?xml")
+
+
+async def test_a_call_the_platform_placed_is_filed_against_the_customer(
+    cipher: SecretCipher,
+) -> None:
+    # Twilio puts the brokerage's own number in From when it dials out, so
+    # reading From there would open the request against the company line,
+    # which is not a mobile intake can match to anybody.
+    company_id = uuid4()
+    base = f"/api/webhooks/twilio/{company_id}/voice"
+    service, repo = _voice_service(cipher, company_id, base)
+
+    document = await _speak(
+        service,
+        company_id,
+        "consent",
+        f"{base}/consent",
+        {
+            "CallSid": "CA1",
+            "Direction": "outbound-api",
+            "From": "+15005550006",
+            "To": "+201004594694",
+            "Digits": "1",
+        },
+    )
+    assert "caller=%2B201004594694" in document
+
+    await _speak(
+        service,
+        company_id,
+        "consent",
+        f"{base}/consent",
+        {
+            "CallSid": "CA2",
+            "Direction": "outbound-api",
+            "From": "+15005550006",
+            "To": "+201004594694",
+            "Digits": "0",
+        },
+    )
+    assert repo.queued[0][1]["sender"] == "+201004594694"

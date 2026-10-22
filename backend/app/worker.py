@@ -59,6 +59,7 @@ from app.services.integration_providers import (
     VoiceProvider,
     WhatsAppCloudProvider,
     WhatsAppSendRequest,
+    fetch_twilio_recording,
     normalize_inbound_voice_event,
 )
 from app.services.integrations import (
@@ -391,6 +392,7 @@ async def _process_inbound_call(
     ctx: dict[str, Any],
     row: Any,
     payload: dict[str, Any],
+    config: dict[str, Any],
     cipher: SecretCipher,
     *,
     job_id: UUID,
@@ -447,22 +449,34 @@ async def _process_inbound_call(
         else None
     )
     recording: bytes | None = None
+    audio: bytes | None = None
     raw_recording = payload.get("recording_b64")
     # Without consent the recording is not merely unstored, it is never
-    # decoded: the database rejects it and keeping it in memory serves
-    # nothing.
+    # decoded or fetched: the database rejects it and keeping it in memory
+    # serves nothing.
     if consent and isinstance(raw_recording, str) and len(raw_recording) <= 40_000_000:
         try:
-            decoded = base64.b64decode(raw_recording)
+            audio = base64.b64decode(raw_recording)
         except (ValueError, TypeError):
-            decoded = None
-        if decoded:
-            try:
-                recording = _encrypt_call_recording(ctx, call_id, decoded)
-            except IntegrationProviderError as exc:
-                logger.warning(
-                    "Inbound call recording was not stored call_id=%s error=%s", call_id, exc.code
-                )
+            audio = None
+    recording_url = payload.get("recording_url")
+    # Twilio hands over a URL instead of the audio. It is collected here,
+    # after the call is already queued, rather than inside the webhook: a
+    # download on that path would hold the call open and time it out.
+    if consent and not audio and isinstance(recording_url, str) and recording_url:
+        try:
+            audio = await fetch_twilio_recording(recording_url, config)
+        except IntegrationProviderError as exc:
+            logger.warning(
+                "Inbound call recording was not fetched call_id=%s error=%s", call_id, exc.code
+            )
+    if audio:
+        try:
+            recording = _encrypt_call_recording(ctx, call_id, audio)
+        except IntegrationProviderError as exc:
+            logger.warning(
+                "Inbound call recording was not stored call_id=%s error=%s", call_id, exc.code
+            )
     await _worker_query(
         ctx["engine"],
         "SELECT app_security.record_request_call(:complaint, :created,"
@@ -752,7 +766,7 @@ async def _process_integration_job(ctx: dict[str, Any], row: Any) -> None:
         if kind == "inbound_call":
             # A call with no ticket number quoted: intake decides whether it
             # continues an open request or opens a new one.
-            await _process_inbound_call(ctx, row, payload, cipher, job_id=job_id)
+            await _process_inbound_call(ctx, row, payload, config, cipher, job_id=job_id)
             return
         if kind in {"email_status", "whatsapp_status", "voice_status"}:
             await _worker_query(
