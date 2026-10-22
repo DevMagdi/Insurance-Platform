@@ -46,7 +46,7 @@ from app.repositories.complaints import ComplaintRepository
 from app.repositories.integrations import IntegrationRepository
 from app.security.integration_crypto import SecretCipher
 from app.services.email_templates import render_customer_reply, render_insurer_forward
-from app.services.intake import TICKET_RE, split_from_header
+from app.services.intake import EGYPT_MOBILE_RE, TICKET_RE, split_from_header
 from app.services.integration_providers import (
     PROVIDER_REQUIRED_FIELDS as _PROVIDER_REQUIRED_FIELDS,
 )
@@ -76,7 +76,7 @@ def _positive_int(value: Any) -> int | None:
 
 
 _NATIONAL_ID_RE = re.compile(r"(?<!\d)\d{14}(?!\d)")
-_EGYPT_MOBILE_RE = re.compile(r"(?<!\w)(?:\+?20|0)?1[0125]\d{8}(?!\d)")
+
 _EMAIL_RE = re.compile(r"\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b", re.IGNORECASE)
 _POLICY_RE = re.compile(
     r"(?i)(policy|policy number|رقم الوثيقة|رقم البوليصة)\s*[:#]?\s*[A-Z0-9/-]{4,}"
@@ -137,7 +137,7 @@ def minimize_pii(text: str, *, max_chars: int = 6000, known_names: tuple[str, ..
     """Remove identifiers, contact data and a known customer's name before LLM calls."""
     value = text[: max_chars * 2]
     value = _NATIONAL_ID_RE.sub("[NATIONAL_ID]", value)
-    value = _EGYPT_MOBILE_RE.sub("[PHONE]", value)
+    value = EGYPT_MOBILE_RE.sub("[PHONE]", value)
     value = _EMAIL_RE.sub("[EMAIL]", value)
     value = _POLICY_RE.sub("[POLICY_REFERENCE]", value)
     for name in sorted(
