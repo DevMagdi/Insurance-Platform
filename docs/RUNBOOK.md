@@ -189,6 +189,27 @@ payloads, AI insights, transcripts and recordings.
    `call_logs.recording_content`) — so once `--check` reports 0 stale values no
    old key is needed anywhere.
 
+### Inbound call recordings written before revision 038
+
+Up to revision 037 the worker sealed an inbound recording and transcript
+against an identifier it derived itself, while every reader rebuilds that
+context from `call_logs.id`. Those rows are intact but cannot be opened: the
+staff download route answers `503 Call recording could not be read`, the
+transcript stays blank, and `rotate_keys` cannot re-encrypt them. Revision 038
+fixes new calls; existing rows need one pass of a recovery script that
+recomputes the old context and re-seals each blob under the row's real id:
+
+```
+python -m app.scripts.repair_call_recording_aad --check   # report only
+python -m app.scripts.repair_call_recording_aad           # re-seal
+```
+
+It needs the same environment as `rotate_keys` (`DATABASE_ADMIN_URL` and the
+encryption key), is restartable, and is a no-op on a database that was never
+affected or has already been repaired. Run it **before** `rotate_keys` during a
+key rotation, otherwise those rows are reported as stale and cannot be rotated.
+A row that opens under neither context is reported and left untouched.
+
 The first deployment after the HS256-to-EdDSA change invalidates existing
 HS256 access and refresh tokens; users must sign in again. After migration,
 JWTs use Ed25519/EdDSA and a key ID. Rotate the JWT pair without interrupting
