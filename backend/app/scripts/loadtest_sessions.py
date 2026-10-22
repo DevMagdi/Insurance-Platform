@@ -35,10 +35,16 @@ from app.settings import get_settings
 def _fixtures(admin_url: str, customers: int, staff: int) -> dict[str, list[tuple[Any, ...]]]:
     url = admin_url.replace("postgresql+psycopg://", "postgresql://", 1)
     with psycopg.connect(url, prepare_threshold=None) as conn:
+        # Intake opens a request for somebody known only by the number they
+        # rang or messaged from, so a customer need not have a national id at
+        # all. Those rows cannot mint a session, and because the limit is
+        # applied over an id ordering, whether any were caught varied from run
+        # to run — which is what made this script fail intermittently.
         customer_rows = conn.execute(
             "SELECT DISTINCT ON (c.id) c.id, c.token_version, c.national_id_ciphertext, "
             "t.ticket_no, t.company_id, t.policy_number, c.mobile, t.insurance_type "
             "FROM customers c JOIN complaints t ON t.customer_id = c.id "
+            "WHERE c.national_id_ciphertext IS NOT NULL "
             "ORDER BY c.id, t.created_at DESC LIMIT %s",
             (customers,),
         ).fetchall()
@@ -67,6 +73,8 @@ async def mint(customers: int, staff: int) -> dict[str, list[dict[str, str]]]:
         auth = app.state.auth
         for row in fixtures["customers"]:
             cid, version, cipher, ticket_no, company_id, policy, mobile, kind = row
+            if cipher is None:
+                continue
             try:
                 national_id = protector.decrypt(bytes(cipher))
             except (InvalidTag, ValueError):
