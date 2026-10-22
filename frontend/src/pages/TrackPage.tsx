@@ -165,8 +165,8 @@ export function TrackPage() {
             <h3><Clock3 size={15} /> {t('footer.support')}</h3>
             <dl className="side-list" style={{ marginTop: 8 }}>
               <div className="side-row" style={{ paddingInline: 0 }}>
-                <dt>{t('footer.hours')}</dt>
-                <dd dir="ltr">9:00–18:00</dd>
+                <dt>ساعات العمل</dt>
+                <dd>{t('footer.hours')}</dd>
               </div>
               <div className="side-row" style={{ paddingInline: 0 }}>
                 <dt>{t('footer.encrypted')}</dt>

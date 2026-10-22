@@ -326,7 +326,7 @@ describe('RequestArchive', () => {
   it('says so plainly when nothing matches', async () => {
     mockFetch(() => ({ ...ARCHIVE, items: [], total: 0, summary: { ...ARCHIVE.summary, open: 0 } }));
     render(<RequestArchive />);
-    await waitFor(() => expect(screen.getByText('لا توجد طلبات مطابقة.')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('لا توجد طلبات مطابقة')).toBeTruthy());
   });
 
   it('hides the pager until there is a second page', async () => {

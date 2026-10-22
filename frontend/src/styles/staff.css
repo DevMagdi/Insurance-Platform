@@ -29,11 +29,6 @@
   color-scheme: light;
 }
 
-.staff-console ::selection {
-  background: rgba(139, 92, 246, 0.25);
-  color: inherit;
-}
-
 .staff-console :focus-visible {
   outline: 2px solid var(--focus);
   outline-offset: 2px;
@@ -88,8 +83,8 @@
   height: 34px;
   flex: none;
   border-radius: 10px;
-  background: linear-gradient(150deg, var(--navy-700), var(--navy-950));
-  color: var(--gold-strong);
+  background: linear-gradient(150deg, var(--slab-1), var(--slab-2));
+  color: var(--accent-300);
   font-family: var(--font-arabic);
   font-size: 16px;
   font-weight: 800;
@@ -151,8 +146,8 @@
 }
 
 .staff-console .avatar-active {
-  background: linear-gradient(150deg, var(--navy-700), var(--navy-900));
-  color: var(--gold-strong);
+  background: var(--accent-600);
+  color: var(--ink-on-brand);
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
 }
 
@@ -237,13 +232,6 @@ html[lang='ar'] .staff-console .nav-section-title {
 .staff-console .nav-link:hover {
   color: var(--text);
   background: var(--surface-hover);
-}
-
-.staff-console .nav-link.active {
-  color: var(--text);
-  background: var(--surface);
-  box-shadow: 0 1px 2px rgba(9, 9, 11, 0.06), 0 8px 17px -14px rgba(9, 9, 11, 0.35);
-  font-weight: 650;
 }
 
 .staff-console.theme-dark .nav-link.active {
@@ -689,26 +677,6 @@ html[dir='rtl'] .staff-console .topbar-breadcrumb svg {
   border: 1.5px solid var(--surface);
 }
 
-.staff-console .topbar-lang {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  height: 28px;
-  padding: 0 9px;
-  border: 1px solid var(--border);
-  border-radius: 7px;
-  color: var(--text-muted);
-  font-family: var(--font-latin);
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-}
-
-.staff-console .topbar-lang:hover {
-  color: var(--text);
-  background: var(--surface-muted);
-}
-
 /* Date picker */
 .staff-console .date-picker-wrap {
   position: relative;
@@ -1100,13 +1068,6 @@ html[dir='rtl'] .staff-console .date-picker-trigger.is-open .date-picker-chevron
   min-width: 0;
 }
 
-.staff-console .surface-card {
-  border: 1px solid var(--border);
-  border-radius: var(--r-lg);
-  background: var(--surface);
-  box-shadow: var(--shadow-sm);
-}
-
 .staff-console .button {
   display: inline-flex;
   align-items: center;
@@ -1124,36 +1085,26 @@ html[dir='rtl'] .staff-console .date-picker-trigger.is-open .date-picker-chevron
   transition: background-color var(--dur-fast), border-color var(--dur-fast), color var(--dur-fast), box-shadow var(--dur-fast);
 }
 
-.staff-console .button:hover:not(:disabled) {
-  transform: none;
-}
-
-.staff-console .button-dark {
-  color: #f6f8fa;
-  background: var(--navy-800);
-  border-color: var(--navy-800);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.08);
-}
-
 .staff-console .button-dark:hover:not(:disabled) {
   background: var(--navy-700);
   border-color: var(--navy-700);
 }
 
-.staff-console.theme-light .button-dark {
-  color: #f6f8fa;
-  background: var(--navy-800);
-  border-color: var(--navy-800);
-}
-
-.staff-console.theme-light .button-dark:hover:not(:disabled) {
-  background: var(--navy-700);
-}
-
+/* `.button-dark` is the console's primary. Theme-scoped, it resolved its
+   fill from --navy-800 (= --surface-1 = white in light) under #F6F8FA ink,
+   and inverted to a white slab in dark. One accent, both themes — the same
+   fix already applied to `.btn-primary`. */
+.staff-console.theme-light .button-dark,
 .staff-console.theme-dark .button-dark {
-  color: var(--navy-800);
-  background: #eef2f7;
-  border-color: #eef2f7;
+  color: var(--ink-on-brand);
+  background: var(--accent-600);
+  border-color: transparent;
+}
+
+.staff-console.theme-light .button-dark:hover:not(:disabled),
+.staff-console.theme-dark .button-dark:hover:not(:disabled) {
+  background: var(--accent-500);
+  border-color: transparent;
 }
 
 .staff-console.theme-dark .button-dark:hover:not(:disabled) {
@@ -1533,7 +1484,7 @@ html[lang='ar'] .staff-console .section-title-row h2 {
   display: grid;
   place-items: center;
   padding: 18px;
-  background: color-mix(in srgb, var(--navy-950) 55%, transparent);
+  background: rgba(9, 9, 11, 0.55);
   backdrop-filter: blur(3px);
 }
 
@@ -1721,62 +1672,6 @@ html[lang='ar'] .staff-console .section-title-row h2 {
   color: var(--text);
 }
 
-/* --------------------------------------------------------------------------
-   Custom dashboard (Overview)
-   -------------------------------------------------------------------------- */
-
-.staff-console .ov-head {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 18px;
-  flex-wrap: wrap;
-}
-
-.staff-console .ov-head h1 {
-  margin: 0;
-  color: var(--text);
-  font-size: clamp(21px, 2vw, 27px);
-  font-weight: 750;
-  letter-spacing: -0.022em;
-  line-height: 1.3;
-}
-
-html[lang='ar'] .staff-console .ov-head h1 {
-  letter-spacing: 0;
-}
-
-.staff-console .ov-head p {
-  margin: 5px 0 0;
-  color: var(--text-muted);
-  font-size: 11.5px;
-}
-
-.staff-console .ov-head-meta {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  color: var(--text-faint);
-  font-size: 9px;
-}
-
-.staff-console .ov-kpis {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 10px;
-}
-
-.staff-console .ov-kpi {
-  position: relative;
-  padding: 14px 15px 13px;
-  border: 1px solid var(--border);
-  border-radius: var(--r-lg);
-  background: var(--surface);
-  box-shadow: var(--shadow-xs);
-  overflow: hidden;
-  transition: border-color var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
-}
-
 .staff-console .ov-loading {
   display: flex;
   flex-direction: column;
@@ -1790,177 +1685,6 @@ html[lang='ar'] .staff-console .ov-head h1 {
 
 .staff-console .charts-top .ov-skel-chart {
   min-height: 300px;
-}
-
-.staff-console .ov-kpi:hover {
-  border-color: var(--border-strong);
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-sm);
-}
-
-.staff-console .ov-kpi-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  color: var(--text-muted);
-  font-size: 9.5px;
-  font-weight: 550;
-}
-
-.staff-console .ov-kpi-icon {
-  display: grid;
-  place-items: center;
-  width: 25px;
-  height: 25px;
-  border-radius: 7px;
-  color: var(--text-faint);
-  background: var(--surface-muted);
-}
-
-.staff-console .ov-kpi-value {
-  display: flex;
-  align-items: baseline;
-  gap: 5px;
-  margin-top: 9px;
-  color: var(--text);
-  font-family: var(--font-latin);
-  font-size: 24px;
-  font-weight: 720;
-  letter-spacing: -0.035em;
-  line-height: 1;
-  font-variant-numeric: tabular-nums;
-}
-
-.staff-console .ov-kpi-value small {
-  color: var(--text-faint);
-  font-family: var(--font-arabic);
-  font-size: 9px;
-  font-weight: 500;
-  letter-spacing: 0;
-}
-
-.staff-console .ov-kpi-foot {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  margin-top: 8px;
-  color: var(--text-faint);
-  font-size: 8.5px;
-}
-
-.staff-console .ov-kpi-foot .up { color: var(--green); }
-.staff-console .ov-kpi-foot .down { color: var(--red); }
-
-.staff-console .ov-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr);
-  gap: 12px;
-}
-
-.staff-console .ov-grid-3 {
-  display: grid;
-  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr) minmax(0, 0.9fr);
-  gap: 12px;
-}
-
-.staff-console .ov-card {
-  min-width: 0;
-  border: 1px solid var(--border);
-  border-radius: 13px;
-  background: var(--surface);
-  overflow: hidden;
-}
-
-.staff-console .ov-card-head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 14px 16px 0;
-}
-
-.staff-console .ov-card-head h2 {
-  margin: 0;
-  color: var(--text);
-  font-size: 12px;
-  font-weight: 650;
-}
-
-.staff-console .ov-card-head p {
-  margin: 2px 0 0;
-  color: var(--text-faint);
-  font-size: 8.5px;
-}
-
-.staff-console .ov-card-body {
-  padding: 12px 16px 14px;
-}
-
-.staff-console .ov-chart {
-  width: 100%;
-  height: 218px;
-  min-width: 0;
-}
-
-.staff-console .ov-legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px 16px;
-  margin-top: 8px;
-}
-
-.staff-console .ov-legend span {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  color: var(--text-muted);
-  font-size: 9px;
-}
-
-.staff-console .ov-legend i {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-}
-
-.staff-console .ov-status-list {
-  display: flex;
-  flex-direction: column;
-  gap: 9px;
-  padding: 4px 0;
-}
-
-.staff-console .ov-status-row {
-  display: grid;
-  grid-template-columns: 66px 1fr 32px;
-  align-items: center;
-  gap: 8px;
-  font-size: 9.5px;
-  color: var(--text-muted);
-}
-
-.staff-console .ov-status-track {
-  height: 5px;
-  border-radius: 99px;
-  background: var(--surface-muted);
-  overflow: hidden;
-}
-
-.staff-console .ov-status-track span {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
-  background: var(--status-color, var(--gold));
-}
-
-.staff-console .ov-status-row strong {
-  color: var(--text-secondary);
-  font-family: var(--font-latin);
-  font-size: 9.5px;
-  font-weight: 600;
-  text-align: end;
-  font-variant-numeric: tabular-nums;
 }
 
 /* Needs attention */
@@ -2029,170 +1753,6 @@ html[lang='ar'] .staff-console .ov-head h1 {
   white-space: nowrap;
 }
 
-.staff-console .attention-time.overdue {
-  color: var(--red);
-}
-
-/* Activity feed */
-.staff-console .activity-list {
-  display: flex;
-  flex-direction: column;
-  padding: 4px 0;
-}
-
-.staff-console .activity-row {
-  display: grid;
-  grid-template-columns: 22px minmax(0, 1fr);
-  gap: 8px;
-  padding: 7px 16px;
-  position: relative;
-}
-
-.staff-console .activity-row:not(:last-child)::after {
-  content: '';
-  position: absolute;
-  inset-inline-start: 26px;
-  top: 29px;
-  bottom: -4px;
-  width: 1px;
-  background: var(--border);
-}
-
-.staff-console .activity-dot {
-  display: grid;
-  place-items: center;
-  width: 21px;
-  height: 21px;
-  border-radius: 50%;
-  background: var(--surface-muted);
-  border: 1px solid var(--border);
-  color: var(--text-faint);
-}
-
-.staff-console .activity-main {
-  min-width: 0;
-}
-
-.staff-console .activity-main strong {
-  display: block;
-  color: var(--text-secondary);
-  font-size: 10px;
-  font-weight: 550;
-  line-height: 1.55;
-}
-
-.staff-console .activity-main time {
-  display: block;
-  color: var(--text-faint);
-  font-size: 8.5px;
-}
-
-/* Company ranking rows */
-.staff-console .rank-list {
-  display: flex;
-  flex-direction: column;
-  gap: 11px;
-  padding: 4px 0;
-}
-
-.staff-console .rank-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 60px 40px;
-  align-items: center;
-  gap: 9px;
-}
-
-.staff-console .rank-name {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  min-width: 0;
-}
-
-.staff-console .rank-mark {
-  display: grid;
-  place-items: center;
-  width: 22px;
-  height: 22px;
-  flex: none;
-  border-radius: 6px;
-  background: var(--surface-muted);
-  border: 1px solid var(--border);
-  color: var(--text-muted);
-  font-size: 8.5px;
-  font-weight: 700;
-}
-
-.staff-console .rank-name span:last-child {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: var(--text-secondary);
-  font-size: 9.5px;
-}
-
-.staff-console .rank-track {
-  height: 5px;
-  border-radius: 99px;
-  background: var(--surface-muted);
-  overflow: hidden;
-}
-
-.staff-console .rank-track span {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
-  background: linear-gradient(90deg, var(--gold), var(--teal));
-}
-
-.staff-console .rank-value {
-  color: var(--text-secondary);
-  font-family: var(--font-latin);
-  font-size: 9.5px;
-  font-weight: 600;
-  text-align: end;
-  font-variant-numeric: tabular-nums;
-}
-
-.staff-console .ov-filterbar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  padding: 9px 11px;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  background: var(--surface);
-}
-
-.staff-console .ov-filterbar .compact-field {
-  min-width: 140px;
-}
-
-.staff-console .ov-filterbar-spacer {
-  flex: 1;
-}
-
-.staff-console .ov-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  color: var(--gold-strong);
-  font-size: 9.5px;
-  font-weight: 650;
-}
-
-html[dir='rtl'] .staff-console .ov-link svg {
-  transform: rotate(180deg);
-}
-
-.staff-console .ov-empty {
-  padding: 30px 16px;
-  color: var(--text-faint);
-  text-align: center;
-  font-size: 10px;
-}
-
 @media (max-width: 1180px) {
   .staff-console .ov-kpis {
     grid-template-columns: repeat(3, 1fr);
@@ -2249,12 +1809,6 @@ html[dir='rtl'] .staff-console .ov-link svg {
   background: var(--gold-soft);
 }
 
-.staff-console .metric-grid {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 10px;
-}
-
 .staff-console .metric-card {
   min-height: 116px;
   padding: 13px 14px 12px;
@@ -2284,54 +1838,6 @@ html[dir='rtl'] .staff-console .ov-link svg {
   background: var(--surface-muted);
 }
 
-.staff-console .metric-card.metric-gold .metric-icon { color: var(--gold-strong); background: var(--gold-soft); }
-.staff-console .metric-blue .metric-icon { color: var(--blue); background: var(--blue-soft); }
-.staff-console .metric-teal .metric-icon { color: var(--teal); background: var(--teal-soft); }
-.staff-console .metric-green .metric-icon { color: var(--green); background: var(--green-soft); }
-.staff-console .metric-red .metric-icon { color: var(--red); background: var(--red-soft); }
-
-.staff-console .metric-label-row {
-  color: var(--text-muted);
-  font-size: 9.5px;
-}
-
-.staff-console .metric-dot {
-  width: 4px;
-  height: 4px;
-  background: var(--text-faint);
-}
-
-.staff-console .metric-value {
-  margin-top: 3px;
-  color: var(--text);
-  font-family: var(--font-latin);
-  font-size: 21px;
-  font-weight: 720;
-  letter-spacing: -0.035em;
-}
-
-.staff-console .metric-detail {
-  color: var(--text-faint);
-  font-size: 8.5px;
-}
-
-.staff-console .arrival-summary {
-  padding: 9px 12px;
-  border: 1px solid var(--border);
-  border-radius: 9px;
-  background: var(--surface-muted);
-  color: var(--text-muted);
-  font-size: 9.5px;
-}
-
-.staff-console .arrival-summary-mark {
-  width: 25px;
-  height: 25px;
-  border-radius: 7px;
-  color: var(--teal);
-  background: var(--teal-soft);
-}
-
 .staff-console .charts-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -2353,11 +1859,6 @@ html[dir='rtl'] .staff-console .ov-link svg {
   font-weight: 650;
 }
 
-.staff-console .chart-card-heading p {
-  color: var(--text-faint);
-  font-size: 8.5px;
-}
-
 .staff-console .chart-container {
   height: 230px;
 }
@@ -2377,32 +1878,6 @@ html[dir='rtl'] .staff-console .ov-link svg {
   align-items: center;
   gap: 6px;
   flex-wrap: wrap;
-}
-
-.staff-console .complaint-filters {
-  display: flex;
-  align-items: flex-end;
-  gap: 8px;
-  flex-wrap: wrap;
-  padding: 11px 12px;
-}
-
-.staff-console .complaint-filters .compact-field {
-  flex: 0 1 auto;
-}
-
-.staff-console .clear-filter-button {
-  min-height: 31px;
-  padding: 0 9px;
-  color: var(--text-muted);
-  border: 1px dashed var(--border-strong);
-  border-radius: 7px;
-  font-size: 9.5px;
-}
-
-.staff-console .clear-filter-button:hover {
-  color: var(--text);
-  border-color: var(--text-faint);
 }
 
 .staff-console .saved-view-control {
@@ -2523,14 +1998,6 @@ html[dir='rtl'] .staff-console .ov-link svg {
   border-bottom: 0;
 }
 
-.staff-console .data-table tbody tr {
-  transition: background-color var(--dur-fast);
-}
-
-.staff-console .data-table tbody tr:hover {
-  background: color-mix(in srgb, var(--surface-muted) 70%, transparent);
-}
-
 .staff-console .complaint-row {
   cursor: pointer;
 }
@@ -2638,13 +2105,6 @@ html[dir='rtl'] .staff-console .ov-link svg {
   background: currentColor;
 }
 
-.staff-console .status-new { color: var(--blue); background: var(--blue-soft); border-color: color-mix(in srgb, var(--blue) 14%, transparent); }
-.staff-console .status-assigned { color: var(--violet); background: color-mix(in srgb, var(--violet) 9%, transparent); border-color: color-mix(in srgb, var(--violet) 16%, transparent); }
-.staff-console .status-in_review { color: var(--warning); background: var(--warning-soft); border-color: color-mix(in srgb, var(--warning) 18%, transparent); }
-.staff-console .status-resolved { color: var(--green); background: var(--green-soft); border-color: color-mix(in srgb, var(--green) 16%, transparent); }
-.staff-console .status-reopened { color: var(--orange); background: var(--orange-soft); border-color: color-mix(in srgb, var(--orange) 18%, transparent); }
-.staff-console .status-transferred { color: var(--fuchsia); background: var(--fuchsia-soft); border-color: color-mix(in srgb, var(--fuchsia) 16%, transparent); }
-
 /* Dark theme: the semantic tokens above already resolve to their dark values — no per-status overrides needed. */
 
 .staff-console .priority-pill {
@@ -2660,7 +2120,6 @@ html[dir='rtl'] .staff-console .ov-link svg {
 .staff-console .priority-low { color: var(--text-faint); background: var(--surface-muted); }
 .staff-console .priority-normal { color: var(--blue); background: var(--blue-soft); }
 .staff-console .priority-high { color: var(--warning); background: var(--warning-soft); }
-.staff-console .priority-urgent { color: var(--red); background: var(--red-soft); }
 
 .staff-console .sort-button {
   display: inline-flex;
@@ -2840,25 +2299,12 @@ html[dir='rtl'] .staff-console .pagination-arrow svg {
   margin-bottom: -4px;
 }
 
-.staff-console .back-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  color: var(--text-muted);
-  font-size: 10px;
-  font-weight: 500;
-}
-
 .staff-console .back-link svg {
   transform: rotate(180deg);
 }
 
 html[dir='rtl'] .staff-console .back-link svg {
   transform: rotate(0);
-}
-
-.staff-console .back-link:hover {
-  color: var(--text);
 }
 
 .staff-console .workspace-scope {
@@ -3183,11 +2629,6 @@ html[lang='ar'] .staff-console .ticket-heading h1 {
   border-color: color-mix(in srgb, var(--gold) 18%, transparent);
 }
 
-.staff-console .timeline-item-body {
-  min-width: 0;
-  padding-top: 1px;
-}
-
 .staff-console .timeline-item-body > time {
   display: block;
   margin-bottom: 2px;
@@ -3195,21 +2636,6 @@ html[lang='ar'] .staff-console .ticket-heading h1 {
   font-family: var(--font-latin);
   font-size: 8px;
   font-variant-numeric: tabular-nums;
-}
-
-.staff-console .timeline-item-body > strong {
-  color: var(--text-secondary);
-  font-size: 10.5px;
-  font-weight: 600;
-}
-
-.staff-console .timeline-transition {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  margin-inline-start: 7px;
-  color: var(--text-faint);
-  font-size: 9px;
 }
 
 html[dir='rtl'] .staff-console .timeline-transition svg {
@@ -3224,11 +2650,6 @@ html[dir='rtl'] .staff-console .timeline-transition svg {
   background: var(--surface-muted);
 }
 
-.staff-console .timeline-message.is-internal {
-  border-color: color-mix(in srgb, var(--gold) 22%, transparent);
-  background: var(--gold-soft);
-}
-
 .staff-console .timeline-message-meta {
   display: flex;
   align-items: center;
@@ -3241,19 +2662,6 @@ html[dir='rtl'] .staff-console .timeline-transition svg {
   color: var(--text-secondary);
   font-size: 9.5px;
   font-weight: 600;
-}
-
-.staff-console .timeline-message-meta span {
-  color: var(--text-faint);
-  font-size: 8.5px;
-}
-
-.staff-console .timeline-message p {
-  margin: 0;
-  color: var(--text-secondary);
-  font-size: 10.5px;
-  line-height: 1.8;
-  white-space: pre-wrap;
 }
 
 .staff-console .timeline-meta {
@@ -3901,19 +3309,6 @@ html[dir='rtl'] .staff-console .action-row > svg:last-child {
   background: var(--surface-muted);
   color: var(--text-muted);
   font-size: 9px;
-}
-
-.staff-console .health-preview-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  height: 20px;
-  padding: 0 6px;
-  border-radius: 5px;
-  background: var(--green-soft);
-  color: var(--green);
-  font-size: 8.5px;
-  font-weight: 600;
 }
 
 .staff-console .switch-row {
@@ -4876,23 +4271,18 @@ html[dir='rtl'] .staff-console .admin-shortcuts button > svg {
   color: var(--btn-fg);
 }
 
+/* Same bug as the global `.btn-primary`, one specificity level up:
+   --navy-800 aliases to --surface-1, so in light the console's primary was
+   #F6F8FA ink on a white fill. The console primary is the accent, exactly
+   like `.button-gold` beside it. */
 .staff-console .btn.btn-primary {
-  --btn-bg: var(--navy-800);
-  --btn-fg: #f6f8fa;
+  --btn-bg: var(--accent-600);
+  --btn-fg: var(--ink-on-brand);
   --btn-border: transparent;
 }
 
 .staff-console .btn.btn-primary:hover:not(:disabled) {
-  --btn-bg: var(--navy-700);
-}
-
-.staff-console.theme-dark .btn.btn-primary {
-  --btn-bg: #eef2f7;
-  --btn-fg: var(--navy-800);
-}
-
-.staff-console.theme-dark .btn.btn-primary:hover:not(:disabled) {
-  --btn-bg: #ffffff;
+  --btn-bg: var(--accent-500);
 }
 
 .staff-console .btn.btn-secondary {
@@ -4923,8 +4313,6 @@ html[dir='rtl'] .staff-console .admin-shortcuts button > svg {
 .staff-console .employee-card { display: flex; align-items: center; gap: 12px; text-align: start; padding: 14px; border: 1px solid var(--border); border-radius: 14px; color: var(--text); background: var(--surface-muted); cursor: pointer; }
 .staff-console .employee-card:hover { background: var(--surface-hover); }
 .staff-console .employee-card small { display: block; color: var(--text-muted); margin-top: 5px; }
-.staff-console .employee-profile-heading { margin-bottom: 24px; }
-.staff-console .employee-profile-heading .avatar-circle { width: 80px; height: 80px; flex-shrink: 0; }
 .staff-console .employee-profile-details { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 18px; }
 .staff-console .employee-profile-details dt { color: var(--text-muted); font-size: 12px; margin-bottom: 5px; }
 .staff-console .employee-profile-details dd { margin: 0; overflow-wrap: anywhere; font-weight: 600; }
@@ -4933,14 +4321,10 @@ html[dir='rtl'] .staff-console .admin-shortcuts button > svg {
 /* Shared geometry, calmer navigation and readable operational density. */
 .staff-console .sidebar { box-shadow: var(--shadow-xs); }
 .staff-console .sidebar-brand, .staff-console .sidebar-user, .staff-console .sidebar-bottom { border-color: var(--border); }
-.staff-console .page-stack { gap: 24px; }
-.staff-console .button:active:not(:disabled) { transform: translateY(0); }
 .staff-console .button-gold { color: var(--navy-950); background: var(--gold-400); border-color: var(--gold-400); }
-.staff-console .button-gold:hover:not(:disabled) { background: var(--gold-300); border-color: var(--gold-300); }
-.staff-console .data-table thead th { color: var(--text-muted); }
+/* --gold-300 aliases to --accent-300: white ink on a pale violet, ~2.2:1. */
+.staff-console .button-gold:hover:not(:disabled) { background: var(--accent-500); border-color: var(--accent-500); }
 .staff-console .data-table tbody td { padding-block: 14px; font-size: 12px; transition: background-color var(--dur-base) var(--ease-out); }
-.staff-console .timeline-message { border-radius: var(--r-md); padding: 14px; box-shadow: var(--shadow-xs); }
-.staff-console .timeline-message p { font-size: 13px; line-height: 1.9; overflow-wrap: anywhere; }
 .staff-console .timeline-message-meta { font-size: 11px; }
 .staff-console .detail-grid span, .staff-console .detail-grid strong { font-size: 12px; }
 .staff-console .ticket-description p { font-size: 13px; }

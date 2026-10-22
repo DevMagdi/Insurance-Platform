@@ -846,3 +846,391 @@
   background: var(--accent-200);
   color: var(--ink-900);
 }
+
+/* ==========================================================================
+   v3 — light mode, density and dead space
+   --------------------------------------------------------------------------
+   The dark console was already the strong half of the product. Everything
+   here is either (a) a light-mode rendering that was inherited from dark and
+   never designed, or (b) a layout that wastes space in both themes.
+   ========================================================================== */
+
+/* ----------------------------------------------------------- chrome, light */
+
+/* On dark, the sidebar is the same near-black as the canvas and the cards
+   float off both — one material, lit from above. Inverted literally, that
+   becomes #FAFAFA chrome on a #FAFAFA canvas holding #FFFFFF cards: three
+   surfaces, two of them identical, and the console reads as one flat sheet.
+   Light mode puts the chrome on top (white) and drops the canvas behind it. */
+.staff-console.theme-light {
+  --staff-sidebar: var(--surface-chrome);
+}
+
+.staff-console.theme-light .sidebar {
+  background: var(--surface-chrome);
+}
+
+.staff-console.theme-light .app-shell {
+  background: var(--surface-0);
+}
+
+/* The frosted top bar needs something to frost over; at 80% white on an
+   off-white canvas it was indistinguishable from the page. */
+.staff-console.theme-light .topbar {
+  background: color-mix(in srgb, var(--surface-chrome) 86%, transparent);
+}
+
+/* Cards are the brightest plane in light mode, so they carry the elevation
+   rather than a heavier border. */
+.staff-console.theme-light .surface-card,
+.staff-console.theme-light .ds-card {
+  background: var(--surface-1);
+  box-shadow: var(--shadow-sm);
+}
+
+/* ------------------------------------------------------------- navigation */
+
+/* The active item used to be --surface-2, which on white is #F4F4F5 — a grey
+   plate with a violet spine, i.e. two signals for one state. Light mode gets
+   a violet tint instead, the same idea as the dark rendering. */
+.staff-console.theme-light .nav-link.active {
+  background: var(--accent-100);
+  color: var(--accent-700);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-500) 18%, transparent);
+}
+
+.staff-console.theme-light .nav-link.active .nav-icon {
+  color: var(--accent-600);
+}
+
+/* --------------------------------------------------------------- filters */
+
+/* Search and the filter row are one card now (they describe one job), so the
+   nested toolbar drops its own padding and is separated by a rule instead. */
+.staff-console .ds-filters > .queue-toolbar {
+  padding: 0 0 var(--s-4);
+  border-bottom: 1px solid var(--line-soft);
+  gap: var(--s-2);
+}
+
+.staff-console .ds-filters > .queue-toolbar .queue-search-wrap {
+  flex: 1 1 280px;
+}
+
+/* The dashboard filter bar put its label on one side and its two selects on
+   the other, with the whole middle of a 1200px card empty. The label stays
+   where it is, the controls close the gap. */
+.staff-console .filter-strip {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--s-3);
+  flex-wrap: wrap;
+  padding: var(--s-4) var(--s-5);
+}
+
+.staff-console .filter-strip .filter-strip-label {
+  margin-inline-end: auto;
+}
+
+.staff-console .filter-strip .compact-field {
+  flex: 1 1 180px;
+  max-width: 280px;
+}
+
+/* ----------------------------------------------------------------- tables */
+
+/* `min-width: 900px` was wider than the 869px the table card actually gets at
+   1280 with the sidebar open, so the last column — status, the one column a
+   scanning eye goes to first — was clipped at the card edge on a stock
+   laptop. Tighter gutters, a narrower floor, and the inline padding tapers
+   at the ends so nothing touches the radius. */
+.staff-console .data-table {
+  min-width: 760px;
+}
+
+.staff-console .data-table thead th,
+.staff-console .data-table tbody td {
+  padding-inline: 10px;
+}
+
+.staff-console .data-table thead th:first-child,
+.staff-console .data-table tbody td:first-child { padding-inline-start: var(--s-5); }
+
+.staff-console .data-table thead th:last-child,
+.staff-console .data-table tbody td:last-child { padding-inline-end: var(--s-5); }
+
+/* Row data should not wrap to two lines because a name is 11 characters;
+   the subject is the one cell that is allowed to run on. */
+.staff-console .complaints-table td { white-space: nowrap; }
+.staff-console .complaints-table .subject-cell { white-space: normal; }
+
+.staff-console.theme-light .data-table thead th {
+  background: transparent;
+  box-shadow: 0 1px 0 var(--line);
+}
+
+/* --------------------------------------------------------- quiet controls */
+
+/* A borderless button beside a bordered one reads as a label, not a control.
+   `.button-quiet` gets a hover plate and a hairline on hover so it is
+   discoverable without competing with the ghost buttons beside it. */
+.staff-console .button-quiet {
+  border: 1px solid transparent;
+}
+
+.staff-console .button-quiet:hover:not(:disabled) {
+  background: var(--surface-2);
+  border-color: var(--line);
+}
+
+/* ------------------------------------------------------------ empty states */
+
+/* Give the console's empty states the design system's disc so a table with
+   no rows looks composed rather than unfinished. */
+.staff-console .empty-icon,
+.staff-console .empty-state-icon {
+  position: relative;
+  background:
+    radial-gradient(circle at 50% 35%, var(--accent-100), transparent 70%),
+    var(--surface-2);
+}
+
+.staff-console .empty-icon::after,
+.staff-console .empty-state-icon::after {
+  content: '';
+  position: absolute;
+  inset: -9px;
+  border-radius: inherit;
+  border: 1px solid var(--line-soft);
+}
+
+.staff-console .empty strong,
+.staff-console .empty-table strong,
+.staff-console .admin-empty strong {
+  color: var(--ink-800);
+  font-size: 0.95rem;
+  font-weight: 650;
+}
+
+/* ==========================================================================
+   v4 — analytics
+
+   This screen was the last one still wearing raw Tailwind: flat grey boxes,
+   Latin digits, three bare lists and a chart of twenty full-saturation violet
+   bars. It now speaks the same language as the rest of the console.
+   ========================================================================== */
+
+.staff-console .analytics-head h1 {
+  margin: 6px 0 0;
+  font-size: 26px;
+  font-weight: 760;
+  letter-spacing: -0.02em;
+  color: var(--ink-900);
+}
+
+.staff-console .analytics-sub {
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: var(--ink-400);
+}
+
+.staff-console .analytics-window {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--s-4);
+  align-items: end;
+}
+
+@media (max-width: 640px) {
+  .staff-console .analytics-window {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Secondary KPIs are a reference strip, not eight more cards competing with
+   the four that matter. One row, hairline separators, no fills. */
+.staff-console .analytics-secondary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  background: var(--line-soft);
+  border-radius: var(--r-md);
+  overflow: hidden;
+}
+
+.staff-console .analytics-secondary li {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 14px 16px;
+  background: var(--surface-1);
+}
+
+.staff-console .analytics-secondary span {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--ink-400);
+}
+
+.staff-console .analytics-secondary strong {
+  font-size: 20px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-900);
+}
+
+.staff-console .analytics-secondary small {
+  font-size: 11px;
+  color: var(--ink-300);
+}
+
+@media (max-width: 980px) {
+  .staff-console .analytics-secondary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 520px) {
+  .staff-console .analytics-secondary { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* ------------------------------------------------------------- trend chart */
+
+.staff-console .trend-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  min-height: 184px;
+  padding-top: 8px;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.staff-console .trend-col {
+  display: flex;
+  flex: 1 1 0;
+  min-width: 26px;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.staff-console .trend-count {
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-300);
+  transition: color var(--dur-fast) var(--ease-out);
+}
+
+.staff-console .trend-bar {
+  width: 100%;
+  border-radius: 6px 6px 3px 3px;
+  background: var(--surface-3);
+  transition:
+    background-color var(--dur-base) var(--ease-out),
+    opacity var(--dur-base) var(--ease-out);
+}
+
+/* The accent is spent exactly once per chart: on the busiest day. */
+.staff-console .trend-bar.is-peak {
+  background: var(--accent-500);
+}
+
+.staff-console .trend-col:hover .trend-bar {
+  background: var(--accent-400);
+}
+
+.staff-console .trend-col:hover .trend-count {
+  color: var(--ink-800);
+}
+
+.staff-console .trend-label {
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-300);
+  white-space: nowrap;
+}
+
+/* ------------------------------------------------------------- share lists */
+
+.staff-console .analytics-shares {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--s-5);
+}
+
+@media (max-width: 1080px) {
+  .staff-console .analytics-shares { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 680px) {
+  .staff-console .analytics-shares { grid-template-columns: minmax(0, 1fr); }
+}
+
+.staff-console .share-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.staff-console .share-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 72px auto;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+}
+
+.staff-console .share-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ink-700);
+}
+
+/* The proportion bar is neutral too — it ranks, it does not alert. */
+.staff-console .share-track {
+  height: 6px;
+  border-radius: var(--r-pill);
+  background: var(--surface-2);
+  overflow: hidden;
+}
+
+.staff-console .share-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--ink-300);
+}
+
+.staff-console .share-row:first-child .share-fill {
+  background: var(--accent-500);
+}
+
+.staff-console .share-value {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  color: var(--ink-900);
+}
+
+.staff-console .share-none {
+  margin: 0;
+  font-size: 13px;
+  color: var(--ink-400);
+}
+
+/* The topbar avatar inherits the topbar's ink, so the active (accent-filled)
+   state ended up near-black initials on violet. Name both classes. */
+/* `.staff-console button:not(.btn):not(.button)` sets `color: inherit` at
+   0,3,1, so a plain two-class rule loses and the initials took the topbar's
+   ink. Match the element too. */
+.staff-console button.avatar-circle.avatar-active,
+.staff-console span.avatar-circle.avatar-active,
+.staff-console .avatar-circle.avatar-active {
+  color: var(--ink-on-brand);
+}

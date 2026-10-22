@@ -112,7 +112,7 @@ describe('corporate portal', () => {
     // The three facts the client specifically asked to see.
     expect(screen.getByText(/٢٬٥٠٠٬٠٠٠/)).toBeTruthy();
     expect(screen.getByText('ربع سنوي')).toBeTruthy();
-    expect(screen.getByText('يُجدَّد خلال 72 يوم')).toBeTruthy();
+    expect(screen.getByText('يُجدَّد خلال ٧٢ يوم')).toBeTruthy();
     expect(screen.getByText('ساري')).toBeTruthy();
   });
 
@@ -147,7 +147,7 @@ describe('corporate portal', () => {
     await waitFor(() => expect(screen.getByText('Karim Nabil')).toBeTruthy());
 
     expect(screen.queryByText('REQ-2026-000054')).toBeNull();
-    fireEvent.click(screen.getByText('1 طلب'));
+    fireEvent.click(screen.getByText('١ طلب'));
     await waitFor(() => expect(screen.getByText('REQ-2026-000054')).toBeTruthy());
     // The request is labelled by its intake channel and its card number.
     expect(screen.getByText('واتساب')).toBeTruthy();
@@ -213,11 +213,11 @@ describe('corporate formatting', () => {
   });
 
   it('words the renewal countdown by urgency, including the past', () => {
-    expect(renewalNotice(72)).toEqual({ text: 'يُجدَّد خلال 72 يوم', tone: 'calm' });
+    expect(renewalNotice(72)).toEqual({ text: 'يُجدَّد خلال ٧٢ يوم', tone: 'calm' });
     expect(renewalNotice(12).tone).toBe('warn');
     expect(renewalNotice(1)).toEqual({ text: 'يُجدَّد غداً', tone: 'alert' });
     expect(renewalNotice(0)).toEqual({ text: 'يُجدَّد اليوم', tone: 'alert' });
-    expect(renewalNotice(-3)).toEqual({ text: 'انتهى منذ 3 يوم', tone: 'alert' });
+    expect(renewalNotice(-3)).toEqual({ text: 'انتهى منذ ٣ يوم', tone: 'alert' });
     expect(renewalNotice(null)).toEqual({ text: 'غير محدد', tone: 'calm' });
   });
 });
