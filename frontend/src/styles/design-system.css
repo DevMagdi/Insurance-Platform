@@ -1,124 +1,117 @@
 /* ==========================================================================
-   Wathiq Design System — v3, "premium insurance"
+   Wathiq Design System — v4, "Amani Reserve"
    ==========================================================================
 
-   v2 ("quiet machine") dressed the product as a developer tool: near-black
-   zinc, one violet accent, the register of Linear and Vercel. That is the
-   wrong register for an insurance brokerage. Clients hand this platform
-   their medical files and their money; the interface has to read the way a
-   private bank reads — deep navy, measured gold, calm emerald — before a
-   single word is processed. v3 restores the house identity of v1 (navy and
-   gold) with the discipline v2 introduced: every value is a token, every
-   contrast claim below was measured, and no component hard-codes a colour.
+   A ground-up visual identity for a private-client insurance brokerage:
+   warm, ordered, rich, quiet. Nothing of the previous skins survives —
+   not the v2 zinc/violet developer-tool register, not the v3 cool navy.
+   The canvas is warm (cream paper by day, warm charcoal-slate by night),
+   the single action colour is a deep measured gold, and a muted teal is
+   reserved for success and growth. Every value below is a token; this
+   file is loaded after `foundation.css` and re-tunes its tokens in
+   place, so the whole product re-skins with no behaviour change.
 
-   Three ideas carry the system.
-
-   1. NAVY IS THE CANVAS, NOT A CONTENDER. Five steps of navy-ink from
-      #0B1220 upward give depth through luminance while keeping one hue
-      family in charge; light mode mirrors it with warm off-whites and the
-      same navy ink. No zinc, no pure black: even the darkest surface is
-      visibly blue, which is what separates "financial institution" from
-      "code editor".
-
-   2. GOLD IS THE VERB. The accent marks the primary action, the current
-      location and the number that matters — nothing else. Gold is a fill
-      and a glow, never body text: accent copy resolves to --accent-ink
-      (pale gold on dark, deep bronze on light) so it stays legible, and
-      labels *on* gold use --ink-on-accent, the deepest navy. White on
-      #C6A75E measures ~2.3:1; navy ink on the same fill measures 8.10:1 —
-      the private-banking pairing wins on both looks and arithmetic.
-      Emerald is the second voice, reserved for growth and resolution.
-
-   3. BORDERS WHISPER IN BLUE. Hairlines are translucent steel-blue on
-      dark and navy ink at single-digit alpha on light; elevation comes
-      from large navy-tinted shadows (a marine depth on dark, a paper lift
-      on light), never from drawn outlines.
-
-   This file is loaded after `foundation.css` and re-tunes its tokens in
-   place, so the entire application re-skins without a line of behaviour
-   changing. The --gold-*, --navy-* and --accent-* names are all kept:
-   gold and accent are the same family again, and navy is once more a
-   fixed brand ramp (identical in both themes) rather than an alias of
-   the surface steps — components that paint "the dark slab" (auth page,
-   CTA band, avatars) get navy in both themes, as they always intended.
+   The public token names are the Amani set — --canvas, --surface(-2/-3),
+   --text/--text-muted/--text-subtle, --primary(+hover/active/contrast),
+   --secondary, --border(+strong), --line, --danger/--warning/--success/
+   --info. The legacy ramps (--surface-0..4, --ink-*, --gold-*, --navy-*,
+   --accent-*, --emerald-*) are all re-bound onto them, so ~1,500 existing
+   references render the new identity without a rename sweep.
 
    ---------------------------------------------------------------------------
-   MEASURED CONTRASTS (WCAG, computed — not eyeballed)
+   MEASURED CONTRASTS (WCAG, computed) AND THE FOUR SMALLEST DEVIATIONS
    ---------------------------------------------------------------------------
-   * Muted text (--ink-500) carries timestamps, counts and metadata.
-     Dark #93A5BF: 6.86:1 on a card, 7.47:1 on the canvas. Light #52637D:
-     6.11:1 on white, 5.64:1 on the canvas. The dimmer --ink-400 still
-     clears AA everywhere (dark 4.99:1 even on the highest surface step;
-     light 5.12:1 on white).
-   * Gold as text: dark --accent-ink #E3C878 is 10.49:1 on a card; light
-     --accent-ink #7C5F1E is 5.98:1 on white. The hero golds #D4AF37 /
-     #BE9A3F are fills, glows and indicators only.
-   * Primary buttons: --ink-on-accent #0B1220 on the dark fill #C6A75E is
-     8.10:1 (hover #D4AF37: 8.90:1); on the light fill #B28E35 it is
-     6.07:1, and that fill also clears the 3:1 non-text boundary against
-     white (3.08:1) so the button edge never dissolves into the page.
-   * Every semantic foreground (info/success/warning/danger/cyan/rose/
-     orange/steel) measures ≥ 4.9:1 on its theme's card, and ≥ 6:1 on its
-     own soft pill background in dark mode.
-   * The "Assigned" status stays cyan (from v2): with gold as the accent
-     a gold status pill would read as a highlight. The retired --violet
-     token now resolves to a muted steel-blue and --fuchsia to a dusty
-     rose, so no purple renders anywhere in the product.
+   The Amani palette as specified passes AA almost everywhere (dark text
+   14.99:1, muted 7.65:1; light text 16.47:1, muted 6.73:1; gold labels
+   5.65–6.88:1 on dark). Four specified values fail AA in the exact spots
+   this codebase paints them, so each is adjusted by the smallest amount
+   that fixes it — the identity is unchanged to the eye:
+
+   * Light `--primary-contrast #FFFDF9` on `--primary #A67B22` measures
+     3.77:1 — a fail for a button label. The resting button fill therefore
+     uses the specified `--primary-hover #926C1B` (4.72:1) and deepens to
+     `--primary-active` on hover; `--primary` itself is unchanged for
+     indicators, glows and borders, and is the resting fill on dark
+     (5.65:1 with the specified `#141A14` ink).
+   * Dark semantic *solids* (`--secondary #1F6F65` 2.76:1, danger
+     `#C9443A` 3.42:1, info `#2F6FED` 3.62:1) cannot carry small text on
+     the dark surface. They remain the fill/dot values (`--secondary`,
+     `--danger-solid` — white on it is 4.80:1); the text-facing tokens
+     (`--success`, `--danger`, `--info`) take the smallest same-hue tints
+     that clear AA on the surface and on their soft pills (≥4.93:1).
+   * `--text-subtle` as specified measures 3.42:1 (dark, on surface-3
+     hover rows) and 3.87–4.12:1 (light, on canvas/surface-2), where this
+     token carries timestamps and hints. Lifted half a warm step
+     (`#AAA192` dark / `#6E675C` light): ≥4.67:1 everywhere it lands.
+   * Light `--warning #A56B12` measures 4.39:1 on the surface and 3.87:1
+     on its own pill. Deepened to `#8F5A06` (5.69:1 / 5.02:1) — still
+     unmistakably the Amani amber-brown.
+
+   Gold text resolves to --accent-ink (dark `#C99A3A` 6.40:1, light
+   `--primary-active #7A5916` 6.32:1); labels *on* gold use
+   --primary-contrast. Status hues: new=info, assigned=slate (the retired
+   --cyan/--violet names), in-review=warning, resolved=secondary teal,
+   reopened=danger, transferred=warm rose (--fuchsia). No purple and no
+   cold zinc render anywhere.
    ========================================================================== */
 
 /* --------------------------------------------------------------------------
-   Dark — the primary rendering
+   Dark — warm charcoal-slate, gold leaf
    -------------------------------------------------------------------------- */
 
 :root.dark,
 .staff-console.theme-dark {
-  /* Canvas: five steps of navy-ink. Depth is luminance inside one hue. */
-  --surface-0: #0b1220; /* app background — deep navy-ink, never black */
-  --surface-1: #111b2e; /* cards, panels */
-  --surface-2: #16233b; /* elevated — inputs, nested panels */
-  --surface-3: #1d2d4a; /* hover, active rows */
-  --surface-4: #273d61; /* highest — pressed, selected */
-  --surface-glass: rgba(11, 18, 32, 0.78);
-  --surface-inverse: #f5f7fa;
-  /* The app chrome (sidebar, top bar, site header) sits a hair deeper than
-     the canvas so the frame reads as one piece of joinery and cards float
-     off the page between them. */
-  --surface-chrome: #0a0f1d;
-  /* Every text input in the product resolves here. */
-  --field-bg: #16233b;
-  --field-bg-hover: #1d2d4a;
-  --field-border: #22345a;
+  /* Amani core */
+  --canvas: #10151c;
+  --surface-0: #10151c;
+  --surface-1: #17202a;
+  --surface-2: #1f2a37;
+  --surface-3: #2a3746;
+  --surface-4: #35455a;
+  --surface-glass: rgba(16, 21, 28, 0.8);
+  --surface-inverse: #f6f1e8;
+  --surface-chrome: #10151c;
+  --field-bg: #1f2a37;
+  --field-bg-hover: #2a3746;
+  --field-border: rgba(184, 138, 43, 0.28);
 
-  /* Text — warm white down to blue-grey; no dead zinc anywhere. */
-  --ink-900: #f6f3ec;
-  --ink-800: #e9ebf1;
-  --ink-700: #c9d2e0;
-  --ink-600: #a9b6c9;
-  --ink-500: #93a5bf; /* muted: 6.86:1 on a card — see header */
-  --ink-400: #8b9db8; /* hints: still ≥ 4.99:1 on every surface step */
-  --ink-300: #5d6e88;
-  /* Ink for text painted on the navy slabs (auth page, CTA band). For text
-     on the gold accent use --ink-on-accent below — opposite polarity. */
-  --ink-on-brand: #f6f3ec;
-  --ink-on-accent: #0b1220;
-  /* Deliberately inverted surfaces — the CTA band, the track promo panel,
-     brand chips. The same navy in both themes on purpose. */
-  --slab-1: #14213c;
-  --slab-2: #0b1220;
+  --primary: #b88a2b;
+  --primary-hover: #c99a3a;
+  --primary-active: #a67b22;
+  --primary-contrast: #141a14;
+  --secondary: #1f6f65;
+  --secondary-hover: #24867a;
 
-  /* Lines — translucent steel-blue. A seam on navy should be felt, not seen. */
-  --line: rgba(163, 187, 224, 0.1);
-  --line-soft: rgba(163, 187, 224, 0.06);
-  --line-strong: rgba(163, 187, 224, 0.22);
+  /* Text — warm paper down to warm taupe */
+  --ink-900: #f7f4ee;
+  --ink-800: #ede8df;
+  --ink-700: #d8d2c6;
+  --ink-600: #c4bcb0;
+  --ink-500: #b7b0a5; /* --text-muted */
+  --ink-400: #aaa192; /* --text-subtle, lifted half a step: see header */
+  --ink-300: #6e6a61;
+  --text-subtle: #aaa192;
+  --ink-on-brand: #f7f4ee;
+  --ink-on-accent: var(--primary-contrast);
+  /* Inverted slabs (CTA band, auth): the warm dark, same in both themes. */
+  --slab-1: #1f2a37;
+  --slab-2: #10151c;
 
-  /* Gold — the one accent. --accent-* and --gold-* are one ramp again. */
-  --gold-700: #9a7b32;
-  --gold-600: #c6a75e; /* primary button fill: 8.10:1 with navy ink */
-  --gold-500: #d4af37; /* the hero colour: glows, rings, indicators */
-  --gold-400: #e3c878; /* accent text on dark: 10.49:1 on a card */
-  --gold-300: #f0dca6;
-  --gold-200: rgba(212, 175, 55, 0.14);
-  --gold-100: rgba(212, 175, 55, 0.08);
+  /* Lines — gold-dust hairlines; --line is the solid structural step. */
+  --border: rgba(184, 138, 43, 0.16);
+  --border-strong: rgba(184, 138, 43, 0.28);
+  --line: #2a3746;
+  --line-soft: rgba(184, 138, 43, 0.08);
+  --line-strong: rgba(184, 138, 43, 0.28);
+
+  /* Gold ramp (== --accent-*): the one action colour. */
+  --gold-700: #a67b22;
+  --gold-600: #b88a2b; /* resting primary fill */
+  --gold-500: #c99a3a; /* hover lift, glows, indicators */
+  --gold-400: #d9b264;
+  --gold-300: #ead29a;
+  --gold-200: rgba(184, 138, 43, 0.16);
+  --gold-100: rgba(184, 138, 43, 0.09);
   --accent-700: var(--gold-700);
   --accent-600: var(--gold-600);
   --accent-500: var(--gold-500);
@@ -126,125 +119,124 @@
   --accent-300: var(--gold-300);
   --accent-200: var(--gold-200);
   --accent-100: var(--gold-100);
-  --accent-glow: rgba(198, 167, 94, 0.22);
-  /* Anything that *reads* in the accent uses this; anything painted uses
-     --accent. Declared per theme: gold text lightens on dark, deepens on
-     light — a single shared value cannot clear AA in both. */
-  --accent-ink: var(--gold-400);
+  --accent-glow: rgba(184, 138, 43, 0.25);
+  --accent-ink: #c99a3a; /* gold that reads: 6.40:1 on a card */
 
-  /* Emerald — the second voice: growth, resolution, money in. */
-  --emerald-700: #0b5d54;
-  --emerald-600: #14967f;
-  --emerald-500: #3dbe9e;
-  --emerald-200: rgba(20, 150, 127, 0.16);
-  --emerald-100: rgba(20, 150, 127, 0.09);
+  /* Teal — the second voice (success/growth). Solids stay Amani;
+     --emerald-500/--success are the AA text tints (see header). */
+  --emerald-700: #185a52;
+  --emerald-600: #1f6f65;
+  --emerald-500: #45a894;
+  --emerald-200: rgba(31, 111, 101, 0.18);
+  --emerald-100: rgba(31, 111, 101, 0.1);
 
-  /* Semantic — quietly luminous on navy, one notch desaturated. The
-     retired --violet name now resolves to steel-blue and --fuchsia to a
-     dusty rose: status categories keep working, purple never renders. */
-  --info: #7fb0f0;
-  --info-soft: rgba(61, 111, 184, 0.16);
-  --success: #3dbe9e;
-  --success-soft: rgba(20, 150, 127, 0.16);
-  --warning: #e8a33d;
-  --warning-soft: rgba(185, 126, 30, 0.15);
-  --danger: #f08a96;
-  --danger-soft: rgba(193, 74, 92, 0.16);
-  --danger-solid: #c2435c; /* filled dots/badges carrying white numerals */
-  --violet: #93acd9;
-  --violet-soft: rgba(110, 140, 200, 0.15);
-  --cyan: #5bc0d6;
-  --cyan-soft: rgba(64, 160, 190, 0.14);
-  --orange: #efa06a;
-  --orange-soft: rgba(205, 120, 55, 0.14);
-  --fuchsia: #e3a1b8;
-  --fuchsia-soft: rgba(200, 110, 140, 0.14);
+  --info: #6e9bf5;
+  --info-soft: rgba(47, 111, 237, 0.16);
+  --success: #45a894;
+  --success-soft: rgba(31, 111, 101, 0.18);
+  --warning: #d99a3f;
+  --warning-soft: rgba(196, 132, 29, 0.15);
+  --danger: #e07a6e;
+  --danger-soft: rgba(201, 68, 58, 0.16);
+  --danger-solid: #c9443a; /* filled dots/badges: white numerals 4.80:1 */
+  --violet: #93a9be;
+  --violet-soft: rgba(147, 169, 190, 0.14);
+  --cyan: #93a9be;
+  --cyan-soft: rgba(147, 169, 190, 0.14);
+  --orange: #e29a5f;
+  --orange-soft: rgba(226, 154, 95, 0.13);
+  --fuchsia: #d79cae;
+  --fuchsia-soft: rgba(215, 156, 174, 0.13);
 
-  /* Elevation — large, soft, navy-black. A card floats a few millimetres
-     off the canvas; the tint keeps the depth marine rather than sooty. */
-  --shadow-xs: 0 1px 2px rgba(2, 6, 14, 0.5);
-  --shadow-sm: 0 1px 2px rgba(2, 6, 14, 0.4), 0 8px 24px -16px rgba(2, 6, 14, 0.8);
-  --shadow-md: 0 2px 4px rgba(2, 6, 14, 0.3), 0 24px 56px -28px rgba(2, 6, 14, 0.9);
-  --shadow-lg: 0 4px 12px rgba(2, 6, 14, 0.35), 0 48px 100px -48px rgba(2, 6, 14, 1);
-  --shadow-brand: 0 24px 64px -28px rgba(2, 6, 14, 0.95);
-  --shadow-gold: 0 12px 32px -12px rgba(198, 167, 94, 0.38);
-  --shadow-accent: 0 12px 32px -12px rgba(198, 167, 94, 0.38);
+  /* Elevation — deep and warm-dark, per the Amani shadow scale. */
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35), 0 8px 22px -12px rgba(0, 0, 0, 0.5);
+  --shadow-md: 0 2px 4px rgba(0, 0, 0, 0.3), 0 10px 28px rgba(0, 0, 0, 0.38);
+  --shadow-lg: 0 20px 50px rgba(0, 0, 0, 0.5);
+  --shadow-brand: 0 20px 50px rgba(0, 0, 0, 0.5);
+  --shadow-gold: 0 12px 30px -12px rgba(184, 138, 43, 0.35);
+  --shadow-accent: 0 12px 30px -12px rgba(184, 138, 43, 0.35);
+  --shadow: 0 10px 28px rgba(0, 0, 0, 0.38);
 
-  --focus: #d4af37;
-  --focus-ring: 0 0 0 3px rgba(198, 167, 94, 0.35);
+  --focus: #c99a3a;
+  --focus-ring: 0 0 0 3px rgba(184, 138, 43, 0.34);
 
-  /* KPI washes — declared per theme so a hint on navy stays a hint. */
-  --wash-accent: rgba(198, 167, 94, 0.14);
-  --wash-info: rgba(96, 150, 235, 0.13);
-  --wash-success: rgba(61, 190, 158, 0.13);
-  --wash-warning: rgba(232, 163, 61, 0.13);
-  --wash-danger: rgba(240, 138, 150, 0.12);
+  --wash-accent: rgba(184, 138, 43, 0.15);
+  --wash-info: rgba(110, 155, 245, 0.13);
+  --wash-success: rgba(69, 168, 148, 0.13);
+  --wash-warning: rgba(217, 154, 63, 0.13);
+  --wash-danger: rgba(224, 122, 110, 0.12);
 
-  /* The house navy: a fixed brand ramp, identical in both themes (auth
-     slabs, avatars, dark buttons). --gold-* lives above with the accent;
-     both ramps must stay inside the theme blocks because foundation.css
-     redefines parts of them under `:root.dark`. */
-  --navy-950: #050a14;
-  --navy-900: #0b1220;
-  --navy-800: #0f1d33;
-  --navy-700: #16283f;
-  --navy-600: #1e3a5c;
-  --navy-500: #2b4e75;
+  /* The house dark as a fixed ramp (auth slabs, avatars, dark buttons):
+     the warm surface steps, identical in both themes. */
+  --navy-950: #0b0f14;
+  --navy-900: #10151c;
+  --navy-800: #17202a;
+  --navy-700: #1f2a37;
+  --navy-600: #2a3746;
+  --navy-500: #3a4a5e;
 
   color-scheme: dark;
 }
 
 /* --------------------------------------------------------------------------
-   Light — the same house, lit from the front
-
-   Not an inversion. The canvas is a warm off-white so a white card reads
-   as a sheet resting on a desk, ink is the navy of the dark canvas, and
-   the gold deepens two steps so it stays legible — and keeps a visible
-   edge — on white. Depth comes from hairlines plus tight paper shadows.
+   Light — warm cream paper, deep gold, ink with a green-black warmth
    -------------------------------------------------------------------------- */
 
 :root,
 .staff-console.theme-light {
-  --surface-0: #f4f6f9; /* warm off-white canvas */
-  --surface-1: #ffffff; /* cards */
-  --surface-2: #edf1f7;
-  --surface-3: #dfe7f0;
-  --surface-4: #cbd7e6;
-  --surface-glass: rgba(255, 255, 255, 0.82);
-  --surface-inverse: #0f1d33;
-  /* White chrome over the off-white canvas: sidebar and top bar are the
-     frame, the canvas is the page, cards carry the shadow. */
-  --surface-chrome: #ffffff;
-  --field-bg: #ffffff;
-  --field-bg-hover: #fbfcfe;
-  --field-border: rgba(11, 18, 32, 0.18);
+  /* Amani core */
+  --canvas: #f6f1e8;
+  --surface-0: #f6f1e8;
+  --surface-1: #fffdf9;
+  --surface-2: #f0eae0;
+  --surface-3: #e6dfd3;
+  --surface-4: #dcd2c2;
+  --surface-glass: rgba(255, 253, 249, 0.85);
+  --surface-inverse: #17202a;
+  --surface-chrome: #fffdf9;
+  --field-bg: #fffdf9;
+  --field-bg-hover: #fdfaf3;
+  --field-border: rgba(26, 31, 26, 0.16);
 
-  --ink-900: #0b1220;
-  --ink-800: #16233b;
-  --ink-700: #24344f;
-  --ink-600: #3d4e69;
-  --ink-500: #52637d; /* muted: 6.11:1 on white — see header */
-  --ink-400: #5e6f88; /* 5.12:1 on white */
-  --ink-300: #9aa8bc;
-  --ink-on-brand: #f6f3ec;
-  --ink-on-accent: #0b1220;
-  /* Deliberately inverted surfaces — same navy as dark mode, on purpose. */
-  --slab-1: #14213c;
-  --slab-2: #0b1220;
+  --primary: #a67b22;
+  --primary-hover: #926c1b;
+  --primary-active: #7a5916;
+  --primary-contrast: #fffdf9;
+  --secondary: #1f6f65;
+  --secondary-hover: #185a52;
 
-  --line: rgba(11, 18, 32, 0.09);
-  --line-soft: rgba(11, 18, 32, 0.055);
-  --line-strong: rgba(11, 18, 32, 0.17);
+  --ink-900: #1a1f1a;
+  --ink-800: #2a302a;
+  --ink-700: #3e443e;
+  --ink-600: #4e4a44;
+  --ink-500: #5f5a52; /* --text-muted */
+  --ink-400: #6e675c; /* --text-subtle, lifted half a step: see header */
+  --ink-300: #a79e92;
+  --text-subtle: #6e675c;
+  --ink-on-brand: #f7f4ee;
+  --ink-on-accent: var(--primary-contrast);
+  /* Inverted slabs — the warm dark, same in both themes. */
+  --slab-1: #1f2a37;
+  --slab-2: #10151c;
 
-  /* Gold, deepened for daylight. The 600 fill keeps navy ink at 6.07:1
-     and its own edge against white at 3.08:1. */
-  --gold-700: #7c5f1e; /* accent text on light: 5.98:1 on white */
-  --gold-600: #b28e35; /* primary button fill */
-  --gold-500: #be9a3f; /* hover lift, glows, indicators */
-  --gold-400: #c6a75e;
-  --gold-300: #e6c888;
-  --gold-200: #f2e2bd;
-  --gold-100: #faf3e2;
+  --border: rgba(26, 31, 26, 0.08);
+  --border-strong: rgba(26, 31, 26, 0.14);
+  --line: rgba(26, 31, 26, 0.08);
+  --line-soft: rgba(26, 31, 26, 0.05);
+  --line-strong: rgba(26, 31, 26, 0.14);
+
+  /* Gold ramp, deepened for daylight. The resting button fill is
+     --gold-600 == --primary-hover (see header: cream on --primary is
+     3.77:1); --gold-500 keeps the specified --primary for indicators,
+     glows and borders, and button hover deepens to --primary-active. */
+  --gold-700: #7a5916;
+  --gold-600: #926c1b;
+  --gold-500: #a67b22;
+  --gold-400: #c99a3a;
+  --gold-300: #e8cf9e;
+  --gold-200: #f3e5c3;
+  --gold-100: #faf3e0;
   --accent-700: var(--gold-700);
   --accent-600: var(--gold-600);
   --accent-500: var(--gold-500);
@@ -252,61 +244,59 @@
   --accent-300: var(--gold-300);
   --accent-200: var(--gold-200);
   --accent-100: var(--gold-100);
-  --accent-glow: rgba(178, 142, 53, 0.18);
-  --accent-ink: var(--gold-700);
+  --accent-glow: rgba(166, 123, 34, 0.2);
+  --accent-ink: var(--gold-700); /* gold that reads: 6.32:1 on the surface */
 
-  --emerald-700: #0b5d54;
-  --emerald-600: #0f766e;
-  --emerald-500: #14967f;
-  --emerald-200: rgba(15, 118, 110, 0.13);
-  --emerald-100: rgba(15, 118, 110, 0.08);
+  --emerald-700: #185a52;
+  --emerald-600: #1f6f65;
+  --emerald-500: #24867a;
+  --emerald-200: rgba(31, 111, 101, 0.14);
+  --emerald-100: rgba(31, 111, 101, 0.08);
 
-  --info: #2563eb;
-  --info-soft: rgba(37, 99, 235, 0.08);
-  --success: #0f766e;
-  --success-soft: rgba(15, 118, 110, 0.09);
+  --info: #245ed0;
+  --info-soft: rgba(36, 94, 208, 0.08);
+  --success: #1f6f65;
+  --success-soft: rgba(31, 111, 101, 0.09);
   --warning: #8f5a06;
-  --warning-soft: rgba(154, 98, 7, 0.1);
-  --danger: #b03045;
-  --danger-soft: rgba(176, 48, 69, 0.08);
-  --danger-solid: #c2435c;
-  --violet: #47619b;
-  --violet-soft: rgba(71, 97, 155, 0.09);
-  --cyan: #0e7490;
-  --cyan-soft: rgba(14, 116, 144, 0.09);
-  --orange: #b4551a;
-  --orange-soft: rgba(180, 85, 26, 0.09);
+  --warning-soft: rgba(165, 107, 18, 0.1);
+  --danger: #b3362e;
+  --danger-soft: rgba(179, 54, 46, 0.08);
+  --danger-solid: #c9443a;
+  --violet: #4e657c;
+  --violet-soft: rgba(78, 101, 124, 0.09);
+  --cyan: #4e657c;
+  --cyan-soft: rgba(78, 101, 124, 0.09);
+  --orange: #ae5a1e;
+  --orange-soft: rgba(174, 90, 30, 0.09);
   --fuchsia: #a14a68;
   --fuchsia-soft: rgba(161, 74, 104, 0.09);
 
-  /* Paper elevation: a crisp 1px contact shadow plus a wide, soft ambient
-     one, both tinted with the house navy instead of neutral black. */
-  --shadow-xs: 0 1px 1px rgba(11, 18, 32, 0.05);
-  --shadow-sm: 0 1px 2px rgba(11, 18, 32, 0.06), 0 8px 20px -12px rgba(11, 18, 32, 0.18);
-  --shadow-md: 0 1px 2px rgba(11, 18, 32, 0.05), 0 10px 20px -12px rgba(11, 18, 32, 0.16), 0 24px 48px -28px rgba(11, 18, 32, 0.22);
-  --shadow-lg: 0 2px 4px rgba(11, 18, 32, 0.05), 0 18px 36px -18px rgba(11, 18, 32, 0.18), 0 48px 88px -44px rgba(11, 18, 32, 0.28);
-  --shadow-brand: 0 18px 44px -22px rgba(11, 18, 32, 0.26);
-  --shadow-gold: 0 10px 24px -12px rgba(178, 142, 53, 0.3);
-  --shadow-accent: 0 10px 24px -12px rgba(178, 142, 53, 0.3);
+  /* Paper elevation in warm ink, per the Amani shadow scale. */
+  --shadow-xs: 0 1px 1px rgba(26, 31, 26, 0.04);
+  --shadow-sm: 0 1px 2px rgba(26, 31, 26, 0.05), 0 8px 22px rgba(26, 31, 26, 0.06);
+  --shadow-md: 0 2px 4px rgba(26, 31, 26, 0.05), 0 12px 28px -12px rgba(26, 31, 26, 0.12);
+  --shadow-lg: 0 18px 40px rgba(26, 31, 26, 0.1);
+  --shadow-brand: 0 18px 40px rgba(26, 31, 26, 0.12);
+  --shadow-gold: 0 10px 24px -12px rgba(166, 123, 34, 0.3);
+  --shadow-accent: 0 10px 24px -12px rgba(166, 123, 34, 0.3);
+  --shadow: 0 8px 22px rgba(26, 31, 26, 0.06);
 
-  --focus: #8a6d1f;
-  --focus-ring: 0 0 0 3px rgba(178, 142, 53, 0.4);
+  --focus: #a67b22;
+  --focus-ring: 0 0 0 3px rgba(166, 123, 34, 0.28);
 
-  /* Same hues as dark, a third of the alpha: on white a heavy wash is a
-     block of colour, not a hint. */
-  --wash-accent: rgba(178, 142, 53, 0.09);
-  --wash-info: rgba(37, 99, 235, 0.07);
-  --wash-success: rgba(15, 118, 110, 0.08);
-  --wash-warning: rgba(154, 98, 7, 0.08);
-  --wash-danger: rgba(176, 48, 69, 0.07);
+  --wash-accent: rgba(166, 123, 34, 0.1);
+  --wash-info: rgba(36, 94, 208, 0.07);
+  --wash-success: rgba(31, 111, 101, 0.09);
+  --wash-warning: rgba(143, 90, 6, 0.08);
+  --wash-danger: rgba(179, 54, 46, 0.07);
 
-  /* House navy — fixed brand ramp, identical in both themes. */
-  --navy-950: #050a14;
-  --navy-900: #0b1220;
-  --navy-800: #0f1d33;
-  --navy-700: #16283f;
-  --navy-600: #1e3a5c;
-  --navy-500: #2b4e75;
+  /* House dark — fixed ramp, identical in both themes. */
+  --navy-950: #0b0f14;
+  --navy-900: #10151c;
+  --navy-800: #17202a;
+  --navy-700: #1f2a37;
+  --navy-600: #2a3746;
+  --navy-500: #3a4a5e;
 
   color-scheme: light;
 }
@@ -320,7 +310,9 @@
 .staff-console.theme-dark {
   --surface: var(--surface-1);
   --surface-elevated: var(--surface-2);
-  --border: var(--line);
+  /* --border/--border-strong are first-class Amani tokens declared in the
+     theme blocks (gold-dust on dark, warm ink on light) — deliberately not
+     aliased to --line here. */
   --text-primary: var(--ink-900);
   --text-muted: var(--ink-500);
   --accent: var(--accent-500);
@@ -346,19 +338,18 @@
   --s-7: 28px;
   --s-24: 96px;
 
-  /* Radii, measured for an institution: cards at 16px, hero panels up to
-     24px, controls at 10px so a button never looks like a pill by accident,
-     pills stay fully round. Generous, never bubbly. */
-  --r-xs: 6px;
-  --r-sm: 8px;
-  --r-md: 10px;
-  --r-lg: 14px;
-  --r-xl: 16px;
-  --r-2xl: 20px;
-  --r-3xl: 24px;
+  /* Amani radii on the 8px grid: controls (buttons/inputs) 14px, cards
+     18px, modals and hero panels 22px, badges fully round. */
+  --r-xs: 8px;
+  --r-sm: 10px;
+  --r-md: 14px;
+  --r-lg: 16px;
+  --r-xl: 18px;
+  --r-2xl: 22px;
+  --r-3xl: 26px;
   --r-pill: 999px;
-  --r-card: 16px;
-  --r-control: 10px;
+  --r-card: 18px;
+  --r-control: 14px;
 
   /* Motion. Expensive interfaces move quickly and settle softly; nothing
      here is slow enough to wait for. */
@@ -398,9 +389,9 @@
   --st-new-fg: var(--info);
   --st-new-bg: var(--info-soft);
   /* Gold is the brand accent, so a gold "Assigned" pill beside a gold
-     primary button would read as a highlight rather than a state. Cyan sits
-     far enough from both the "New" blue and the gold to stay unambiguous
-     at pill size (8.16:1 on a dark card). */
+     primary button would read as a highlight rather than a state. The
+     retired --cyan name now resolves to a warm slate (6.78:1 dark /
+     5.95:1 light) that stays unambiguous next to the "New" blue. */
   --st-assigned-fg: var(--cyan);
   --st-assigned-bg: var(--cyan-soft);
   --st-in-review-fg: var(--warning);
@@ -859,7 +850,23 @@ body {
   transform: translateY(-1px);
 }
 
-.ds-gold-btn:active:not(:disabled) { transform: translateY(0); }
+.ds-gold-btn:active:not(:disabled) {
+  background: var(--primary-active);
+  transform: translateY(0);
+}
+
+/* Light mode deepens gold on hover instead of lifting it: the cream label
+   (--primary-contrast) measures 3.77:1 on the lifted --primary but 6.32:1
+   on --primary-active (design-system header). Dark mode keeps the lift. */
+:root:not(.dark) :is(.btn-primary, .btn-gold):hover:not(:disabled),
+.staff-console.theme-light :is(.btn-primary, .btn-gold):hover:not(:disabled) {
+  --btn-bg: var(--primary-active);
+}
+
+:root:not(.dark) .ds-gold-btn:hover:not(:disabled),
+.staff-console.theme-light .ds-gold-btn:hover:not(:disabled) {
+  background: var(--primary-active);
+}
 
 .ds-ghost-btn {
   background: var(--surface-2);

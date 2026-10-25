@@ -7,36 +7,36 @@
 @import './styles/corporate.css';
 
 @theme {
-  /* Premium insurance identity, available as Tailwind utilities
-     (bg-base, text-accent, border-hairline, …): deep navy-ink canvas,
-     measured gold accent, calm emerald. These mirror the dark-theme
+  /* Amani Reserve identity, available as Tailwind utilities
+     (bg-base, text-accent, border-hairline, …): warm charcoal-slate
+     canvas, deep gold accent, muted teal. These mirror the dark-theme
      tokens in design-system.css; theme-aware surfaces belong to the
      CSS variables, not to static utilities. */
-  --color-base: #0b1220;
-  --color-raised: #111b2e;
-  --color-elevated: #16233b;
-  --color-hairline: #22345a;
-  --color-accent-500: #d4af37;
-  --color-accent-600: #c6a75e;
-  --color-accent-400: #e3c878;
-  --color-emerald: #3dbe9e;
-  --color-cream: #f6f3ec;
-  --color-ink: #f6f3ec;
-  --color-ink-muted: #93a5bf;
-  --color-ink-faint: #8b9db8;
+  --color-base: #10151c;
+  --color-raised: #17202a;
+  --color-elevated: #1f2a37;
+  --color-hairline: #2a3746;
+  --color-accent-500: #c99a3a;
+  --color-accent-600: #b88a2b;
+  --color-accent-400: #d9b264;
+  --color-emerald: #45a894;
+  --color-cream: #f7f4ee;
+  --color-ink: #f7f4ee;
+  --color-ink-muted: #b7b0a5;
+  --color-ink-faint: #aaa192;
 
   /* House names, same palette. */
-  --color-navy: #0b1220;
-  --color-navy-deep: #050a14;
-  --color-midnight: #0f1d33;
-  --color-gold: #c6a75e;
-  --color-gold-hover: #d4af37;
-  --color-gold-deep: #9a7b32;
+  --color-navy: #10151c;
+  --color-navy-deep: #0b0f14;
+  --color-midnight: #17202a;
+  --color-gold: #b88a2b;
+  --color-gold-hover: #c99a3a;
+  --color-gold-deep: #a67b22;
 
-  --radius-lg: 14px;
-  --radius-xl: 16px;
-  --radius-2xl: 20px;
-  --radius-3xl: 24px;
+  --radius-lg: 16px;
+  --radius-xl: 18px;
+  --radius-2xl: 22px;
+  --radius-3xl: 26px;
 
   --font-arabic: 'Cairo', 'Tajawal', 'Inter', system-ui, sans-serif;
   --font-latin: 'Inter', 'Cairo', system-ui, sans-serif;

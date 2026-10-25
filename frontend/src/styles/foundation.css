@@ -1,104 +1,105 @@
 /* ==========================================================================
    Wathiq design system — foundation tokens & primitives
-   Premium insurance identity: deep navy · measured gold · calm emerald.
+   Amani Reserve identity: warm cream/charcoal · deep gold · muted teal.
    `design-system.css` (loaded after this file) re-tunes these tokens per
-   theme; the values here are the same house palette so no layer ever
+   theme; the values here are the same Amani palette so no layer ever
    renders off-brand on its own.
    ========================================================================== */
 
 :root,
 .staff-console.theme-light {
   /* Brand */
-  --navy-950: #07111f;
-  --navy-900: #070f1d;
-  --navy-800: #0b1426;
-  --navy-700: #122a4a;
-  --navy-600: #1b3a60;
-  --navy-500: #2b4e75;
+  --navy-950: #0b0f14;
+  --navy-900: #10151c;
+  --navy-800: #17202a;
+  --navy-700: #1f2a37;
+  --navy-600: #2a3746;
+  --navy-500: #3a4a5e;
 
-  --gold-700: #7c5f1e;
-  --gold-600: #b28e35;
-  --gold-500: #be9a3f;
-  --gold-400: #c6a75e;
-  --gold-300: #e6c888;
-  --gold-200: #f2e2bd;
-  --gold-100: #faf3e2;
+  --gold-700: #7a5916;
+  --gold-600: #926c1b;
+  --gold-500: #a67b22;
+  --gold-400: #c99a3a;
+  --gold-300: #e8cf9e;
+  --gold-200: #f3e5c3;
+  --gold-100: #faf3e0;
 
-  --emerald-800: #0b514b;
-  --emerald-700: #0f766e;
-  --emerald-600: #128a72;
-  --emerald-500: #10b981;
-  --emerald-200: #b8e4d7;
-  --emerald-100: #e5f5ef;
+  --emerald-800: #185a52;
+  --emerald-700: #185a52;
+  --emerald-600: #1f6f65;
+  --emerald-500: #24867a;
+  --emerald-200: #c4e0d9;
+  --emerald-100: #e7f2ef;
 
-  /* Light surfaces */
-  --surface-0: #f6f8fb;
-  --surface-1: #ffffff;
-  --surface-2: #f1f4f7;
-  --surface-3: #e9eef3;
-  --surface-glass: rgba(255, 255, 255, 0.82);
-  --surface-inverse: #070f1d;
+  /* Light surfaces — warm cream paper */
+  --surface-0: #f6f1e8;
+  --surface-1: #fffdf9;
+  --surface-2: #f0eae0;
+  --surface-3: #e6dfd3;
+  --surface-glass: rgba(255, 253, 249, 0.85);
+  --surface-inverse: #17202a;
 
-  /* Ink */
-  --ink-900: #0a1a2f;
-  --ink-800: #14283f;
-  --ink-700: #2a3d53;
-  --ink-600: #45586d;
-  --ink-500: #58697d;
-  --ink-400: #68788a;
-  --ink-300: #a9b3bf;
-  --ink-on-brand: #f6f3ec;
-  --ink-on-accent: #0b1220;
+  /* Ink — warm green-black down to warm taupe */
+  --ink-900: #1a1f1a;
+  --ink-800: #2a302a;
+  --ink-700: #3e443e;
+  --ink-600: #4e4a44;
+  --ink-500: #5f5a52;
+  --ink-400: #6e675c;
+  --ink-300: #a79e92;
+  --ink-on-brand: #f7f4ee;
+  --ink-on-accent: #fffdf9;
   /* Gold that reads: text/icons in the accent (design-system re-declares). */
-  --accent-ink: #7c5f1e;
+  --accent-ink: #7a5916;
 
-  /* Lines — navy ink at whisper alpha, never neutral black */
-  --line: rgba(11, 18, 32, 0.09);
-  --line-soft: rgba(11, 18, 32, 0.055);
-  --line-strong: rgba(11, 18, 32, 0.17);
+  /* Lines — warm ink at whisper alpha */
+  --line: rgba(26, 31, 26, 0.08);
+  --line-soft: rgba(26, 31, 26, 0.05);
+  --line-strong: rgba(26, 31, 26, 0.14);
+  --border: rgba(26, 31, 26, 0.08);
+  --border-strong: rgba(26, 31, 26, 0.14);
 
   /* Semantic */
-  --info: #2468c7;
-  --info-soft: #eaf1fc;
-  --success: #0f766e;
-  --success-soft: #e5f5ef;
+  --info: #245ed0;
+  --info-soft: #e9effc;
+  --success: #1f6f65;
+  --success-soft: #e7f2ef;
   --warning: #8f5a06;
-  --warning-soft: #fdf4e3;
-  --danger: #b4384a;
-  --danger-soft: #fceef0;
-  /* Retired name: resolves to steel-blue so no purple ever renders. */
-  --violet: #47619b;
-  --violet-soft: #e9eef7;
-  --orange: #b25a20;
-  --orange-soft: #fbeee5;
+  --warning-soft: #faf0da;
+  --danger: #b3362e;
+  --danger-soft: #fae9e7;
+  /* Retired name: resolves to warm slate so no purple ever renders. */
+  --violet: #4e657c;
+  --violet-soft: #eaeef2;
+  --orange: #ae5a1e;
+  --orange-soft: #f8ebdd;
   --fuchsia: #a14a68;
   --fuchsia-soft: #f9edf1;
 
   /* Public semantic API. Portals alias these rather than owning palettes. */
   --surface: var(--surface-1);
   --surface-elevated: var(--surface-2);
-  --border: var(--line);
   --text-primary: var(--ink-900);
   --text-muted: var(--ink-500);
   --accent: var(--gold-600);
   --accent-soft: var(--gold-100);
 
-  /* Radii */
-  --r-xs: 6px;
-  --r-sm: 8px;
-  --r-md: 12px;
+  /* Radii — Amani: controls 14, cards 18, modals 22 (design-system final) */
+  --r-xs: 8px;
+  --r-sm: 10px;
+  --r-md: 14px;
   --r-lg: 16px;
-  --r-xl: 20px;
-  --r-2xl: 24px;
+  --r-xl: 18px;
+  --r-2xl: 22px;
   --r-pill: 999px;
 
   /* Elevation — soft, layered, never muddy */
-  --shadow-xs: 0 1px 2px rgba(11, 18, 32, 0.05);
-  --shadow-sm: 0 1px 2px rgba(11, 18, 32, 0.04), 0 6px 18px -10px rgba(11, 18, 32, 0.12);
-  --shadow-md: 0 1px 3px rgba(11, 18, 32, 0.04), 0 18px 44px -22px rgba(11, 18, 32, 0.24);
-  --shadow-lg: 0 2px 8px rgba(11, 18, 32, 0.04), 0 32px 80px -36px rgba(11, 18, 32, 0.34);
-  --shadow-brand: 0 18px 44px -18px rgba(11, 18, 32, 0.42);
-  --shadow-gold: 0 12px 28px -14px rgba(178, 142, 53, 0.4);
+  --shadow-xs: 0 1px 1px rgba(26, 31, 26, 0.04);
+  --shadow-sm: 0 1px 2px rgba(26, 31, 26, 0.05), 0 8px 22px rgba(26, 31, 26, 0.06);
+  --shadow-md: 0 2px 4px rgba(26, 31, 26, 0.05), 0 12px 28px -12px rgba(26, 31, 26, 0.12);
+  --shadow-lg: 0 18px 40px rgba(26, 31, 26, 0.1);
+  --shadow-brand: 0 18px 40px rgba(26, 31, 26, 0.12);
+  --shadow-gold: 0 10px 24px -12px rgba(166, 123, 34, 0.3);
 
   /* Motion */
   --ease-out: cubic-bezier(0.22, 0.61, 0.36, 1);
@@ -108,8 +109,8 @@
   --dur-slow: 260ms;
 
   /* Focus */
-  --focus: #8a6d1f;
-  --focus-ring: 0 0 0 3px rgba(178, 142, 53, 0.4);
+  --focus: #a67b22;
+  --focus-ring: 0 0 0 3px rgba(166, 123, 34, 0.28);
 
   /* Typography */
   --font-arabic: 'Cairo', 'Tajawal', 'Inter', system-ui, sans-serif;
@@ -126,58 +127,61 @@
 
 :root.dark,
 .staff-console.theme-dark {
-  /* Deep navy-ink canvas: surfaces step up inside one blue hue, never grey. */
-  --surface-0: #0b1220;
-  --surface-1: #111b2e;
-  --surface-2: #16233b;
-  --surface-3: #1d2d4a;
-  --surface-glass: rgba(11, 18, 32, 0.78);
-  --surface-inverse: #f4f6f8;
+  /* Warm charcoal-slate canvas: surfaces step up in one warm family. */
+  --surface-0: #10151c;
+  --surface-1: #17202a;
+  --surface-2: #1f2a37;
+  --surface-3: #2a3746;
+  --surface-glass: rgba(16, 21, 28, 0.8);
+  --surface-inverse: #f6f1e8;
 
-  --ink-900: #e8edf4;
-  --ink-800: #e4e9ef;
-  --ink-700: #cbd4df;
-  --ink-600: #aeb9c7;
-  --ink-500: #8e9bad;
-  --ink-400: #748195;
-  --ink-300: #59677b;
-  --ink-on-brand: #f4f6f8;
+  --ink-900: #f7f4ee;
+  --ink-800: #ede8df;
+  --ink-700: #d8d2c6;
+  --ink-600: #c4bcb0;
+  --ink-500: #b7b0a5;
+  --ink-400: #aaa192;
+  --ink-300: #6e6a61;
+  --ink-on-brand: #f7f4ee;
+  --ink-on-accent: #141a14;
 
-  --line: rgba(255, 255, 255, 0.09);
-  --line-soft: rgba(255, 255, 255, 0.055);
-  --line-strong: rgba(255, 255, 255, 0.16);
+  --line: #2a3746;
+  --line-soft: rgba(184, 138, 43, 0.08);
+  --line-strong: rgba(184, 138, 43, 0.28);
+  --border: rgba(184, 138, 43, 0.16);
+  --border-strong: rgba(184, 138, 43, 0.28);
 
-  --gold-600: #c6a75e;
-  --gold-500: #d4af37;
-  --gold-400: #e3c878;
-  --gold-300: #f0dca6;
-  --gold-200: rgba(212, 175, 55, 0.14);
-  --gold-100: rgba(212, 175, 55, 0.08);
+  --gold-600: #b88a2b;
+  --gold-500: #c99a3a;
+  --gold-400: #d9b264;
+  --gold-300: #ead29a;
+  --gold-200: rgba(184, 138, 43, 0.16);
+  --gold-100: rgba(184, 138, 43, 0.09);
 
-  --info: #8ab4f8;
-  --info-soft: rgba(74, 129, 214, 0.16);
-  --success: #6fc9b0;
-  --success-soft: rgba(22, 139, 105, 0.16);
-  --warning: #e5bd74;
-  --warning-soft: rgba(190, 140, 40, 0.14);
-  --danger: #f195a2;
-  --danger-soft: rgba(200, 70, 90, 0.15);
-  --violet: #93acd9;
-  --violet-soft: rgba(110, 140, 200, 0.15);
-  --orange: #f0b07c;
-  --orange-soft: rgba(200, 110, 50, 0.15);
-  --fuchsia: #e3a1b8;
-  --fuchsia-soft: rgba(200, 110, 140, 0.14);
+  --info: #6e9bf5;
+  --info-soft: rgba(47, 111, 237, 0.16);
+  --success: #45a894;
+  --success-soft: rgba(31, 111, 101, 0.18);
+  --warning: #d99a3f;
+  --warning-soft: rgba(196, 132, 29, 0.15);
+  --danger: #e07a6e;
+  --danger-soft: rgba(201, 68, 58, 0.16);
+  --violet: #93a9be;
+  --violet-soft: rgba(147, 169, 190, 0.14);
+  --orange: #e29a5f;
+  --orange-soft: rgba(226, 154, 95, 0.13);
+  --fuchsia: #d79cae;
+  --fuchsia-soft: rgba(215, 156, 174, 0.13);
 
-  --shadow-xs: 0 1px 2px rgba(2, 6, 14, 0.35);
-  --shadow-sm: 0 1px 2px rgba(2, 6, 14, 0.3), 0 8px 24px -14px rgba(2, 6, 14, 0.6);
-  --shadow-md: 0 2px 4px rgba(2, 6, 14, 0.28), 0 24px 60px -30px rgba(2, 6, 14, 0.8);
-  --shadow-lg: 0 3px 10px rgba(2, 6, 14, 0.35), 0 40px 100px -44px rgba(2, 6, 14, 0.9);
-  --shadow-brand: 0 18px 54px -20px rgba(2, 6, 14, 0.8);
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35), 0 8px 22px -12px rgba(0, 0, 0, 0.5);
+  --shadow-md: 0 2px 4px rgba(0, 0, 0, 0.3), 0 10px 28px rgba(0, 0, 0, 0.38);
+  --shadow-lg: 0 20px 50px rgba(0, 0, 0, 0.5);
+  --shadow-brand: 0 20px 50px rgba(0, 0, 0, 0.5);
 
-  --accent-ink: #e3c878;
-  --focus: #d4af37;
-  --focus-ring: 0 0 0 3px rgba(198, 167, 94, 0.35);
+  --accent-ink: #c99a3a;
+  --focus: #c99a3a;
+  --focus-ring: 0 0 0 3px rgba(184, 138, 43, 0.34);
 
   color-scheme: dark;
 }
@@ -188,7 +192,6 @@
 .staff-console.theme-dark {
   --surface: var(--surface-1);
   --surface-elevated: var(--surface-2);
-  --border: var(--line);
   --text-primary: var(--ink-900);
   --text-muted: var(--ink-500);
   --accent: var(--gold-600);
@@ -216,7 +219,7 @@ body {
   background: var(--surface-0);
   color: var(--ink-900);
   font-family: var(--font-latin);
-  font-size: 14px;
+  font-size: 15px;
   line-height: 1.65;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -301,7 +304,7 @@ table {
 }
 
 ::selection {
-  background: rgba(198, 167, 94, 0.28);
+  background: rgba(184, 138, 43, 0.28);
   color: inherit;
 }
 
@@ -434,14 +437,14 @@ html[lang='ar'] .eyebrow {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  min-height: 40px;
-  padding: 0 16px;
+  min-height: 44px;
+  padding: 0 18px;
   border: 1px solid var(--btn-border);
-  border-radius: var(--r-md);
+  border-radius: var(--r-control);
   background: var(--btn-bg);
   color: var(--btn-fg);
   font-family: inherit;
-  font-size: 13.5px;
+  font-size: 14px;
   font-weight: 600;
   line-height: 1;
   white-space: nowrap;
@@ -540,10 +543,6 @@ html[lang='ar'] .eyebrow {
 
 .btn-gold:hover:not(:disabled) {
   --btn-bg: var(--accent-500);
-}
-
-.btn-gold:hover:not(:disabled) {
-  --btn-bg: linear-gradient(180deg, var(--gold-300), var(--gold-400));
 }
 
 .btn-secondary {
@@ -679,10 +678,10 @@ html[lang='ar'] .eyebrow {
 .textarea,
 .select {
   width: 100%;
-  min-height: 42px;
-  padding: 10px 13px;
-  border: 1px solid var(--line-strong);
-  border-radius: var(--r-md);
+  min-height: 44px;
+  padding: 10px 14px;
+  border: 1px solid var(--field-border);
+  border-radius: var(--r-control);
   background: var(--surface-1);
   color: var(--ink-900);
   font-family: inherit;
@@ -947,7 +946,7 @@ html[dir='rtl'] .switch[aria-checked='true'] .switch-thumb {
 .dark .chip-gold {
   background: var(--gold-100);
   color: var(--gold-300);
-  border-color: rgba(198, 167, 94, 0.35);
+  border-color: rgba(184, 138, 43, 0.35);
 }
 
 .chip-emerald {
