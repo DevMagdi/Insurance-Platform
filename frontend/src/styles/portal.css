@@ -8,7 +8,7 @@
   display: flex;
   flex-direction: column;
   background:
-    radial-gradient(1200px 600px at 85% -10%, rgba(139, 92, 246, 0.055), transparent 60%),
+    radial-gradient(1200px 600px at 85% -10%, rgba(198, 167, 94, 0.055), transparent 60%),
     radial-gradient(900px 520px at 5% 5%, rgba(15, 118, 110, 0.05), transparent 55%),
     var(--surface-0);
   color: var(--ink-900);
@@ -16,7 +16,7 @@
 
 .dark .portal-shell {
   background:
-    radial-gradient(1100px 560px at 82% -12%, rgba(139, 92, 246, 0.06), transparent 60%),
+    radial-gradient(1100px 560px at 82% -12%, rgba(198, 167, 94, 0.06), transparent 60%),
     radial-gradient(900px 520px at 0% 8%, rgba(15, 118, 110, 0.08), transparent 55%),
     var(--surface-0);
 }
@@ -93,7 +93,7 @@
   /* Inverted chips keep fixed values. Built from --navy-* they became
      white → black in light mode, and anything light-on-top vanished. */
   background: linear-gradient(150deg, var(--slab-1), var(--slab-2));
-  box-shadow: 0 6px 16px -8px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  box-shadow: 0 6px 16px -8px rgba(11, 18, 32, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.12);
   color: var(--accent-400);
 }
 
@@ -189,7 +189,7 @@
 }
 
 .icon-btn.is-active {
-  color: var(--gold-600);
+  color: var(--accent-ink);
   background: var(--gold-100);
 }
 
@@ -392,7 +392,7 @@ html[dir='rtl'] .account-trigger {
   border-radius: var(--r-2xl) var(--r-2xl) 0 0;
   border-top: 1px solid var(--line);
   padding: 12px 20px calc(24px + env(safe-area-inset-bottom));
-  box-shadow: 0 -24px 60px -30px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 -24px 60px -30px rgba(11, 18, 32, 0.4);
 }
 
 .mobile-sheet-grabber {
@@ -437,7 +437,7 @@ html[dir='rtl'] .account-trigger {
     background: color-mix(in srgb, var(--surface-1) 92%, transparent);
     backdrop-filter: blur(20px) saturate(1.5);
     -webkit-backdrop-filter: blur(20px) saturate(1.5);
-    box-shadow: 0 16px 40px -18px rgba(0, 0, 0, 0.34);
+    box-shadow: 0 16px 40px -18px rgba(11, 18, 32, 0.34);
   }
 
   .mobile-bottom-nav a {
@@ -471,7 +471,7 @@ html[dir='rtl'] .account-trigger {
   }
 
   .mobile-bottom-nav a.is-active svg {
-    color: var(--gold-600);
+    color: var(--accent-ink);
   }
 
   .mobile-bottom-nav .fab {
@@ -485,7 +485,7 @@ html[dir='rtl'] .account-trigger {
     border-radius: 16px;
     background: linear-gradient(150deg, var(--slab-1), var(--slab-2));
     color: var(--accent-300);
-    box-shadow: 0 12px 24px -10px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+    box-shadow: 0 12px 24px -10px rgba(11, 18, 32, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.12);
   }
 
   .mobile-bottom-nav .fab span {
@@ -681,7 +681,7 @@ html[dir='rtl'] .hero-eyebrow {
 }
 
 .dark .hero-eyebrow .tag {
-  background: rgba(139, 92, 246, 0.14);
+  background: rgba(198, 167, 94, 0.14);
   color: var(--gold-300);
 }
 
@@ -705,7 +705,7 @@ html[lang='ar'] .hero h1 {
 .hero h1 .accent {
   position: relative;
   white-space: nowrap;
-  color: var(--accent-600);
+  color: var(--accent-ink);
 }
 
 .dark .hero h1 .accent {
@@ -719,7 +719,7 @@ html[lang='ar'] .hero h1 {
   bottom: -4px;
   height: 6px;
   border-radius: 99px;
-  background: linear-gradient(90deg, rgba(139, 92, 246, 0.32), rgba(139, 92, 246, 0.04));
+  background: linear-gradient(90deg, rgba(198, 167, 94, 0.32), rgba(198, 167, 94, 0.04));
 }
 
 .hero-lead {
@@ -783,7 +783,7 @@ html[lang='ar'] .hero h1 {
   background:
     radial-gradient(80% 70% at 30% 20%, color-mix(in srgb, var(--accent-500) 13%, transparent), transparent 62%),
     radial-gradient(70% 70% at 80% 80%, color-mix(in srgb, var(--info) 10%, transparent), transparent 60%),
-    linear-gradient(160deg, #ffffff, #eeeef1);
+    linear-gradient(160deg, #ffffff, #edf1f7);
   border: 1px solid var(--line);
   transform: rotate(-2deg);
   box-shadow: var(--shadow-lg);
@@ -791,9 +791,9 @@ html[lang='ar'] .hero h1 {
 
 .dark .hero-visual::before {
   background:
-    radial-gradient(80% 70% at 30% 20%, rgba(139, 92, 246, 0.18), transparent 62%),
+    radial-gradient(80% 70% at 30% 20%, rgba(198, 167, 94, 0.18), transparent 62%),
     radial-gradient(70% 70% at 80% 80%, rgba(96, 165, 250, 0.1), transparent 60%),
-    linear-gradient(160deg, var(--surface-1), #000000);
+    linear-gradient(160deg, var(--surface-1), #060b16);
   border-color: rgba(255, 255, 255, 0.06);
 }
 
@@ -826,7 +826,7 @@ html[lang='ar'] .hero h1 {
 .dark .hero-card {
   border-color: rgba(255, 255, 255, 0.12);
   background: color-mix(in srgb, var(--surface-1) 92%, transparent);
-  box-shadow: 0 30px 70px -28px rgba(0, 0, 0, 0.8);
+  box-shadow: 0 30px 70px -28px rgba(11, 18, 32, 0.8);
 }
 
 .hero-card-head {
@@ -920,11 +920,11 @@ html[lang='ar'] .hero h1 {
   background: var(--gold-100);
   color: var(--gold-700);
   border-color: color-mix(in srgb, var(--gold-500) 30%, transparent);
-  box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.1);
+  box-shadow: 0 0 0 4px rgba(198, 167, 94, 0.1);
 }
 
 .dark .hero-timeline-dot.current {
-  background: rgba(139, 92, 246, 0.16);
+  background: rgba(198, 167, 94, 0.16);
   color: var(--gold-300);
 }
 
@@ -1237,7 +1237,7 @@ html[lang='ar'] .section-head h2 {
   width: 120px;
   height: 120px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(139, 92, 246, 0.09), transparent 70%);
+  background: radial-gradient(circle, rgba(198, 167, 94, 0.09), transparent 70%);
 }
 
 .step-top {
@@ -1329,7 +1329,7 @@ html[dir='rtl'] .step-arrow svg {
      var(--navy-800) (white, in light) to var(--navy-950), so its heading sat
      as #E8EDF3 on near-white — a 1.06:1 headline. */
   background:
-    radial-gradient(120% 100% at 0% 0%, rgba(139, 92, 246, 0.16), transparent 55%),
+    radial-gradient(120% 100% at 0% 0%, rgba(198, 167, 94, 0.16), transparent 55%),
     linear-gradient(160deg, var(--slab-1), var(--slab-2));
   color: #e8edf3;
   display: flex;
@@ -1565,14 +1565,12 @@ html[dir='rtl'] .step-arrow svg {
   padding: 44px 46px;
   border-radius: var(--r-2xl);
   /* An inverted slab in BOTH themes — the one deliberately dark block on a
-     light page. It used to gradient from var(--navy-800) to var(--navy-950),
-     which the zinc palette resolves to white → black: in light mode the left
-     half of the band was white with #EEF2F6 text on it, so the closing
-     headline of the landing page was invisible. Fixed values, because this
-     surface is not theme-dependent. */
+     light page, painted from the fixed navy slab tokens so it can never
+     flip white in light mode again (it once did, and the closing headline
+     of the landing page was invisible). */
   background:
-    radial-gradient(90% 140% at 100% 0%, rgba(139, 92, 246, 0.2), transparent 55%),
-    linear-gradient(135deg, #1f1f24, #09090b);
+    radial-gradient(90% 140% at 100% 0%, rgba(198, 167, 94, 0.2), transparent 55%),
+    linear-gradient(135deg, var(--slab-1), var(--slab-2));
   color: #eef2f6;
   box-shadow: var(--shadow-lg);
 }
@@ -1610,17 +1608,17 @@ html[lang='ar'] .cta-band h2 {
   line-height: 1.85;
 }
 
-/* On the dark band the primary inverts to white — the accent would fight the
-   violet bloom behind it. --navy-900 aliased to --surface-0 here, i.e. white
-   ink on a white button. */
+/* On the navy band the primary is the house gold with navy ink — one
+   accent, one voice, and it harmonises with the faint gold bloom behind
+   the slab instead of fighting it. */
 .cta-band .btn-primary {
-  --btn-bg: #f5f7f9;
-  --btn-fg: #09090b;
-  box-shadow: none;
+  --btn-bg: var(--gold-500);
+  --btn-fg: var(--ink-on-accent);
+  box-shadow: var(--shadow-gold);
 }
 
 .cta-band .btn-primary:hover:not(:disabled) {
-  --btn-bg: #ffffff;
+  --btn-bg: var(--gold-400);
 }
 
 .cta-band-actions {
@@ -1731,7 +1729,7 @@ html[lang='ar'] .page-intro h1 {
 }
 
 .track-help-card h3 svg {
-  color: var(--gold-600);
+  color: var(--accent-ink);
 }
 
 .track-help-card ol {
@@ -2197,11 +2195,11 @@ html[lang='ar'] .track-result-body dt {
 .choice-card[aria-checked='true'] {
   border-color: var(--gold-500);
   background: color-mix(in srgb, var(--gold-100) 55%, var(--surface-1));
-  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.12);
+  box-shadow: 0 0 0 3px rgba(198, 167, 94, 0.12);
 }
 
 .dark .choice-card[aria-checked='true'] {
-  background: rgba(139, 92, 246, 0.08);
+  background: rgba(198, 167, 94, 0.08);
 }
 
 .choice-card strong {
@@ -2232,7 +2230,7 @@ html[lang='ar'] .track-result-body dt {
 .choice-card[aria-checked='true'] .choice-check {
   background: var(--gold-500);
   border-color: var(--gold-500);
-  color: #fff;
+  color: var(--ink-on-accent);
 }
 
 .review-list {
@@ -2276,7 +2274,7 @@ html[lang='ar'] .track-result-body dt {
 }
 
 .review-edit:hover {
-  color: var(--gold-600);
+  color: var(--accent-ink);
   text-decoration: underline;
   text-underline-offset: 3px;
 }
@@ -2346,7 +2344,7 @@ html[lang='ar'] .track-result-body dt {
 }
 
 .dark .otp-panel {
-  background: rgba(139, 92, 246, 0.06);
+  background: rgba(198, 167, 94, 0.06);
 }
 
 .otp-panel h3 {
@@ -2358,7 +2356,7 @@ html[lang='ar'] .track-result-body dt {
 }
 
 .otp-panel h3 svg {
-  color: var(--gold-600);
+  color: var(--accent-ink);
 }
 
 .otp-panel p {
@@ -2595,7 +2593,7 @@ html[lang='ar'] .track-result-body dt {
     z-index: 5;
     padding: 12px 20px;
     background: var(--surface-1);
-    box-shadow: 0 -10px 24px -18px rgba(0, 0, 0, 0.35);
+    box-shadow: 0 -10px 24px -18px rgba(11, 18, 32, 0.35);
     flex-wrap: wrap;
     row-gap: 10px;
   }
@@ -2655,7 +2653,7 @@ html[lang='ar'] .track-result-body dt {
 
 .dropzone:hover .dropzone-icon,
 .dropzone.is-dragging .dropzone-icon {
-  color: var(--gold-600);
+  color: var(--accent-ink);
   border-color: color-mix(in srgb, var(--gold-500) 30%, transparent);
   transform: translateY(-2px);
 }
@@ -2815,7 +2813,7 @@ html[lang='ar'] .track-result-body dt {
 
 .counter-card:first-child {
   background:
-    radial-gradient(90% 120% at 100% 0%, rgba(139, 92, 246, 0.1), transparent 55%),
+    radial-gradient(90% 120% at 100% 0%, rgba(198, 167, 94, 0.1), transparent 55%),
     var(--surface-1);
 }
 
@@ -3583,7 +3581,7 @@ html[dir='rtl'] .back-link svg {
 }
 
 .dark .star-btn.is-active {
-  background: rgba(139, 92, 246, 0.12);
+  background: rgba(198, 167, 94, 0.12);
 }
 
 @media (max-width: 1020px) {
@@ -3875,7 +3873,7 @@ html[dir='ltr'] .journey-rail::after {
 }
 
 .dark .notification-row.is-unread {
-  background: rgba(139, 92, 246, 0.04);
+  background: rgba(198, 167, 94, 0.04);
 }
 
 .notification-icon {

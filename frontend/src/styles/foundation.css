@@ -1,6 +1,9 @@
 /* ==========================================================================
    Wathiq design system — foundation tokens & primitives
-   Quiet luxury · precision · soft depth
+   Premium insurance identity: deep navy · measured gold · calm emerald.
+   `design-system.css` (loaded after this file) re-tunes these tokens per
+   theme; the values here are the same house palette so no layer ever
+   renders off-brand on its own.
    ========================================================================== */
 
 :root,
@@ -13,10 +16,10 @@
   --navy-600: #1b3a60;
   --navy-500: #2b4e75;
 
-  --gold-700: #8f7127;
-  --gold-600: #a98634;
-  --gold-500: #8b5cf6;
-  --gold-400: #8b5cf6;
+  --gold-700: #7c5f1e;
+  --gold-600: #b28e35;
+  --gold-500: #be9a3f;
+  --gold-400: #c6a75e;
   --gold-300: #e6c888;
   --gold-200: #f2e2bd;
   --gold-100: #faf3e2;
@@ -44,28 +47,32 @@
   --ink-500: #58697d;
   --ink-400: #68788a;
   --ink-300: #a9b3bf;
-  --ink-on-brand: #f4f6f8;
+  --ink-on-brand: #f6f3ec;
+  --ink-on-accent: #0b1220;
+  /* Gold that reads: text/icons in the accent (design-system re-declares). */
+  --accent-ink: #7c5f1e;
 
-  /* Lines */
-  --line: rgba(9, 9, 11, 0.09);
-  --line-soft: rgba(9, 9, 11, 0.06);
-  --line-strong: rgba(9, 9, 11, 0.16);
+  /* Lines — navy ink at whisper alpha, never neutral black */
+  --line: rgba(11, 18, 32, 0.09);
+  --line-soft: rgba(11, 18, 32, 0.055);
+  --line-strong: rgba(11, 18, 32, 0.17);
 
   /* Semantic */
   --info: #2468c7;
   --info-soft: #eaf1fc;
   --success: #0f766e;
   --success-soft: #e5f5ef;
-  --warning: #a16207;
+  --warning: #8f5a06;
   --warning-soft: #fdf4e3;
   --danger: #b4384a;
   --danger-soft: #fceef0;
-  --violet: #6c56c9;
-  --violet-soft: #f0edfc;
+  /* Retired name: resolves to steel-blue so no purple ever renders. */
+  --violet: #47619b;
+  --violet-soft: #e9eef7;
   --orange: #b25a20;
   --orange-soft: #fbeee5;
-  --fuchsia: #9d3b7a;
-  --fuchsia-soft: #fbeaf4;
+  --fuchsia: #a14a68;
+  --fuchsia-soft: #f9edf1;
 
   /* Public semantic API. Portals alias these rather than owning palettes. */
   --surface: var(--surface-1);
@@ -86,12 +93,12 @@
   --r-pill: 999px;
 
   /* Elevation — soft, layered, never muddy */
-  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.05);
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04), 0 6px 18px -10px rgba(0, 0, 0, 0.12);
-  --shadow-md: 0 1px 3px rgba(0, 0, 0, 0.04), 0 18px 44px -22px rgba(0, 0, 0, 0.24);
-  --shadow-lg: 0 2px 8px rgba(0, 0, 0, 0.04), 0 32px 80px -36px rgba(0, 0, 0, 0.34);
-  --shadow-brand: 0 18px 44px -18px rgba(0, 0, 0, 0.42);
-  --shadow-gold: 0 12px 28px -14px rgba(139, 92, 246, 0.55);
+  --shadow-xs: 0 1px 2px rgba(11, 18, 32, 0.05);
+  --shadow-sm: 0 1px 2px rgba(11, 18, 32, 0.04), 0 6px 18px -10px rgba(11, 18, 32, 0.12);
+  --shadow-md: 0 1px 3px rgba(11, 18, 32, 0.04), 0 18px 44px -22px rgba(11, 18, 32, 0.24);
+  --shadow-lg: 0 2px 8px rgba(11, 18, 32, 0.04), 0 32px 80px -36px rgba(11, 18, 32, 0.34);
+  --shadow-brand: 0 18px 44px -18px rgba(11, 18, 32, 0.42);
+  --shadow-gold: 0 12px 28px -14px rgba(178, 142, 53, 0.4);
 
   /* Motion */
   --ease-out: cubic-bezier(0.22, 0.61, 0.36, 1);
@@ -101,8 +108,8 @@
   --dur-slow: 260ms;
 
   /* Focus */
-  --focus: #b08a2e;
-  --focus-ring: 0 0 0 3px rgba(139, 92, 246, 0.24);
+  --focus: #8a6d1f;
+  --focus-ring: 0 0 0 3px rgba(178, 142, 53, 0.4);
 
   /* Typography */
   --font-arabic: 'Cairo', 'Tajawal', 'Inter', system-ui, sans-serif;
@@ -119,12 +126,12 @@
 
 :root.dark,
 .staff-console.theme-dark {
-  /* OLED-deep canvas: surfaces read as gentle steps of navy-black, never grey. */
-  --surface-0: #060a11;
-  --surface-1: #101824;
-  --surface-2: #141f2f;
-  --surface-3: #1b2940;
-  --surface-glass: rgba(8, 13, 22, 0.82);
+  /* Deep navy-ink canvas: surfaces step up inside one blue hue, never grey. */
+  --surface-0: #0b1220;
+  --surface-1: #111b2e;
+  --surface-2: #16233b;
+  --surface-3: #1d2d4a;
+  --surface-glass: rgba(11, 18, 32, 0.78);
   --surface-inverse: #f4f6f8;
 
   --ink-900: #e8edf4;
@@ -140,12 +147,12 @@
   --line-soft: rgba(255, 255, 255, 0.055);
   --line-strong: rgba(255, 255, 255, 0.16);
 
-  --gold-600: #d3ad62;
-  --gold-500: #8b5cf6;
-  --gold-400: #e3c583;
-  --gold-300: #efd9ab;
-  --gold-200: #4a3d22;
-  --gold-100: #211c11;
+  --gold-600: #c6a75e;
+  --gold-500: #d4af37;
+  --gold-400: #e3c878;
+  --gold-300: #f0dca6;
+  --gold-200: rgba(212, 175, 55, 0.14);
+  --gold-100: rgba(212, 175, 55, 0.08);
 
   --info: #8ab4f8;
   --info-soft: rgba(74, 129, 214, 0.16);
@@ -155,21 +162,22 @@
   --warning-soft: rgba(190, 140, 40, 0.14);
   --danger: #f195a2;
   --danger-soft: rgba(200, 70, 90, 0.15);
-  --violet: #b9a8f5;
-  --violet-soft: rgba(120, 96, 220, 0.16);
+  --violet: #93acd9;
+  --violet-soft: rgba(110, 140, 200, 0.15);
   --orange: #f0b07c;
   --orange-soft: rgba(200, 110, 50, 0.15);
-  --fuchsia: #eb9ccb;
-  --fuchsia-soft: rgba(180, 70, 140, 0.16);
+  --fuchsia: #e3a1b8;
+  --fuchsia-soft: rgba(200, 110, 140, 0.14);
 
-  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.35);
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px -14px rgba(0, 0, 0, 0.6);
-  --shadow-md: 0 2px 4px rgba(0, 0, 0, 0.28), 0 24px 60px -30px rgba(0, 0, 0, 0.8);
-  --shadow-lg: 0 3px 10px rgba(0, 0, 0, 0.35), 0 40px 100px -44px rgba(0, 0, 0, 0.9);
-  --shadow-brand: 0 18px 54px -20px rgba(0, 0, 0, 0.8);
+  --shadow-xs: 0 1px 2px rgba(2, 6, 14, 0.35);
+  --shadow-sm: 0 1px 2px rgba(2, 6, 14, 0.3), 0 8px 24px -14px rgba(2, 6, 14, 0.6);
+  --shadow-md: 0 2px 4px rgba(2, 6, 14, 0.28), 0 24px 60px -30px rgba(2, 6, 14, 0.8);
+  --shadow-lg: 0 3px 10px rgba(2, 6, 14, 0.35), 0 40px 100px -44px rgba(2, 6, 14, 0.9);
+  --shadow-brand: 0 18px 54px -20px rgba(2, 6, 14, 0.8);
 
-  --focus: #8b5cf6;
-  --focus-ring: 0 0 0 3px rgba(139, 92, 246, 0.26);
+  --accent-ink: #e3c878;
+  --focus: #d4af37;
+  --focus-ring: 0 0 0 3px rgba(198, 167, 94, 0.35);
 
   color-scheme: dark;
 }
@@ -293,7 +301,7 @@ table {
 }
 
 ::selection {
-  background: rgba(139, 92, 246, 0.22);
+  background: rgba(198, 167, 94, 0.28);
   color: inherit;
 }
 
@@ -353,7 +361,7 @@ kbd,
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  color: var(--gold-600);
+  color: var(--accent-ink);
   font-size: 11.5px;
   font-weight: 700;
   letter-spacing: 0.14em;
@@ -498,16 +506,12 @@ html[lang='ar'] .eyebrow {
 /* The primary button, everywhere the portal shell does not override it:
    the staff login, the invite flow, the export screen.
 
-   It used to fill with `var(--navy-900)` under `#f8fafc` ink. Under the zinc
-   palette --navy-900 aliases to --surface-0, so in light mode this was
-   near-white text on a near-white fill — a completely invisible primary
-   action on the three screens a new user meets first. The dark rule made it
-   a white slab, a holdover from the monochrome navy era.
-
-   One primary, one colour, both themes: the accent. */
+   One primary, one colour, both themes: the gold accent, labelled in deep
+   navy ink (--ink-on-accent) — measured 8.10:1 on the dark fill, 6.07:1 on
+   the light fill, where white would fail at ~2.3:1. */
 .btn-primary {
   --btn-bg: var(--accent-600);
-  --btn-fg: var(--ink-on-brand);
+  --btn-fg: var(--ink-on-accent);
   --btn-border: transparent;
   box-shadow: var(--shadow-accent);
 }
@@ -518,7 +522,7 @@ html[lang='ar'] .eyebrow {
 
 .dark .btn-primary {
   --btn-bg: var(--accent-600);
-  --btn-fg: var(--ink-on-brand);
+  --btn-fg: var(--ink-on-accent);
 }
 
 .dark .btn-primary:hover:not(:disabled) {
@@ -526,11 +530,11 @@ html[lang='ar'] .eyebrow {
 }
 
 .btn-gold {
-  /* Violet fill, white label. --accent-600 rather than the hero --accent-500
-     because white on #8B5CF6 is 4.23:1, a marginal AA fail at label size;
-     on #7C3AED it is 5.70:1. The hero violet returns on hover. */
+  /* Gold fill, navy label: white on #C6A75E is ~2.3:1 while deep navy ink
+     (--ink-on-accent) on the same fill is 8.10:1 — the measured pairing,
+     and the one private banks use. The hero gold returns on hover. */
   --btn-bg: var(--accent-600);
-  --btn-fg: var(--ink-on-brand);
+  --btn-fg: var(--ink-on-accent);
   box-shadow: var(--shadow-accent), inset 0 1px 0 rgba(255, 255, 255, 0.14);
 }
 
@@ -828,7 +832,7 @@ html[dir='rtl'] .select {
   height: 16px;
   border-radius: 50%;
   background: #fff;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 1px 3px rgba(2, 6, 14, 0.3);
   transition: transform var(--dur-base) var(--ease-spring);
 }
 
@@ -943,7 +947,7 @@ html[dir='rtl'] .switch[aria-checked='true'] .switch-thumb {
 .dark .chip-gold {
   background: var(--gold-100);
   color: var(--gold-300);
-  border-color: rgba(139, 92, 246, 0.2);
+  border-color: rgba(198, 167, 94, 0.35);
 }
 
 .chip-emerald {

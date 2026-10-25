@@ -33,7 +33,7 @@ const PALETTE = ['var(--gold-500)', 'var(--emerald-500)', 'var(--info)', 'var(--
 /** Chart colors speak the same language as status chips (foundation.css). */
 const STATUS_COLORS: Record<string, string> = {
   new: 'var(--info)',
-  assigned: 'var(--violet)',
+  assigned: 'var(--st-assigned-fg)',
   in_review: 'var(--warning)',
   resolved: 'var(--success)',
   reopened: 'var(--orange)',

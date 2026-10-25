@@ -105,3 +105,35 @@ queue, workspace, overview, admin in light/dark. One regression found and
 fixed during review: the hero glow initially widened the document on desktop
 (`scrollWidth > innerWidth`); it is now clipped to the hero box and the
 gradients recentered.
+
+## Rebrand pass — design system v3 "premium insurance"
+
+Frontend only; no API, authorization, routing, persistence, dependency, or
+backend changes. The v2 "quiet machine" skin (near-black zinc + violet, the
+developer-tool register) is retired. The identity is again the house
+insurance palette, now fully tokenized in `design-system.css` (which
+re-tunes `foundation.css` in place; the token table and the measured WCAG
+ratios live in that file's header):
+
+- **Canvas/surfaces**: deep navy-ink steps (`#0B1220` → `#273D61`) on dark,
+  warm off-white (`#F4F6F9`) + white cards on light. No zinc, no pure black.
+- **Primary accent**: measured gold (`#C6A75E`/`#D4AF37` dark, `#B28E35`/
+  `#BE9A3F` light) with deep-navy labels (`--ink-on-accent`, 8.10:1 / 6.07:1;
+  white measured ~2.3:1 and was rejected). Gold *text* resolves to
+  `--accent-ink` per theme (10.49:1 dark, 5.98:1 light).
+- **Secondary**: calm emerald (`#14967F` family) for success/resolved/growth.
+- **Status map**: new=info blue, assigned=cyan, in-review=amber,
+  resolved=emerald, reopened=danger, transferred=dusty rose. The retired
+  `--violet` token resolves to steel-blue and `--fuchsia` to rose, so no
+  purple renders anywhere (including charts and the app icon/logo, now
+  navy + gold).
+- **Lines/shadows**: translucent steel-blue hairlines on dark, navy-ink
+  hairlines on light; navy-tinted layered shadows; gold focus rings;
+  radii settle at 16px cards / 10px controls / 999px pills.
+- Channel data colours muted for both themes (WhatsApp teal, phone blue,
+  email rose — amber is the brand gold now and is not spent on data).
+
+Local checks on the final implementation: `npm run typecheck` pass,
+`npm run lint` pass (2 pre-existing Fast Refresh warnings), `npm run test`
+40 files / 215 tests passed, `npm run build` pass. Built CSS verified to
+contain zero violet/zinc brand hexes.

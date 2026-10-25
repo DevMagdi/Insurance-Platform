@@ -165,7 +165,7 @@
   color: var(--ink-900);
 }
 
-.staff-console .ticket-number:hover { color: var(--gold-500); }
+.staff-console .ticket-number:hover { color: var(--accent-ink); }
 
 .staff-console .ticket-created {
   display: block;
@@ -233,7 +233,7 @@
 .staff-console .button-dark {
   background: var(--accent-600);
   border-color: transparent;
-  color: var(--ink-on-brand);
+  color: var(--ink-on-accent);
   box-shadow: var(--shadow-accent);
 }
 
@@ -277,7 +277,7 @@
 }
 
 .modal-backdrop {
-  background: rgba(0, 0, 0, 0.62);
+  background: rgba(11, 18, 32, 0.62);
   backdrop-filter: blur(5px);
   -webkit-backdrop-filter: blur(5px);
 }
@@ -385,7 +385,7 @@
 }
 
 .staff-console .timeline-marker.marker-event {
-  color: var(--gold-500);
+  color: var(--accent-ink);
   background: var(--gold-200);
   border-color: transparent;
 }
@@ -553,7 +553,7 @@
 }
 
 .staff-console .nav-link.active .nav-icon {
-  color: var(--accent-400);
+  color: var(--accent-ink);
 }
 
 .staff-console .nav-link {
@@ -570,13 +570,14 @@
 /* One primary action, one colour. `.button-dark` was a near-white fill in
    dark mode, so the console's main confirm button and the Integrations
    connect button — both "the primary action on this screen" — looked like
-   two different kinds of control. Both are violet now. */
+   two different kinds of control. Both are house gold now, labelled in
+   deep navy ink (--ink-on-accent): 8.10:1 where white would be ~2.3:1. */
 .staff-console .button-dark,
 .staff-console.theme-dark .button-dark,
 .staff-console.theme-light .button-dark {
   background: var(--accent-600);
   border-color: transparent;
-  color: var(--ink-on-brand);
+  color: var(--ink-on-accent);
   box-shadow: var(--shadow-accent);
 }
 
@@ -890,9 +891,9 @@
 
 /* ------------------------------------------------------------- navigation */
 
-/* The active item used to be --surface-2, which on white is #F4F4F5 — a grey
-   plate with a violet spine, i.e. two signals for one state. Light mode gets
-   a violet tint instead, the same idea as the dark rendering. */
+/* The active item used to be --surface-2 — a grey plate with a gold spine,
+   i.e. two signals for one state. Light mode gets a gold tint instead, the
+   same idea as the dark rendering. */
 .staff-console.theme-light .nav-link.active {
   background: var(--accent-100);
   color: var(--accent-700);
@@ -900,7 +901,7 @@
 }
 
 .staff-console.theme-light .nav-link.active .nav-icon {
-  color: var(--accent-600);
+  color: var(--accent-ink);
 }
 
 /* --------------------------------------------------------------- filters */
@@ -1232,7 +1233,7 @@
 .staff-console button.avatar-circle.avatar-active,
 .staff-console span.avatar-circle.avatar-active,
 .staff-console .avatar-circle.avatar-active {
-  color: var(--ink-on-brand);
+  color: var(--ink-on-accent);
 }
 
 /* ==========================================================================
@@ -1324,15 +1325,16 @@
 
 /* ------------------------------------------------- active state, stronger */
 
-/* One unmistakable current location: a violet spine, a violet wash and
-   violet ink. It used to be a 3px bar and nothing else. */
+/* One unmistakable current location: a gold spine, a gold wash and gold
+   ink (--accent-ink, the per-theme legible gold). It used to be a 3px bar
+   and nothing else. */
 .staff-console .nav-link.active {
   background: var(--accent-200);
-  color: var(--accent-400);
+  color: var(--accent-ink);
 }
 
 .staff-console.theme-light .nav-link.active {
-  color: var(--accent-600);
+  color: var(--accent-ink);
 }
 
 .staff-console .nav-link.active .nav-icon {
@@ -1450,7 +1452,7 @@ html[dir='ltr'] .staff-console .nav-link.active::before {
   font: inherit;
   font-size: 0.75rem;
   font-weight: 600;
-  color: #fff;
+  color: var(--ink-on-accent);
   background: var(--accent-600);
   border: 0;
   border-radius: var(--r-pill);
@@ -1480,4 +1482,4 @@ html[dir='ltr'] .staff-console .nav-link.active::before {
   border-top: 1px solid var(--line);
 }
 
-.staff-console .timeline-marker.marker-call { background: var(--accent-600); color: #fff; }
+.staff-console .timeline-marker.marker-call { background: var(--accent-600); color: var(--ink-on-accent); }

@@ -25,14 +25,15 @@ interface SourceSpec {
 
 /**
  * Each channel carries its own hue so the three bars stay tellable apart at a
- * glance. None of them is the brand violet: these are data, and the accent is
- * reserved for actions and the current location. Email was violet and read as
- * "the important one" purely because it matched the primary button.
+ * glance. None of them is the brand gold: these are data, and the accent is
+ * reserved for actions and the current location. Email was amber and read as
+ * "the important one" purely because it matched the primary button, so it
+ * moves to the same dusty rose as the transferred status.
  */
 const SOURCES: SourceSpec[] = [
-  { id: 'whatsapp', label: 'واتساب', icon: 'message', color: '#25D366', tint: 'rgba(37, 211, 102, 0.14)' },
-  { id: 'phone', label: 'مكالمات', icon: 'phone', color: '#60A5FA', tint: 'rgba(96, 165, 250, 0.14)' },
-  { id: 'email', label: 'بريد إلكتروني', icon: 'mail', color: '#FBBF24', tint: 'rgba(251, 191, 36, 0.14)' },
+  { id: 'whatsapp', label: 'واتساب', icon: 'message', color: '#128C7E', tint: 'rgba(18, 140, 126, 0.13)' },
+  { id: 'phone', label: 'مكالمات', icon: 'phone', color: '#4A86D9', tint: 'rgba(74, 134, 217, 0.13)' },
+  { id: 'email', label: 'بريد إلكتروني', icon: 'mail', color: '#C46A85', tint: 'rgba(196, 106, 133, 0.13)' },
 ];
 
 export function IntakeBreakdown({ filterQuery, onPick }: { filterQuery: string; onPick?: (source: string) => void }) {

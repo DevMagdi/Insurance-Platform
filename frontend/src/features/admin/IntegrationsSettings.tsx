@@ -328,8 +328,8 @@ const CHANNELS: ChannelSpec[] = [
     setupHint: 'يتطلب رقم واتساب للأعمال',
     chooseHint: 'اختر مزوّد واتساب الذي تستخدمه.',
     icon: 'message',
-    color: '#25D366',
-    tint: 'rgba(37, 211, 102, 0.12)',
+    color: '#128C7E',
+    tint: 'rgba(18, 140, 126, 0.12)',
     providers: ['whatsapp_cloud'],
   },
   {
@@ -339,8 +339,8 @@ const CHANNELS: ChannelSpec[] = [
     setupHint: 'يتطلب رقماً من مزوّد اتصالات',
     chooseHint: 'اختر مزوّد الاتصالات الذي يستقبل مكالمات العملاء.',
     icon: 'phone',
-    color: '#60A5FA',
-    tint: 'rgba(96, 165, 250, 0.12)',
+    color: '#4A86D9',
+    tint: 'rgba(74, 134, 217, 0.12)',
     providers: ['twilio', 'vonage'],
   },
   {
@@ -350,12 +350,12 @@ const CHANNELS: ChannelSpec[] = [
     setupHint: 'يتطلب صندوق بريد للعمل',
     chooseHint: 'اختر طريقة الاتصال بصندوق البريد. Gmail وOutlook يتطلبان تسجيل دخول Google أو Microsoft.',
     icon: 'mail',
-    /* Amber, matching the email bar on the dashboard's intake breakdown — a
-       channel must look the same everywhere it appears. It was violet, which
-       both clashed with that chart and spent the brand accent on an icon
-       tile sitting next to a violet primary button. */
-    color: '#FBBF24',
-    tint: 'rgba(251, 191, 36, 0.12)',
+    /* Dusty rose, matching the email bar on the dashboard's intake breakdown
+       — a channel must look the same everywhere it appears. It was amber,
+       which spent the brand gold on an icon tile sitting next to a gold
+       primary button. */
+    color: '#C46A85',
+    tint: 'rgba(196, 106, 133, 0.12)',
     providers: ['gmail_oauth', 'outlook_oauth', 'smtp', 'imap', 'sendgrid', 'ses'],
   },
 ];
