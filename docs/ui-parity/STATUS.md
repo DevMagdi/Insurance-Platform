@@ -53,5 +53,5 @@
 1. Capture and review 1440×900 desktop and 390×844 salesperson screenshots for all applicable views; check RTL, focus states, horizontal overflow, the collapsed inbox rail and actual API-backed data.
 2. Fill each row above with observed parity deviations and decide which missing routes (insured members, team view, lead detail deep-link, client-folder deep-link) must be implemented to meet the PDF.
 3. Run the critical end-to-end flows, especially two salespeople A/B and manager reassignment/audit trail, against an isolated backend; test customer-directory permissions and company portal access.
-4. Resolve/accept the two lint warnings and oversized bundle deliberately; update the PR description with screenshots, routes, APIs, permissions, results and deviations.
+4. Review and disposition the >500 kB main-chunk warning deliberately; update the PR description with screenshots, routes, APIs, permissions, results and deviations after captures exist.
 5. Keep PR #58 Draft until P0/P1 screens, screenshots and checks are complete. Do not merge to `main`.
