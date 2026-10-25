@@ -378,9 +378,17 @@ async def test_stats_endpoint_shape() -> None:
     db.scalar_value = 4
     perf_row = SimpleNamespace(
         _mapping={
-            "staff_id": str(STAFF), "full_name": "Sales", "leads": 4, "won": 1,
-            "lost": 1, "converted": 1, "won_value": 100, "pipeline_value": 250,
-            "avg_close_days": None, "tasks_done": 2, "tasks_overdue": 1,
+            "staff_id": str(STAFF),
+            "full_name": "Sales",
+            "leads": 4,
+            "won": 1,
+            "lost": 1,
+            "converted": 1,
+            "won_value": 100,
+            "pipeline_value": 250,
+            "avg_close_days": None,
+            "tasks_done": 2,
+            "tasks_overdue": 1,
         }
     )
     db.text_queue = [
@@ -406,7 +414,9 @@ async def test_pipeline_board_counts_values_and_cards() -> None:
     repo = CrmModuleRepository()
     lead = make_lead(stage_code="negotiation", expected_premium=None)
     db.by_entity[CrmPipelineStage] = [
-        make_stage("negotiation"), make_stage("won", is_won=True), make_stage("lost", is_lost=True)
+        make_stage("negotiation"),
+        make_stage("won", is_won=True),
+        make_stage("lost", is_lost=True),
     ]
     db.by_entity[CrmLead] = [lead]
     db.text_queue = [[("negotiation", 1, 900), ("won", 2, 500), ("lost", 1, 0)]]
@@ -452,8 +462,12 @@ def test_permission_gates_and_openapi_contract() -> None:
     assert paths["/api/crm/leads"]["post"]["x-required-permission"] == "crm.manage"
     assert paths["/api/crm/stats"]["get"]["x-required-permission"] == "crm.view"
     for table in (
-        "crm_leads", "crm_pipeline_stages", "crm_tasks",
-        "crm_import_batches", "crm_import_errors", "crm_activities",
+        "crm_leads",
+        "crm_pipeline_stages",
+        "crm_tasks",
+        "crm_import_batches",
+        "crm_import_errors",
+        "crm_activities",
     ):
         assert table in Base.metadata.tables, table
     for gone in ("leads", "pipeline_stages", "lead_activities"):
@@ -510,9 +524,17 @@ async def test_task_update_cancel_and_list_endpoints() -> None:
     )
     assert page["items"][0]["lead_no"] == lead.lead_no
     perf_row = {
-        "staff_id": str(STAFF), "full_name": "Sales", "leads": 1, "won": 0, "lost": 0,
-        "converted": 0, "won_value": "0", "pipeline_value": "10", "avg_close_days": None,
-        "tasks_done": 0, "tasks_overdue": 0,
+        "staff_id": str(STAFF),
+        "full_name": "Sales",
+        "leads": 1,
+        "won": 0,
+        "lost": 0,
+        "converted": 0,
+        "won_value": "0",
+        "pipeline_value": "10",
+        "avg_close_days": None,
+        "tasks_done": 0,
+        "tasks_overdue": 0,
     }
     db.text_queue = [[SimpleNamespace(_mapping=perf_row)]]
     report = await api.sales_performance(ctx)

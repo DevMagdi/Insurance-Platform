@@ -110,10 +110,6 @@ class IntakeState(StrEnum):
 # stages without a schema migration; these enums are the API contract.
 
 
-
-
-
-
 class InstallmentPlan(StrEnum):
     """Premium billing cadence for a brokerage policy (Phase 2 spec)."""
 
