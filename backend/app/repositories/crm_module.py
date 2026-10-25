@@ -276,6 +276,8 @@ class CrmModuleRepository:
             select(CrmLead)
             .where(CrmLead.tenant_id == self.tenant_id)
             .order_by(CrmLead.updated_at.desc())
+            # Cards are capped per stage below; this bounds the scan.
+            .limit(per_stage_limit * max(len(stages), 1) * 4)
         )
         for stmt_filter in (
             (CrmLead.assigned_to == assigned_to) if assigned_to else None,
@@ -584,7 +586,10 @@ class CrmModuleRepository:
             .limit(5)
         )
         recent_activities_stmt = (
-            select(CrmActivity).order_by(CrmActivity.created_at.desc()).limit(10)
+            select(CrmActivity)
+            .where(CrmActivity.tenant_id == self.tenant_id)
+            .order_by(CrmActivity.created_at.desc())
+            .limit(10)
         )
         return {
             "total_leads": total,

@@ -376,7 +376,11 @@ async def update_lead(
     lead = await _lead_or_404(ctx, lead_id)
     data = item.model_dump(exclude_unset=True)
     old_stage, old_assignee = lead.stage_code, lead.assigned_to
-    stage = await _stage_or_422(ctx, item.stage_code) if item.stage_code else None
+    stage = (
+        await _stage_or_422(ctx, item.stage_code)
+        if item.stage_code and item.stage_code != old_stage
+        else None
+    )
     for key, value in data.items():
         if key == "stage_code":
             continue

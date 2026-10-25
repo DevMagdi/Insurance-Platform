@@ -55,7 +55,7 @@ premium) → insured employees (`customers.corporate_client_id`) → requests
 | Sales CRM + customisable pipeline (جديد → … → ربح/خسارة → محوّل لعميل) | unified CRM module: `crm_pipeline_stages` (tenant data, seeded with the spec stages), `crm_leads`, drag-and-drop Kanban — see `CRM_MODULE.md` |
 | Add lead anytime (manual/WhatsApp/call/email) | `LeadCreate.source` enum + create form + Excel lead import |
 | Activity log (calls, meetings, notes, tasks, appointments) | `lead_activities`, lead detail panel |
-| Automatic follow-ups/reminders | `next_followup_at` + Celery beat `lead_followups_due` (hourly) + due badge |
+| Automatic follow-ups/reminders | `next_followup_at` + Celery beat `crm_task_reminders` (hourly; stamps due `crm_tasks`) + due badges |
 | One-click Lead → Client | `POST /leads/{id}/convert` → `app_security.convert_lead_to_client` copies contact data into `corporate_clients` |
 | Pipeline/Kanban + salesperson reports + conversion rates | `GET /pipeline`, `GET /reports/sales-performance`, summary strip |
 | Issuing workflow (checklist per type → internal review → insurer → tracking) | `issuing_checklist_templates` (طبي/عام seeded), `issuing_requests`, items gate the `sent_to_insurer` transition |
