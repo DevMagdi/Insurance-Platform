@@ -1,15 +1,17 @@
-"""Sales CRM, issuing workflow, policy lifecycle, Excel imports and payments.
+"""Insurance operations: issuing workflow, policy lifecycle, payments.
 
 Phase 1 completions living here: the staff **Client Folder** (contract +
-documents + insured employees + every linked request), **caller lookup** by
-mobile (open the request in the employee/company/policy context), **Excel
-import** of existing clients/employees, and the **insurer-performance**
-evidence report. Phase 2: leads/pipeline, one-click conversion, issuing
-checklists, installment policies with ~5% commission settlements, renewal
-alerts, smart document search, and Fawry/Paymob payment webhooks.
+documents + insured employees + every linked request), **caller lookup**
+by mobile, **Excel import** of existing clients/employees, and the
+**insurer-performance** evidence report. Phase 2: issuing checklists,
+installment policies with ~5% commission settlements, renewal alerts,
+smart document search, and Fawry/Paymob payment webhooks.
 
-Every write is audit-logged (who did what, when, on which entity) and gated
-by a ``resource.action`` permission; PostgreSQL RLS confines these tables to
+Sales CRM used to share this router under ``/api/staff/crm``; since the
+CRM unification (migration 041) the only CRM is the unified module
+under ``/api/crm`` — issuing requests may still link a CRM lead
+(``crm_leads``) by id. Every write is audit-logged and gated by a
+``resource.action`` permission; PostgreSQL RLS confines these tables to
 the staff actor scope, and insurer scope is repeated in the repository.
 """
 
@@ -28,53 +30,40 @@ from sqlalchemy.exc import DBAPIError
 
 from app.api.deps import RequestContext, require_permission
 from app.db import purpose_transaction
-from app.domain.crm_schemas import (
+from app.domain.enums import IssuingStatus, PaymentProviderName
+from app.domain.insurance_ops_schemas import (
     BrokeragePolicyCreate,
     ChecklistItemUpdate,
     InstallmentPay,
     IssuingCreate,
     IssuingUpdate,
-    LeadActivityCreate,
-    LeadConvert,
-    LeadCreate,
-    LeadUpdate,
     PaymentIntentCreate,
-    PipelineStageUpsert,
     SettlementUpdate,
 )
-from app.domain.enums import IssuingStatus, PaymentProviderName
-from app.models.crm import (
+from app.models.insurance_ops import (
     BrokeragePolicy,
     CommissionSettlement,
     ImportJob,
     IssuingChecklistItem,
     IssuingRequest,
-    Lead,
-    LeadActivity,
     PaymentTransaction,
-    PipelineStage,
     PolicyInstallment,
 )
 from app.models.tickets import AuditLog
-from app.repositories.crm import CrmRepository, lead_dict
+from app.repositories.insurance_ops import InsuranceOpsRepository
 from app.security.national_id import validate_national_id
 from app.security.tokens import csrf_required
-from app.services.crm import (
-    commission_amount,
-    installment_schedule,
-    normalize_mobile,
-    parse_tabular,
-    settlement_status,
-    slugify_company,
-)
+from app.services.crm_pipeline import slugify_client_name
+from app.services.insurance_ops import commission_amount, installment_schedule, settlement_status
 from app.services.payments import verify_fawry, verify_paymob
+from app.services.tabular import normalize_mobile, parse_tabular
 
-router = APIRouter(prefix="/api/staff/crm", tags=["crm"])
+router = APIRouter(prefix="/api/staff/insurance-ops", tags=["insurance-ops"])
 payments_router = APIRouter(prefix="/api/payments", tags=["payments"])
 
+# Client Folder / caller lookup / evidence reads keep their historical
+# crm.view gate (the folder is where a converted CRM lead lands).
 CRM_VIEW = Depends(require_permission("crm.view"))
-CRM_MANAGE = Depends(require_permission("crm.manage"))
-CRM_CONVERT = Depends(require_permission("crm.convert"))
 POLICIES_VIEW = Depends(require_permission("policies.view"))
 POLICIES_MANAGE = Depends(require_permission("policies.manage"))
 ISSUING_VIEW = Depends(require_permission("issuing.view"))
@@ -83,7 +72,7 @@ IMPORTS_MANAGE = Depends(require_permission("imports.manage"))
 PAYMENTS_MANAGE = Depends(require_permission("payments.manage"))
 
 _MAX_IMPORT_BYTES = 5_242_880
-repo = CrmRepository()
+repo = InsuranceOpsRepository()
 
 
 async def _audit(
@@ -106,10 +95,6 @@ async def _audit(
     await ctx.db.flush()
 
 
-def _lead_no() -> str:
-    return f"LEAD-{datetime.now(UTC):%Y}-{secrets.token_hex(3).upper()}"
-
-
 def _conflict(exc: DBAPIError, detail: str) -> HTTPException:
     sqlstate = getattr(getattr(exc, "orig", None), "sqlstate", None)
     if sqlstate == "23505":
@@ -117,211 +102,6 @@ def _conflict(exc: DBAPIError, detail: str) -> HTTPException:
     if sqlstate in {"23503", "23514", "22023", "22P02"}:
         return HTTPException(status_code=422, detail=detail)
     raise exc
-
-
-# --- Pipeline stages -------------------------------------------------------
-
-
-@router.get("/stages")
-async def list_stages(ctx: RequestContext = CRM_VIEW) -> dict[str, Any]:
-    return {"stages": await repo.stages(ctx.db)}
-
-
-@router.put("/stages")
-async def upsert_stage(
-    item: PipelineStageUpsert, ctx: RequestContext = CRM_MANAGE, _: None = Depends(csrf_required)
-) -> dict[str, Any]:
-    """Create or amend a tenant-customisable pipeline stage."""
-    stage = None
-    if item.id is not None:
-        stage = (
-            await ctx.db.execute(select(PipelineStage).where(PipelineStage.id == item.id))
-        ).scalar_one_or_none()
-    if stage is None:
-        stage = PipelineStage(
-            id=uuid4(),
-            tenant_id=repo.tenant_id,
-            code=item.code,
-            name_ar=item.name_ar,
-            name_en=item.name_en,
-        )
-        ctx.db.add(stage)
-    stage.code, stage.name_ar, stage.name_en = item.code, item.name_ar, item.name_en
-    stage.sort_order, stage.is_won, stage.is_lost = item.sort_order, item.is_won, item.is_lost
-    stage.is_converted, stage.is_active = item.is_converted, item.is_active
-    try:
-        await ctx.db.flush()
-    except DBAPIError as exc:
-        raise _conflict(exc, "That stage code already exists") from exc
-    await _audit(ctx, "pipeline_stage_saved", "pipeline_stage", stage.id, {"code": item.code})
-    return {"id": str(stage.id), "code": stage.code}
-
-
-# --- Leads ------------------------------------------------------------------
-
-
-@router.get("/leads")
-async def list_leads(
-    ctx: RequestContext = CRM_VIEW,
-    stage: str | None = None,
-    source: str | None = None,
-    assigned: UUID | None = None,
-    q: str | None = Query(default=None, max_length=120),
-) -> dict[str, Any]:
-    return {
-        "leads": await repo.leads(
-            ctx.db, ctx.scope, stage=stage, source=source, assigned=assigned, q=q
-        )
-    }
-
-
-@router.post("/leads", status_code=201)
-async def create_lead(
-    item: LeadCreate, ctx: RequestContext = CRM_MANAGE, _: None = Depends(csrf_required)
-) -> dict[str, Any]:
-    """Add a lead at any time — manually or captured from WhatsApp/call/email."""
-    lead = Lead(
-        id=uuid4(),
-        tenant_id=repo.tenant_id,
-        lead_no=_lead_no(),
-        company_name=item.company_name,
-        contact_name=item.contact_name,
-        mobile=item.mobile,
-        email=item.email,
-        source=item.source.value,
-        insurance_type=item.insurance_type.value,
-        insurer_company_id=item.insurer_company_id,
-        stage_code=item.stage_code,
-        assigned_staff_id=item.assigned_staff_id or ctx.actor.id,
-        expected_premium=item.expected_premium,
-        notes=item.notes,
-        next_followup_at=item.next_followup_at,
-        created_by=ctx.actor.id,
-    )
-    ctx.db.add(lead)
-    try:
-        await ctx.db.flush()
-    except DBAPIError as exc:
-        raise _conflict(exc, "Lead could not be created") from exc
-    await _audit(
-        ctx,
-        "lead_created",
-        "lead",
-        lead.id,
-        {"lead_no": lead.lead_no, "source": lead.source, "stage_code": lead.stage_code},
-    )
-    return lead_dict(lead)
-
-
-@router.get("/leads/{lead_id}")
-async def get_lead(lead_id: UUID, ctx: RequestContext = CRM_VIEW) -> dict[str, Any]:
-    lead = await repo.lead(ctx.db, ctx.scope, lead_id)
-    if lead is None:
-        raise HTTPException(status_code=404, detail="Lead not found")
-    return {**lead_dict(lead), "activities": await repo.activities(ctx.db, lead_id)}
-
-
-@router.patch("/leads/{lead_id}")
-async def update_lead(
-    lead_id: UUID,
-    item: LeadUpdate,
-    ctx: RequestContext = CRM_MANAGE,
-    _: None = Depends(csrf_required),
-) -> dict[str, Any]:
-    lead = await repo.lead(ctx.db, ctx.scope, lead_id)
-    if lead is None:
-        raise HTTPException(status_code=404, detail="Lead not found")
-    before_stage = lead.stage_code
-    data = item.model_dump(exclude_unset=True)
-    for key, value in data.items():
-        setattr(lead, key, value.value if hasattr(value, "value") else value)
-    lead.updated_at = datetime.now(UTC)
-    await ctx.db.flush()
-    await _audit(
-        ctx,
-        "lead_updated",
-        "lead",
-        lead.id,
-        {"changed": sorted(data), "stage_from": before_stage, "stage_to": lead.stage_code},
-    )
-    return lead_dict(lead)
-
-
-@router.post("/leads/{lead_id}/activities", status_code=201)
-async def add_activity(
-    lead_id: UUID,
-    item: LeadActivityCreate,
-    ctx: RequestContext = CRM_MANAGE,
-    _: None = Depends(csrf_required),
-) -> dict[str, Any]:
-    """Log a call/meeting/note/task/appointment; tasks arm the follow-up reminder."""
-    lead = await repo.lead(ctx.db, ctx.scope, lead_id)
-    if lead is None:
-        raise HTTPException(status_code=404, detail="Lead not found")
-    activity = LeadActivity(
-        id=uuid4(),
-        tenant_id=repo.tenant_id,
-        lead_id=lead_id,
-        kind=item.kind.value,
-        title=item.title,
-        body=item.body,
-        due_at=item.due_at,
-        done_at=item.done_at,
-        outcome=item.outcome,
-        created_by=ctx.actor.id,
-    )
-    ctx.db.add(activity)
-    if item.due_at is not None and item.done_at is None:
-        lead.next_followup_at = item.due_at
-    await ctx.db.flush()
-    await _audit(ctx, "lead_activity_added", "lead", lead_id, {"kind": activity.kind})
-    return {"id": str(activity.id), "kind": activity.kind}
-
-
-@router.post("/leads/{lead_id}/convert")
-async def convert_lead(
-    lead_id: UUID,
-    item: LeadConvert,
-    ctx: RequestContext = CRM_CONVERT,
-    _: None = Depends(csrf_required),
-) -> dict[str, Any]:
-    """One-click conversion: creates the corporate client with all lead data."""
-    lead = await repo.lead(ctx.db, ctx.scope, lead_id)
-    if lead is None:
-        raise HTTPException(status_code=404, detail="Lead not found")
-    if lead.converted_corporate_client_id is not None:
-        raise HTTPException(status_code=409, detail="Lead is already converted")
-    slug = item.slug or slugify_company(lead.company_name, str(lead.id))
-    try:
-        client_id = await ctx.db.scalar(
-            text("SELECT app_security.convert_lead_to_client(:lead, :slug, :ar, :en)"),
-            {
-                "lead": lead_id,
-                "slug": slug,
-                "ar": item.name_ar or lead.company_name,
-                "en": item.name_en or lead.company_name,
-            },
-        )
-    except DBAPIError as exc:
-        raise _conflict(exc, "A client with that slug already exists") from exc
-    await _audit(
-        ctx,
-        "lead_converted",
-        "lead",
-        lead_id,
-        {"corporate_client_id": str(client_id), "slug": slug},
-    )
-    return {"lead_id": str(lead_id), "corporate_client_id": str(client_id), "slug": slug}
-
-
-@router.get("/pipeline")
-async def pipeline(ctx: RequestContext = CRM_VIEW) -> dict[str, Any]:
-    return await repo.pipeline(ctx.db, ctx.scope)
-
-
-@router.get("/reports/sales-performance")
-async def sales_performance(ctx: RequestContext = CRM_VIEW) -> dict[str, Any]:
-    return {"salespeople": await repo.sales_performance(ctx.db, ctx.scope)}
 
 
 # --- Policies: installments, commission, renewals ----------------------------
@@ -820,7 +600,7 @@ async def import_clients(
         if len(name) < 2:
             errors.append({"row": index, "error": "company_name is required"})
             continue
-        slug = slugify_company(name, f"{index}")
+        slug = slugify_client_name(name, f"{index}")
         try:
             async with ctx.db.begin_nested():
                 await ctx.db.execute(
@@ -842,50 +622,6 @@ async def import_clients(
             errors.append({"row": index, "error": "row could not be saved (duplicate slug?)"})
     return await _finish_import(
         ctx, "clients", file.filename or "", None, len(rows), succeeded, errors
-    )
-
-
-@router.post("/imports/leads", status_code=201)
-async def import_leads(
-    ctx: RequestContext = IMPORTS_MANAGE,
-    _: None = Depends(csrf_required),
-    file: UploadFile = File(...),
-) -> dict[str, Any]:
-    """Import sales leads from Excel/CSV."""
-    rows = await _read_upload(file)
-    succeeded, errors = 0, []
-    for index, row in enumerate(rows, start=2):
-        name = (row.get("company_name") or row.get("full_name") or "").strip()
-        if len(name) < 2:
-            errors.append({"row": index, "error": "company_name is required"})
-            continue
-        try:
-            expected = Decimal(row["expected_premium"]) if row.get("expected_premium") else None
-        except InvalidOperation:
-            errors.append({"row": index, "error": "expected_premium is not a number"})
-            continue
-        ctx.db.add(
-            Lead(
-                id=uuid4(),
-                tenant_id=repo.tenant_id,
-                lead_no=_lead_no(),
-                company_name=name,
-                contact_name=(row.get("contact_name") or None),
-                mobile=normalize_mobile(row.get("mobile") or ""),
-                email=(row.get("email") or None),
-                source="manual",
-                insurance_type="general",
-                stage_code="new",
-                assigned_staff_id=ctx.actor.id,
-                expected_premium=expected,
-                notes=(row.get("notes") or None),
-                created_by=ctx.actor.id,
-            )
-        )
-        succeeded += 1
-    await ctx.db.flush()
-    return await _finish_import(
-        ctx, "leads", file.filename or "", None, len(rows), succeeded, errors
     )
 
 

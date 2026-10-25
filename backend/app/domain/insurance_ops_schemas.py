@@ -1,8 +1,13 @@
-"""Strict request schemas for Sales CRM, issuing, policy lifecycle and imports."""
+"""Strict request schemas for insurance operations.
+
+Issuing workflow, brokerage policy lifecycle (installments, commission
+settlements) and gateway payment intents. Sales CRM schemas moved to
+``app.domain.crm_module_schemas`` with the CRM unification (041).
+"""
 
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import date
 from decimal import Decimal
 from uuid import UUID
 
@@ -13,97 +18,9 @@ from app.domain.enums import (
     InstallmentPlan,
     InsuranceType,
     IssuingStatus,
-    LeadActivityKind,
-    LeadSource,
     PaymentProviderName,
 )
 from app.domain.schemas import StrictModel
-
-
-class PipelineStageUpsert(StrictModel):
-    id: UUID | None = None
-    code: str = Field(min_length=2, max_length=40, pattern=r"^[a-z][a-z0-9_]*$")
-    name_ar: str = Field(min_length=1, max_length=80)
-    name_en: str = Field(min_length=1, max_length=80)
-    sort_order: int = Field(default=0, ge=0, le=1000)
-    is_won: bool = False
-    is_lost: bool = False
-    is_converted: bool = False
-    is_active: bool = True
-
-    @model_validator(mode="after")
-    def _one_terminal_kind(self) -> PipelineStageUpsert:
-        if sum((self.is_won, self.is_lost, self.is_converted)) > 1:
-            raise ValueError("A stage can be won, lost or converted — at most one")
-        return self
-
-
-class LeadCreate(StrictModel):
-    company_name: str = Field(min_length=2, max_length=200)
-    contact_name: str | None = Field(default=None, max_length=160)
-    mobile: str | None = Field(default=None, pattern=r"^\+201[0-9]{9}$")
-    email: str | None = Field(default=None, max_length=254)
-    source: LeadSource = LeadSource.MANUAL
-    insurance_type: InsuranceType = InsuranceType.GENERAL
-    insurer_company_id: UUID | None = None
-    stage_code: str = Field(default="new", max_length=40)
-    assigned_staff_id: UUID | None = None
-    expected_premium: Decimal | None = Field(default=None, ge=0, le=Decimal("999999999"))
-    notes: str | None = Field(default=None, max_length=4000)
-    next_followup_at: datetime | None = None
-
-    @field_validator("next_followup_at")
-    @classmethod
-    def _aware(cls, value: datetime | None) -> datetime | None:
-        if value is not None and (value.tzinfo is None or value.utcoffset() is None):
-            raise ValueError("A timezone-aware timestamp is required")
-        return value
-
-
-class LeadUpdate(StrictModel):
-    company_name: str | None = Field(default=None, min_length=2, max_length=200)
-    contact_name: str | None = Field(default=None, max_length=160)
-    mobile: str | None = Field(default=None, pattern=r"^\+201[0-9]{9}$")
-    email: str | None = Field(default=None, max_length=254)
-    insurance_type: InsuranceType | None = None
-    insurer_company_id: UUID | None = None
-    stage_code: str | None = Field(default=None, max_length=40)
-    assigned_staff_id: UUID | None = None
-    expected_premium: Decimal | None = Field(default=None, ge=0, le=Decimal("999999999"))
-    notes: str | None = Field(default=None, max_length=4000)
-    lost_reason: str | None = Field(default=None, max_length=500)
-    next_followup_at: datetime | None = None
-
-    @field_validator("next_followup_at")
-    @classmethod
-    def _aware(cls, value: datetime | None) -> datetime | None:
-        if value is not None and (value.tzinfo is None or value.utcoffset() is None):
-            raise ValueError("A timezone-aware timestamp is required")
-        return value
-
-
-class LeadActivityCreate(StrictModel):
-    kind: LeadActivityKind
-    title: str = Field(min_length=1, max_length=200)
-    body: str | None = Field(default=None, max_length=4000)
-    due_at: datetime | None = None
-    done_at: datetime | None = None
-    outcome: str | None = Field(default=None, max_length=500)
-
-    @field_validator("due_at", "done_at")
-    @classmethod
-    def _aware(cls, value: datetime | None) -> datetime | None:
-        if value is not None and (value.tzinfo is None or value.utcoffset() is None):
-            raise ValueError("A timezone-aware timestamp is required")
-        return value
-
-
-class LeadConvert(StrictModel):
-    """One-click Lead → client conversion; slug/name default from the lead."""
-
-    slug: str | None = Field(default=None, max_length=80, pattern=r"^[a-z][a-z0-9-]*$")
-    name_ar: str | None = Field(default=None, max_length=200)
-    name_en: str | None = Field(default=None, max_length=200)
 
 
 class BrokeragePolicyCreate(StrictModel):
