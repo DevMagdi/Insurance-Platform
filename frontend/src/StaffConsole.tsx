@@ -30,6 +30,14 @@ const CustomersPage = lazy(async () => ({ default: (await import('./features/adm
 const AdminDashboard = lazy(async () => ({ default: (await import('./features/admin/AdminDashboard')).AdminDashboard }));
 const StoragePage = lazy(async () => ({ default: (await import('./features/admin/StoragePage')).StoragePage }));
 const CrmPage = lazy(async () => ({ default: (await import('./features/crm/CrmPage')).CrmPage }));
+const CrmModulePage = lazy(async () => ({ default: (await import('./features/crm-module/CrmModulePage')).CrmModulePage }));
+
+const CRM_MODULE_TABS = [
+  { tab: 'dashboard', label: 'CRM Dashboard' },
+  { tab: 'leads', label: 'Leads' },
+  { tab: 'import', label: 'Import Leads' },
+  { tab: 'history', label: 'Import History' },
+] as const;
 
 const EMPTY_FILTER_OPTIONS: ComplaintFilterOptions = { companies: [], agents: [], statuses: [], priorities: [], channels: [], insurance_types: [] };
 /** Filter options come from the server; tolerate a partial payload instead of blanking the console. */
@@ -103,12 +111,15 @@ function routeFromPath(pathname: string): AppRoute {
   if (path === '/staff/audit') return { page: 'audit' };
   if (path === '/staff/storage') return { page: 'storage' };
   if (path === '/staff/crm') return { page: 'crm' };
+  const crmModule = path.match(/^\/staff\/crm-module(?:\/(dashboard|leads|import|history))?$/);
+  if (crmModule) return { page: 'crm-module', tab: (crmModule[1] ?? 'dashboard') as 'dashboard' | 'leads' | 'import' | 'history' };
   return { page: 'overview' };
 }
 function pathForRoute(route: AppRoute): string {
   if (route.page === 'ticket') return `/staff/complaints/${encodeURIComponent(route.id)}`;
   if (route.page === 'overview') return '/staff/overview';
   if (route.page === 'complaints') return '/staff/complaints';
+  if (route.page === 'crm-module') return `/staff/crm-module/${route.tab}`;
   return `/staff/${route.page}`;
 }
 function activePage(route: AppRoute): AppRoute['page'] { return route.page === 'ticket' ? 'complaints' : route.page; }
@@ -201,6 +212,7 @@ function App() {
   // Administration is shut by default. Once an operator opens it the choice
   // sticks, so the people who do live there are not re-collapsing it daily.
   const [moreOpen, setMoreOpen] = useState(() => window.localStorage.getItem('wasiq-sidebar-more') === 'open');
+  const [crmOpen, setCrmOpen] = useState(true);
   const [notice, setNotice] = useState('');
   const [theme, setTheme] = useState<Theme>(readTheme);
 
@@ -357,7 +369,9 @@ function App() {
                 ? <StoragePage access={access} />
                 : route.page === 'crm'
                   ? <CrmPage access={access} />
-                  : <AuditPage access={access} range={range} />;
+                  : route.page === 'crm-module'
+                    ? <CrmModulePage access={access} tab={route.tab} onTab={(tab) => navigate({ page: 'crm-module', tab })} />
+                    : <AuditPage access={access} range={range} />;
   const workspaceLinks = visibleNavigation.filter((item) => item.section === 'workspace');
   const moreLinks = visibleNavigation.filter((item) => item.section === 'more');
   // A collapsed group must never hide where you actually are.
@@ -399,6 +413,31 @@ function App() {
             {workspaceLinks.map(navLink)}
           </nav>
         )}
+        {hasPermission(access, 'crm.view') && (
+          <nav className="nav-section" aria-label="CRM">
+            <button
+              type="button"
+              className={`nav-link${currentNav === 'crm-module' ? ' active' : ''}`}
+              aria-expanded={crmOpen || currentNav === 'crm-module'}
+              onClick={() => setCrmOpen((value) => !value)}
+            >
+              <span className="nav-icon"><Icon name="users" size={17} /></span>
+              <span>CRM</span>
+              <Icon name="chevron" size={13} />
+            </button>
+            {(crmOpen || currentNav === 'crm-module') && CRM_MODULE_TABS.map((item) => (
+              <button
+                type="button"
+                key={item.tab}
+                className={`nav-link nav-sublink${route.page === 'crm-module' && route.tab === item.tab ? ' active' : ''}`}
+                aria-current={route.page === 'crm-module' && route.tab === item.tab ? 'page' : undefined}
+                onClick={() => navigate({ page: 'crm-module', tab: item.tab })}
+              >
+                <span>{item.label}</span>
+              </button>
+            ))}
+          </nav>
+        )}
         {moreLinks.length > 0 && (
           <nav className={`nav-section nav-section-more${moreExpanded ? ' is-open' : ''}`} aria-label="المزيد">
             <button
@@ -421,7 +460,7 @@ function App() {
     </aside>
 
     <div className="main-shell">
-      <header className="topbar"><div className="topbar-leading"><button className="icon-button mobile-menu-button" type="button" aria-label="فتح القائمة" onClick={() => setMobileNav(true)}><Icon name="menu" size={20} /></button><div className="topbar-breadcrumb"><span>{brand.platform_name}</span><Icon name="chevron" size={13} /><strong>{NAVIGATION.find((item) => item.page === currentNav)?.label ?? (route.page === 'ticket' ? 'مساحة الطلب' : 'الإدارة')}</strong></div></div>
+      <header className="topbar"><div className="topbar-leading"><button className="icon-button mobile-menu-button" type="button" aria-label="فتح القائمة" onClick={() => setMobileNav(true)}><Icon name="menu" size={20} /></button><div className="topbar-breadcrumb"><span>{brand.platform_name}</span><Icon name="chevron" size={13} /><strong>{NAVIGATION.find((item) => item.page === currentNav)?.label ?? (route.page === 'ticket' ? 'مساحة الطلب' : route.page === 'crm-module' ? 'CRM' : 'الإدارة')}</strong></div></div>
         <div className="topbar-actions">{showDatePicker && <DateRangePicker value={range} onChange={setRange} />}<button className="command-trigger" type="button" onClick={() => setPaletteOpen(true)} aria-label="فتح مركز الأوامر"><Icon name="search" size={16} /><span>ابحث أو انتقل إلى…</span><kbd>⌘ K</kbd></button><div className="popover-anchor"><button className={`icon-button notification-trigger${notificationsOpen ? ' is-active' : ''}`} type="button" aria-label={`الإشعارات، ${unread} غير مقروءة`} onClick={() => setNotificationsOpen((value) => !value)}><Icon name="bell" size={18} />{unread > 0 && <i className="notification-count">{unread > 9 ? '9+' : unread}</i>}</button>{notificationsOpen && <NotificationPopover items={notifications} loading={notificationsLoading} onRead={(item) => { void onReadNotification(item); }} onClose={() => setNotificationsOpen(false)} />}</div><button className="icon-button theme-toggle" type="button" aria-label={theme === 'dark' ? 'تفعيل الوضع الفاتح' : 'تفعيل الوضع الداكن'} title="تبديل المظهر" onClick={() => setTheme((value) => value === 'dark' ? 'light' : 'dark')}><Icon name={theme === 'dark' ? 'sun' : 'moon'} size={17} /></button>
           <div className="popover-anchor user-menu-anchor">
             <button className="topbar-avatar avatar-circle avatar-active" type="button" aria-haspopup="menu" aria-expanded={userMenuOpen} aria-label="قائمة الحساب" title={access.full_name} onClick={() => setUserMenuOpen((value) => !value)}>{initials(access.full_name)}</button>
@@ -440,7 +479,7 @@ function App() {
       <main className="main-content"><div className="main-content-inner">
         {notice && <div className="inline-alert info global-notice" role="status">{notice}<button className="notice-close" type="button" aria-label="إخفاء" onClick={() => setNotice('')}><Icon name="close" size={14} /></button></div>}
         <Suspense fallback={<div className="loading-surface"><span className="loading-spinner" /> جارٍ تحميل مساحة العمل…</div>}>
-          {route.page === 'admin' && !canViewAdminDashboard(access) ? <AccessDenied title="لوحة الإدارة غير متاحة" /> : route.page === 'overview' && !(hasPermission(access, 'analytics.view') && hasPermission(access, 'complaints.view')) ? <AccessDenied title="لوحة المؤشرات غير متاحة" /> : route.page === 'complaints' || route.page === 'ticket' ? pageContent : route.page === 'users' && !hasPermission(access, 'users.view') ? <AccessDenied title="إدارة المستخدمين غير متاحة" /> : route.page === 'roles' && !hasPermission(access, 'roles.manage') ? <AccessDenied title="إدارة الأدوار غير متاحة" /> : route.page === 'channels' && !hasPermission(access, 'integrations.manage') ? <AccessDenied title="إعدادات القنوات غير متاحة" /> : route.page === 'operations' && !operationsAllowed(access) ? <AccessDenied title="إعدادات الإدارة غير متاحة" /> : route.page === 'storage' && !storageAllowed(access) ? <AccessDenied title="مركز التخزين غير متاح" /> : route.page === 'audit' && !hasPermission(access, 'audit.view') ? <AccessDenied title="سجل التدقيق غير متاح" /> : route.page === 'crm' && !hasPermission(access, 'crm.view') ? <AccessDenied title="المبيعات والوثائق غير متاحة" /> : pageContent}
+          {route.page === 'admin' && !canViewAdminDashboard(access) ? <AccessDenied title="لوحة الإدارة غير متاحة" /> : route.page === 'overview' && !(hasPermission(access, 'analytics.view') && hasPermission(access, 'complaints.view')) ? <AccessDenied title="لوحة المؤشرات غير متاحة" /> : route.page === 'complaints' || route.page === 'ticket' ? pageContent : route.page === 'users' && !hasPermission(access, 'users.view') ? <AccessDenied title="إدارة المستخدمين غير متاحة" /> : route.page === 'roles' && !hasPermission(access, 'roles.manage') ? <AccessDenied title="إدارة الأدوار غير متاحة" /> : route.page === 'channels' && !hasPermission(access, 'integrations.manage') ? <AccessDenied title="إعدادات القنوات غير متاحة" /> : route.page === 'operations' && !operationsAllowed(access) ? <AccessDenied title="إعدادات الإدارة غير متاحة" /> : route.page === 'storage' && !storageAllowed(access) ? <AccessDenied title="مركز التخزين غير متاح" /> : route.page === 'audit' && !hasPermission(access, 'audit.view') ? <AccessDenied title="سجل التدقيق غير متاح" /> : route.page === 'crm' && !hasPermission(access, 'crm.view') ? <AccessDenied title="المبيعات والوثائق غير متاحة" /> : route.page === 'crm-module' && !hasPermission(access, 'crm.view') ? <AccessDenied title="CRM غير متاح" /> : pageContent}
         </Suspense>
       </div></main>
       <footer className="app-footer"><span>{brand.platform_name}</span><span><Icon name="shield" size={13} /> كل إجراء محمي بنطاق الوصول الفعّال</span><button type="button" onClick={() => setShortcutsOpen(true)}><Icon name="keyboard" size={13} /> اختصارات لوحة المفاتيح</button></footer>

@@ -1,0 +1,10 @@
+/* Isolated CRM module (/staff/crm-module): dashboard, leads, import, history. */
+.crmm-drop { border: 2px dashed var(--border, #c9d2e4); border-radius: 16px; padding: 28px; text-align: center; transition: border-color .15s, background .15s; }
+.crmm-drop.is-over { border-color: var(--accent, #0f2a52); background: rgba(15, 42, 82, .05); }
+.crmm-progress { height: 10px; border-radius: 999px; background: rgba(127,140,170,.18); overflow: hidden; }
+.crmm-progress > div { height: 100%; background: var(--accent, #0f2a52); transition: width .2s; }
+.crmm-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+.crmm-toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; }
+.crmm-pager { display: flex; gap: 8px; align-items: center; justify-content: flex-end; padding: 10px 0; }
+.crmm-timeline { list-style: none; margin: 0; padding: 0; }
+.crmm-timeline li { border-inline-start: 3px solid var(--border, #d9dee8); padding: 6px 12px; margin-bottom: 8px; }

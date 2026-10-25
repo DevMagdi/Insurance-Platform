@@ -914,3 +914,5 @@
   .staff-console .storage-detail-grid { grid-template-columns: 1fr; }
   .staff-console .storage-detail-etag { grid-column: auto; }
 }
+/* CRM module sub-navigation (expandable sidebar group). */
+.nav-sublink { padding-inline-start: 2.6rem; font-size: .86em; opacity: .92; }

@@ -349,4 +349,5 @@ export type AppRoute =
   | { page: 'operations' }
   | { page: 'audit' }
   | { page: 'crm' }
+  | { page: 'crm-module'; tab: 'dashboard' | 'leads' | 'import' | 'history' }
   | { page: 'storage' };
