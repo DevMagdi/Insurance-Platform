@@ -435,4 +435,29 @@ erDiagram
       text kind
       integer rows_total
     }
+    CRM_LEADS {
+      uuid id PK
+      uuid tenant_id FK
+      text phone UK
+      text status
+      uuid import_batch_id FK
+    }
+    CRM_IMPORT_BATCHES {
+      uuid id PK
+      uuid tenant_id FK
+      integer success_rows
+      text status
+    }
+    CRM_IMPORT_ERRORS {
+      uuid id PK
+      uuid batch_id FK
+      integer row_number
+      text reason
+    }
+    CRM_ACTIVITIES {
+      uuid id PK
+      uuid lead_id FK
+      text type
+      timestamptz created_at
+    }
 ```

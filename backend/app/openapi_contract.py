@@ -17,6 +17,7 @@ from app.api import (
     auth,
     catalog,
     crm,
+    crm_module,
     customer,
     exports,
     integration_webhooks,
@@ -114,6 +115,7 @@ def decorate_spec(app: FastAPI, spec: dict[str, Any]) -> dict[str, Any]:
         *platform.router.routes,
         *crm.router.routes,
         *crm.payments_router.routes,
+        *crm_module.router.routes,
     ]
     for route in routes:
         if not isinstance(route, APIRoute) or not route.include_in_schema:

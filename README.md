@@ -10,6 +10,7 @@ Documentation:
 * [API guide](docs/API.md), [implemented HTTP OpenAPI](docs/openapi.yaml), [future-route roadmap](docs/openapi-roadmap.yaml)
 * Portal and phase notes: [customer portal](docs/CUSTOMER_PORTAL.md), [staff](docs/STAFF_PORTAL.md), [built-in storage admin](docs/STORAGE_ADMIN.md), [Phase 7](docs/PHASE_7.md), [Phase 5 frontend](docs/PHASE5_FRONTEND.md)
 * Service-desk/CRM spec mapping (multi-tenancy, Excel import, Client Folder, Sales CRM, issuing, policy lifecycle/commissions, Fawry/Paymob, Celery): [PHASE12.md](docs/PHASE12.md)
+* Isolated CRM module (dedicated `crm_*` tables, Excel lead import, `/api/crm`, `/staff/crm-module`): [CRM_MODULE.md](docs/CRM_MODULE.md)
 
 The old `/api/v1/*` roadmap paths are **not** live routes.
 

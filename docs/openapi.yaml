@@ -9585,6 +9585,569 @@ paths:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
       security: []
+  /api/crm/leads:
+    get:
+      tags:
+      - crm-module
+      summary: List Leads
+      operationId: list_leads_api_crm_leads_get
+      parameters:
+      - name: search
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            maxLength: 120
+          - type: 'null'
+          title: Search
+      - name: status
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Status
+      - name: source
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Source
+      - name: assigned_to
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Assigned To
+      - name: date_from
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Date From
+      - name: date_to
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Date To
+      - name: sort
+        in: query
+        required: false
+        schema:
+          type: string
+          default: created_at
+          title: Sort
+      - name: order
+        in: query
+        required: false
+        schema:
+          type: string
+          default: desc
+          title: Order
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+          title: Page
+      - name: page_size
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 200
+          minimum: 1
+          default: 20
+          title: Page Size
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response List Leads Api Crm Leads Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: crm.view
+    post:
+      tags:
+      - crm-module
+      summary: Create Lead
+      operationId: create_lead_api_crm_leads_post
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CrmLeadCreate'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Create Lead Api Crm Leads Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: crm.manage
+      parameters:
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
+  /api/crm/leads/{lead_id}:
+    get:
+      tags:
+      - crm-module
+      summary: Get Lead
+      operationId: get_lead_api_crm_leads__lead_id__get
+      parameters:
+      - name: lead_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Lead Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Get Lead Api Crm Leads  Lead Id  Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: crm.view
+    patch:
+      tags:
+      - crm-module
+      summary: Update Lead
+      operationId: update_lead_api_crm_leads__lead_id__patch
+      parameters:
+      - name: lead_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Lead Id
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CrmLeadUpdate'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Update Lead Api Crm Leads  Lead Id  Patch
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: crm.manage
+    delete:
+      tags:
+      - crm-module
+      summary: Delete Lead
+      operationId: delete_lead_api_crm_leads__lead_id__delete
+      parameters:
+      - name: lead_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Lead Id
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Delete Lead Api Crm Leads  Lead Id  Delete
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: crm.manage
+  /api/crm/leads/bulk-assign:
+    post:
+      tags:
+      - crm-module
+      summary: Bulk Assign
+      operationId: bulk_assign_api_crm_leads_bulk_assign_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CrmBulkAssign'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response Bulk Assign Api Crm Leads Bulk Assign Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: crm.manage
+      parameters:
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
+  /api/crm/leads/bulk-status:
+    post:
+      tags:
+      - crm-module
+      summary: Bulk Status
+      operationId: bulk_status_api_crm_leads_bulk_status_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CrmBulkStatus'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response Bulk Status Api Crm Leads Bulk Status Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: crm.manage
+      parameters:
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
+  /api/crm/leads/{lead_id}/activities:
+    post:
+      tags:
+      - crm-module
+      summary: Add Activity
+      operationId: add_activity_api_crm_leads__lead_id__activities_post
+      parameters:
+      - name: lead_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Lead Id
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CrmActivityCreate'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Add Activity Api Crm Leads  Lead Id  Activities Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: crm.manage
+  /api/crm/imports/preview:
+    post:
+      tags:
+      - crm-module
+      summary: Preview Import
+      description: 'Parse only: detected columns, first rows and row-level validity
+        counts.'
+      operationId: preview_import_api_crm_imports_preview_post
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Body_preview_import_api_crm_imports_preview_post'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response Preview Import Api Crm Imports Preview Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: crm.manage
+      parameters:
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
+  /api/crm/imports:
+    get:
+      tags:
+      - crm-module
+      summary: List Imports
+      operationId: list_imports_api_crm_imports_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response List Imports Api Crm Imports Get
+      security:
+      - AccessCookie: []
+      x-required-permission: crm.view
+    post:
+      tags:
+      - crm-module
+      summary: Import Leads
+      description: Import a workbook in one transaction; duplicates become per-row
+        errors.
+      operationId: import_leads_api_crm_imports_post
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Body_import_leads_api_crm_imports_post'
+        required: true
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response Import Leads Api Crm Imports Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: crm.manage
+      parameters:
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
+  /api/crm/imports/template.xlsx:
+    get:
+      tags:
+      - crm-module
+      summary: Import Template
+      operationId: import_template_api_crm_imports_template_xlsx_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+      security:
+      - AccessCookie: []
+      x-required-permission: crm.view
+  /api/crm/imports/{batch_id}:
+    get:
+      tags:
+      - crm-module
+      summary: Get Import
+      operationId: get_import_api_crm_imports__batch_id__get
+      parameters:
+      - name: batch_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Batch Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Get Import Api Crm Imports  Batch Id  Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: crm.view
+  /api/crm/imports/{batch_id}/errors.csv:
+    get:
+      tags:
+      - crm-module
+      summary: Import Errors Csv
+      operationId: import_errors_csv_api_crm_imports__batch_id__errors_csv_get
+      parameters:
+      - name: batch_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Batch Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: crm.view
+  /api/crm/stats:
+    get:
+      tags:
+      - crm-module
+      summary: Stats
+      operationId: stats_api_crm_stats_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response Stats Api Crm Stats Get
+      security:
+      - AccessCookie: []
+      x-required-permission: crm.view
   /api/public/config:
     get:
       tags:
@@ -10043,6 +10606,16 @@ components:
       - file
       - corporate_client_id
       title: Body_import_employees_api_staff_crm_imports_employees_post
+    Body_import_leads_api_crm_imports_post:
+      properties:
+        file:
+          type: string
+          contentMediaType: application/octet-stream
+          title: File
+      type: object
+      required:
+      - file
+      title: Body_import_leads_api_crm_imports_post
     Body_import_leads_api_staff_crm_imports_leads_post:
       properties:
         file:
@@ -10053,6 +10626,16 @@ components:
       required:
       - file
       title: Body_import_leads_api_staff_crm_imports_leads_post
+    Body_preview_import_api_crm_imports_preview_post:
+      properties:
+        file:
+          type: string
+          contentMediaType: application/octet-stream
+          title: File
+      type: object
+      required:
+      - file
+      title: Body_preview_import_api_crm_imports_preview_post
     BrokeragePolicyCreate:
       properties:
         corporate_client_id:
@@ -10867,6 +11450,175 @@ components:
       - full_name
       - password
       title: CorporateUserCreate
+    CrmActivityCreate:
+      properties:
+        type:
+          $ref: '#/components/schemas/CrmActivityType'
+          default: note
+        description:
+          type: string
+          maxLength: 4000
+          minLength: 1
+          title: Description
+      additionalProperties: false
+      type: object
+      required:
+      - description
+      title: CrmActivityCreate
+    CrmActivityType:
+      type: string
+      enum:
+      - call
+      - note
+      - status_change
+      - whatsapp
+      - email
+      - meeting
+      - assignment
+      title: CrmActivityType
+    CrmBulkAssign:
+      properties:
+        ids:
+          items:
+            type: string
+            format: uuid
+          type: array
+          maxItems: 500
+          minItems: 1
+          title: Ids
+        assigned_to:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Assigned To
+      additionalProperties: false
+      type: object
+      required:
+      - ids
+      title: CrmBulkAssign
+    CrmBulkStatus:
+      properties:
+        ids:
+          items:
+            type: string
+            format: uuid
+          type: array
+          maxItems: 500
+          minItems: 1
+          title: Ids
+        status:
+          $ref: '#/components/schemas/CrmLeadStatus'
+      additionalProperties: false
+      type: object
+      required:
+      - ids
+      - status
+      title: CrmBulkStatus
+    CrmLeadCreate:
+      properties:
+        full_name:
+          type: string
+          maxLength: 160
+          minLength: 2
+          title: Full Name
+        phone:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Phone
+        email:
+          anyOf:
+          - type: string
+            maxLength: 254
+          - type: 'null'
+          title: Email
+        source:
+          $ref: '#/components/schemas/CrmLeadSource'
+          default: manual
+        status:
+          $ref: '#/components/schemas/CrmLeadStatus'
+          default: new
+        assigned_to:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Assigned To
+        notes:
+          anyOf:
+          - type: string
+            maxLength: 4000
+          - type: 'null'
+          title: Notes
+      additionalProperties: false
+      type: object
+      required:
+      - full_name
+      title: CrmLeadCreate
+    CrmLeadSource:
+      type: string
+      enum:
+      - manual
+      - whatsapp
+      - call
+      - email
+      - portal
+      - import
+      - other
+      title: CrmLeadSource
+    CrmLeadStatus:
+      type: string
+      enum:
+      - new
+      - contacted
+      - qualified
+      - converted
+      - lost
+      title: CrmLeadStatus
+    CrmLeadUpdate:
+      properties:
+        full_name:
+          anyOf:
+          - type: string
+            maxLength: 160
+            minLength: 2
+          - type: 'null'
+          title: Full Name
+        phone:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Phone
+        email:
+          anyOf:
+          - type: string
+            maxLength: 254
+          - type: 'null'
+          title: Email
+        source:
+          anyOf:
+          - $ref: '#/components/schemas/CrmLeadSource'
+          - type: 'null'
+        status:
+          anyOf:
+          - $ref: '#/components/schemas/CrmLeadStatus'
+          - type: 'null'
+        assigned_to:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Assigned To
+        notes:
+          anyOf:
+          - type: string
+            maxLength: 4000
+          - type: 'null'
+          title: Notes
+      additionalProperties: false
+      type: object
+      title: CrmLeadUpdate
     CsatRequest:
       properties:
         score:

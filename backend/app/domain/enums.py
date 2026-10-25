@@ -169,6 +169,37 @@ class ImportKind(StrEnum):
     LEADS = "leads"
 
 
+# --- Isolated CRM module (crm_* tables, /api/crm) -----------------------------
+
+
+class CrmLeadStatus(StrEnum):
+    NEW = "new"
+    CONTACTED = "contacted"
+    QUALIFIED = "qualified"
+    CONVERTED = "converted"
+    LOST = "lost"
+
+
+class CrmLeadSource(StrEnum):
+    MANUAL = "manual"
+    WHATSAPP = "whatsapp"
+    CALL = "call"
+    EMAIL = "email"
+    PORTAL = "portal"
+    IMPORT = "import"
+    OTHER = "other"
+
+
+class CrmActivityType(StrEnum):
+    CALL = "call"
+    NOTE = "note"
+    STATUS_CHANGE = "status_change"
+    WHATSAPP = "whatsapp"
+    EMAIL = "email"
+    MEETING = "meeting"
+    ASSIGNMENT = "assignment"
+
+
 class ContractDocumentKind(StrEnum):
     CONTRACT = "contract"
     POLICY = "policy"
