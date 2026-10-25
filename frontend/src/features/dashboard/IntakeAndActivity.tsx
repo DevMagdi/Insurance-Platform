@@ -32,7 +32,7 @@ interface SourceSpec {
  */
 const SOURCES: SourceSpec[] = [
   { id: 'whatsapp', label: 'واتساب', icon: 'message', color: '#128C7E', tint: 'rgba(18, 140, 126, 0.13)' },
-  { id: 'phone', label: 'مكالمات', icon: 'phone', color: '#4A86D9', tint: 'rgba(74, 134, 217, 0.13)' },
+  { id: 'phone', label: 'مكالمات', icon: 'phone', color: '#3E74D6', tint: 'rgba(62, 116, 214, 0.13)' },
   { id: 'email', label: 'بريد إلكتروني', icon: 'mail', color: '#C46A85', tint: 'rgba(196, 106, 133, 0.13)' },
 ];
 

@@ -199,10 +199,10 @@ for (const theme of ['light', 'dark'] as const) {
         const style = getComputedStyle(document.documentElement);
         return { surface: style.getPropertyValue('--surface').trim(), ink: style.getPropertyValue('--text-primary').trim() };
       });
-      // Premium insurance palette (design-system v3): navy-ink cards on dark,
-      // warm white text; white cards and deep navy ink on light.
-      expect(tokens.surface).toBe(theme === 'dark' ? '#111b2e' : '#ffffff');
-      expect(tokens.ink).toBe(theme === 'dark' ? '#f6f3ec' : '#0b1220');
+      // Amani Reserve palette (design-system v4): warm charcoal cards on
+      // dark, warm paper cards and green-black ink on light.
+      expect(tokens.surface).toBe(theme === 'dark' ? '#17202a' : '#fffdf9');
+      expect(tokens.ink).toBe(theme === 'dark' ? '#f7f4ee' : '#1a1f1a');
       await page.screenshot({ path: testInfo.outputPath(`customer-${theme}-${language}.png`), fullPage: true });
     });
   }

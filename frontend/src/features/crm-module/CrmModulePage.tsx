@@ -139,9 +139,9 @@ function Dashboard({ onError, stageLabel }: { onError: (v: string) => void; stag
       <div className="summary-stat"><div><strong className={stats.due_tasks.overdue ? 'crmm-overdue' : ''}>{formatNumber(stats.due_tasks.overdue)}</strong><small>مهام متأخرة · اليوم {formatNumber(stats.due_tasks.today)}</small></div></div>
     </section>
     <div className="crmm-grid">
-      <section className="surface-card"><h3>حسب مرحلة البايبلاين</h3><ResponsiveContainer width="100%" height={220}><BarChart data={stageData}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" interval={0} angle={-20} textAnchor="end" height={60} /><YAxis allowDecimals={false} /><Tooltip /><Bar dataKey="count" fill="#5b84b8" radius={[6, 6, 0, 0]} /></BarChart></ResponsiveContainer></section>
-      <section className="surface-card"><h3>حسب المصدر</h3><ResponsiveContainer width="100%" height={220}><BarChart data={sourceData}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" /><YAxis allowDecimals={false} /><Tooltip /><Bar dataKey="count" fill="#b8912f" radius={[6, 6, 0, 0]} /></BarChart></ResponsiveContainer></section>
-      <section className="surface-card"><h3>الجدد آخر ٣٠ يوماً</h3><ResponsiveContainer width="100%" height={220}><BarChart data={stats.last_30_days}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="date" hide /><YAxis allowDecimals={false} /><Tooltip /><Bar dataKey="count" fill="#1d7a5f" /></BarChart></ResponsiveContainer></section>
+      <section className="surface-card"><h3>حسب مرحلة البايبلاين</h3><ResponsiveContainer width="100%" height={220}><BarChart data={stageData}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" interval={0} angle={-20} textAnchor="end" height={60} /><YAxis allowDecimals={false} /><Tooltip /><Bar dataKey="count" fill="#5e768e" radius={[6, 6, 0, 0]} /></BarChart></ResponsiveContainer></section>
+      <section className="surface-card"><h3>حسب المصدر</h3><ResponsiveContainer width="100%" height={220}><BarChart data={sourceData}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" /><YAxis allowDecimals={false} /><Tooltip /><Bar dataKey="count" fill="#b88a2b" radius={[6, 6, 0, 0]} /></BarChart></ResponsiveContainer></section>
+      <section className="surface-card"><h3>الجدد آخر ٣٠ يوماً</h3><ResponsiveContainer width="100%" height={220}><BarChart data={stats.last_30_days}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="date" hide /><YAxis allowDecimals={false} /><Tooltip /><Bar dataKey="count" fill="#2e8a7d" /></BarChart></ResponsiveContainer></section>
     </div>
     <div className="crmm-grid">
       <section className="surface-card"><h3>أحدث العملاء المحتملين</h3>{stats.recent_leads.map((lead) => <p key={lead.id}>{lead.company_name ?? lead.full_name} · {stageLabel(lead.stage_code)} · <span dir="ltr">{lead.phone ?? ''}</span></p>)}{!stats.recent_leads.length && <div className="empty-inline">لا بيانات بعد — استورد ملف Excel للبدء.</div>}</section>
@@ -578,7 +578,7 @@ function Performance({ onError }: { onError: (v: string) => void }) {
       <label className="field-label">إلى تاريخ<input type="date" value={to} onChange={(e) => setTo(e.target.value)} /></label>
     </div></section>
     <section className="surface-card"><h3>معدل التحويل وقيمة الصفقات لكل بياع</h3>
-      <ResponsiveContainer width="100%" height={240}><BarChart data={rows}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="full_name" /><YAxis /><Tooltip /><Bar dataKey="conversion_rate" fill="#5b84b8" name="معدل التحويل ٪" radius={[6, 6, 0, 0]} /></BarChart></ResponsiveContainer>
+      <ResponsiveContainer width="100%" height={240}><BarChart data={rows}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="full_name" /><YAxis /><Tooltip /><Bar dataKey="conversion_rate" fill="#5e768e" name="معدل التحويل ٪" radius={[6, 6, 0, 0]} /></BarChart></ResponsiveContainer>
     </section>
     <section className="surface-card admin-table-card"><div className="table-wrap"><table className="data-table"><thead><tr>
       <th>البياع</th><th>Leads</th><th>ربح</th><th>خسارة</th><th>تحويل</th><th>معدل التحويل</th><th>قيمة الصفقات الرابحة</th><th>قيمة البايبلاين</th><th>متوسط زمن الإغلاق (يوم)</th><th>مهام منجزة</th><th>مهام متأخرة</th>

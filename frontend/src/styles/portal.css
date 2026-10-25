@@ -8,7 +8,7 @@
   display: flex;
   flex-direction: column;
   background:
-    radial-gradient(1200px 600px at 85% -10%, rgba(198, 167, 94, 0.055), transparent 60%),
+    radial-gradient(1200px 600px at 85% -10%, rgba(184, 138, 43, 0.055), transparent 60%),
     radial-gradient(900px 520px at 5% 5%, rgba(15, 118, 110, 0.05), transparent 55%),
     var(--surface-0);
   color: var(--ink-900);
@@ -16,7 +16,7 @@
 
 .dark .portal-shell {
   background:
-    radial-gradient(1100px 560px at 82% -12%, rgba(198, 167, 94, 0.06), transparent 60%),
+    radial-gradient(1100px 560px at 82% -12%, rgba(184, 138, 43, 0.06), transparent 60%),
     radial-gradient(900px 520px at 0% 8%, rgba(15, 118, 110, 0.08), transparent 55%),
     var(--surface-0);
 }
@@ -93,7 +93,7 @@
   /* Inverted chips keep fixed values. Built from --navy-* they became
      white → black in light mode, and anything light-on-top vanished. */
   background: linear-gradient(150deg, var(--slab-1), var(--slab-2));
-  box-shadow: 0 6px 16px -8px rgba(11, 18, 32, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  box-shadow: 0 6px 16px -8px rgba(16, 21, 28, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.12);
   color: var(--accent-400);
 }
 
@@ -392,7 +392,7 @@ html[dir='rtl'] .account-trigger {
   border-radius: var(--r-2xl) var(--r-2xl) 0 0;
   border-top: 1px solid var(--line);
   padding: 12px 20px calc(24px + env(safe-area-inset-bottom));
-  box-shadow: 0 -24px 60px -30px rgba(11, 18, 32, 0.4);
+  box-shadow: 0 -24px 60px -30px rgba(16, 21, 28, 0.4);
 }
 
 .mobile-sheet-grabber {
@@ -437,7 +437,7 @@ html[dir='rtl'] .account-trigger {
     background: color-mix(in srgb, var(--surface-1) 92%, transparent);
     backdrop-filter: blur(20px) saturate(1.5);
     -webkit-backdrop-filter: blur(20px) saturate(1.5);
-    box-shadow: 0 16px 40px -18px rgba(11, 18, 32, 0.34);
+    box-shadow: 0 16px 40px -18px rgba(16, 21, 28, 0.34);
   }
 
   .mobile-bottom-nav a {
@@ -485,7 +485,7 @@ html[dir='rtl'] .account-trigger {
     border-radius: 16px;
     background: linear-gradient(150deg, var(--slab-1), var(--slab-2));
     color: var(--accent-300);
-    box-shadow: 0 12px 24px -10px rgba(11, 18, 32, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+    box-shadow: 0 12px 24px -10px rgba(16, 21, 28, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.12);
   }
 
   .mobile-bottom-nav .fab span {
@@ -622,17 +622,18 @@ html[lang='ar'] .footer-col h4 {
   top: -140px;
   height: 520px;
   z-index: -1;
+  /* Amani: one warm gradient from surface-2 into the canvas and a single
+     faint gold bloom behind the call to action — nothing else glows. */
   background:
-    radial-gradient(48% 62% at 88% 22%, color-mix(in srgb, var(--accent-500) 9%, transparent), transparent 72%),
-    radial-gradient(44% 56% at 6% 10%, color-mix(in srgb, var(--info) 6%, transparent), transparent 72%),
-    linear-gradient(180deg, var(--surface-1) 0%, color-mix(in srgb, var(--surface-1) 40%, transparent) 46%, transparent 86%);
+    radial-gradient(46% 60% at 88% 24%, rgba(166, 123, 34, 0.1), transparent 70%),
+    linear-gradient(180deg, var(--surface-2) 0%, var(--canvas) 52%, transparent 88%);
   pointer-events: none;
 }
 
 .dark .hero::before {
   background:
-    radial-gradient(46% 64% at 90% 30%, color-mix(in srgb, var(--accent-500) 11%, transparent), transparent 70%),
-    radial-gradient(42% 58% at 4% 20%, color-mix(in srgb, var(--surface-2) 70%, transparent), transparent 70%);
+    radial-gradient(46% 60% at 88% 24%, rgba(184, 138, 43, 0.13), transparent 70%),
+    linear-gradient(180deg, var(--surface-2) 0%, var(--canvas) 55%, transparent 90%);
 }
 
 .hero-grid {
@@ -681,7 +682,7 @@ html[dir='rtl'] .hero-eyebrow {
 }
 
 .dark .hero-eyebrow .tag {
-  background: rgba(198, 167, 94, 0.14);
+  background: rgba(184, 138, 43, 0.14);
   color: var(--gold-300);
 }
 
@@ -719,7 +720,7 @@ html[lang='ar'] .hero h1 {
   bottom: -4px;
   height: 6px;
   border-radius: 99px;
-  background: linear-gradient(90deg, rgba(198, 167, 94, 0.32), rgba(198, 167, 94, 0.04));
+  background: linear-gradient(90deg, rgba(184, 138, 43, 0.32), rgba(184, 138, 43, 0.04));
 }
 
 .hero-lead {
@@ -783,7 +784,7 @@ html[lang='ar'] .hero h1 {
   background:
     radial-gradient(80% 70% at 30% 20%, color-mix(in srgb, var(--accent-500) 13%, transparent), transparent 62%),
     radial-gradient(70% 70% at 80% 80%, color-mix(in srgb, var(--info) 10%, transparent), transparent 60%),
-    linear-gradient(160deg, #ffffff, #edf1f7);
+    linear-gradient(160deg, #fffdf9, #f0eae0);
   border: 1px solid var(--line);
   transform: rotate(-2deg);
   box-shadow: var(--shadow-lg);
@@ -791,9 +792,9 @@ html[lang='ar'] .hero h1 {
 
 .dark .hero-visual::before {
   background:
-    radial-gradient(80% 70% at 30% 20%, rgba(198, 167, 94, 0.18), transparent 62%),
+    radial-gradient(80% 70% at 30% 20%, rgba(184, 138, 43, 0.18), transparent 62%),
     radial-gradient(70% 70% at 80% 80%, rgba(96, 165, 250, 0.1), transparent 60%),
-    linear-gradient(160deg, var(--surface-1), #060b16);
+    linear-gradient(160deg, var(--surface-1), #0b0f14);
   border-color: rgba(255, 255, 255, 0.06);
 }
 
@@ -826,7 +827,7 @@ html[lang='ar'] .hero h1 {
 .dark .hero-card {
   border-color: rgba(255, 255, 255, 0.12);
   background: color-mix(in srgb, var(--surface-1) 92%, transparent);
-  box-shadow: 0 30px 70px -28px rgba(11, 18, 32, 0.8);
+  box-shadow: 0 30px 70px -28px rgba(16, 21, 28, 0.8);
 }
 
 .hero-card-head {
@@ -920,11 +921,11 @@ html[lang='ar'] .hero h1 {
   background: var(--gold-100);
   color: var(--gold-700);
   border-color: color-mix(in srgb, var(--gold-500) 30%, transparent);
-  box-shadow: 0 0 0 4px rgba(198, 167, 94, 0.1);
+  box-shadow: 0 0 0 4px rgba(184, 138, 43, 0.1);
 }
 
 .dark .hero-timeline-dot.current {
-  background: rgba(198, 167, 94, 0.16);
+  background: rgba(184, 138, 43, 0.16);
   color: var(--gold-300);
 }
 
@@ -1237,7 +1238,7 @@ html[lang='ar'] .section-head h2 {
   width: 120px;
   height: 120px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(198, 167, 94, 0.09), transparent 70%);
+  background: radial-gradient(circle, rgba(184, 138, 43, 0.09), transparent 70%);
 }
 
 .step-top {
@@ -1329,7 +1330,7 @@ html[dir='rtl'] .step-arrow svg {
      var(--navy-800) (white, in light) to var(--navy-950), so its heading sat
      as #E8EDF3 on near-white — a 1.06:1 headline. */
   background:
-    radial-gradient(120% 100% at 0% 0%, rgba(198, 167, 94, 0.16), transparent 55%),
+    radial-gradient(120% 100% at 0% 0%, rgba(184, 138, 43, 0.16), transparent 55%),
     linear-gradient(160deg, var(--slab-1), var(--slab-2));
   color: #e8edf3;
   display: flex;
@@ -1569,7 +1570,7 @@ html[dir='rtl'] .step-arrow svg {
      flip white in light mode again (it once did, and the closing headline
      of the landing page was invisible). */
   background:
-    radial-gradient(90% 140% at 100% 0%, rgba(198, 167, 94, 0.2), transparent 55%),
+    radial-gradient(90% 140% at 100% 0%, rgba(184, 138, 43, 0.2), transparent 55%),
     linear-gradient(135deg, var(--slab-1), var(--slab-2));
   color: #eef2f6;
   box-shadow: var(--shadow-lg);
@@ -1608,17 +1609,17 @@ html[lang='ar'] .cta-band h2 {
   line-height: 1.85;
 }
 
-/* On the navy band the primary is the house gold with navy ink — one
-   accent, one voice, and it harmonises with the faint gold bloom behind
-   the slab instead of fighting it. */
+/* On the warm-dark band the primary is the Amani gold with the fixed dark
+   ink (#141a14 in both themes — the slab is theme-invariant, so is its
+   button), harmonising with the faint gold bloom behind the slab. */
 .cta-band .btn-primary {
-  --btn-bg: var(--gold-500);
-  --btn-fg: var(--ink-on-accent);
+  --btn-bg: #c99a3a;
+  --btn-fg: #141a14;
   box-shadow: var(--shadow-gold);
 }
 
 .cta-band .btn-primary:hover:not(:disabled) {
-  --btn-bg: var(--gold-400);
+  --btn-bg: #b88a2b;
 }
 
 .cta-band-actions {
@@ -2195,11 +2196,11 @@ html[lang='ar'] .track-result-body dt {
 .choice-card[aria-checked='true'] {
   border-color: var(--gold-500);
   background: color-mix(in srgb, var(--gold-100) 55%, var(--surface-1));
-  box-shadow: 0 0 0 3px rgba(198, 167, 94, 0.12);
+  box-shadow: 0 0 0 3px rgba(184, 138, 43, 0.12);
 }
 
 .dark .choice-card[aria-checked='true'] {
-  background: rgba(198, 167, 94, 0.08);
+  background: rgba(184, 138, 43, 0.08);
 }
 
 .choice-card strong {
@@ -2344,7 +2345,7 @@ html[lang='ar'] .track-result-body dt {
 }
 
 .dark .otp-panel {
-  background: rgba(198, 167, 94, 0.06);
+  background: rgba(184, 138, 43, 0.06);
 }
 
 .otp-panel h3 {
@@ -2593,7 +2594,7 @@ html[lang='ar'] .track-result-body dt {
     z-index: 5;
     padding: 12px 20px;
     background: var(--surface-1);
-    box-shadow: 0 -10px 24px -18px rgba(11, 18, 32, 0.35);
+    box-shadow: 0 -10px 24px -18px rgba(16, 21, 28, 0.35);
     flex-wrap: wrap;
     row-gap: 10px;
   }
@@ -2813,7 +2814,7 @@ html[lang='ar'] .track-result-body dt {
 
 .counter-card:first-child {
   background:
-    radial-gradient(90% 120% at 100% 0%, rgba(198, 167, 94, 0.1), transparent 55%),
+    radial-gradient(90% 120% at 100% 0%, rgba(184, 138, 43, 0.1), transparent 55%),
     var(--surface-1);
 }
 
@@ -3581,7 +3582,7 @@ html[dir='rtl'] .back-link svg {
 }
 
 .dark .star-btn.is-active {
-  background: rgba(198, 167, 94, 0.12);
+  background: rgba(184, 138, 43, 0.12);
 }
 
 @media (max-width: 1020px) {
@@ -3873,7 +3874,7 @@ html[dir='ltr'] .journey-rail::after {
 }
 
 .dark .notification-row.is-unread {
-  background: rgba(198, 167, 94, 0.04);
+  background: rgba(184, 138, 43, 0.04);
 }
 
 .notification-icon {

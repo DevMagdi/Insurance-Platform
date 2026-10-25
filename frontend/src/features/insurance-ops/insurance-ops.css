@@ -1,6 +1,6 @@
 /* Insurance operations: tabbed workspace (policies, issuing, imports). */
 .iops-tabs { display: flex; flex-wrap: wrap; gap: 8px; }
 .iops-tabs button { border: 1px solid var(--line, #d9dee8); background: transparent; border-radius: var(--r-pill, 999px); padding: 7px 14px; cursor: pointer; font: inherit; }
-.iops-tabs button.active { background: var(--accent-600, #c6a75e); color: var(--ink-on-accent, #0b1220); border-color: transparent; }
+.iops-tabs button.active { background: var(--accent-600, #b88a2b); color: var(--ink-on-accent, #141a14); border-color: transparent; }
 .iops-form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; align-items: end; }
 .iops-split { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }

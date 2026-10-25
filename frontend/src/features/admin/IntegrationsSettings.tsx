@@ -339,8 +339,8 @@ const CHANNELS: ChannelSpec[] = [
     setupHint: 'يتطلب رقماً من مزوّد اتصالات',
     chooseHint: 'اختر مزوّد الاتصالات الذي يستقبل مكالمات العملاء.',
     icon: 'phone',
-    color: '#4A86D9',
-    tint: 'rgba(74, 134, 217, 0.12)',
+    color: '#3E74D6',
+    tint: 'rgba(62, 116, 214, 0.12)',
     providers: ['twilio', 'vonage'],
   },
   {
