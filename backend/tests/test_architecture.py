@@ -255,6 +255,7 @@ def test_sql_migrations_cover_every_requested_table_and_fail_closed_rls() -> Non
             "036_requests_corporate_intake.sql",
             "037_request_archive_automation.sql",
             "039_phase12_crm_policies.sql",
+            "040_crm_module.sql",
         )
     )
     declared_tables = set(re.findall(r"CREATE TABLE (?:public\.)?(\w+) \(", schema + additive))
