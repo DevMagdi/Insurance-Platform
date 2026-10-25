@@ -137,3 +137,24 @@ Local checks on the final implementation: `npm run typecheck` pass,
 `npm run lint` pass (2 pre-existing Fast Refresh warnings), `npm run test`
 40 files / 215 tests passed, `npm run build` pass. Built CSS verified to
 contain zero violet/zinc brand hexes.
+
+## Rebrand pass — design system v4 "Amani Reserve"
+
+Frontend only; no API, authorization, routing, persistence, dependency, or
+backend changes. A ground-up identity replacing both previous skins: warm
+cream paper (`#F6F1E8`) and warm charcoal-slate (`#10151C`) canvases, one
+deep gold action colour (`#B88A2B` dark / `#A67B22` light), muted teal
+(`#1F6F65`) reserved for success, warm taupe text steps, gold-dust
+hairlines on dark, 14px controls / 18px cards / 22px modals, a 270px
+sidebar whose active item is a surface-2 plate with a 4px gold spine, and
+44px primary buttons. The Amani token names (`--canvas`, `--primary*`,
+`--secondary`, `--text-subtle`, `--border*`) are first-class in
+`design-system.css`; every legacy ramp (`--gold-*`, `--navy-*`,
+`--accent-*`, `--surface-*`, `--ink-*`) is re-bound onto them. Four
+specified values that fail WCAG AA where the codebase paints them were
+lifted by the smallest measured amount (light button fill uses
+`--primary-hover` so the cream label clears 4.72:1; dark semantic text
+tints; subtle/warning half-step lifts) — the full measured table and
+rationale live in the `design-system.css` header. Status map: new=info,
+assigned=slate, in-review=warning, resolved=teal, reopened=danger,
+transferred=warm rose; app icon/logo repainted (warm tile, gold shield).
