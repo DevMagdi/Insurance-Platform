@@ -90,6 +90,9 @@ class CorporateClient(Base):
     contact_email: Mapped[str | None] = mapped_column(Text)
     contact_mobile: Mapped[str | None] = mapped_column(Text)
     address: Mapped[str | None] = mapped_column(Text)
+    # Revision 039: every client belongs to a brokerage tenant (default tenant
+    # for the existing deployment).
+    tenant_id: Mapped[UUID | None] = mapped_column(ForeignKey("tenants.id"))
     is_active: Mapped[bool] = mapped_column(Boolean, server_default=text("true"))
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(server_default=func.now())
@@ -147,6 +150,8 @@ class CorporateUser(Base):
     password_hash: Mapped[str] = mapped_column(Text)
     status: Mapped[StaffStatus] = mapped_column(STAFF_STATUS_ENUM, server_default="active")
     must_change_password: Mapped[bool] = mapped_column(Boolean, server_default=text("true"))
+    # Revision 039: the company owner, as opposed to a client contact person.
+    is_owner: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
     token_version: Mapped[int] = mapped_column(Integer, server_default=text("0"))
     last_login_at: Mapped[datetime | None]
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())

@@ -21,6 +21,7 @@ from app.domain.crm_schemas import BrokeragePolicyCreate, LeadCreate, PipelineSt
 from app.domain.enums import InstallmentPlan
 from app.domain.permissions import PERMISSIONS
 from app.main import app
+from app.models import Base, BrokeragePolicy, Lead, Tenant
 from app.services.crm import (
     DEFAULT_STAGES,
     classify_insurance_type,
@@ -195,6 +196,32 @@ def test_permissions_celery_and_openapi_contract() -> None:
         assert required in paths, required
     lead_post = paths["/api/staff/crm/leads"]["post"]
     assert lead_post["x-required-permission"] == "crm.manage"
+
+
+def test_crm_models_register_from_the_package_import() -> None:
+    # `from app.models import Base` alone must register every Phase 2 table:
+    # the RLS integration catalog compares metadata to the migrated schema
+    # without importing the FastAPI app first.
+    assert Lead.__tablename__ == "leads"
+    assert Tenant.__tablename__ == "tenants"
+    assert BrokeragePolicy.__tablename__ == "brokerage_policies"
+    for table in (
+        "tenants",
+        "pipeline_stages",
+        "leads",
+        "lead_activities",
+        "issuing_checklist_templates",
+        "issuing_requests",
+        "issuing_checklist_items",
+        "brokerage_policies",
+        "policy_installments",
+        "commission_settlements",
+        "payment_transactions",
+        "import_jobs",
+    ):
+        assert table in Base.metadata.tables, table
+    assert "tenant_id" in Base.metadata.tables["corporate_clients"].columns
+    assert "is_owner" in Base.metadata.tables["corporate_users"].columns
 
 
 def test_celery_tasks_run_their_sql_through_the_worker_scope(

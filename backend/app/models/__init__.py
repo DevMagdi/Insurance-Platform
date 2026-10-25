@@ -33,6 +33,21 @@ from app.models.corporate import (
     CorporateUser,
     RequestIntakeEvent,
 )
+from app.models.crm import (
+    DEFAULT_TENANT_ID,
+    BrokeragePolicy,
+    CommissionSettlement,
+    ImportJob,
+    IssuingChecklistItem,
+    IssuingChecklistTemplate,
+    IssuingRequest,
+    Lead,
+    LeadActivity,
+    PaymentTransaction,
+    PipelineStage,
+    PolicyInstallment,
+    Tenant,
+)
 from app.models.identity import Customer, InsuranceCompany, Policy
 from app.models.operations import (
     ApiKey,
