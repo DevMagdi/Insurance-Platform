@@ -33,23 +33,25 @@ from app.models.corporate import (
     CorporateUser,
     RequestIntakeEvent,
 )
-from app.models.crm import (
-    DEFAULT_TENANT_ID,
+from app.models.crm_module import (
+    CrmActivity,
+    CrmImportBatch,
+    CrmImportError,
+    CrmLead,
+    CrmPipelineStage,
+    CrmTask,
+)
+from app.models.identity import Customer, InsuranceCompany, Policy
+from app.models.insurance_ops import (
     BrokeragePolicy,
     CommissionSettlement,
     ImportJob,
     IssuingChecklistItem,
     IssuingChecklistTemplate,
     IssuingRequest,
-    Lead,
-    LeadActivity,
     PaymentTransaction,
-    PipelineStage,
     PolicyInstallment,
-    Tenant,
 )
-from app.models.crm_module import CrmActivity, CrmImportBatch, CrmImportError, CrmLead
-from app.models.identity import Customer, InsuranceCompany, Policy
 from app.models.operations import (
     ApiKey,
     AssignmentRule,
@@ -66,6 +68,7 @@ from app.models.operations import (
     Webhook,
 )
 from app.models.privacy import ConsentRecord, PrivacyRequest
+from app.models.tenancy import DEFAULT_TENANT_ID, Tenant
 from app.models.tickets import (
     AiInsight,
     Attachment,
@@ -112,6 +115,8 @@ __all__ = [
     "CrmImportBatch",
     "CrmImportError",
     "CrmLead",
+    "CrmPipelineStage",
+    "CrmTask",
     "CsatResponse",
     "Customer",
     "Department",
@@ -127,13 +132,10 @@ __all__ = [
     "IssuingChecklistItem",
     "IssuingChecklistTemplate",
     "IssuingRequest",
-    "Lead",
-    "LeadActivity",
     "Notification",
     "NotificationOutbox",
     "PaymentTransaction",
     "Permission",
-    "PipelineStage",
     "Policy",
     "PolicyInstallment",
     "PrivacyRequest",

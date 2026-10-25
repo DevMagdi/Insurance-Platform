@@ -259,6 +259,11 @@ def test_sql_migrations_cover_every_requested_table_and_fail_closed_rls() -> Non
         )
     )
     declared_tables = set(re.findall(r"CREATE TABLE (?:public\.)?(\w+) \(", schema + additive))
+    # Revision 041 is the platform's deliberate CRM contract migration
+    # (pure Python): it creates crm_pipeline_stages/crm_tasks and drops
+    # the split sales tables after copying them into crm_*.
+    declared_tables -= {"leads", "pipeline_stages", "lead_activities"}
+    declared_tables |= {"crm_pipeline_stages", "crm_tasks"}
     assert declared_tables == set(Base.metadata.tables)
     mermaid = (ROOT / "docs/ERD.md").read_text()
     diagram_entities = set(re.findall(r"^    ([A-Z_]+) \{$", mermaid, re.MULTILINE))

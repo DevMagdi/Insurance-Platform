@@ -368,25 +368,6 @@ erDiagram
       text slug UK
       text name
     }
-    PIPELINE_STAGES {
-      uuid id PK
-      uuid tenant_id FK
-      text code UK
-      integer sort_order
-    }
-    LEADS {
-      uuid id PK
-      uuid tenant_id FK
-      text lead_no UK
-      text stage_code
-      uuid converted_corporate_client_id FK
-    }
-    LEAD_ACTIVITIES {
-      uuid id PK
-      uuid lead_id FK
-      text kind
-      timestamptz due_at
-    }
     ISSUING_CHECKLIST_TEMPLATES {
       uuid id PK
       uuid tenant_id FK
@@ -435,12 +416,28 @@ erDiagram
       text kind
       integer rows_total
     }
+    CRM_PIPELINE_STAGES {
+      uuid id PK
+      uuid tenant_id FK
+      text code UK
+      integer sort_order
+    }
     CRM_LEADS {
       uuid id PK
       uuid tenant_id FK
+      text lead_no UK
       text phone UK
-      text status
+      text stage_code
+      uuid converted_corporate_client_id FK
       uuid import_batch_id FK
+    }
+    CRM_TASKS {
+      uuid id PK
+      uuid tenant_id FK
+      uuid lead_id FK
+      text type
+      timestamptz due_at
+      text status
     }
     CRM_IMPORT_BATCHES {
       uuid id PK
