@@ -9,6 +9,7 @@ Documentation:
 * [Scalability and load tests](docs/SCALABILITY.md), [operations runbook and DR](docs/RUNBOOK.md), [deployment (Compose, Helm, CI/CD)](docs/DEPLOYMENT.md)
 * [API guide](docs/API.md), [implemented HTTP OpenAPI](docs/openapi.yaml), [future-route roadmap](docs/openapi-roadmap.yaml)
 * Portal and phase notes: [customer portal](docs/CUSTOMER_PORTAL.md), [staff](docs/STAFF_PORTAL.md), [built-in storage admin](docs/STORAGE_ADMIN.md), [Phase 7](docs/PHASE_7.md), [Phase 5 frontend](docs/PHASE5_FRONTEND.md)
+* Service-desk/CRM spec mapping (multi-tenancy, Excel import, Client Folder, Sales CRM, issuing, policy lifecycle/commissions, Fawry/Paymob, Celery): [PHASE12.md](docs/PHASE12.md)
 
 The old `/api/v1/*` roadmap paths are **not** live routes.
 

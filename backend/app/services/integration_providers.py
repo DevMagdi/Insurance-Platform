@@ -583,6 +583,12 @@ class WhatsAppCloudProvider:
     def __init__(self, config: dict[str, Any]) -> None:
         self.config = config
 
+    def _messages_url(self, phone_id: str, version: str) -> str:
+        return f"https://graph.facebook.com/{version}/{phone_id}/messages"
+
+    def _auth_headers(self, token: str) -> dict[str, str]:
+        return {"Authorization": f"Bearer {token}"}
+
     async def send(self, request: WhatsAppSendRequest, *, idempotency_key: str) -> ProviderResult:
         token = str(self.config.get("access_token", ""))
         phone_id = str(self.config.get("phone_number_id", ""))
@@ -621,8 +627,8 @@ class WhatsAppCloudProvider:
         try:
             async with httpx.AsyncClient(timeout=20, follow_redirects=False) as client:
                 response = await client.post(
-                    f"https://graph.facebook.com/{version}/{phone_id}/messages",
-                    headers={"Authorization": f"Bearer {token}"},
+                    self._messages_url(phone_id, version),
+                    headers=self._auth_headers(token),
                     json=payload,
                 )
         except httpx.HTTPError as exc:
@@ -720,6 +726,28 @@ class WhatsAppCloudProvider:
             raise IntegrationProviderError("whatsapp_unreachable") from exc
         if response.status_code != 200:
             raise IntegrationProviderError("whatsapp_auth_failed", retryable=False)
+
+
+class WhatsApp360DialogProvider(WhatsAppCloudProvider):
+    """360dialog BSP for the official WhatsApp Business Platform.
+
+    Same Cloud-API payloads as Meta direct; the BSP differs only in host and
+    credential header (``D360-API-KEY``). The API number must be provisioned
+    for the Platform — it cannot be the regular WhatsApp app number.
+    """
+
+    def _messages_url(self, phone_id: str, version: str) -> str:
+        return "https://waba-v2.360dialog.io/messages"
+
+    def _auth_headers(self, token: str) -> dict[str, str]:
+        return {"D360-API-KEY": token, "Content-Type": "application/json"}
+
+
+def build_whatsapp_provider(config: dict[str, Any]) -> WhatsAppCloudProvider:
+    """Pick the WhatsApp transport: Meta direct, or the 360dialog BSP."""
+    if str(config.get("bsp", "")).lower() in ("360dialog", "whatsapp_360dialog"):
+        return WhatsApp360DialogProvider(config)
+    return WhatsAppCloudProvider(config)
 
 
 class MockLLMProvider:
@@ -1837,6 +1865,7 @@ CONNECTION_TESTERS: dict[str, type] = {
     **EMAIL_PROVIDER_CLASSES,
     "imap": IMAPMailProvider,
     "whatsapp_cloud": WhatsAppCloudProvider,
+    "whatsapp_360dialog": WhatsApp360DialogProvider,
     **SMS_PROVIDER_CLASSES,
     **LLM_PROVIDER_CLASSES,
     **VOICE_PROVIDER_CLASSES,
@@ -1852,6 +1881,7 @@ PROVIDER_REQUIRED_FIELDS: dict[str, frozenset[str]] = {
     "gmail_oauth": frozenset({"client_id", "client_secret", "refresh_token", "from_email"}),
     "outlook_oauth": frozenset({"client_id", "client_secret", "refresh_token", "from_email"}),
     "whatsapp_cloud": frozenset({"access_token", "phone_number_id", "app_secret"}),
+    "whatsapp_360dialog": frozenset({"access_token", "phone_number_id"}),
     "email_webhook": frozenset({"webhook_secret"}),
     "imap": frozenset({"host", "username", "password"}),
     "twilio_sms": frozenset({"account_sid", "auth_token", "from_number"}),
@@ -1880,6 +1910,8 @@ def build_provider(provider: str, config: dict[str, Any]) -> Any:
         return VOICE_PROVIDER_CLASSES[provider](config)
     if provider == "whatsapp_cloud":
         return WhatsAppCloudProvider(config)
+    if provider == "whatsapp_360dialog":
+        return WhatsApp360DialogProvider(config)
     if provider == "openai_speech":
         return OpenAISpeechProvider(config)
     raise IntegrationProviderError("provider_unsupported", retryable=False)

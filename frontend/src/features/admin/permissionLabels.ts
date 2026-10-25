@@ -13,4 +13,8 @@ export const PERMISSION_LABELS: Record<Permission, string> = {
   'integrations.manage': 'إدارة التكاملات', 'integrations.send_email': 'إرسال البريد للشركات',
   'integrations.send_whatsapp': 'إرسال واتساب', 'integrations.ai_call': 'الاتصال الصوتي الذكي',
   'reports.manage': 'إدارة التقارير المجدولة', 'audit.view': 'عرض سجل التدقيق', 'settings.manage': 'إدارة إعدادات النظام', 'storage.manage': 'استعراض مخزن الملفات',
+  'crm.view': 'عرض المبيعات والعملاء المحتملين', 'crm.manage': 'إدارة العملاء المحتملين والمتابعات', 'crm.convert': 'تحويل العميل المحتمل إلى عميل',
+  'policies.view': 'عرض الوثائق والأقساط', 'policies.manage': 'إدارة الوثائق وتسويات العمولة',
+  'issuing.view': 'عرض ملفات الإصدار', 'issuing.manage': 'إدارة إصدار الوثائق وقوائم الأوراق',
+  'imports.manage': 'استيراد بيانات من Excel', 'payments.manage': 'إدارة مدفوعات الأقساط',
 };

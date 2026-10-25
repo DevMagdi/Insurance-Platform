@@ -78,6 +78,41 @@ ROLE_PERMISSIONS = {
         }
     ),
     "analyst": frozenset({"complaints.view", "analytics.view", "analytics.export"}),
+    # Spec RBAC roles (Phase 1.9 / Phase 2). ``administrator`` above is the
+    # admin; the client's contact person and the company owner are corporate
+    # portal users (see corporate_users.is_owner), not staff roles.
+    "customer_service": frozenset(
+        {
+            "complaints.view",
+            "complaints.create",
+            "complaints.edit",
+            "complaints.change_status",
+            "complaints.reply_public",
+            "complaints.add_internal_note",
+            "complaints.view_attachments",
+            "crm.view",
+        }
+    ),
+    "account_manager": frozenset(
+        {
+            "complaints.view",
+            "complaints.assign",
+            "complaints.reassign",
+            "complaints.escalate",
+            "analytics.view",
+            "corporate.view",
+            "crm.view",
+            "crm.manage",
+            "crm.convert",
+            "policies.view",
+            "policies.manage",
+            "issuing.view",
+            "issuing.manage",
+            "payments.manage",
+            "reports.manage",
+        }
+    ),
+    "sales": frozenset({"crm.view", "crm.manage", "issuing.view"}),
 }
 
 

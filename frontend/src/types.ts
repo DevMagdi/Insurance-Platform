@@ -47,6 +47,15 @@ export const PERMISSIONS = [
   'audit.view',
   'settings.manage',
   'storage.manage',
+  'crm.view',
+  'crm.manage',
+  'crm.convert',
+  'policies.view',
+  'policies.manage',
+  'issuing.view',
+  'issuing.manage',
+  'imports.manage',
+  'payments.manage',
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
@@ -339,4 +348,5 @@ export type AppRoute =
   | { page: 'channels' }
   | { page: 'operations' }
   | { page: 'audit' }
+  | { page: 'crm' }
   | { page: 'storage' };

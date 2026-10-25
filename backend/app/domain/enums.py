@@ -105,6 +105,70 @@ class IntakeState(StrEnum):
     FAILED = "failed"
 
 
+# --- Phase 2 (Sales CRM, issuing, policy lifecycle) ---------------------------
+# Stored as checked TEXT (not native enums) so tenants can extend pipeline
+# stages without a schema migration; these enums are the API contract.
+
+
+class LeadSource(StrEnum):
+    MANUAL = "manual"
+    WHATSAPP = "whatsapp"
+    CALL = "call"
+    EMAIL = "email"
+    PORTAL = "portal"
+
+
+class LeadActivityKind(StrEnum):
+    CALL = "call"
+    MEETING = "meeting"
+    NOTE = "note"
+    TASK = "task"
+    APPOINTMENT = "appointment"
+
+
+class InstallmentPlan(StrEnum):
+    """Premium billing cadence for a brokerage policy (Phase 2 spec)."""
+
+    MONTHLY = "monthly"  # شهري
+    QUARTERLY = "quarterly"  # ربع سنوي
+    SEMI_ANNUAL = "semi_annual"  # نصف سنوي
+    CASH = "cash"  # كاش (دفعة واحدة)
+
+
+class InstallmentStatus(StrEnum):
+    PENDING = "pending"
+    PAID = "paid"
+    OVERDUE = "overdue"
+    WAIVED = "waived"
+
+
+class IssuingStatus(StrEnum):
+    DRAFT = "draft"
+    INTERNAL_REVIEW = "internal_review"
+    SENT_TO_INSURER = "sent_to_insurer"
+    ISSUED = "issued"
+    REJECTED = "rejected"
+
+
+class ChecklistItemStatus(StrEnum):
+    PENDING = "pending"
+    RECEIVED = "received"
+    VERIFIED = "verified"
+    REJECTED = "rejected"
+
+
+class PaymentProviderName(StrEnum):
+    FAWRY = "fawry"
+    PAYMOB = "paymob"
+    MANUAL = "manual"
+
+
+class ImportKind(StrEnum):
+    EMPLOYEES = "employees"
+    CLIENTS = "clients"
+    LEADS = "leads"
+
+
 class ContractDocumentKind(StrEnum):
     CONTRACT = "contract"
     POLICY = "policy"

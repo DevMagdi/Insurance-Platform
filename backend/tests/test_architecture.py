@@ -144,6 +144,16 @@ def test_catalog_has_every_required_resource_action_and_frozen_migration() -> No
             "requests.intake",
             "corporate.view",
             "corporate.manage",
+            # Revision 039: Sales CRM, policy lifecycle, issuing, imports, payments.
+            "crm.view",
+            "crm.manage",
+            "crm.convert",
+            "policies.view",
+            "policies.manage",
+            "issuing.view",
+            "issuing.manage",
+            "imports.manage",
+            "payments.manage",
         }
         == PERMISSIONS
     )
@@ -244,6 +254,7 @@ def test_sql_migrations_cover_every_requested_table_and_fail_closed_rls() -> Non
             "029_staff_onboarding.sql",
             "036_requests_corporate_intake.sql",
             "037_request_archive_automation.sql",
+            "039_phase12_crm_policies.sql",
         )
     )
     declared_tables = set(re.findall(r"CREATE TABLE (?:public\.)?(\w+) \(", schema + additive))

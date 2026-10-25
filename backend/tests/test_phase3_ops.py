@@ -10,6 +10,7 @@ from datetime import UTC, date, datetime, timedelta
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 from uuid import UUID, uuid4
+from zoneinfo import ZoneInfo
 
 import pytest
 from httpx import ASGITransport, AsyncClient
@@ -473,7 +474,9 @@ async def test_report_worker_reauthorizes_and_records_every_outcome(
     assert finishes[-1]["state"] == "sent" and finishes[-1]["rows"] == 1
     following = finishes[-1]["next"]
     assert following > datetime.now(UTC)
-    assert (following.weekday(), following.hour, following.minute) == (6, 4, 0)  # Sun 07:00 Cairo
+    # Sun 07:00 Cairo wall-clock; the UTC hour differs across Egypt's DST change.
+    Cairo = following.astimezone(ZoneInfo("Africa/Cairo"))
+    assert (Cairo.weekday(), Cairo.hour, Cairo.minute) == (6, 7, 0)
     assert finishes[-1]["error"] is None
     _, subject, body, name, media, data = sender.send_report.call_args.args
     assert subject.startswith("Scheduled complaint report") and name.endswith(".csv")

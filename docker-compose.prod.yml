@@ -198,6 +198,43 @@ services:
         condition: service_healthy
     logging: *logging
 
+  # Celery (Phase 2): lead follow-ups, overdue installments, renewal alerts.
+  celery_worker:
+    image: ghcr.io/${IMAGE_OWNER:?set IMAGE_OWNER}/insurance-platform-api:${IMAGE_TAG:?set IMAGE_TAG}
+    restart: unless-stopped
+    environment:
+      WORKER_DATABASE_URL: postgresql+asyncpg://app_worker:${APP_WORKER_DB_PASSWORD:?set APP_WORKER_DB_PASSWORD in .env.production}@postgres:5432/${POSTGRES_DB}
+      REDIS_URL: redis://redis:6379/0
+      ENVIRONMENT: production
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      APP_RELEASE: ${IMAGE_TAG}
+    stop_grace_period: 60s
+    command: ['celery', '-A', 'app.celery_app.celery_app', 'worker', '--loglevel=INFO']
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    logging: *logging
+
+  celery_beat:
+    image: ghcr.io/${IMAGE_OWNER:?set IMAGE_OWNER}/insurance-platform-api:${IMAGE_TAG:?set IMAGE_TAG}
+    restart: unless-stopped
+    environment:
+      WORKER_DATABASE_URL: postgresql+asyncpg://app_worker:${APP_WORKER_DB_PASSWORD:?set APP_WORKER_DB_PASSWORD in .env.production}@postgres:5432/${POSTGRES_DB}
+      REDIS_URL: redis://redis:6379/0
+      ENVIRONMENT: production
+      APP_RELEASE: ${IMAGE_TAG}
+    command: ['celery', '-A', 'app.celery_app.celery_app', 'beat', '--loglevel=INFO']
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    logging: *logging
+
   web:
     image: ghcr.io/${IMAGE_OWNER:?set IMAGE_OWNER}/insurance-platform-web:${IMAGE_TAG:?set IMAGE_TAG}
     restart: unless-stopped

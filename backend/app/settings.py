@@ -64,6 +64,12 @@ class Settings(BaseSettings):
     smtp_password: str | None = None
     smtp_start_tls: bool = True
     smtp_use_tls: bool = False
+    # Phase 2 payment gateways (Fawry / Paymob). Unconfigured = fail-closed:
+    # intents answer 503 and webhook signatures never verify.
+    paymob_api_key: str | None = Field(default=None, validation_alias="PAYMOB_API_KEY")
+    paymob_hmac_secret: str | None = Field(default=None, validation_alias="PAYMOB_HMAC_SECRET")
+    fawry_merchant_code: str | None = Field(default=None, validation_alias="FAWRY_MERCHANT_CODE")
+    fawry_secret_key: str | None = Field(default=None, validation_alias="FAWRY_SECRET_KEY")
     environment: str = "production"
     public_app_url: str = "http://localhost:8080"
     cookie_secure: bool = True

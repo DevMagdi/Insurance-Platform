@@ -363,4 +363,76 @@ erDiagram
       intake_state state
       uuid complaint_id FK
     }
+    TENANTS {
+      uuid id PK
+      text slug UK
+      text name
+    }
+    PIPELINE_STAGES {
+      uuid id PK
+      uuid tenant_id FK
+      text code UK
+      integer sort_order
+    }
+    LEADS {
+      uuid id PK
+      uuid tenant_id FK
+      text lead_no UK
+      text stage_code
+      uuid converted_corporate_client_id FK
+    }
+    LEAD_ACTIVITIES {
+      uuid id PK
+      uuid lead_id FK
+      text kind
+      timestamptz due_at
+    }
+    ISSUING_CHECKLIST_TEMPLATES {
+      uuid id PK
+      uuid tenant_id FK
+      text insurance_type
+      text document_name
+    }
+    ISSUING_REQUESTS {
+      uuid id PK
+      uuid tenant_id FK
+      text status
+      uuid insurer_company_id FK
+    }
+    ISSUING_CHECKLIST_ITEMS {
+      uuid id PK
+      uuid issuing_request_id FK
+      text status
+    }
+    BROKERAGE_POLICIES {
+      uuid id PK
+      uuid tenant_id FK
+      text policy_no
+      numeric premium
+      text installment_plan
+    }
+    POLICY_INSTALLMENTS {
+      uuid id PK
+      uuid policy_id FK
+      integer sequence_no
+      text status
+    }
+    COMMISSION_SETTLEMENTS {
+      uuid id PK
+      uuid policy_id FK
+      numeric expected_amount
+      text status
+    }
+    PAYMENT_TRANSACTIONS {
+      uuid id PK
+      uuid installment_id FK
+      text provider_reference UK
+      text status
+    }
+    IMPORT_JOBS {
+      uuid id PK
+      uuid tenant_id FK
+      text kind
+      integer rows_total
+    }
 ```

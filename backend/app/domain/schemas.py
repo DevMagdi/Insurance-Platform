@@ -775,6 +775,7 @@ IntegrationProviderName = Literal[
     "gmail_oauth",
     "outlook_oauth",
     "whatsapp_cloud",
+    "whatsapp_360dialog",
     "email_webhook",
     "imap",
     "twilio_sms",
