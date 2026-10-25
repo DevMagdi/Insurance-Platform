@@ -3056,141 +3056,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/staff/crm/stages": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List Stages */
-        get: operations["list_stages_api_staff_crm_stages_get"];
-        /**
-         * Upsert Stage
-         * @description Create or amend a tenant-customisable pipeline stage.
-         */
-        put: operations["upsert_stage_api_staff_crm_stages_put"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/staff/crm/leads": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List Leads */
-        get: operations["list_leads_api_staff_crm_leads_get"];
-        put?: never;
-        /**
-         * Create Lead
-         * @description Add a lead at any time — manually or captured from WhatsApp/call/email.
-         */
-        post: operations["create_lead_api_staff_crm_leads_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/staff/crm/leads/{lead_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get Lead */
-        get: operations["get_lead_api_staff_crm_leads__lead_id__get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        /** Update Lead */
-        patch: operations["update_lead_api_staff_crm_leads__lead_id__patch"];
-        trace?: never;
-    };
-    "/api/staff/crm/leads/{lead_id}/activities": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Add Activity
-         * @description Log a call/meeting/note/task/appointment; tasks arm the follow-up reminder.
-         */
-        post: operations["add_activity_api_staff_crm_leads__lead_id__activities_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/staff/crm/leads/{lead_id}/convert": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Convert Lead
-         * @description One-click conversion: creates the corporate client with all lead data.
-         */
-        post: operations["convert_lead_api_staff_crm_leads__lead_id__convert_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/staff/crm/pipeline": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Pipeline */
-        get: operations["pipeline_api_staff_crm_pipeline_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/staff/crm/reports/sales-performance": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Sales Performance */
-        get: operations["sales_performance_api_staff_crm_reports_sales_performance_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/staff/crm/policies": {
+    "/api/staff/insurance-ops/policies": {
         parameters: {
             query?: never;
             header?: never;
@@ -3198,20 +3064,20 @@ export interface paths {
             cookie?: never;
         };
         /** List Policies */
-        get: operations["list_policies_api_staff_crm_policies_get"];
+        get: operations["list_policies_api_staff_insurance_ops_policies_get"];
         put?: never;
         /**
          * Create Policy
          * @description Create a policy, its installment schedule and its commission settlement.
          */
-        post: operations["create_policy_api_staff_crm_policies_post"];
+        post: operations["create_policy_api_staff_insurance_ops_policies_post"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/api/staff/crm/policies/{policy_id}": {
+    "/api/staff/insurance-ops/policies/{policy_id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -3219,7 +3085,7 @@ export interface paths {
             cookie?: never;
         };
         /** Get Policy */
-        get: operations["get_policy_api_staff_crm_policies__policy_id__get"];
+        get: operations["get_policy_api_staff_insurance_ops_policies__policy_id__get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3228,7 +3094,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/staff/crm/renewals": {
+    "/api/staff/insurance-ops/renewals": {
         parameters: {
             query?: never;
             header?: never;
@@ -3236,7 +3102,7 @@ export interface paths {
             cookie?: never;
         };
         /** Renewals */
-        get: operations["renewals_api_staff_crm_renewals_get"];
+        get: operations["renewals_api_staff_insurance_ops_renewals_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3245,7 +3111,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/staff/crm/settlements/{settlement_id}": {
+    "/api/staff/insurance-ops/settlements/{settlement_id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -3259,10 +3125,10 @@ export interface paths {
         options?: never;
         head?: never;
         /** Update Settlement */
-        patch: operations["update_settlement_api_staff_crm_settlements__settlement_id__patch"];
+        patch: operations["update_settlement_api_staff_insurance_ops_settlements__settlement_id__patch"];
         trace?: never;
     };
-    "/api/staff/crm/installments/{installment_id}/pay": {
+    "/api/staff/insurance-ops/installments/{installment_id}/pay": {
         parameters: {
             query?: never;
             header?: never;
@@ -3272,14 +3138,14 @@ export interface paths {
         get?: never;
         put?: never;
         /** Pay Installment */
-        post: operations["pay_installment_api_staff_crm_installments__installment_id__pay_post"];
+        post: operations["pay_installment_api_staff_insurance_ops_installments__installment_id__pay_post"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/api/staff/crm/installments/{installment_id}/payment-intent": {
+    "/api/staff/insurance-ops/installments/{installment_id}/payment-intent": {
         parameters: {
             query?: never;
             header?: never;
@@ -3292,14 +3158,14 @@ export interface paths {
          * Payment Intent
          * @description Open a Fawry/Paymob charge. Fail-closed until credentials are configured.
          */
-        post: operations["payment_intent_api_staff_crm_installments__installment_id__payment_intent_post"];
+        post: operations["payment_intent_api_staff_insurance_ops_installments__installment_id__payment_intent_post"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/api/staff/crm/issuing": {
+    "/api/staff/insurance-ops/issuing": {
         parameters: {
             query?: never;
             header?: never;
@@ -3307,20 +3173,20 @@ export interface paths {
             cookie?: never;
         };
         /** List Issuing */
-        get: operations["list_issuing_api_staff_crm_issuing_get"];
+        get: operations["list_issuing_api_staff_insurance_ops_issuing_get"];
         put?: never;
         /**
          * Create Issuing
          * @description Open an issuing file with the required-documents checklist for its type.
          */
-        post: operations["create_issuing_api_staff_crm_issuing_post"];
+        post: operations["create_issuing_api_staff_insurance_ops_issuing_post"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/api/staff/crm/issuing/{issuing_id}": {
+    "/api/staff/insurance-ops/issuing/{issuing_id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -3337,10 +3203,10 @@ export interface paths {
          * Update Issuing
          * @description Internal review → sent to insurer → issued, with the checklist gate.
          */
-        patch: operations["update_issuing_api_staff_crm_issuing__issuing_id__patch"];
+        patch: operations["update_issuing_api_staff_insurance_ops_issuing__issuing_id__patch"];
         trace?: never;
     };
-    "/api/staff/crm/issuing/items/{item_id}": {
+    "/api/staff/insurance-ops/issuing/items/{item_id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -3354,10 +3220,10 @@ export interface paths {
         options?: never;
         head?: never;
         /** Update Checklist Item */
-        patch: operations["update_checklist_item_api_staff_crm_issuing_items__item_id__patch"];
+        patch: operations["update_checklist_item_api_staff_insurance_ops_issuing_items__item_id__patch"];
         trace?: never;
     };
-    "/api/staff/crm/imports/employees": {
+    "/api/staff/insurance-ops/imports/employees": {
         parameters: {
             query?: never;
             header?: never;
@@ -3370,14 +3236,14 @@ export interface paths {
          * Import Employees
          * @description Import insured employees of a corporate client from Excel/CSV.
          */
-        post: operations["import_employees_api_staff_crm_imports_employees_post"];
+        post: operations["import_employees_api_staff_insurance_ops_imports_employees_post"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/api/staff/crm/imports/clients": {
+    "/api/staff/insurance-ops/imports/clients": {
         parameters: {
             query?: never;
             header?: never;
@@ -3390,34 +3256,14 @@ export interface paths {
          * Import Clients
          * @description Import existing corporate clients from Excel/CSV.
          */
-        post: operations["import_clients_api_staff_crm_imports_clients_post"];
+        post: operations["import_clients_api_staff_insurance_ops_imports_clients_post"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/api/staff/crm/imports/leads": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Import Leads
-         * @description Import sales leads from Excel/CSV.
-         */
-        post: operations["import_leads_api_staff_crm_imports_leads_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/staff/crm/imports": {
+    "/api/staff/insurance-ops/imports": {
         parameters: {
             query?: never;
             header?: never;
@@ -3425,7 +3271,7 @@ export interface paths {
             cookie?: never;
         };
         /** List Imports */
-        get: operations["list_imports_api_staff_crm_imports_get"];
+        get: operations["list_imports_api_staff_insurance_ops_imports_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3434,7 +3280,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/staff/crm/client-folder/{corporate_client_id}": {
+    "/api/staff/insurance-ops/client-folder/{corporate_client_id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -3442,7 +3288,7 @@ export interface paths {
             cookie?: never;
         };
         /** Client Folder */
-        get: operations["client_folder_api_staff_crm_client_folder__corporate_client_id__get"];
+        get: operations["client_folder_api_staff_insurance_ops_client_folder__corporate_client_id__get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3451,7 +3297,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/staff/crm/caller-lookup": {
+    "/api/staff/insurance-ops/caller-lookup": {
         parameters: {
             query?: never;
             header?: never;
@@ -3462,7 +3308,7 @@ export interface paths {
          * Caller Lookup
          * @description Identify a caller by mobile: employee, his company and his policy.
          */
-        get: operations["caller_lookup_api_staff_crm_caller_lookup_get"];
+        get: operations["caller_lookup_api_staff_insurance_ops_caller_lookup_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3471,7 +3317,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/staff/crm/insurer-performance": {
+    "/api/staff/insurance-ops/insurer-performance": {
         parameters: {
             query?: never;
             header?: never;
@@ -3479,7 +3325,7 @@ export interface paths {
             cookie?: never;
         };
         /** Insurer Performance */
-        get: operations["insurer_performance_api_staff_crm_insurer_performance_get"];
+        get: operations["insurer_performance_api_staff_insurance_ops_insurer_performance_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3488,7 +3334,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/staff/crm/document-search": {
+    "/api/staff/insurance-ops/document-search": {
         parameters: {
             query?: never;
             header?: never;
@@ -3496,7 +3342,7 @@ export interface paths {
             cookie?: never;
         };
         /** Document Search */
-        get: operations["document_search_api_staff_crm_document_search_get"];
+        get: operations["document_search_api_staff_insurance_ops_document_search_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3523,6 +3369,62 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/crm/stages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Stages */
+        get: operations["list_stages_api_crm_stages_get"];
+        put?: never;
+        /** Create Stage */
+        post: operations["create_stage_api_crm_stages_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/crm/stages/reorder": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reorder Stages */
+        post: operations["reorder_stages_api_crm_stages_reorder_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/crm/stages/{stage_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete Stage
+         * @description Delete an empty stage; stages holding leads are protected (409).
+         */
+        delete: operations["delete_stage_api_crm_stages__stage_id__delete"];
+        options?: never;
+        head?: never;
+        /** Update Stage */
+        patch: operations["update_stage_api_crm_stages__stage_id__patch"];
         trace?: never;
     };
     "/api/crm/leads": {
@@ -3562,6 +3464,26 @@ export interface paths {
         patch: operations["update_lead_api_crm_leads__lead_id__patch"];
         trace?: never;
     };
+    "/api/crm/leads/{lead_id}/move": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Move Lead
+         * @description Kanban drop: move one lead to another stage.
+         */
+        post: operations["move_lead_api_crm_leads__lead_id__move_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/crm/leads/bulk-assign": {
         parameters: {
             query?: never;
@@ -3579,7 +3501,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/crm/leads/bulk-status": {
+    "/api/crm/leads/bulk-stage": {
         parameters: {
             query?: never;
             header?: never;
@@ -3588,8 +3510,8 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Bulk Status */
-        post: operations["bulk_status_api_crm_leads_bulk_status_post"];
+        /** Bulk Stage */
+        post: operations["bulk_stage_api_crm_leads_bulk_stage_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3607,6 +3529,150 @@ export interface paths {
         put?: never;
         /** Add Activity */
         post: operations["add_activity_api_crm_leads__lead_id__activities_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/crm/leads/{lead_id}/convert": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Convert Lead
+         * @description One-click conversion: creates the corporate client with all lead data.
+         *
+         *     The definer function carries contact fields onto the client (its
+         *     Client Folder) and stamps the lead converted; activities and tasks
+         *     stay on the lead, which now links to the client.
+         */
+        post: operations["convert_lead_api_crm_leads__lead_id__convert_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/crm/tasks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Tasks */
+        get: operations["list_tasks_api_crm_tasks_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/crm/leads/{lead_id}/tasks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Task */
+        post: operations["create_task_api_crm_leads__lead_id__tasks_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/crm/tasks/{task_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Task */
+        delete: operations["delete_task_api_crm_tasks__task_id__delete"];
+        options?: never;
+        head?: never;
+        /** Update Task */
+        patch: operations["update_task_api_crm_tasks__task_id__patch"];
+        trace?: never;
+    };
+    "/api/crm/tasks/{task_id}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Complete Task */
+        post: operations["complete_task_api_crm_tasks__task_id__complete_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/crm/pipeline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Pipeline */
+        get: operations["pipeline_api_crm_pipeline_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/crm/reports/sales-performance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Sales Performance */
+        get: operations["sales_performance_api_crm_reports_sales_performance_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/crm/stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Stats */
+        get: operations["stats_api_crm_stats_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -3697,23 +3763,6 @@ export interface paths {
         };
         /** Import Errors Csv */
         get: operations["import_errors_csv_api_crm_imports__batch_id__errors_csv_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/crm/stats": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Stats */
-        get: operations["stats_api_crm_stats_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3978,13 +4027,13 @@ export interface components {
              */
             is_active: boolean;
         };
-        /** Body_import_clients_api_staff_crm_imports_clients_post */
-        Body_import_clients_api_staff_crm_imports_clients_post: {
+        /** Body_import_clients_api_staff_insurance_ops_imports_clients_post */
+        Body_import_clients_api_staff_insurance_ops_imports_clients_post: {
             /** File */
             file: string;
         };
-        /** Body_import_employees_api_staff_crm_imports_employees_post */
-        Body_import_employees_api_staff_crm_imports_employees_post: {
+        /** Body_import_employees_api_staff_insurance_ops_imports_employees_post */
+        Body_import_employees_api_staff_insurance_ops_imports_employees_post: {
             /** File */
             file: string;
             /**
@@ -3995,11 +4044,6 @@ export interface components {
         };
         /** Body_import_leads_api_crm_imports_post */
         Body_import_leads_api_crm_imports_post: {
-            /** File */
-            file: string;
-        };
-        /** Body_import_leads_api_staff_crm_imports_leads_post */
-        Body_import_leads_api_staff_crm_imports_leads_post: {
             /** File */
             file: string;
         };
@@ -4399,7 +4443,7 @@ export interface components {
          * CrmActivityType
          * @enum {string}
          */
-        CrmActivityType: "call" | "note" | "status_change" | "whatsapp" | "email" | "meeting" | "assignment";
+        CrmActivityType: "call" | "note" | "stage_change" | "task" | "conversion" | "whatsapp" | "email" | "meeting" | "assignment";
         /** CrmBulkAssign */
         CrmBulkAssign: {
             /** Ids */
@@ -4407,53 +4451,200 @@ export interface components {
             /** Assigned To */
             assigned_to?: string | null;
         };
-        /** CrmBulkStatus */
-        CrmBulkStatus: {
+        /** CrmBulkStage */
+        CrmBulkStage: {
             /** Ids */
             ids: string[];
-            status: components["schemas"]["CrmLeadStatus"];
+            /** Stage Code */
+            stage_code: string;
+        };
+        /**
+         * CrmLeadConvert
+         * @description One-click Lead → corporate client; slug/name default from the lead.
+         */
+        CrmLeadConvert: {
+            /** Slug */
+            slug?: string | null;
+            /** Name Ar */
+            name_ar?: string | null;
+            /** Name En */
+            name_en?: string | null;
         };
         /** CrmLeadCreate */
         CrmLeadCreate: {
             /** Full Name */
             full_name: string;
+            /** Company Name */
+            company_name?: string | null;
             /** Phone */
             phone?: string | null;
             /** Email */
             email?: string | null;
             /** @default manual */
             source: components["schemas"]["CrmLeadSource"];
-            /** @default new */
-            status: components["schemas"]["CrmLeadStatus"];
+            /**
+             * Stage Code
+             * @default new
+             */
+            stage_code: string;
+            /** @default normal */
+            priority: components["schemas"]["CrmLeadPriority"];
+            /** @default general */
+            insurance_type: components["schemas"]["InsuranceType"];
+            /** Insurer Company Id */
+            insurer_company_id?: string | null;
+            /** Expected Premium */
+            expected_premium?: number | string | null;
             /** Assigned To */
             assigned_to?: string | null;
             /** Notes */
             notes?: string | null;
+            /** Next Followup At */
+            next_followup_at?: string | null;
         };
+        /**
+         * CrmLeadMove
+         * @description Kanban drag-and-drop: move one lead to another pipeline stage.
+         */
+        CrmLeadMove: {
+            /** Stage Code */
+            stage_code: string;
+            /** Lost Reason */
+            lost_reason?: string | null;
+        };
+        /**
+         * CrmLeadPriority
+         * @enum {string}
+         */
+        CrmLeadPriority: "low" | "normal" | "high" | "urgent";
         /**
          * CrmLeadSource
          * @enum {string}
          */
         CrmLeadSource: "manual" | "whatsapp" | "call" | "email" | "portal" | "import" | "other";
-        /**
-         * CrmLeadStatus
-         * @enum {string}
-         */
-        CrmLeadStatus: "new" | "contacted" | "qualified" | "converted" | "lost";
         /** CrmLeadUpdate */
         CrmLeadUpdate: {
             /** Full Name */
             full_name?: string | null;
+            /** Company Name */
+            company_name?: string | null;
             /** Phone */
             phone?: string | null;
             /** Email */
             email?: string | null;
             source?: components["schemas"]["CrmLeadSource"] | null;
-            status?: components["schemas"]["CrmLeadStatus"] | null;
+            /** Stage Code */
+            stage_code?: string | null;
+            priority?: components["schemas"]["CrmLeadPriority"] | null;
+            insurance_type?: components["schemas"]["InsuranceType"] | null;
+            /** Insurer Company Id */
+            insurer_company_id?: string | null;
+            /** Expected Premium */
+            expected_premium?: number | string | null;
             /** Assigned To */
             assigned_to?: string | null;
             /** Notes */
             notes?: string | null;
+            /** Lost Reason */
+            lost_reason?: string | null;
+        };
+        /** CrmStageCreate */
+        CrmStageCreate: {
+            /** Code */
+            code: string;
+            /** Name Ar */
+            name_ar: string;
+            /** Name En */
+            name_en: string;
+            /**
+             * Sort Order
+             * @default 0
+             */
+            sort_order: number;
+            /**
+             * Is Won
+             * @default false
+             */
+            is_won: boolean;
+            /**
+             * Is Lost
+             * @default false
+             */
+            is_lost: boolean;
+            /**
+             * Is Converted
+             * @default false
+             */
+            is_converted: boolean;
+            /**
+             * Is Active
+             * @default true
+             */
+            is_active: boolean;
+        };
+        /**
+         * CrmStageReorder
+         * @description Full ordered list of stage ids; positions become 10, 20, 30, …
+         */
+        CrmStageReorder: {
+            /** Ids */
+            ids: string[];
+        };
+        /** CrmStageUpdate */
+        CrmStageUpdate: {
+            /** Name Ar */
+            name_ar?: string | null;
+            /** Name En */
+            name_en?: string | null;
+            /** Sort Order */
+            sort_order?: number | null;
+            /** Is Won */
+            is_won?: boolean | null;
+            /** Is Lost */
+            is_lost?: boolean | null;
+            /** Is Converted */
+            is_converted?: boolean | null;
+            /** Is Active */
+            is_active?: boolean | null;
+        };
+        /** CrmTaskCreate */
+        CrmTaskCreate: {
+            /** @default task */
+            type: components["schemas"]["CrmTaskType"];
+            /** Title */
+            title: string;
+            /** Description */
+            description?: string | null;
+            /**
+             * Due At
+             * Format: date-time
+             */
+            due_at: string;
+            /** Assigned To */
+            assigned_to?: string | null;
+        };
+        /**
+         * CrmTaskStatus
+         * @enum {string}
+         */
+        CrmTaskStatus: "pending" | "done" | "cancelled";
+        /**
+         * CrmTaskType
+         * @enum {string}
+         */
+        CrmTaskType: "call" | "meeting" | "email" | "whatsapp" | "task";
+        /** CrmTaskUpdate */
+        CrmTaskUpdate: {
+            type?: components["schemas"]["CrmTaskType"] | null;
+            /** Title */
+            title?: string | null;
+            /** Description */
+            description?: string | null;
+            /** Due At */
+            due_at?: string | null;
+            /** Assigned To */
+            assigned_to?: string | null;
+            status?: components["schemas"]["CrmTaskStatus"] | null;
         };
         /** CsatRequest */
         CsatRequest: {
@@ -4663,98 +4854,6 @@ export interface components {
             /** Notes */
             notes?: string | null;
         };
-        /** LeadActivityCreate */
-        LeadActivityCreate: {
-            kind: components["schemas"]["LeadActivityKind"];
-            /** Title */
-            title: string;
-            /** Body */
-            body?: string | null;
-            /** Due At */
-            due_at?: string | null;
-            /** Done At */
-            done_at?: string | null;
-            /** Outcome */
-            outcome?: string | null;
-        };
-        /**
-         * LeadActivityKind
-         * @enum {string}
-         */
-        LeadActivityKind: "call" | "meeting" | "note" | "task" | "appointment";
-        /**
-         * LeadConvert
-         * @description One-click Lead → client conversion; slug/name default from the lead.
-         */
-        LeadConvert: {
-            /** Slug */
-            slug?: string | null;
-            /** Name Ar */
-            name_ar?: string | null;
-            /** Name En */
-            name_en?: string | null;
-        };
-        /** LeadCreate */
-        LeadCreate: {
-            /** Company Name */
-            company_name: string;
-            /** Contact Name */
-            contact_name?: string | null;
-            /** Mobile */
-            mobile?: string | null;
-            /** Email */
-            email?: string | null;
-            /** @default manual */
-            source: components["schemas"]["LeadSource"];
-            /** @default general */
-            insurance_type: components["schemas"]["InsuranceType"];
-            /** Insurer Company Id */
-            insurer_company_id?: string | null;
-            /**
-             * Stage Code
-             * @default new
-             */
-            stage_code: string;
-            /** Assigned Staff Id */
-            assigned_staff_id?: string | null;
-            /** Expected Premium */
-            expected_premium?: number | string | null;
-            /** Notes */
-            notes?: string | null;
-            /** Next Followup At */
-            next_followup_at?: string | null;
-        };
-        /**
-         * LeadSource
-         * @enum {string}
-         */
-        LeadSource: "manual" | "whatsapp" | "call" | "email" | "portal";
-        /** LeadUpdate */
-        LeadUpdate: {
-            /** Company Name */
-            company_name?: string | null;
-            /** Contact Name */
-            contact_name?: string | null;
-            /** Mobile */
-            mobile?: string | null;
-            /** Email */
-            email?: string | null;
-            insurance_type?: components["schemas"]["InsuranceType"] | null;
-            /** Insurer Company Id */
-            insurer_company_id?: string | null;
-            /** Stage Code */
-            stage_code?: string | null;
-            /** Assigned Staff Id */
-            assigned_staff_id?: string | null;
-            /** Expected Premium */
-            expected_premium?: number | string | null;
-            /** Notes */
-            notes?: string | null;
-            /** Lost Reason */
-            lost_reason?: string | null;
-            /** Next Followup At */
-            next_followup_at?: string | null;
-        };
         /** MergeRequest */
         MergeRequest: {
             /**
@@ -4826,42 +4925,6 @@ export interface components {
          * @enum {string}
          */
         PaymentProviderName: "fawry" | "paymob" | "manual";
-        /** PipelineStageUpsert */
-        PipelineStageUpsert: {
-            /** Id */
-            id?: string | null;
-            /** Code */
-            code: string;
-            /** Name Ar */
-            name_ar: string;
-            /** Name En */
-            name_en: string;
-            /**
-             * Sort Order
-             * @default 0
-             */
-            sort_order: number;
-            /**
-             * Is Won
-             * @default false
-             */
-            is_won: boolean;
-            /**
-             * Is Lost
-             * @default false
-             */
-            is_lost: boolean;
-            /**
-             * Is Converted
-             * @default false
-             */
-            is_converted: boolean;
-            /**
-             * Is Active
-             * @default true
-             */
-            is_active: boolean;
-        };
         /** PlatformBrandRequest */
         PlatformBrandRequest: {
             /** Platform Name */
@@ -11998,7 +12061,7 @@ export interface operations {
             };
         };
     };
-    list_stages_api_staff_crm_stages_get: {
+    list_policies_api_staff_insurance_ops_policies_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -12020,338 +12083,7 @@ export interface operations {
             };
         };
     };
-    upsert_stage_api_staff_crm_stages_put: {
-        parameters: {
-            query?: never;
-            header: {
-                /** @description Must equal the csrf_token cookie (double-submit). */
-                "X-CSRF-Token": string;
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["PipelineStageUpsert"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    list_leads_api_staff_crm_leads_get: {
-        parameters: {
-            query?: {
-                stage?: string | null;
-                source?: string | null;
-                assigned?: string | null;
-                q?: string | null;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    create_lead_api_staff_crm_leads_post: {
-        parameters: {
-            query?: never;
-            header: {
-                /** @description Must equal the csrf_token cookie (double-submit). */
-                "X-CSRF-Token": string;
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["LeadCreate"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_lead_api_staff_crm_leads__lead_id__get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                lead_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    update_lead_api_staff_crm_leads__lead_id__patch: {
-        parameters: {
-            query?: never;
-            header: {
-                /** @description Must equal the csrf_token cookie (double-submit). */
-                "X-CSRF-Token": string;
-            };
-            path: {
-                lead_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["LeadUpdate"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    add_activity_api_staff_crm_leads__lead_id__activities_post: {
-        parameters: {
-            query?: never;
-            header: {
-                /** @description Must equal the csrf_token cookie (double-submit). */
-                "X-CSRF-Token": string;
-            };
-            path: {
-                lead_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["LeadActivityCreate"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    convert_lead_api_staff_crm_leads__lead_id__convert_post: {
-        parameters: {
-            query?: never;
-            header: {
-                /** @description Must equal the csrf_token cookie (double-submit). */
-                "X-CSRF-Token": string;
-            };
-            path: {
-                lead_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["LeadConvert"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    pipeline_api_staff_crm_pipeline_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-        };
-    };
-    sales_performance_api_staff_crm_reports_sales_performance_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-        };
-    };
-    list_policies_api_staff_crm_policies_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-        };
-    };
-    create_policy_api_staff_crm_policies_post: {
+    create_policy_api_staff_insurance_ops_policies_post: {
         parameters: {
             query?: never;
             header: {
@@ -12389,7 +12121,7 @@ export interface operations {
             };
         };
     };
-    get_policy_api_staff_crm_policies__policy_id__get: {
+    get_policy_api_staff_insurance_ops_policies__policy_id__get: {
         parameters: {
             query?: never;
             header?: never;
@@ -12422,7 +12154,7 @@ export interface operations {
             };
         };
     };
-    renewals_api_staff_crm_renewals_get: {
+    renewals_api_staff_insurance_ops_renewals_get: {
         parameters: {
             query?: {
                 days?: number;
@@ -12455,7 +12187,7 @@ export interface operations {
             };
         };
     };
-    update_settlement_api_staff_crm_settlements__settlement_id__patch: {
+    update_settlement_api_staff_insurance_ops_settlements__settlement_id__patch: {
         parameters: {
             query?: never;
             header: {
@@ -12495,7 +12227,7 @@ export interface operations {
             };
         };
     };
-    pay_installment_api_staff_crm_installments__installment_id__pay_post: {
+    pay_installment_api_staff_insurance_ops_installments__installment_id__pay_post: {
         parameters: {
             query?: never;
             header: {
@@ -12535,7 +12267,7 @@ export interface operations {
             };
         };
     };
-    payment_intent_api_staff_crm_installments__installment_id__payment_intent_post: {
+    payment_intent_api_staff_insurance_ops_installments__installment_id__payment_intent_post: {
         parameters: {
             query?: never;
             header: {
@@ -12575,7 +12307,7 @@ export interface operations {
             };
         };
     };
-    list_issuing_api_staff_crm_issuing_get: {
+    list_issuing_api_staff_insurance_ops_issuing_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -12597,7 +12329,7 @@ export interface operations {
             };
         };
     };
-    create_issuing_api_staff_crm_issuing_post: {
+    create_issuing_api_staff_insurance_ops_issuing_post: {
         parameters: {
             query?: never;
             header: {
@@ -12635,7 +12367,7 @@ export interface operations {
             };
         };
     };
-    update_issuing_api_staff_crm_issuing__issuing_id__patch: {
+    update_issuing_api_staff_insurance_ops_issuing__issuing_id__patch: {
         parameters: {
             query?: never;
             header: {
@@ -12675,7 +12407,7 @@ export interface operations {
             };
         };
     };
-    update_checklist_item_api_staff_crm_issuing_items__item_id__patch: {
+    update_checklist_item_api_staff_insurance_ops_issuing_items__item_id__patch: {
         parameters: {
             query?: never;
             header: {
@@ -12715,7 +12447,7 @@ export interface operations {
             };
         };
     };
-    import_employees_api_staff_crm_imports_employees_post: {
+    import_employees_api_staff_insurance_ops_imports_employees_post: {
         parameters: {
             query?: never;
             header: {
@@ -12727,7 +12459,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "multipart/form-data": components["schemas"]["Body_import_employees_api_staff_crm_imports_employees_post"];
+                "multipart/form-data": components["schemas"]["Body_import_employees_api_staff_insurance_ops_imports_employees_post"];
             };
         };
         responses: {
@@ -12753,7 +12485,7 @@ export interface operations {
             };
         };
     };
-    import_clients_api_staff_crm_imports_clients_post: {
+    import_clients_api_staff_insurance_ops_imports_clients_post: {
         parameters: {
             query?: never;
             header: {
@@ -12765,7 +12497,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "multipart/form-data": components["schemas"]["Body_import_clients_api_staff_crm_imports_clients_post"];
+                "multipart/form-data": components["schemas"]["Body_import_clients_api_staff_insurance_ops_imports_clients_post"];
             };
         };
         responses: {
@@ -12791,45 +12523,7 @@ export interface operations {
             };
         };
     };
-    import_leads_api_staff_crm_imports_leads_post: {
-        parameters: {
-            query?: never;
-            header: {
-                /** @description Must equal the csrf_token cookie (double-submit). */
-                "X-CSRF-Token": string;
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "multipart/form-data": components["schemas"]["Body_import_leads_api_staff_crm_imports_leads_post"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    list_imports_api_staff_crm_imports_get: {
+    list_imports_api_staff_insurance_ops_imports_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -12851,7 +12545,7 @@ export interface operations {
             };
         };
     };
-    client_folder_api_staff_crm_client_folder__corporate_client_id__get: {
+    client_folder_api_staff_insurance_ops_client_folder__corporate_client_id__get: {
         parameters: {
             query?: never;
             header?: never;
@@ -12884,7 +12578,7 @@ export interface operations {
             };
         };
     };
-    caller_lookup_api_staff_crm_caller_lookup_get: {
+    caller_lookup_api_staff_insurance_ops_caller_lookup_get: {
         parameters: {
             query: {
                 mobile: string;
@@ -12917,7 +12611,7 @@ export interface operations {
             };
         };
     };
-    insurer_performance_api_staff_crm_insurer_performance_get: {
+    insurer_performance_api_staff_insurance_ops_insurer_performance_get: {
         parameters: {
             query?: {
                 days?: number;
@@ -12950,7 +12644,7 @@ export interface operations {
             };
         };
     };
-    document_search_api_staff_crm_document_search_get: {
+    document_search_api_staff_insurance_ops_document_search_get: {
         parameters: {
             query: {
                 q: string;
@@ -13016,15 +12710,202 @@ export interface operations {
             };
         };
     };
+    list_stages_api_crm_stages_get: {
+        parameters: {
+            query?: {
+                include_inactive?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_stage_api_crm_stages_post: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Must equal the csrf_token cookie (double-submit). */
+                "X-CSRF-Token": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CrmStageCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reorder_stages_api_crm_stages_reorder_post: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Must equal the csrf_token cookie (double-submit). */
+                "X-CSRF-Token": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CrmStageReorder"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_stage_api_crm_stages__stage_id__delete: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Must equal the csrf_token cookie (double-submit). */
+                "X-CSRF-Token": string;
+            };
+            path: {
+                stage_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_stage_api_crm_stages__stage_id__patch: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Must equal the csrf_token cookie (double-submit). */
+                "X-CSRF-Token": string;
+            };
+            path: {
+                stage_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CrmStageUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_leads_api_crm_leads_get: {
         parameters: {
             query?: {
                 search?: string | null;
-                status?: string | null;
+                stage_code?: string | null;
                 source?: string | null;
+                priority?: string | null;
                 assigned_to?: string | null;
                 date_from?: string | null;
                 date_to?: string | null;
+                due_before?: string | null;
                 sort?: string;
                 order?: string;
                 page?: number;
@@ -13205,6 +13086,46 @@ export interface operations {
             };
         };
     };
+    move_lead_api_crm_leads__lead_id__move_post: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Must equal the csrf_token cookie (double-submit). */
+                "X-CSRF-Token": string;
+            };
+            path: {
+                lead_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CrmLeadMove"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     bulk_assign_api_crm_leads_bulk_assign_post: {
         parameters: {
             query?: never;
@@ -13243,7 +13164,7 @@ export interface operations {
             };
         };
     };
-    bulk_status_api_crm_leads_bulk_status_post: {
+    bulk_stage_api_crm_leads_bulk_stage_post: {
         parameters: {
             query?: never;
             header: {
@@ -13255,7 +13176,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["CrmBulkStatus"];
+                "application/json": components["schemas"]["CrmBulkStage"];
             };
         };
         responses: {
@@ -13317,6 +13238,329 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    convert_lead_api_crm_leads__lead_id__convert_post: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Must equal the csrf_token cookie (double-submit). */
+                "X-CSRF-Token": string;
+            };
+            path: {
+                lead_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CrmLeadConvert"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_tasks_api_crm_tasks_get: {
+        parameters: {
+            query?: {
+                status?: string | null;
+                type?: string | null;
+                assigned_to?: string | null;
+                lead_id?: string | null;
+                due?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_task_api_crm_leads__lead_id__tasks_post: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Must equal the csrf_token cookie (double-submit). */
+                "X-CSRF-Token": string;
+            };
+            path: {
+                lead_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CrmTaskCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_task_api_crm_tasks__task_id__delete: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Must equal the csrf_token cookie (double-submit). */
+                "X-CSRF-Token": string;
+            };
+            path: {
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_task_api_crm_tasks__task_id__patch: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Must equal the csrf_token cookie (double-submit). */
+                "X-CSRF-Token": string;
+            };
+            path: {
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CrmTaskUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    complete_task_api_crm_tasks__task_id__complete_post: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Must equal the csrf_token cookie (double-submit). */
+                "X-CSRF-Token": string;
+            };
+            path: {
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    pipeline_api_crm_pipeline_get: {
+        parameters: {
+            query?: {
+                assigned_to?: string | null;
+                source?: string | null;
+                date_from?: string | null;
+                date_to?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    sales_performance_api_crm_reports_sales_performance_get: {
+        parameters: {
+            query?: {
+                date_from?: string | null;
+                date_to?: string | null;
+                source?: string | null;
+                stage_code?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    stats_api_crm_stats_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };
@@ -13499,28 +13743,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    stats_api_crm_stats_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
                 };
             };
         };
