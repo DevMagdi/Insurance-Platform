@@ -1,80 +1,83 @@
 /* ==========================================================================
    Wathiq design system — foundation tokens & primitives
-   Amani Reserve identity: warm cream/charcoal · deep gold · muted teal.
+   Card OS identity: warm stone · human coral · calm sage.
    `design-system.css` (loaded after this file) re-tunes these tokens per
-   theme; the values here are the same Amani palette so no layer ever
+   theme; the values here are the same Card OS palette so no layer ever
    renders off-brand on its own.
    ========================================================================== */
 
 :root,
 .staff-console.theme-light {
-  /* Brand */
-  --navy-950: #0b0f14;
-  --navy-900: #10151c;
-  --navy-800: #17202a;
-  --navy-700: #1f2a37;
-  --navy-600: #2a3746;
-  --navy-500: #3a4a5e;
+  /* Warm stone dark — the house dark, fixed in both themes */
+  --navy-950: #100d0b;
+  --navy-900: #14110f;
+  --navy-800: #1a1614;
+  --navy-700: #221e1b;
+  --navy-600: #2a2521;
+  --navy-500: #3a332d;
 
-  --gold-700: #7a5916;
-  --gold-600: #926c1b;
-  --gold-500: #a67b22;
-  --gold-400: #c99a3a;
-  --gold-300: #e8cf9e;
-  --gold-200: #f3e5c3;
-  --gold-100: #faf3e0;
+  /* Coral ramp (the retired --gold-* names resolve here). The resting
+     button fill is --gold-600 (#b85a41: white label 4.59:1 — see the
+     measured-contrast notes in design-system.css). */
+  --gold-700: #b3543f;
+  --gold-600: #b85a41;
+  --gold-500: #d86b52;
+  --gold-400: #e07a5f;
+  --gold-300: #f0b4a3;
+  --gold-200: #fdf3ea;
+  --gold-100: #fdf9f3;
 
-  --emerald-800: #185a52;
-  --emerald-700: #185a52;
-  --emerald-600: #1f6f65;
-  --emerald-500: #24867a;
-  --emerald-200: #c4e0d9;
-  --emerald-100: #e7f2ef;
+  --emerald-800: #38634f;
+  --emerald-700: #38634f;
+  --emerald-600: #4c7a68;
+  --emerald-500: #5f8f7c;
+  --emerald-200: rgba(95, 143, 124, 0.15);
+  --emerald-100: rgba(95, 143, 124, 0.09);
 
-  /* Light surfaces — warm cream paper */
-  --surface-0: #f6f1e8;
-  --surface-1: #fffdf9;
-  --surface-2: #f0eae0;
-  --surface-3: #e6dfd3;
-  --surface-glass: rgba(255, 253, 249, 0.85);
-  --surface-inverse: #17202a;
+  /* Light surfaces — warm paper */
+  --surface-0: #faf7f2;
+  --surface-1: #ffffff;
+  --surface-2: #f0ebe3;
+  --surface-3: #e7dfd2;
+  --surface-glass: rgba(250, 247, 242, 0.85);
+  --surface-inverse: #221e1b;
 
-  /* Ink — warm green-black down to warm taupe */
-  --ink-900: #1a1f1a;
-  --ink-800: #2a302a;
-  --ink-700: #3e443e;
-  --ink-600: #4e4a44;
-  --ink-500: #5f5a52;
-  --ink-400: #6e675c;
-  --ink-300: #a79e92;
-  --ink-on-brand: #f7f4ee;
-  --ink-on-accent: #fffdf9;
-  /* Gold that reads: text/icons in the accent (design-system re-declares). */
-  --accent-ink: #7a5916;
+  /* Ink — warm near-black down to warm stone */
+  --ink-900: #1a1614;
+  --ink-800: #2c2724;
+  --ink-700: #453e39;
+  --ink-600: #59514b;
+  --ink-500: #6b645c;
+  --ink-400: #6e675e;
+  --ink-300: #b0a79b;
+  --ink-on-brand: #faf7f2;
+  --ink-on-accent: #ffffff;
+  /* Coral that reads: text/icons in the accent (design-system re-declares). */
+  --accent-ink: #b3543f;
 
   /* Lines — warm ink at whisper alpha */
-  --line: rgba(26, 31, 26, 0.08);
-  --line-soft: rgba(26, 31, 26, 0.05);
-  --line-strong: rgba(26, 31, 26, 0.14);
-  --border: rgba(26, 31, 26, 0.08);
-  --border-strong: rgba(26, 31, 26, 0.14);
+  --line: rgba(26, 22, 20, 0.08);
+  --line-soft: rgba(26, 22, 20, 0.05);
+  --line-strong: rgba(26, 22, 20, 0.14);
+  --border: rgba(26, 22, 20, 0.08);
+  --border-strong: rgba(26, 22, 20, 0.14);
 
   /* Semantic */
-  --info: #245ed0;
-  --info-soft: #e9effc;
-  --success: #1f6f65;
-  --success-soft: #e7f2ef;
-  --warning: #8f5a06;
-  --warning-soft: #faf0da;
-  --danger: #b3362e;
-  --danger-soft: #fae9e7;
-  /* Retired name: resolves to warm slate so no purple ever renders. */
-  --violet: #4e657c;
-  --violet-soft: #eaeef2;
+  --info: #386892;
+  --info-soft: rgba(79, 132, 176, 0.1);
+  --success: #3e6b5a;
+  --success-soft: rgba(95, 143, 124, 0.11);
+  --warning: #8a660b;
+  --warning-soft: rgba(184, 137, 15, 0.11);
+  --danger: #c53d3d;
+  --danger-soft: rgba(197, 61, 61, 0.08);
+  /* Retired name: resolves to muted mauve-stone (no violet identity). */
+  --violet: #6e5f8f;
+  --violet-soft: rgba(110, 95, 143, 0.1);
   --orange: #ae5a1e;
-  --orange-soft: #f8ebdd;
+  --orange-soft: rgba(174, 90, 30, 0.09);
   --fuchsia: #a14a68;
-  --fuchsia-soft: #f9edf1;
+  --fuchsia-soft: rgba(161, 74, 104, 0.09);
 
   /* Public semantic API. Portals alias these rather than owning palettes. */
   --surface: var(--surface-1);
@@ -84,22 +87,22 @@
   --accent: var(--gold-600);
   --accent-soft: var(--gold-100);
 
-  /* Radii — Amani: controls 14, cards 18, modals 22 (design-system final) */
+  /* Radii — Card OS: controls 14, cards 18, drawers 24 (design-system final) */
   --r-xs: 8px;
   --r-sm: 10px;
   --r-md: 14px;
   --r-lg: 16px;
-  --r-xl: 18px;
-  --r-2xl: 22px;
+  --r-xl: 20px;
+  --r-2xl: 24px;
   --r-pill: 999px;
 
   /* Elevation — soft, layered, never muddy */
-  --shadow-xs: 0 1px 1px rgba(26, 31, 26, 0.04);
-  --shadow-sm: 0 1px 2px rgba(26, 31, 26, 0.05), 0 8px 22px rgba(26, 31, 26, 0.06);
-  --shadow-md: 0 2px 4px rgba(26, 31, 26, 0.05), 0 12px 28px -12px rgba(26, 31, 26, 0.12);
-  --shadow-lg: 0 18px 40px rgba(26, 31, 26, 0.1);
-  --shadow-brand: 0 18px 40px rgba(26, 31, 26, 0.12);
-  --shadow-gold: 0 10px 24px -12px rgba(166, 123, 34, 0.3);
+  --shadow-xs: 0 1px 1px rgba(26, 22, 20, 0.04);
+  --shadow-sm: 0 1px 2px rgba(26, 22, 20, 0.05), 0 8px 22px rgba(26, 22, 20, 0.06);
+  --shadow-md: 0 2px 4px rgba(26, 22, 20, 0.05), 0 10px 28px rgba(26, 22, 20, 0.08);
+  --shadow-lg: 0 20px 48px rgba(26, 22, 20, 0.1);
+  --shadow-brand: 0 20px 48px rgba(26, 22, 20, 0.12);
+  --shadow-gold: 0 12px 28px -12px rgba(216, 107, 82, 0.32);
 
   /* Motion */
   --ease-out: cubic-bezier(0.22, 0.61, 0.36, 1);
@@ -109,8 +112,8 @@
   --dur-slow: 260ms;
 
   /* Focus */
-  --focus: #a67b22;
-  --focus-ring: 0 0 0 3px rgba(166, 123, 34, 0.28);
+  --focus: #c45f48;
+  --focus-ring: 0 0 0 3px rgba(216, 107, 82, 0.28);
 
   /* Typography */
   --font-arabic: 'Cairo', 'Tajawal', 'Inter', system-ui, sans-serif;
@@ -122,66 +125,76 @@
   --container-narrow: 960px;
   --header-height: 68px;
 
+  /* Portal CTA band button — slab is fixed-dark, so theme-invariant. */
+  --cta-band-button: #e07a5f;
+  --cta-band-button-hover: #eb8b72;
+  --cta-band-button-label: #1a1614;
+
   color-scheme: light;
 }
 
 :root.dark,
 .staff-console.theme-dark {
-  /* Warm charcoal-slate canvas: surfaces step up in one warm family. */
-  --surface-0: #10151c;
-  --surface-1: #17202a;
-  --surface-2: #1f2a37;
-  --surface-3: #2a3746;
-  --surface-glass: rgba(16, 21, 28, 0.8);
-  --surface-inverse: #f6f1e8;
+  /* Card OS dark: warm stone steps, coral ember. */
+  --surface-0: #14110f;
+  --surface-1: #221e1b;
+  --surface-2: #2a2521;
+  --surface-3: #332c27;
+  --surface-glass: rgba(26, 22, 20, 0.8);
+  --surface-inverse: #faf7f2;
 
-  --ink-900: #f7f4ee;
-  --ink-800: #ede8df;
-  --ink-700: #d8d2c6;
-  --ink-600: #c4bcb0;
-  --ink-500: #b7b0a5;
-  --ink-400: #aaa192;
-  --ink-300: #6e6a61;
-  --ink-on-brand: #f7f4ee;
-  --ink-on-accent: #141a14;
+  --ink-900: #faf7f2;
+  --ink-800: #efe9e1;
+  --ink-700: #d9d1c5;
+  --ink-600: #c6bcb0;
+  --ink-500: #b8afa5;
+  --ink-400: #9d958a;
+  --ink-300: #6e675e;
+  --ink-on-brand: #faf7f2;
+  --ink-on-accent: #1a1614;
 
-  --line: #2a3746;
-  --line-soft: rgba(184, 138, 43, 0.08);
-  --line-strong: rgba(184, 138, 43, 0.28);
-  --border: rgba(184, 138, 43, 0.16);
-  --border-strong: rgba(184, 138, 43, 0.28);
+  --line: rgba(250, 247, 242, 0.08);
+  --line-soft: rgba(250, 247, 242, 0.05);
+  --line-strong: rgba(250, 247, 242, 0.14);
+  --border: rgba(250, 247, 242, 0.08);
+  --border-strong: rgba(250, 247, 242, 0.14);
 
-  --gold-600: #b88a2b;
-  --gold-500: #c99a3a;
-  --gold-400: #d9b264;
-  --gold-300: #ead29a;
-  --gold-200: rgba(184, 138, 43, 0.16);
-  --gold-100: rgba(184, 138, 43, 0.09);
+  --gold-600: #e07a5f;
+  --gold-500: #eb8b72;
+  --gold-400: #f2a48f;
+  --gold-300: #f8c4b4;
+  --gold-200: rgba(224, 122, 95, 0.16);
+  --gold-100: rgba(224, 122, 95, 0.09);
 
-  --info: #6e9bf5;
-  --info-soft: rgba(47, 111, 237, 0.16);
-  --success: #45a894;
-  --success-soft: rgba(31, 111, 101, 0.18);
-  --warning: #d99a3f;
-  --warning-soft: rgba(196, 132, 29, 0.15);
-  --danger: #e07a6e;
-  --danger-soft: rgba(201, 68, 58, 0.16);
-  --violet: #93a9be;
-  --violet-soft: rgba(147, 169, 190, 0.14);
-  --orange: #e29a5f;
-  --orange-soft: rgba(226, 154, 95, 0.13);
+  --info: #6b9ac4;
+  --info-soft: rgba(107, 154, 196, 0.15);
+  --success: #7d9b8a;
+  --success-soft: rgba(125, 155, 138, 0.15);
+  --warning: #d4a017;
+  --warning-soft: rgba(212, 160, 23, 0.14);
+  --danger: #e8766f;
+  --danger-soft: rgba(214, 69, 69, 0.15);
+  --violet: #a99bc0;
+  --violet-soft: rgba(169, 155, 192, 0.13);
+  --orange: #e8a06a;
+  --orange-soft: rgba(232, 160, 106, 0.13);
   --fuchsia: #d79cae;
   --fuchsia-soft: rgba(215, 156, 174, 0.13);
 
   --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35), 0 8px 22px -12px rgba(0, 0, 0, 0.5);
-  --shadow-md: 0 2px 4px rgba(0, 0, 0, 0.3), 0 10px 28px rgba(0, 0, 0, 0.38);
-  --shadow-lg: 0 20px 50px rgba(0, 0, 0, 0.5);
-  --shadow-brand: 0 20px 50px rgba(0, 0, 0, 0.5);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35), 0 10px 26px -14px rgba(0, 0, 0, 0.55);
+  --shadow-md: 0 12px 32px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 24px 56px rgba(0, 0, 0, 0.52);
+  --shadow-brand: 0 24px 56px rgba(0, 0, 0, 0.52);
+  --shadow-gold: 0 14px 34px -14px rgba(224, 122, 95, 0.4);
 
-  --accent-ink: #c99a3a;
-  --focus: #c99a3a;
-  --focus-ring: 0 0 0 3px rgba(184, 138, 43, 0.34);
+  --focus: #eb8b72;
+  --focus-ring: 0 0 0 3px rgba(224, 122, 95, 0.35);
+
+  /* Portal CTA band button — slab is fixed-dark, so theme-invariant. */
+  --cta-band-button: #e07a5f;
+  --cta-band-button-hover: #eb8b72;
+  --cta-band-button-label: #1a1614;
 
   color-scheme: dark;
 }
@@ -304,7 +317,7 @@ table {
 }
 
 ::selection {
-  background: rgba(184, 138, 43, 0.28);
+  background: rgba(224, 122, 95, 0.28);
   color: inherit;
 }
 
@@ -946,7 +959,7 @@ html[dir='rtl'] .switch[aria-checked='true'] .switch-thumb {
 .dark .chip-gold {
   background: var(--gold-100);
   color: var(--gold-300);
-  border-color: rgba(184, 138, 43, 0.35);
+  border-color: rgba(224, 122, 95, 0.35);
 }
 
 .chip-emerald {

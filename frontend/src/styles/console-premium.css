@@ -277,7 +277,7 @@
 }
 
 .modal-backdrop {
-  background: rgba(16, 21, 28, 0.62);
+  background: rgba(20, 17, 15, 0.62);
   backdrop-filter: blur(5px);
   -webkit-backdrop-filter: blur(5px);
 }

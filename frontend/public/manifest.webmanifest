@@ -6,7 +6,7 @@
   "dir": "rtl",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#10151c",
-  "theme_color": "#10151c",
+  "background_color": "#14110f",
+  "theme_color": "#14110f",
   "icons": [{"src":"/insurance-logo.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}]
 }

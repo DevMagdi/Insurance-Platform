@@ -132,8 +132,8 @@ for (const theme of ['light', 'dark'] as const) {
     const shell = page.locator('.staff-console');
     // Amani Reserve canvas (design-system v4): #10151c on dark, #f6f1e8 warm
     // cream on light; warm paper ink #f7f4ee / green-black ink #1a1f1a.
-    await expect(shell).toHaveCSS('background-color', theme === 'dark' ? 'rgb(16, 21, 28)' : 'rgb(246, 241, 232)');
-    await expect(shell).toHaveCSS('color', theme === 'dark' ? 'rgb(247, 244, 238)' : 'rgb(26, 31, 26)');
+    await expect(shell).toHaveCSS('background-color', theme === 'dark' ? 'rgb(20, 17, 15)' : 'rgb(250, 247, 242)');
+    await expect(shell).toHaveCSS('color', theme === 'dark' ? 'rgb(250, 247, 242)' : 'rgb(26, 22, 20)');
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     await page.screenshot({ path: testInfo.outputPath(`staff-${theme}.png`), fullPage: true });
     await page.goto('/staff/analytics');

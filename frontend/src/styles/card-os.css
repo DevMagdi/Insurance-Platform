@@ -1,0 +1,505 @@
+/* ==========================================================================
+   Card OS chrome — Launchpad, icon rail, sub-card strips, page motion
+   ==========================================================================
+
+   The structural layer of the Card OS rebuild (design-system.css holds
+   the palette). The wide 270px sidebar is retired as the primary
+   navigation: on wide screens a 64px glass icon rail mirrors the
+   Launchpad for quick hops, on small screens the old aside survives
+   only as an off-canvas drawer (≤760px) behind the menu button. The
+   Launchpad lives at /staff/home and is where every sign-in lands.
+
+   Motion is CSS-only and deliberate: cards lift and glow on hover
+   (220–320ms ease-out), settle to scale .98 on press, stagger in on
+   the Launchpad, and every page change cross-fades with a short rise.
+   prefers-reduced-motion collapses all of it.
+   ========================================================================== */
+
+/* Section glow resolution: data-glow names the section, the token lives
+   in design-system.css. Glows tint chips and halos only — never fills. */
+[data-glow='requests'] { --card-glow: var(--glow-requests); }
+[data-glow='channels'] { --card-glow: var(--glow-channels); }
+[data-glow='metrics'] { --card-glow: var(--glow-metrics); }
+[data-glow='documents'] { --card-glow: var(--glow-documents); }
+[data-glow='crm'] { --card-glow: var(--glow-crm); }
+[data-glow='admin'] { --card-glow: var(--glow-admin); }
+
+/* --------------------------------------------------------------------------
+   Shell geometry
+   -------------------------------------------------------------------------- */
+
+@media (min-width: 761px) {
+  /* The wide sidebar is gone on desktop; the rail takes its place. */
+  .staff-console .sidebar { display: none; }
+  .staff-console .main-shell { margin-inline-start: var(--os-shell-gap, 84px); }
+}
+
+.staff-console { --os-shell-gap: 84px; }
+
+/* --------------------------------------------------------------------------
+   The 64px glass icon rail (wide screens only)
+   -------------------------------------------------------------------------- */
+
+.staff-console .os-rail {
+  position: fixed;
+  inset-inline-start: 0;
+  top: 0;
+  bottom: 0;
+  z-index: 60;
+  width: 64px;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 0 18px;
+  background: var(--surface-glass);
+  border-inline-end: 1px solid var(--border);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+@media (min-width: 761px) {
+  .staff-console .os-rail { display: flex; }
+}
+
+.staff-console .os-rail-brand {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  cursor: pointer;
+  transition: transform 220ms var(--ease-out), box-shadow 220ms var(--ease-out);
+}
+.staff-console .os-rail-brand img { width: 34px; height: 34px; border-radius: 10px; }
+.staff-console .os-rail-brand:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 24px -12px var(--accent-glow);
+}
+.staff-console .os-rail-brand:active { transform: scale(0.96); }
+
+.staff-console .os-rail-nav {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  overflow-y: auto;
+  padding-bottom: 6px;
+  scrollbar-width: none;
+}
+.staff-console .os-rail-nav::-webkit-scrollbar { display: none; }
+
+.staff-console .os-rail-item {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border: 1px solid transparent;
+  border-radius: 14px;
+  background: transparent;
+  color: var(--ink-500);
+  cursor: pointer;
+  transition:
+    transform 220ms var(--ease-out),
+    background-color 220ms ease,
+    color 220ms ease,
+    box-shadow 260ms var(--ease-out),
+    border-color 220ms ease;
+}
+.staff-console .os-rail-item:hover {
+  transform: translateY(-2px);
+  color: var(--ink-900);
+  background: var(--surface-2);
+  box-shadow: 0 12px 26px -16px color-mix(in srgb, var(--card-glow) 70%, transparent);
+}
+.staff-console .os-rail-item:active { transform: scale(0.96); }
+.staff-console .os-rail-item.active {
+  color: var(--card-glow);
+  background: color-mix(in srgb, var(--card-glow) 13%, transparent);
+  border-color: color-mix(in srgb, var(--card-glow) 32%, transparent);
+  box-shadow: 0 10px 26px -14px color-mix(in srgb, var(--card-glow) 65%, transparent);
+}
+.staff-console .os-rail-item.active::before {
+  content: '';
+  position: absolute;
+  inset-inline-start: -11px;
+  top: 50%;
+  width: 3px;
+  height: 20px;
+  border-radius: 99px;
+  background: var(--card-glow);
+  transform: translateY(-50%);
+}
+
+.staff-console .os-rail-divider {
+  width: 26px;
+  height: 1px;
+  margin: 6px 0;
+  background: var(--border-strong);
+}
+
+/* --------------------------------------------------------------------------
+   Topbar: warm glass + the home dock
+   -------------------------------------------------------------------------- */
+
+.staff-console .topbar {
+  background: var(--surface-glass);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+.staff-console .os-home-button {
+  color: var(--accent-ink);
+  transition: transform 200ms var(--ease-out), background-color 200ms ease, box-shadow 220ms var(--ease-out);
+}
+.staff-console .os-home-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 22px -14px var(--accent-glow);
+}
+.staff-console .os-home-button:active { transform: scale(0.96); }
+
+/* --------------------------------------------------------------------------
+   Page motion
+   -------------------------------------------------------------------------- */
+
+@keyframes os-page-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.997); }
+  to { opacity: 1; transform: none; }
+}
+
+.staff-console .os-page {
+  animation: os-page-in 260ms var(--ease-out) both;
+}
+
+/* CRM tab panels remount per tab; give them the same short rise. */
+.staff-console .os-substrip ~ .os-page .page-stack > *:not(.inline-alert) {
+  animation: os-page-in 200ms var(--ease-out) both;
+}
+
+/* --------------------------------------------------------------------------
+   Launchpad — the Card OS home
+   -------------------------------------------------------------------------- */
+
+.staff-console .os-launchpad {
+  padding: clamp(20px, 3.4vw, 40px);
+  border: 1px solid var(--border);
+  border-radius: var(--r-3xl);
+  background:
+    radial-gradient(60% 42% at 82% 0%, color-mix(in srgb, var(--primary) 7%, transparent), transparent 70%),
+    radial-gradient(120% 90% at 50% 0%, var(--canvas-2), var(--canvas) 72%);
+  box-shadow: var(--shadow-md);
+}
+
+.staff-console .os-hero {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: clamp(20px, 3vw, 32px);
+}
+
+.staff-console .os-hero-eyebrow {
+  margin: 0 0 6px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--accent-ink);
+}
+
+.staff-console .os-hero h1 {
+  margin: 0;
+  font-size: clamp(1.65rem, 3.4vw, 2.35rem);
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: var(--ink-900);
+}
+
+.staff-console .os-hero-sub {
+  margin: 8px 0 0;
+  font-size: 0.95rem;
+  color: var(--ink-500);
+}
+
+.staff-console .os-hero-scope {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-card);
+  background: var(--surface-translucent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.staff-console .os-hero-scope-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--ink-400);
+}
+
+.staff-console .os-section-title {
+  margin: 30px 2px 12px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--ink-400);
+}
+
+/* Bento grid: the day's work spans wide, governance sits in a calmer row. */
+.staff-console .os-bento {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+.staff-console .os-bento-more { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.staff-console .os-card-wide { grid-column: span 2; }
+
+@media (max-width: 1250px) {
+  .staff-console .os-bento,
+  .staff-console .os-bento-more { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 900px) {
+  .staff-console .os-bento,
+  .staff-console .os-bento-more { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .staff-console .os-card-wide { grid-column: span 2; }
+}
+@media (max-width: 560px) {
+  .staff-console .os-bento,
+  .staff-console .os-bento-more { grid-template-columns: minmax(0, 1fr); }
+  .staff-console .os-card-wide { grid-column: span 1; }
+}
+
+@keyframes os-card-in {
+  from { opacity: 0; transform: translateY(14px) scale(0.985); }
+  to { opacity: 1; transform: none; }
+}
+
+.staff-console .os-card {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  min-height: 132px;
+  padding: 20px;
+  text-align: inherit;
+  font: inherit;
+  color: var(--ink-900);
+  border: 1px solid var(--border);
+  border-radius: var(--r-launch);
+  background: var(--surface-translucent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--ink-900) 5%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--card-glow) 10%, transparent),
+    0 16px 36px -20px color-mix(in srgb, var(--card-glow) 45%, transparent);
+  cursor: pointer;
+  animation: os-card-in 420ms var(--ease-out) both;
+  animation-delay: calc(var(--os-i, 0) * 45ms);
+  transition:
+    transform 260ms var(--ease-out),
+    box-shadow 300ms var(--ease-out),
+    border-color 260ms ease,
+    background-color 260ms ease;
+}
+
+.staff-console .os-card:hover {
+  transform: translateY(-4px);
+  border-color: color-mix(in srgb, var(--card-glow) 34%, transparent);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--ink-900) 7%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--card-glow) 26%, transparent),
+    0 26px 48px -20px color-mix(in srgb, var(--card-glow) 62%, transparent);
+}
+
+.staff-console .os-card:active {
+  transform: translateY(-1px) scale(0.98);
+  transition-duration: 120ms;
+}
+
+.staff-console .os-card:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring), 0 26px 48px -20px color-mix(in srgb, var(--card-glow) 62%, transparent);
+}
+
+.staff-console .os-card-icon {
+  flex: none;
+  width: 52px;
+  height: 52px;
+  display: grid;
+  place-items: center;
+  border-radius: 16px;
+  color: var(--card-glow);
+  background: color-mix(in srgb, var(--card-glow) 13%, transparent);
+  border: 1px solid color-mix(in srgb, var(--card-glow) 26%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--ink-900) 8%, transparent);
+}
+
+.staff-console .os-card-wide .os-card-icon { width: 60px; height: 60px; border-radius: 18px; }
+
+.staff-console .os-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.staff-console .os-card-body strong {
+  font-size: 1.06rem;
+  font-weight: 800;
+  color: var(--ink-900);
+}
+.staff-console .os-card-wide .os-card-body strong { font-size: 1.22rem; }
+
+.staff-console .os-card-value {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--accent-ink);
+}
+
+.staff-console .os-card-body small {
+  font-size: 0.8125rem;
+  line-height: 1.55;
+  color: var(--ink-500);
+}
+
+.staff-console .os-card-arrow {
+  margin-inline-start: auto;
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 99px;
+  color: var(--ink-400);
+  background: color-mix(in srgb, var(--ink-900) 5%, transparent);
+  transition: transform 240ms var(--ease-out), color 200ms ease, background-color 200ms ease;
+}
+.staff-console .os-card:hover .os-card-arrow {
+  color: var(--card-glow);
+  background: color-mix(in srgb, var(--card-glow) 14%, transparent);
+  transform: translateX(-2px);
+}
+[dir='ltr'] .staff-console .os-card:hover .os-card-arrow { transform: translateX(2px); }
+
+/* --------------------------------------------------------------------------
+   Sub-card strip (section navigation, e.g. CRM tabs)
+   -------------------------------------------------------------------------- */
+
+.staff-console .os-substrip {
+  display: flex;
+  gap: 10px;
+  padding: 4px 2px 10px;
+  margin-bottom: 14px;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  --card-glow: var(--glow-crm);
+}
+
+.staff-console .os-subcard {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 52px;
+  padding: 10px 18px;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--ink-500);
+  border: 1px solid var(--border);
+  border-radius: var(--r-card);
+  background: var(--surface-1);
+  opacity: 0.78;
+  cursor: pointer;
+  transition:
+    transform 220ms var(--ease-out),
+    opacity 200ms ease,
+    color 200ms ease,
+    border-color 220ms ease,
+    box-shadow 260ms var(--ease-out),
+    background-color 220ms ease;
+}
+
+.staff-console .os-subcard:hover {
+  opacity: 1;
+  transform: translateY(-2px);
+  color: var(--ink-900);
+  box-shadow: 0 14px 28px -18px color-mix(in srgb, var(--card-glow) 55%, transparent);
+}
+
+.staff-console .os-subcard:active { transform: scale(0.98); }
+
+.staff-console .os-subcard.active {
+  opacity: 1;
+  color: var(--ink-900);
+  border-color: color-mix(in srgb, var(--card-glow) 40%, transparent);
+  background: color-mix(in srgb, var(--card-glow) 10%, var(--surface-1));
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--ink-900) 6%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--card-glow) 22%, transparent),
+    0 16px 32px -18px color-mix(in srgb, var(--card-glow) 60%, transparent);
+}
+.staff-console .os-subcard.active svg { color: var(--card-glow); }
+
+/* --------------------------------------------------------------------------
+   Detail surfaces: warm blur backdrop + 24px cards
+   -------------------------------------------------------------------------- */
+
+.staff-console .modal-backdrop {
+  background: color-mix(in srgb, var(--canvas) 66%, transparent);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.staff-console .modal-card {
+  border-radius: var(--r-2xl);
+  box-shadow: var(--shadow-lg);
+}
+
+/* --------------------------------------------------------------------------
+   Drawer (≤760px): the old aside as a warm glass panel off-canvas
+   -------------------------------------------------------------------------- */
+
+@media (max-width: 760px) {
+  .staff-console .sidebar {
+    background: var(--surface-glass);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    border-start-end-radius: 24px;
+    border-end-end-radius: 24px;
+  }
+  .staff-console .mobile-scrim {
+    background: color-mix(in srgb, var(--canvas) 58%, transparent);
+    backdrop-filter: blur(3px);
+    -webkit-backdrop-filter: blur(3px);
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Reduced motion: everything settles instantly
+   -------------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .staff-console .os-page,
+  .staff-console .os-card,
+  .staff-console .os-substrip ~ .os-page .page-stack > *:not(.inline-alert) {
+    animation: none;
+  }
+  .staff-console .os-card,
+  .staff-console .os-subcard,
+  .staff-console .os-rail-item,
+  .staff-console .os-rail-brand,
+  .staff-console .os-home-button {
+    transition: none;
+  }
+  .staff-console .os-card:hover,
+  .staff-console .os-subcard:hover,
+  .staff-console .os-rail-item:hover { transform: none; }
+}
