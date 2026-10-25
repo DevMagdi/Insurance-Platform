@@ -7,35 +7,35 @@
 @import './styles/corporate.css';
 
 @theme {
-  /* Amani Reserve identity, available as Tailwind utilities
-     (bg-base, text-accent, border-hairline, …): warm charcoal-slate
-     canvas, deep gold accent, muted teal. These mirror the dark-theme
+  /* Card OS identity, available as Tailwind utilities
+     (bg-base, text-accent, border-hairline, …): warm stone canvas,
+     human coral accent, calm sage. These mirror the dark-theme
      tokens in design-system.css; theme-aware surfaces belong to the
      CSS variables, not to static utilities. */
-  --color-base: #10151c;
-  --color-raised: #17202a;
-  --color-elevated: #1f2a37;
-  --color-hairline: #2a3746;
-  --color-accent-500: #c99a3a;
-  --color-accent-600: #b88a2b;
-  --color-accent-400: #d9b264;
-  --color-emerald: #45a894;
-  --color-cream: #f7f4ee;
-  --color-ink: #f7f4ee;
-  --color-ink-muted: #b7b0a5;
-  --color-ink-faint: #aaa192;
+  --color-base: #14110f;
+  --color-raised: #221e1b;
+  --color-elevated: #2a2521;
+  --color-hairline: rgba(250, 247, 242, 0.14);
+  --color-accent-500: #eb8b72;
+  --color-accent-600: #e07a5f;
+  --color-accent-400: #f2a48f;
+  --color-emerald: #7d9b8a;
+  --color-cream: #faf7f2;
+  --color-ink: #faf7f2;
+  --color-ink-muted: #b8afa5;
+  --color-ink-faint: #9d958a;
 
   /* House names, same palette. */
-  --color-navy: #10151c;
-  --color-navy-deep: #0b0f14;
-  --color-midnight: #17202a;
-  --color-gold: #b88a2b;
-  --color-gold-hover: #c99a3a;
-  --color-gold-deep: #a67b22;
+  --color-navy: #14110f;
+  --color-navy-deep: #100d0b;
+  --color-midnight: #1a1614;
+  --color-gold: #e07a5f;
+  --color-gold-hover: #eb8b72;
+  --color-gold-deep: #c96a51;
 
   --radius-lg: 16px;
-  --radius-xl: 18px;
-  --radius-2xl: 22px;
+  --radius-xl: 20px;
+  --radius-2xl: 24px;
   --radius-3xl: 26px;
 
   --font-arabic: 'Cairo', 'Tajawal', 'Inter', system-ui, sans-serif;

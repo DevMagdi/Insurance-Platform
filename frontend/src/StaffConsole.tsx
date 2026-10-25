@@ -17,6 +17,9 @@ import './styles/staff.css';
 import './styles/admin-identity.css';
 // Loaded last: refines the console chrome on top of the sheets above.
 import './styles/console-premium.css';
+// Card OS chrome (Launchpad, icon rail, sub-card strips, page motion).
+import './styles/card-os.css';
+import { SECTION_GLOW } from './features/home/sections';
 
 const AuthPage = lazy(async () => ({ default: (await import('./features/auth/AuthPage')).AuthPage }));
 const OverviewPage = lazy(async () => ({ default: (await import('./features/dashboard/OverviewPage')).OverviewPage }));
@@ -31,15 +34,16 @@ const AdminDashboard = lazy(async () => ({ default: (await import('./features/ad
 const StoragePage = lazy(async () => ({ default: (await import('./features/admin/StoragePage')).StoragePage }));
 const InsuranceOpsPage = lazy(async () => ({ default: (await import('./features/insurance-ops/InsuranceOpsPage')).InsuranceOpsPage }));
 const CrmModulePage = lazy(async () => ({ default: (await import('./features/crm-module/CrmModulePage')).CrmModulePage }));
+const Launchpad = lazy(async () => ({ default: (await import('./features/home/Launchpad')).Launchpad }));
 
 const CRM_MODULE_TABS = [
-  { tab: 'dashboard', label: 'Dashboard' },
-  { tab: 'pipeline', label: 'Pipeline (Kanban)' },
-  { tab: 'leads', label: 'Leads' },
-  { tab: 'tasks', label: 'Tasks' },
-  { tab: 'import', label: 'Import' },
-  { tab: 'performance', label: 'Performance' },
-  { tab: 'history', label: 'History' },
+  { tab: 'dashboard', icon: 'chart' as IconName, label: 'Dashboard' },
+  { tab: 'pipeline', icon: 'columns' as IconName, label: 'Pipeline (Kanban)' },
+  { tab: 'leads', icon: 'users' as IconName, label: 'Leads' },
+  { tab: 'tasks', icon: 'check' as IconName, label: 'Tasks' },
+  { tab: 'import', icon: 'download' as IconName, label: 'Import' },
+  { tab: 'performance', icon: 'trend-up' as IconName, label: 'Performance' },
+  { tab: 'history', icon: 'clock' as IconName, label: 'History' },
 ] as const;
 
 const EMPTY_FILTER_OPTIONS: ComplaintFilterOptions = { companies: [], agents: [], statuses: [], priorities: [], channels: [], insurance_types: [] };
@@ -116,6 +120,7 @@ function routeFromPath(pathname: string): AppRoute {
   if (path === '/staff/insurance-ops') return { page: 'insurance-ops' };
   const crmModule = path.match(/^\/staff\/crm-module(?:\/(dashboard|pipeline|leads|tasks|import|performance|history))?$/);
   if (crmModule) return { page: 'crm-module', tab: (crmModule[1] ?? 'dashboard') as 'dashboard' | 'pipeline' | 'leads' | 'tasks' | 'import' | 'performance' | 'history' };
+  if (path === '/staff' || path === '/staff/' || path === '/staff/home') return { page: 'home' };
   return { page: 'overview' };
 }
 function pathForRoute(route: AppRoute): string {
@@ -139,37 +144,19 @@ function operationsAllowed(access: StaffAccess): boolean {
 function storageAllowed(access: StaffAccess): boolean {
   return hasGlobalAdminScope(access) && hasPermission(access, 'storage.manage');
 }
-/**
- * Where an operator lands after signing in.
- *
- * This used to open the admin dashboard for anyone who could see it, so the
- * first thing most of the team met every morning was a governance screen.
- * The queue comes first now; the admin fallbacks below are unchanged and
- * still catch accounts that cannot see complaints at all.
- */
-function defaultPage(access: StaffAccess): AppRoute {
-  if (hasPermission(access, 'complaints.view')) return { page: 'complaints' };
-  if (canViewAdminDashboard(access)) return { page: 'admin' };
-  if (hasPermission(access, 'analytics.view') && hasPermission(access, 'complaints.view')) return { page: 'overview' };
-  if (hasPermission(access, 'integrations.manage')) return { page: 'channels' };
-  if (hasPermission(access, 'users.view')) return { page: 'users' };
-  if (hasPermission(access, 'roles.manage')) return { page: 'roles' };
-  if (operationsAllowed(access)) return { page: 'operations' };
-  if (storageAllowed(access)) return { page: 'storage' };
-  if (hasPermission(access, 'audit.view')) return { page: 'audit' };
-  return { page: 'overview' };
-}
+/** Operators land on the Launchpad (home): every permitted section is
+ * one card away, so sign-in no longer guesses a first page per role. */
 function readTheme(): Theme { return window.localStorage.getItem('wasiq-theme') === 'light' ? 'light' : 'dark'; }
 function initials(name: string): string { return name.split(/\s+/).map((part) => part[0] ?? '').slice(0, 2).join(''); }
 
 function CommandPalette({ access, onNavigate, onClose }: { access: StaffAccess; onNavigate: (route: AppRoute) => void; onClose: () => void }) {
   const [search, setSearch] = useState('');
   const [activeIndex, setActiveIndex] = useState(0);
-  const entries = NAVIGATION
+  const entries: NavigationItem[] = [{ page: 'home', label: 'الرئيسية', icon: 'grid', section: 'workspace' }, ...NAVIGATION
     .filter((item) => item.page !== 'admin' || canViewAdminDashboard(access))
     .filter((item) => item.page !== 'operations' || operationsAllowed(access))
     .filter((item) => item.page !== 'storage' || storageAllowed(access))
-    .filter((item) => !item.permission || (hasPermission(access, item.permission) && (!item.extraPermission || hasPermission(access, item.extraPermission))));
+    .filter((item) => !item.permission || (hasPermission(access, item.permission) && (!item.extraPermission || hasPermission(access, item.extraPermission))))];
   const options = entries.filter((item) => item.label.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase()));
   const activate = (index: number) => {
     const item = options[index];
@@ -233,18 +220,17 @@ function App() {
       }
       setAccess((current) => current && JSON.stringify(current) === JSON.stringify(result.access) ? current : result.access);
       setSessionState('authenticated'); setSessionError('');
-      // `/staff` is where sign-in drops you. It used to fall through to the
-      // metrics page for anyone who could read analytics, so the first screen
-      // of the day was a dashboard rather than the queue. Resolve the bare
-      // path against `defaultPage`; an explicit `/staff/overview` still opens
-      // the metrics page.
+      // `/staff` is where sign-in drops you: resolve the bare path to the
+      // Launchpad, so the first screen of the day is the Card OS home —
+      // every permitted section, not a guessed page. An explicit
+      // `/staff/overview` still opens the metrics page.
       const landing = window.location.pathname.replace(/^\/dashboard(?=\/|$)/, '/staff');
       const isBareLanding = landing === '/staff' || landing === '/staff/';
       const current = routeFromPath(window.location.pathname);
       const overviewDenied = current.page === 'overview'
         && !(hasPermission(result.access, 'analytics.view') && hasPermission(result.access, 'complaints.view'));
       if (isBareLanding || overviewDenied) {
-        const fallback = defaultPage(result.access);
+        const fallback: AppRoute = { page: 'home' };
         window.history.replaceState({}, '', pathForRoute(fallback)); setRoute(fallback);
       }
     } catch (cause) {
@@ -302,7 +288,7 @@ function App() {
       const key = event.key.toLocaleLowerCase();
       if ((event.metaKey || event.ctrlKey) && key === 'k') { event.preventDefault(); setPaletteOpen(true); }
       else if ((event.metaKey || event.ctrlKey) && event.shiftKey && key === 'q') { event.preventDefault(); if (access && hasPermission(access, 'complaints.view')) navigate({ page: 'complaints' }); }
-      else if ((event.metaKey || event.ctrlKey) && event.shiftKey && key === 'd') { event.preventDefault(); if (access) navigate(defaultPage(access)); }
+      else if ((event.metaKey || event.ctrlKey) && event.shiftKey && key === 'd') { event.preventDefault(); if (access) navigate({ page: 'home' }); }
       else if (key === '?' && !(event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement)) setShortcutsOpen(true);
     };
     window.addEventListener('keydown', onKeyDown);
@@ -331,7 +317,7 @@ function App() {
   const logout = async () => {
     try { await api('/api/auth/logout', { method: 'POST', body: jsonBody({}) }); }
     catch { /* Local state is cleared even when the server session is already expired. */ }
-    setAccess(null); setSessionState('unauthenticated'); setRoute({ page: 'overview' });
+    setAccess(null); setSessionState('unauthenticated'); setRoute({ page: 'home' });
   };
 
   const companyNames = useMemo(() => new Map(filterOptions.companies.map((company) => [company.id, company.name_ar || company.name_en])), [filterOptions.companies]);
@@ -350,7 +336,9 @@ function App() {
   const effectiveInsuranceType = access.insurance_types.length > 0 && insuranceType && !access.insurance_types.includes(insuranceType) ? '' : insuranceType;
   const currentNav = activePage(route);
   const showDatePicker = route.page === 'admin' || route.page === 'overview' || route.page === 'complaints' || route.page === 'audit';
-  const pageContent = route.page === 'admin'
+  const pageContent = route.page === 'home'
+    ? <Launchpad access={access} range={range} items={visibleNavigation} companies={filterOptions.companies} onNavigate={navigate} />
+    : route.page === 'admin'
     ? <AdminDashboard access={access} range={range} onNavigate={navigate} />
     : route.page === 'overview'
     ? <OverviewPage access={access} range={range} companies={filterOptions.companies} companyId={effectiveCompanyId} insuranceType={effectiveInsuranceType} onCompany={setCompanyId} onInsuranceType={setInsuranceType} onOpenComplaints={() => navigate({ page: 'complaints' })} onOpenTicket={(id) => navigate({ page: 'ticket', id })} onOpenChannels={hasPermission(access, 'integrations.manage') ? () => navigate({ page: 'channels' }) : undefined} onOpenAudit={hasPermission(access, 'audit.view') ? () => navigate({ page: 'audit' }) : undefined} />
@@ -410,6 +398,17 @@ function App() {
       </button>
       <div className="sidebar-user"><span className="avatar-circle avatar-active">{initials(access.full_name)}</span><span><strong>{access.full_name}</strong><small>عضو فريق</small></span><button type="button" className="icon-button small sidebar-user-menu" aria-label="تسجيل الخروج" title="تسجيل الخروج" onClick={() => { void logout(); }}><Icon name="logout" size={14} /></button></div>
       <div className="sidebar-nav-scroll">
+        <nav className="nav-section" aria-label="التنقل الرئيسي">
+          <button
+            type="button"
+            className={`nav-link${currentNav === 'home' ? ' active' : ''}`}
+            aria-current={currentNav === 'home' ? 'page' : undefined}
+            onClick={() => navigate({ page: 'home' })}
+          >
+            <span className="nav-icon"><Icon name="grid" size={17} /></span>
+            <span>الرئيسية</span>
+          </button>
+        </nav>
         {workspaceLinks.length > 0 && (
           <nav className="nav-section" aria-label="مساحة العمل">
             <p className="nav-section-title">مساحة العمل</p>
@@ -462,8 +461,63 @@ function App() {
       <div className="sidebar-bottom"><div className="sidebar-scope-label"><Icon name="shield" size={14} /> النطاق الفعّال</div><ScopeBadge access={access} companies={scopeCompanies} /><div className="sidebar-footer"><span><i /> النظام متصل</span><span>v7.0</span></div></div>
     </aside>
 
+    {/* Card OS icon rail (wide screens): the Launchpad is the primary
+        navigation; this slim dock only mirrors it for quick hops. */}
+    <div className="os-rail">
+      <button type="button" className="os-rail-brand" aria-label="الرئيسية" title="الرئيسية" onClick={() => navigate({ page: 'home' })}>
+        <img src={brand.logo_url} alt="" />
+      </button>
+      <nav className="os-rail-nav" aria-label="مساحة العمل">
+        <button
+          type="button"
+          className={`os-rail-item${currentNav === 'home' ? ' active' : ''}`}
+          data-glow="crm"
+          aria-label="الرئيسية"
+          title="الرئيسية"
+          aria-current={currentNav === 'home' ? 'page' : undefined}
+          onClick={() => navigate({ page: 'home' })}
+        ><Icon name="grid" size={20} /></button>
+        {workspaceLinks.map((item) => (
+          <button
+            type="button"
+            key={item.page}
+            className={`os-rail-item${currentNav === item.page ? ' active' : ''}`}
+            data-glow={SECTION_GLOW[item.page] ?? 'admin'}
+            aria-label={item.label}
+            title={item.label}
+            aria-current={currentNav === item.page ? 'page' : undefined}
+            onClick={() => navigate({ page: item.page } as AppRoute)}
+          ><Icon name={item.icon} size={20} /></button>
+        ))}
+        {hasPermission(access, 'crm.view') && (
+          <button
+            type="button"
+            className={`os-rail-item${currentNav === 'crm-module' ? ' active' : ''}`}
+            data-glow="crm"
+            aria-label="CRM"
+            title="CRM"
+            aria-current={currentNav === 'crm-module' ? 'page' : undefined}
+            onClick={() => navigate({ page: 'crm-module', tab: 'dashboard' })}
+          ><Icon name="users" size={20} /></button>
+        )}
+        {moreLinks.length > 0 && <span className="os-rail-divider" aria-hidden="true" />}
+        {moreLinks.map((item) => (
+          <button
+            type="button"
+            key={item.page}
+            className={`os-rail-item${currentNav === item.page ? ' active' : ''}`}
+            data-glow="admin"
+            aria-label={item.label}
+            title={item.label}
+            aria-current={currentNav === item.page ? 'page' : undefined}
+            onClick={() => navigate({ page: item.page } as AppRoute)}
+          ><Icon name={item.icon} size={20} /></button>
+        ))}
+      </nav>
+    </div>
+
     <div className="main-shell">
-      <header className="topbar"><div className="topbar-leading"><button className="icon-button mobile-menu-button" type="button" aria-label="فتح القائمة" onClick={() => setMobileNav(true)}><Icon name="menu" size={20} /></button><div className="topbar-breadcrumb"><span>{brand.platform_name}</span><Icon name="chevron" size={13} /><strong>{NAVIGATION.find((item) => item.page === currentNav)?.label ?? (route.page === 'ticket' ? 'مساحة الطلب' : route.page === 'crm-module' ? 'CRM' : 'الإدارة')}</strong></div></div>
+      <header className="topbar"><div className="topbar-leading"><button className="icon-button mobile-menu-button" type="button" aria-label="فتح القائمة" onClick={() => setMobileNav(true)}><Icon name="menu" size={20} /></button>{route.page !== 'home' && <button className="icon-button os-home-button" type="button" aria-label="الرئيسية" title="العودة إلى الرئيسية" onClick={() => navigate({ page: 'home' })}><Icon name="grid" size={18} /></button>}<div className="topbar-breadcrumb"><span>{brand.platform_name}</span><Icon name="chevron" size={13} /><strong>{NAVIGATION.find((item) => item.page === currentNav)?.label ?? (route.page === 'ticket' ? 'مساحة الطلب' : route.page === 'crm-module' ? 'CRM' : route.page === 'home' ? 'الرئيسية' : 'الإدارة')}</strong></div></div>
         <div className="topbar-actions">{showDatePicker && <DateRangePicker value={range} onChange={setRange} />}<button className="command-trigger" type="button" onClick={() => setPaletteOpen(true)} aria-label="فتح مركز الأوامر"><Icon name="search" size={16} /><span>ابحث أو انتقل إلى…</span><kbd>⌘ K</kbd></button><div className="popover-anchor"><button className={`icon-button notification-trigger${notificationsOpen ? ' is-active' : ''}`} type="button" aria-label={`الإشعارات، ${unread} غير مقروءة`} onClick={() => setNotificationsOpen((value) => !value)}><Icon name="bell" size={18} />{unread > 0 && <i className="notification-count">{unread > 9 ? '9+' : unread}</i>}</button>{notificationsOpen && <NotificationPopover items={notifications} loading={notificationsLoading} onRead={(item) => { void onReadNotification(item); }} onClose={() => setNotificationsOpen(false)} />}</div><button className="icon-button theme-toggle" type="button" aria-label={theme === 'dark' ? 'تفعيل الوضع الفاتح' : 'تفعيل الوضع الداكن'} title="تبديل المظهر" onClick={() => setTheme((value) => value === 'dark' ? 'light' : 'dark')}><Icon name={theme === 'dark' ? 'sun' : 'moon'} size={17} /></button>
           <div className="popover-anchor user-menu-anchor">
             <button className="topbar-avatar avatar-circle avatar-active" type="button" aria-haspopup="menu" aria-expanded={userMenuOpen} aria-label="قائمة الحساب" title={access.full_name} onClick={() => setUserMenuOpen((value) => !value)}>{initials(access.full_name)}</button>
@@ -481,9 +535,28 @@ function App() {
       </header>
       <main className="main-content"><div className="main-content-inner">
         {notice && <div className="inline-alert info global-notice" role="status">{notice}<button className="notice-close" type="button" aria-label="إخفاء" onClick={() => setNotice('')}><Icon name="close" size={14} /></button></div>}
+        {route.page === 'crm-module' && hasPermission(access, 'crm.view') && (
+          <div className="os-substrip" role="tablist" aria-label="أقسام CRM">
+            {CRM_MODULE_TABS.map((item) => (
+              <button
+                type="button"
+                key={item.tab}
+                role="tab"
+                aria-selected={route.tab === item.tab}
+                className={`os-subcard${route.tab === item.tab ? ' active' : ''}`}
+                onClick={() => navigate({ page: 'crm-module', tab: item.tab })}
+              >
+                <Icon name={item.icon} size={18} />
+                <span>{item.label}</span>
+              </button>
+            ))}
+          </div>
+        )}
+        <div className="os-page" key={route.page === 'ticket' ? route.id : route.page}>
         <Suspense fallback={<div className="loading-surface"><span className="loading-spinner" /> جارٍ تحميل مساحة العمل…</div>}>
           {route.page === 'admin' && !canViewAdminDashboard(access) ? <AccessDenied title="لوحة الإدارة غير متاحة" /> : route.page === 'overview' && !(hasPermission(access, 'analytics.view') && hasPermission(access, 'complaints.view')) ? <AccessDenied title="لوحة المؤشرات غير متاحة" /> : route.page === 'complaints' || route.page === 'ticket' ? pageContent : route.page === 'users' && !hasPermission(access, 'users.view') ? <AccessDenied title="إدارة المستخدمين غير متاحة" /> : route.page === 'roles' && !hasPermission(access, 'roles.manage') ? <AccessDenied title="إدارة الأدوار غير متاحة" /> : route.page === 'channels' && !hasPermission(access, 'integrations.manage') ? <AccessDenied title="إعدادات القنوات غير متاحة" /> : route.page === 'operations' && !operationsAllowed(access) ? <AccessDenied title="إعدادات الإدارة غير متاحة" /> : route.page === 'storage' && !storageAllowed(access) ? <AccessDenied title="مركز التخزين غير متاح" /> : route.page === 'audit' && !hasPermission(access, 'audit.view') ? <AccessDenied title="سجل التدقيق غير متاح" /> : route.page === 'insurance-ops' && !hasPermission(access, 'crm.view') ? <AccessDenied title="الوثائق والإصدار غير متاحة" /> : route.page === 'crm-module' && !hasPermission(access, 'crm.view') ? <AccessDenied title="CRM غير متاح" /> : pageContent}
         </Suspense>
+        </div>
       </div></main>
       <footer className="app-footer"><span>{brand.platform_name}</span><span><Icon name="shield" size={13} /> كل إجراء محمي بنطاق الوصول الفعّال</span><button type="button" onClick={() => setShortcutsOpen(true)}><Icon name="keyboard" size={13} /> اختصارات لوحة المفاتيح</button></footer>
     </div>

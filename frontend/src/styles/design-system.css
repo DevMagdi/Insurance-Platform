@@ -1,117 +1,122 @@
 /* ==========================================================================
-   Wathiq Design System — v4, "Amani Reserve"
+   Wathiq Design System — v5, "Card OS" (Claude-inspired premium)
    ==========================================================================
 
-   A ground-up visual identity for a private-client insurance brokerage:
-   warm, ordered, rich, quiet. Nothing of the previous skins survives —
-   not the v2 zinc/violet developer-tool register, not the v3 cool navy.
-   The canvas is warm (cream paper by day, warm charcoal-slate by night),
-   the single action colour is a deep measured gold, and a muted teal is
-   reserved for success and growth. Every value below is a token; this
-   file is loaded after `foundation.css` and re-tunes its tokens in
-   place, so the whole product re-skins with no behaviour change.
+   A structural re-imagining, not a recolour. The wide sidebar is gone as
+   the primary navigation: the console opens on a Launchpad of large,
+   softly glowing section cards (Bento-style), a 64px icon rail serves
+   wide screens, sections carry their own sub-card strips, and every
+   surface moves — hover lift, press settle, page and drawer entrances.
+   The identity is Claude-inspired: warm stone surfaces, human coral as
+   the single action colour, calm sage for success, clean contrast, no
+   neon, no cold zinc, no violet identity (one soft violet glow is
+   reserved for the Channels section card only).
 
-   The public token names are the Amani set — --canvas, --surface(-2/-3),
-   --text/--text-muted/--text-subtle, --primary(+hover/active/contrast),
-   --secondary, --border(+strong), --line, --danger/--warning/--success/
-   --info. The legacy ramps (--surface-0..4, --ink-*, --gold-*, --navy-*,
-   --accent-*, --emerald-*) are all re-bound onto them, so ~1,500 existing
-   references render the new identity without a rename sweep.
+   The Amani/legacy ramp names (--surface-*, --ink-*, --gold-*,
+   --accent-*, --navy-*, --emerald-*) are all re-bound onto the Card OS
+   palette below, so every existing component renders the new identity;
+   the Card OS components themselves (card-os.css) use the new names
+   (--canvas, --primary*, --secondary, --glow-<section>) directly.
 
    ---------------------------------------------------------------------------
-   MEASURED CONTRASTS (WCAG, computed) AND THE FOUR SMALLEST DEVIATIONS
+   MEASURED CONTRASTS (WCAG, computed) AND SMALLEST-LIFT DEVIATIONS
    ---------------------------------------------------------------------------
-   The Amani palette as specified passes AA almost everywhere (dark text
-   14.99:1, muted 7.65:1; light text 16.47:1, muted 6.73:1; gold labels
-   5.65–6.88:1 on dark). Four specified values fail AA in the exact spots
-   this codebase paints them, so each is adjusted by the smallest amount
-   that fixes it — the identity is unchanged to the eye:
+   Dark: text 15.48:1, muted 7.65:1, labels on coral 6.09:1 (hover
+   7.25:1), coral text 5.61:1, sage 5.46:1, info 5.55:1, warning 6.96:1.
+   Light: text 17.97:1, muted 5.83:1, danger 5.11:1. Five specified
+   values fail AA where this codebase paints them; smallest lifts:
 
-   * Light `--primary-contrast #FFFDF9` on `--primary #A67B22` measures
-     3.77:1 — a fail for a button label. The resting button fill therefore
-     uses the specified `--primary-hover #926C1B` (4.72:1) and deepens to
-     `--primary-active` on hover; `--primary` itself is unchanged for
-     indicators, glows and borders, and is the resting fill on dark
-     (5.65:1 with the specified `#141A14` ink).
-   * Dark semantic *solids* (`--secondary #1F6F65` 2.76:1, danger
-     `#C9443A` 3.42:1, info `#2F6FED` 3.62:1) cannot carry small text on
-     the dark surface. They remain the fill/dot values (`--secondary`,
-     `--danger-solid` — white on it is 4.80:1); the text-facing tokens
-     (`--success`, `--danger`, `--info`) take the smallest same-hue tints
-     that clear AA on the surface and on their soft pills (≥4.93:1).
-   * `--text-subtle` as specified measures 3.42:1 (dark, on surface-3
-     hover rows) and 3.87–4.12:1 (light, on canvas/surface-2), where this
-     token carries timestamps and hints. Lifted half a warm step
-     (`#AAA192` dark / `#6E675C` light): ≥4.67:1 everywhere it lands.
-   * Light `--warning #A56B12` measures 4.39:1 on the surface and 3.87:1
-     on its own pill. Deepened to `#8F5A06` (5.69:1 / 5.02:1) — still
-     unmistakably the Amani amber-brown.
+   * Light `--primary-contrast #FFFFFF` on `--primary #D86B52` is
+     3.42:1. The resting button fill sits one step deeper (`#B85A41`,
+     4.59:1, between the specified hover and active), hover deepens to
+     `--primary-active` (4.93:1); `--primary` itself is unchanged for
+     indicators/glows, and is the fill on dark (`#1A1614` ink, 6.09:1).
+     Coral *text* on light resolves to `--primary-active` (4.93:1).
+   * Dark `--danger #D64545` as small text is 3.78:1 → text tint
+     `#E8766F` (5.71:1; 4.88:1 on its pill). The solid stays for fills;
+     `--danger-solid` (white numerals, 5.11:1) is `#C53D3D`.
+   * `--text-subtle` measured 3.19–4.28:1 on the elevated steps where
+     hints/timestamps land → lifted half a warm step (`#9D958A` dark,
+     `#6E675E` light; ≥4.64:1 everywhere).
+   * Light `--success #5F8F7C` (3.68:1), `--warning #B8890F` (3.17:1) and
+     `--info #4F84B0` (3.99:1) as text → deepened text tokens
+     (`#3E6B5A` / `#8A660B` / `#386892`, ≥4.76:1 on their pills) while
+     the specified hues remain the fills (`--secondary`, dots, glows).
 
-   Gold text resolves to --accent-ink (dark `#C99A3A` 6.40:1, light
-   `--primary-active #7A5916` 6.32:1); labels *on* gold use
-   --primary-contrast. Status hues: new=info, assigned=slate (the retired
-   --cyan/--violet names), in-review=warning, resolved=secondary teal,
-   reopened=danger, transferred=warm rose (--fuchsia). No purple and no
-   cold zinc render anywhere.
+   Section glows (decorative, tokenised as --glow-*): requests
+   `#6B9AC4`, channels `#A78BFA` (the one permitted violet touch),
+   metrics `#5EBDCA`, documents `#7D9B8A`, CRM coral (the brand),
+   administration stone `#C4B8AC`. Primary actions everywhere are coral;
+   section colours only ever tint their own card/icon.
    ========================================================================== */
 
 /* --------------------------------------------------------------------------
-   Dark — warm charcoal-slate, gold leaf
+   Dark — the preferred base: warm stone, coral ember
    -------------------------------------------------------------------------- */
 
 :root.dark,
 .staff-console.theme-dark {
-  /* Amani core */
-  --canvas: #10151c;
-  --surface-0: #10151c;
-  --surface-1: #17202a;
-  --surface-2: #1f2a37;
-  --surface-3: #2a3746;
-  --surface-4: #35455a;
-  --surface-glass: rgba(16, 21, 28, 0.8);
-  --surface-inverse: #f6f1e8;
-  --surface-chrome: #10151c;
-  --field-bg: #1f2a37;
-  --field-bg-hover: #2a3746;
-  --field-border: rgba(184, 138, 43, 0.28);
+  /* Card OS core */
+  --canvas: #14110f;
+  --canvas-2: #1a1614;
+  --surface-0: #14110f;
+  --surface-1: #221e1b; /* --surface-solid */
+  --surface-solid: #221e1b;
+  --surface-translucent: rgba(255, 250, 244, 0.04);
+  --surface-2: #2a2521;
+  --surface-3: #332c27;
+  --surface-4: #3e362f;
+  --surface-glass: rgba(26, 22, 20, 0.72);
+  --surface-inverse: #faf7f2;
+  --surface-chrome: #1a1614;
+  --field-bg: #2a2521;
+  --field-bg-hover: #332c27;
+  --field-border: rgba(250, 247, 242, 0.14);
 
-  --primary: #b88a2b;
-  --primary-hover: #c99a3a;
-  --primary-active: #a67b22;
-  --primary-contrast: #141a14;
-  --secondary: #1f6f65;
-  --secondary-hover: #24867a;
+  --primary: #e07a5f;
+  --primary-hover: #eb8b72;
+  --primary-active: #c96a51;
+  --primary-contrast: #1a1614;
+  --secondary: #7d9b8a;
+  --secondary-hover: #8fad9b;
 
-  /* Text — warm paper down to warm taupe */
-  --ink-900: #f7f4ee;
-  --ink-800: #ede8df;
-  --ink-700: #d8d2c6;
-  --ink-600: #c4bcb0;
-  --ink-500: #b7b0a5; /* --text-muted */
-  --ink-400: #aaa192; /* --text-subtle, lifted half a step: see header */
-  --ink-300: #6e6a61;
-  --text-subtle: #aaa192;
-  --ink-on-brand: #f7f4ee;
+  /* Section glows (Launchpad/rail accents — decorative, never text) */
+  --glow-requests: #6b9ac4;
+  --glow-channels: #a78bfa;
+  --glow-metrics: #5ebdca;
+  --glow-documents: #7d9b8a;
+  --glow-crm: #e07a5f;
+  --glow-admin: #c4b8ac;
+
+  /* Text — warm paper down to warm stone */
+  --ink-900: #faf7f2;
+  --ink-800: #efe9e1;
+  --ink-700: #d9d1c5;
+  --ink-600: #c6bcb0;
+  --ink-500: #b8afa5; /* --text-muted */
+  --ink-400: #9d958a; /* --text-subtle, lifted half a step: see header */
+  --ink-300: #6e675e;
+  --text-subtle: #9d958a;
+  --ink-on-brand: #faf7f2;
   --ink-on-accent: var(--primary-contrast);
   /* Inverted slabs (CTA band, auth): the warm dark, same in both themes. */
-  --slab-1: #1f2a37;
-  --slab-2: #10151c;
+  --slab-1: #221e1b;
+  --slab-2: #14110f;
 
-  /* Lines — gold-dust hairlines; --line is the solid structural step. */
-  --border: rgba(184, 138, 43, 0.16);
-  --border-strong: rgba(184, 138, 43, 0.28);
-  --line: #2a3746;
-  --line-soft: rgba(184, 138, 43, 0.08);
-  --line-strong: rgba(184, 138, 43, 0.28);
+  --border: rgba(250, 247, 242, 0.08);
+  --border-strong: rgba(250, 247, 242, 0.14);
+  --line: rgba(250, 247, 242, 0.08);
+  --line-soft: rgba(250, 247, 242, 0.05);
+  --line-strong: rgba(250, 247, 242, 0.14);
 
-  /* Gold ramp (== --accent-*): the one action colour. */
-  --gold-700: #a67b22;
-  --gold-600: #b88a2b; /* resting primary fill */
-  --gold-500: #c99a3a; /* hover lift, glows, indicators */
-  --gold-400: #d9b264;
-  --gold-300: #ead29a;
-  --gold-200: rgba(184, 138, 43, 0.16);
-  --gold-100: rgba(184, 138, 43, 0.09);
+  /* Coral ramp (== --accent-*; the retired --gold-* names resolve here). */
+  --gold-700: #c96a51;
+  --gold-600: #e07a5f; /* resting primary fill */
+  --gold-500: #eb8b72; /* hover lift, glows, indicators */
+  --gold-400: #f2a48f;
+  --gold-300: #f8c4b4;
+  --gold-200: rgba(224, 122, 95, 0.16);
+  --gold-100: rgba(224, 122, 95, 0.09);
   --accent-700: var(--gold-700);
   --accent-600: var(--gold-600);
   --accent-500: var(--gold-500);
@@ -119,124 +124,132 @@
   --accent-300: var(--gold-300);
   --accent-200: var(--gold-200);
   --accent-100: var(--gold-100);
-  --accent-glow: rgba(184, 138, 43, 0.25);
-  --accent-ink: #c99a3a; /* gold that reads: 6.40:1 on a card */
+  --accent-glow: rgba(224, 122, 95, 0.28);
+  --accent-ink: #eb8b72; /* coral that reads: 6.67:1 on a card */
 
-  /* Teal — the second voice (success/growth). Solids stay Amani;
-     --emerald-500/--success are the AA text tints (see header). */
-  --emerald-700: #185a52;
-  --emerald-600: #1f6f65;
-  --emerald-500: #45a894;
-  --emerald-200: rgba(31, 111, 101, 0.18);
-  --emerald-100: rgba(31, 111, 101, 0.1);
+  /* Sage (== --emerald-*): success and growth only. */
+  --emerald-700: #4e7566;
+  --emerald-600: #678a78;
+  --emerald-500: #7d9b8a;
+  --emerald-200: rgba(125, 155, 138, 0.16);
+  --emerald-100: rgba(125, 155, 138, 0.09);
 
-  --info: #6e9bf5;
-  --info-soft: rgba(47, 111, 237, 0.16);
-  --success: #45a894;
-  --success-soft: rgba(31, 111, 101, 0.18);
-  --warning: #d99a3f;
-  --warning-soft: rgba(196, 132, 29, 0.15);
-  --danger: #e07a6e;
-  --danger-soft: rgba(201, 68, 58, 0.16);
-  --danger-solid: #c9443a; /* filled dots/badges: white numerals 4.80:1 */
-  --violet: #93a9be;
-  --violet-soft: rgba(147, 169, 190, 0.14);
-  --cyan: #93a9be;
-  --cyan-soft: rgba(147, 169, 190, 0.14);
-  --orange: #e29a5f;
-  --orange-soft: rgba(226, 154, 95, 0.13);
+  --info: #6b9ac4;
+  --info-soft: rgba(107, 154, 196, 0.15);
+  /* Pill text tints: the hues above measure 4.33–4.40:1 on their dark
+     pills, so the two pill foregrounds lighten half a step here. */
+  --st-new-fg: #86afd4;
+  --st-resolved-fg: #93b3a2;
+  --success: #7d9b8a;
+  --success-soft: rgba(125, 155, 138, 0.15);
+  --warning: #d4a017;
+  --warning-soft: rgba(212, 160, 23, 0.14);
+  --danger: #e8766f;
+  --danger-soft: rgba(214, 69, 69, 0.15);
+  --danger-solid: #c53d3d; /* filled dots/badges: white numerals 5.11:1 */
+  --violet: #a99bc0;
+  --violet-soft: rgba(169, 155, 192, 0.13);
+  --cyan: #5ebdca;
+  --cyan-soft: rgba(94, 189, 202, 0.13);
+  --orange: #e8a06a;
+  --orange-soft: rgba(232, 160, 106, 0.13);
   --fuchsia: #d79cae;
   --fuchsia-soft: rgba(215, 156, 174, 0.13);
 
-  /* Elevation — deep and warm-dark, per the Amani shadow scale. */
   --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35), 0 8px 22px -12px rgba(0, 0, 0, 0.5);
-  --shadow-md: 0 2px 4px rgba(0, 0, 0, 0.3), 0 10px 28px rgba(0, 0, 0, 0.38);
-  --shadow-lg: 0 20px 50px rgba(0, 0, 0, 0.5);
-  --shadow-brand: 0 20px 50px rgba(0, 0, 0, 0.5);
-  --shadow-gold: 0 12px 30px -12px rgba(184, 138, 43, 0.35);
-  --shadow-accent: 0 12px 30px -12px rgba(184, 138, 43, 0.35);
-  --shadow: 0 10px 28px rgba(0, 0, 0, 0.38);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35), 0 10px 26px -14px rgba(0, 0, 0, 0.55);
+  --shadow-md: 0 12px 32px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 24px 56px rgba(0, 0, 0, 0.52);
+  --shadow-brand: 0 24px 56px rgba(0, 0, 0, 0.52);
+  --shadow-gold: 0 14px 34px -14px rgba(224, 122, 95, 0.4);
+  --shadow-accent: 0 14px 34px -14px rgba(224, 122, 95, 0.4);
+  --shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
 
-  --focus: #c99a3a;
-  --focus-ring: 0 0 0 3px rgba(184, 138, 43, 0.34);
+  --focus: #eb8b72;
+  --focus-ring: 0 0 0 3px rgba(224, 122, 95, 0.35);
 
-  --wash-accent: rgba(184, 138, 43, 0.15);
-  --wash-info: rgba(110, 155, 245, 0.13);
-  --wash-success: rgba(69, 168, 148, 0.13);
-  --wash-warning: rgba(217, 154, 63, 0.13);
-  --wash-danger: rgba(224, 122, 110, 0.12);
+  --wash-accent: rgba(224, 122, 95, 0.14);
+  --wash-info: rgba(107, 154, 196, 0.13);
+  --wash-success: rgba(125, 155, 138, 0.13);
+  --wash-warning: rgba(212, 160, 23, 0.13);
+  --wash-danger: rgba(232, 118, 111, 0.12);
 
-  /* The house dark as a fixed ramp (auth slabs, avatars, dark buttons):
-     the warm surface steps, identical in both themes. */
-  --navy-950: #0b0f14;
-  --navy-900: #10151c;
-  --navy-800: #17202a;
-  --navy-700: #1f2a37;
-  --navy-600: #2a3746;
-  --navy-500: #3a4a5e;
+  /* The house dark as a fixed ramp (auth slabs, avatars): warm stone. */
+  --navy-950: #100d0b;
+  --navy-900: #14110f;
+  --navy-800: #1a1614;
+  --navy-700: #221e1b;
+  --navy-600: #2a2521;
+  --navy-500: #3a332d;
 
   color-scheme: dark;
 }
 
 /* --------------------------------------------------------------------------
-   Light — warm cream paper, deep gold, ink with a green-black warmth
+   Light — the same warm house in daylight
    -------------------------------------------------------------------------- */
 
 :root,
 .staff-console.theme-light {
-  /* Amani core */
-  --canvas: #f6f1e8;
-  --surface-0: #f6f1e8;
-  --surface-1: #fffdf9;
-  --surface-2: #f0eae0;
-  --surface-3: #e6dfd3;
+  --canvas: #faf7f2;
+  --canvas-2: #f3efe8;
+  --surface-0: #faf7f2;
+  --surface-1: #ffffff;
+  --surface-solid: #ffffff;
+  --surface-translucent: rgba(255, 255, 255, 0.66);
+  --surface-2: #f0ebe3;
+  --surface-3: #e7dfd2;
   --surface-4: #dcd2c2;
-  --surface-glass: rgba(255, 253, 249, 0.85);
-  --surface-inverse: #17202a;
-  --surface-chrome: #fffdf9;
-  --field-bg: #fffdf9;
-  --field-bg-hover: #fdfaf3;
-  --field-border: rgba(26, 31, 26, 0.16);
+  --surface-glass: rgba(250, 247, 242, 0.78);
+  --surface-inverse: #221e1b;
+  --surface-chrome: #ffffff;
+  --field-bg: #ffffff;
+  --field-bg-hover: #fdfbf7;
+  --field-border: rgba(26, 22, 20, 0.16);
 
-  --primary: #a67b22;
-  --primary-hover: #926c1b;
-  --primary-active: #7a5916;
-  --primary-contrast: #fffdf9;
-  --secondary: #1f6f65;
-  --secondary-hover: #185a52;
+  --primary: #d86b52;
+  --primary-hover: #c45f48;
+  --primary-active: #b3543f;
+  --primary-contrast: #ffffff;
+  --secondary: #5f8f7c;
+  --secondary-hover: #4c7a68;
 
-  --ink-900: #1a1f1a;
-  --ink-800: #2a302a;
-  --ink-700: #3e443e;
-  --ink-600: #4e4a44;
-  --ink-500: #5f5a52; /* --text-muted */
-  --ink-400: #6e675c; /* --text-subtle, lifted half a step: see header */
-  --ink-300: #a79e92;
-  --text-subtle: #6e675c;
-  --ink-on-brand: #f7f4ee;
+  --glow-requests: #6b9ac4;
+  --glow-channels: #a78bfa;
+  --glow-metrics: #5ebdca;
+  --glow-documents: #7d9b8a;
+  --glow-crm: #d86b52;
+  --glow-admin: #c4b8ac;
+
+  --ink-900: #1a1614;
+  --ink-800: #2c2724;
+  --ink-700: #453e39;
+  --ink-600: #59514b;
+  --ink-500: #6b645c; /* --text-muted */
+  --ink-400: #6e675e; /* --text-subtle, lifted half a step: see header */
+  --ink-300: #b0a79b;
+  --text-subtle: #6e675e;
+  --ink-on-brand: #faf7f2;
   --ink-on-accent: var(--primary-contrast);
-  /* Inverted slabs — the warm dark, same in both themes. */
-  --slab-1: #1f2a37;
-  --slab-2: #10151c;
+  --slab-1: #221e1b;
+  --slab-2: #14110f;
 
-  --border: rgba(26, 31, 26, 0.08);
-  --border-strong: rgba(26, 31, 26, 0.14);
-  --line: rgba(26, 31, 26, 0.08);
-  --line-soft: rgba(26, 31, 26, 0.05);
-  --line-strong: rgba(26, 31, 26, 0.14);
+  --border: rgba(26, 22, 20, 0.08);
+  --border-strong: rgba(26, 22, 20, 0.14);
+  --line: rgba(26, 22, 20, 0.08);
+  --line-soft: rgba(26, 22, 20, 0.05);
+  --line-strong: rgba(26, 22, 20, 0.14);
 
-  /* Gold ramp, deepened for daylight. The resting button fill is
-     --gold-600 == --primary-hover (see header: cream on --primary is
-     3.77:1); --gold-500 keeps the specified --primary for indicators,
-     glows and borders, and button hover deepens to --primary-active. */
-  --gold-700: #7a5916;
-  --gold-600: #926c1b;
-  --gold-500: #a67b22;
-  --gold-400: #c99a3a;
-  --gold-300: #e8cf9e;
-  --gold-200: #f3e5c3;
-  --gold-100: #faf3e0;
+  /* Coral ramp, daylight cut. The resting button fill is --gold-600
+     (#B85A41, 4.59:1 under the white label — see header); --gold-500
+     keeps the specified --primary for indicators and glows. */
+  --gold-700: #b3543f;
+  --gold-600: #b85a41;
+  --gold-500: #d86b52;
+  --gold-400: #e07a5f;
+  --gold-300: #f0b4a3;
+  --gold-200: #fdf3ea;
+  --gold-100: #fdf9f3;
   --accent-700: var(--gold-700);
   --accent-600: var(--gold-600);
   --accent-500: var(--gold-500);
@@ -244,59 +257,58 @@
   --accent-300: var(--gold-300);
   --accent-200: var(--gold-200);
   --accent-100: var(--gold-100);
-  --accent-glow: rgba(166, 123, 34, 0.2);
-  --accent-ink: var(--gold-700); /* gold that reads: 6.32:1 on the surface */
+  --accent-glow: rgba(216, 107, 82, 0.22);
+  --accent-ink: var(--gold-700); /* coral that reads: 4.93:1 on the surface */
 
-  --emerald-700: #185a52;
-  --emerald-600: #1f6f65;
-  --emerald-500: #24867a;
-  --emerald-200: rgba(31, 111, 101, 0.14);
-  --emerald-100: rgba(31, 111, 101, 0.08);
+  --emerald-700: #38634f;
+  --emerald-600: #4c7a68;
+  --emerald-500: #5f8f7c;
+  --emerald-200: rgba(95, 143, 124, 0.15);
+  --emerald-100: rgba(95, 143, 124, 0.09);
 
-  --info: #245ed0;
-  --info-soft: rgba(36, 94, 208, 0.08);
-  --success: #1f6f65;
-  --success-soft: rgba(31, 111, 101, 0.09);
-  --warning: #8f5a06;
-  --warning-soft: rgba(165, 107, 18, 0.1);
-  --danger: #b3362e;
-  --danger-soft: rgba(179, 54, 46, 0.08);
-  --danger-solid: #c9443a;
-  --violet: #4e657c;
-  --violet-soft: rgba(78, 101, 124, 0.09);
-  --cyan: #4e657c;
-  --cyan-soft: rgba(78, 101, 124, 0.09);
+  --info: #386892;
+  --info-soft: rgba(79, 132, 176, 0.1);
+  --success: #3e6b5a;
+  --success-soft: rgba(95, 143, 124, 0.11);
+  --warning: #8a660b;
+  --warning-soft: rgba(184, 137, 15, 0.11);
+  --danger: #c53d3d;
+  --danger-soft: rgba(197, 61, 61, 0.08);
+  --danger-solid: #c53d3d;
+  --violet: #6e5f8f;
+  --violet-soft: rgba(110, 95, 143, 0.1);
+  --cyan: #256b78;
+  --cyan-soft: rgba(46, 126, 140, 0.1);
   --orange: #ae5a1e;
   --orange-soft: rgba(174, 90, 30, 0.09);
   --fuchsia: #a14a68;
   --fuchsia-soft: rgba(161, 74, 104, 0.09);
 
-  /* Paper elevation in warm ink, per the Amani shadow scale. */
-  --shadow-xs: 0 1px 1px rgba(26, 31, 26, 0.04);
-  --shadow-sm: 0 1px 2px rgba(26, 31, 26, 0.05), 0 8px 22px rgba(26, 31, 26, 0.06);
-  --shadow-md: 0 2px 4px rgba(26, 31, 26, 0.05), 0 12px 28px -12px rgba(26, 31, 26, 0.12);
-  --shadow-lg: 0 18px 40px rgba(26, 31, 26, 0.1);
-  --shadow-brand: 0 18px 40px rgba(26, 31, 26, 0.12);
-  --shadow-gold: 0 10px 24px -12px rgba(166, 123, 34, 0.3);
-  --shadow-accent: 0 10px 24px -12px rgba(166, 123, 34, 0.3);
-  --shadow: 0 8px 22px rgba(26, 31, 26, 0.06);
+  --shadow-xs: 0 1px 1px rgba(26, 22, 20, 0.04);
+  --shadow-sm: 0 1px 2px rgba(26, 22, 20, 0.05), 0 10px 28px rgba(26, 22, 20, 0.06);
+  --shadow-md: 0 10px 28px rgba(26, 22, 20, 0.08);
+  --shadow-lg: 0 20px 48px rgba(26, 22, 20, 0.1);
+  --shadow-brand: 0 20px 48px rgba(26, 22, 20, 0.12);
+  --shadow-gold: 0 12px 28px -12px rgba(216, 107, 82, 0.32);
+  --shadow-accent: 0 12px 28px -12px rgba(216, 107, 82, 0.32);
+  --shadow: 0 10px 28px rgba(26, 22, 20, 0.06);
 
-  --focus: #a67b22;
-  --focus-ring: 0 0 0 3px rgba(166, 123, 34, 0.28);
+  --focus: #c45f48;
+  --focus-ring: 0 0 0 3px rgba(216, 107, 82, 0.28);
 
-  --wash-accent: rgba(166, 123, 34, 0.1);
-  --wash-info: rgba(36, 94, 208, 0.07);
-  --wash-success: rgba(31, 111, 101, 0.09);
-  --wash-warning: rgba(143, 90, 6, 0.08);
-  --wash-danger: rgba(179, 54, 46, 0.07);
+  --wash-accent: rgba(216, 107, 82, 0.1);
+  --wash-info: rgba(79, 132, 176, 0.08);
+  --wash-success: rgba(95, 143, 124, 0.1);
+  --wash-warning: rgba(184, 137, 15, 0.09);
+  --wash-danger: rgba(197, 61, 61, 0.07);
 
-  /* House dark — fixed ramp, identical in both themes. */
-  --navy-950: #0b0f14;
-  --navy-900: #10151c;
-  --navy-800: #17202a;
-  --navy-700: #1f2a37;
-  --navy-600: #2a3746;
-  --navy-500: #3a4a5e;
+  /* House dark — fixed warm ramp, identical in both themes. */
+  --navy-950: #100d0b;
+  --navy-900: #14110f;
+  --navy-800: #1a1614;
+  --navy-700: #221e1b;
+  --navy-600: #2a2521;
+  --navy-500: #3a332d;
 
   color-scheme: light;
 }
@@ -338,17 +350,18 @@
   --s-7: 28px;
   --s-24: 96px;
 
-  /* Amani radii on the 8px grid: controls (buttons/inputs) 14px, cards
-     18px, modals and hero panels 22px, badges fully round. */
+  /* Card OS radii: launch cards 26px, sub-cards and content cards 18px,
+     buttons/inputs 14px, detail drawers/modals 24px, badges fully round. */
   --r-xs: 8px;
   --r-sm: 10px;
   --r-md: 14px;
   --r-lg: 16px;
-  --r-xl: 18px;
-  --r-2xl: 22px;
+  --r-xl: 20px;
+  --r-2xl: 24px;
   --r-3xl: 26px;
   --r-pill: 999px;
   --r-card: 18px;
+  --r-launch: 26px;
   --r-control: 14px;
 
   /* Motion. Expensive interfaces move quickly and settle softly; nothing
@@ -388,10 +401,10 @@
 .staff-console.theme-dark {
   --st-new-fg: var(--info);
   --st-new-bg: var(--info-soft);
-  /* Gold is the brand accent, so a gold "Assigned" pill beside a gold
+  /* Coral is the brand accent, so a coral "Assigned" pill beside a coral
      primary button would read as a highlight rather than a state. The
-     retired --cyan name now resolves to a warm slate (6.78:1 dark /
-     5.95:1 light) that stays unambiguous next to the "New" blue. */
+     retired --cyan name resolves to the metrics teal (7.57:1 dark),
+     unambiguous next to the "New" blue and distinct from sage success. */
   --st-assigned-fg: var(--cyan);
   --st-assigned-bg: var(--cyan-soft);
   --st-in-review-fg: var(--warning);

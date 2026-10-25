@@ -54,7 +54,7 @@
 .staff-console .surface-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-card); box-shadow: var(--shadow-sm); }
 .staff-console .button { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 8px 14px; border: 1px solid transparent; border-radius: var(--r-md); cursor: pointer; text-decoration: none; font-size: 13px; font-weight: 650; line-height: 1.3; transition: background .18s, color .18s, border-color .18s, transform .18s, box-shadow .18s; white-space: nowrap; }
 .staff-console .button:hover:not(:disabled) { transform: translateY(-1px); }
-.staff-console .button-dark { color: var(--ink-on-brand); background: var(--navy-600); border-color: var(--navy-500); box-shadow: 0 3px 9px rgba(16, 21, 28, .12); }
+.staff-console .button-dark { color: var(--ink-on-brand); background: var(--navy-600); border-color: var(--navy-500); box-shadow: 0 3px 9px rgba(20, 17, 15, .12); }
 .staff-console .button-dark:hover:not(:disabled) { background: var(--navy-500); border-color: var(--navy-500); }
 .staff-console.theme-light .button-dark { color: #fff; background: var(--navy-800); border-color: var(--navy-800); }
 .staff-console.theme-light .button-dark:hover:not(:disabled) { background: var(--navy-600); }
@@ -639,7 +639,7 @@
 .staff-console .auth-orbit::after { transform: rotate(-45deg) scaleX(.38); }
 .staff-console .auth-orbit span { position: absolute; z-index: 1; width: 7px; height: 7px; border-radius: 50%; background: var(--gold); box-shadow: 0 0 12px color-mix(in srgb, var(--gold-500) 50%, transparent); }
 .staff-console .auth-orbit span:nth-child(1) { top: 22px; inset-inline-start: 90px; }.staff-console .auth-orbit span:nth-child(2) { top: 89px; inset-inline-start: 25px; background: var(--teal); }.staff-console .auth-orbit span:nth-child(3) { top: 126px; inset-inline-end: 30px; }
-.staff-console .auth-card { padding: 27px 29px 22px; border: 1px solid color-mix(in srgb, var(--ink-on-brand) 14%, transparent); border-radius: var(--r-xl); background: color-mix(in srgb, var(--navy-800) 88%, transparent); box-shadow: 0 28px 90px rgba(16, 21, 28,.28); backdrop-filter: blur(18px); }
+.staff-console .auth-card { padding: 27px 29px 22px; border: 1px solid color-mix(in srgb, var(--ink-on-brand) 14%, transparent); border-radius: var(--r-xl); background: color-mix(in srgb, var(--navy-800) 88%, transparent); box-shadow: 0 28px 90px rgba(20, 17, 15,.28); backdrop-filter: blur(18px); }
 .staff-console .auth-card-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
 .staff-console .auth-card-logo { display: flex; align-items: center; gap: 8px; color: var(--ink-on-brand); font-size: 13px; }
 .staff-console .auth-card-logo .brand-mark { width: 31px; height: 31px; border-radius: 10px 10px 10px 4px; font-size: 18px; }
