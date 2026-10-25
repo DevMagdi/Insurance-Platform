@@ -199,9 +199,10 @@ for (const theme of ['light', 'dark'] as const) {
         const style = getComputedStyle(document.documentElement);
         return { surface: style.getPropertyValue('--surface').trim(), ink: style.getPropertyValue('--text-primary').trim() };
       });
-      // Premium palette: soft midnight cards on dark, deep navy ink on light.
-      expect(tokens.surface).toBe(theme === 'dark' ? '#18181b' : '#ffffff');
-      expect(tokens.ink).toBe(theme === 'dark' ? '#fafafa' : '#09090b');
+      // Premium insurance palette (design-system v3): navy-ink cards on dark,
+      // warm white text; white cards and deep navy ink on light.
+      expect(tokens.surface).toBe(theme === 'dark' ? '#111b2e' : '#ffffff');
+      expect(tokens.ink).toBe(theme === 'dark' ? '#f6f3ec' : '#0b1220');
       await page.screenshot({ path: testInfo.outputPath(`customer-${theme}-${language}.png`), fullPage: true });
     });
   }
