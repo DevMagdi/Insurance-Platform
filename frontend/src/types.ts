@@ -340,6 +340,7 @@ export interface DateRange {
 export type AppRoute =
   | { page: 'home' }
   | { page: 'overview' }
+  | { page: 'reports' }
   | { page: 'admin' }
   | { page: 'complaints' }
   | { page: 'ticket'; id: string }

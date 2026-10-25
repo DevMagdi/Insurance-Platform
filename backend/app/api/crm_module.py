@@ -114,9 +114,23 @@ def _activity(
     )
 
 
+def _is_salesperson(ctx: RequestContext) -> bool:
+    """Sales role has CRM write access but no team-conversion permission.
+
+    Treat that role as self-scoped at the API boundary; UI filters are never
+    relied on for ownership isolation.
+    """
+    return (
+        "crm.manage" in ctx.permissions
+        and "crm.convert" not in ctx.permissions
+        and not ctx.scope.all_companies
+    )
+
+
 async def _lead_or_404(ctx: RequestContext, lead_id: UUID) -> CrmLead:
     lead = await repo.lead(ctx.db, lead_id)
-    if lead is None:
+    if lead is None or (_is_salesperson(ctx) and lead.assigned_to != ctx.actor.id):
+        # Do not disclose that a teammate's lead exists.
         raise HTTPException(status_code=404, detail="Lead not found")
     return lead
 
@@ -125,6 +139,10 @@ async def _task_or_404(ctx: RequestContext, task_id: UUID) -> CrmTask:
     task = await repo.task(ctx.db, task_id)
     if task is None:
         raise HTTPException(status_code=404, detail="Task not found")
+    if _is_salesperson(ctx):
+        lead = await repo.lead(ctx.db, task.lead_id)
+        if lead is None or lead.assigned_to != ctx.actor.id:
+            raise HTTPException(status_code=404, detail="Task not found")
     return task
 
 
@@ -288,6 +306,7 @@ async def list_leads(
 ) -> dict[str, Any]:
     return await repo.leads_page(
         ctx.db,
+        only_me=ctx.actor.id if _is_salesperson(ctx) else None,
         search=search,
         stage_code=stage_code,
         source=source,
@@ -322,7 +341,7 @@ async def create_lead(
         insurance_type=item.insurance_type.value,
         insurer_company_id=item.insurer_company_id,
         expected_premium=item.expected_premium,
-        assigned_to=item.assigned_to or ctx.actor.id,
+        assigned_to=ctx.actor.id if _is_salesperson(ctx) else (item.assigned_to or ctx.actor.id),
         notes=item.notes,
         created_by=ctx.actor.id,
     )
@@ -375,6 +394,8 @@ async def update_lead(
 ) -> dict[str, Any]:
     lead = await _lead_or_404(ctx, lead_id)
     data = item.model_dump(exclude_unset=True)
+    if _is_salesperson(ctx) and "assigned_to" in data and data["assigned_to"] != ctx.actor.id:
+        raise HTTPException(status_code=403, detail="Salespeople cannot reassign leads")
     old_stage, old_assignee = lead.stage_code, lead.assigned_to
     stage = (
         await _stage_or_422(ctx, item.stage_code)
@@ -437,6 +458,8 @@ async def delete_lead(
 async def bulk_assign(
     item: CrmBulkAssign, ctx: RequestContext = MANAGE, _: None = Depends(csrf_required)
 ) -> dict[str, Any]:
+    if _is_salesperson(ctx):
+        raise HTTPException(status_code=403, detail="Team reassignment requires manager access")
     leads = await repo.leads_by_ids(ctx.db, item.ids)
     for lead in leads:
         lead.assigned_to = item.assigned_to
@@ -455,6 +478,8 @@ async def bulk_stage(
 ) -> dict[str, Any]:
     stage = await _stage_or_422(ctx, item.stage_code)
     leads = await repo.leads_by_ids(ctx.db, item.ids)
+    if _is_salesperson(ctx) and any(lead.assigned_to != ctx.actor.id for lead in leads):
+        raise HTTPException(status_code=404, detail="Lead not found")
     for lead in leads:
         previous = lead.stage_code
         _apply_stage(ctx, lead, stage)
@@ -540,9 +565,17 @@ async def list_tasks(
 ) -> dict[str, Any]:
     return {
         "tasks": await repo.tasks(
-            ctx.db, status=status, type_=type, assigned_to=assigned_to, lead_id=lead_id, due=due
+            ctx.db,
+            status=status,
+            type_=type,
+            assigned_to=assigned_to,
+            lead_assigned_to=ctx.actor.id if _is_salesperson(ctx) else None,
+            lead_id=lead_id,
+            due=due,
         ),
-        "due_counts": await repo.due_task_counts(ctx.db),
+        "due_counts": await repo.due_task_counts(
+            ctx.db, ctx.actor.id if _is_salesperson(ctx) else None
+        ),
     }
 
 
@@ -641,7 +674,11 @@ async def pipeline(
     date_to: datetime | None = None,
 ) -> dict[str, Any]:
     return await repo.pipeline_board(
-        ctx.db, assigned_to=assigned_to, source=source, date_from=date_from, date_to=date_to
+        ctx.db,
+        assigned_to=ctx.actor.id if _is_salesperson(ctx) else assigned_to,
+        source=source,
+        date_from=date_from,
+        date_to=date_to,
     )
 
 
@@ -667,7 +704,9 @@ async def sales_performance(
 
 @router.get("/stats")
 async def stats(ctx: RequestContext = VIEW) -> dict[str, Any]:
-    return await repo.stats(ctx.db, ctx.scope)
+    return await repo.stats(
+        ctx.db, ctx.scope, only_me=ctx.actor.id if _is_salesperson(ctx) else None
+    )
 
 
 # --- Excel import ----------------------------------------------------------

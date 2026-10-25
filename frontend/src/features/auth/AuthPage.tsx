@@ -168,21 +168,22 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
       <div className="auth-layout">
         <section className="auth-story">
           <img className="brand-mark auth-brand-mark" src={brand.logo_url} alt="" />
-          <p className="auth-kicker">{brand.platform_name} · INSURANCE OPERATIONS</p>
-          <h1>كل طلب،<br /><span>بمسار أوضح.</span></h1>
+          <p className="auth-kicker">وسيط · Broker Hub</p>
+          <h1>كل طلبات عملائك<br /><span>في مكان واحد</span></h1>
           <p className="auth-story-copy">
-            مساحة آمنة لفريق الوساطة لمتابعة طلبات التأمين، وقياس جودة الخدمة، وإدارة الوصول بدقة.
+            تابع الطلبات الواردة من قنواتك، وامنح فريقك رؤية أوضح على مسار كل عميل.
           </p>
           <div className="auth-trust-row">
+            <span><Icon name="message" size={16} /> واتساب والمكالمات والبريد في صندوق واحد</span>
+            <span><Icon name="users" size={16} /> Leads ومتابعات من التحويل إلى التعاقد</span>
             <span><Icon name="shield" size={16} /> صلاحيات ونطاقات محمية</span>
-            <span><Icon name="chart" size={16} /> رؤية تشغيلية لحظية</span>
           </div>
           <div className="auth-orbit" aria-hidden="true"><span /><span /><span /></div>
         </section>
 
         <section className="auth-card">
           <div className="auth-card-top">
-            <div className="auth-card-logo"><img className="brand-mark" src={brand.logo_url} alt="" /><strong>{brand.platform_name}</strong></div>
+            <div className="auth-card-logo"><span className="brand-mark" aria-hidden="true">و</span><strong>وسيط · Broker Hub</strong></div>
             <span className="auth-secure"><Icon name="lock" size={14} /> اتصال آمن</span>
           </div>
           <p className="eyebrow">مساحة فريق الوساطة</p>

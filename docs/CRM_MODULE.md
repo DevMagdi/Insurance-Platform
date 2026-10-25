@@ -22,6 +22,13 @@ every table), RLS-enforced, permission-gated (`crm.view` reads,
 `crm.manage` writes, `crm.convert` conversion) and audit-logged on
 every write.
 
+The seeded `sales` role is self-scoped at the API boundary: lead-list and
+Kanban queries are forcibly restricted to `assigned_to = current staff user`,
+and fetching another salesperson's lead returns 404. Dashboard totals,
+recent leads, activities, and follow-up counts use that same assignment
+scope. Team-capable roles retain their existing team views. UI filters are
+not treated as an authorization boundary.
+
 ## Database (`crm_*` only)
 
 | Table | Purpose |

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { api, staffApi } from '../lib/api';
@@ -102,7 +102,8 @@ function ShareRow({ label, value, max }: { label: string; value: number; max: nu
   );
 }
 
-export function StaffAnalyticsPage() {
+export function StaffAnalyticsPage({ embedded = false }: { embedded?: boolean } = {}) {
+  const Wrapper = embedded ? Fragment : StaffShell;
   const { t } = useTranslation();
   const { access } = useStaffMe();
   const [window, setWindow] = useState<StaffComplaintFilters>(defaultWindow);
@@ -120,7 +121,7 @@ export function StaffAnalyticsPage() {
   });
 
   if (!hasPermission(access, 'analytics.view')) {
-    return <StaffShell><EmptyState message={t('staff.noAccess')} /></StaffShell>;
+    return <Wrapper><EmptyState message={t('staff.noAccess')} /></Wrapper>;
   }
 
   const data = query.data;
@@ -131,7 +132,7 @@ export function StaffAnalyticsPage() {
     .slice(0, 8);
 
   return (
-    <StaffShell>
+    <Wrapper>
       <header className="analytics-head">
         <div>
           <p className="eyebrow">{t('staff.analytics')}</p>
@@ -297,6 +298,6 @@ export function StaffAnalyticsPage() {
           )}
         </>
       )}
-    </StaffShell>
+    </Wrapper>
   );
 }

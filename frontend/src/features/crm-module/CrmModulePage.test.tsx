@@ -9,7 +9,7 @@ vi.mock('../../api', () => ({
   apiResponse: vi.fn(),
   jsonBody: (value: unknown) => JSON.stringify(value),
 }));
-afterEach(() => { cleanup(); vi.clearAllMocks(); });
+afterEach(() => { cleanup(); vi.clearAllMocks(); vi.unstubAllGlobals(); });
 
 const access: StaffAccess = {
   id: 'staff-1', email: 'crm@example.invalid', full_name: 'CRM User', status: 'active', token_version: 1,
@@ -92,6 +92,7 @@ describe('CrmModulePage (unified CRM)', () => {
     expect(screen.getByText('مهام ومتابعات هذا العميل')).toBeTruthy();
     expect(screen.getByText(/Chase quote/)).toBeTruthy();
     const convert = screen.getByText('تحويل إلى عميل فعلي');
+    vi.stubGlobal('confirm', vi.fn(() => true));
     fireEvent.click(convert);
     await waitFor(() => expect(vi.mocked(api)).toHaveBeenCalledWith('/api/crm/leads/lead-1/convert', expect.objectContaining({ method: 'POST' })));
   });

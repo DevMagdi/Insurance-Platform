@@ -180,6 +180,7 @@ class CrmModuleRepository:
         source: str | None = None,
         priority: str | None = None,
         assigned_to: UUID | None = None,
+        only_me: UUID | None = None,
         date_from: datetime | None = None,
         date_to: datetime | None = None,
         due_before: datetime | None = None,
@@ -210,6 +211,8 @@ class CrmModuleRepository:
             filters.append(CrmLead.priority == priority)
         if assigned_to:
             filters.append(CrmLead.assigned_to == assigned_to)
+        if only_me:
+            filters.append(CrmLead.assigned_to == only_me)
         if date_from:
             filters.append(CrmLead.created_at >= date_from)
         if date_to:
@@ -257,6 +260,7 @@ class CrmModuleRepository:
         db: AsyncSession,
         *,
         assigned_to: UUID | None = None,
+        only_me: UUID | None = None,
         source: str | None = None,
         date_from: datetime | None = None,
         date_to: datetime | None = None,
@@ -281,6 +285,7 @@ class CrmModuleRepository:
         )
         for stmt_filter in (
             (CrmLead.assigned_to == assigned_to) if assigned_to else None,
+            (CrmLead.assigned_to == only_me) if only_me else None,
             (CrmLead.source == source) if source else None,
             (CrmLead.created_at >= date_from) if date_from else None,
             (CrmLead.created_at <= date_to) if date_to else None,
@@ -343,6 +348,7 @@ class CrmModuleRepository:
         status: str | None = None,
         type_: str | None = None,
         assigned_to: UUID | None = None,
+        lead_assigned_to: UUID | None = None,
         lead_id: UUID | None = None,
         due: str | None = None,
         limit: int = 200,
@@ -361,6 +367,8 @@ class CrmModuleRepository:
             stmt = stmt.where(CrmTask.type == type_)
         if assigned_to:
             stmt = stmt.where(CrmTask.assigned_to == assigned_to)
+        if lead_assigned_to:
+            stmt = stmt.where(CrmLead.assigned_to == lead_assigned_to)
         if lead_id:
             stmt = stmt.where(CrmTask.lead_id == lead_id)
         if due == "overdue":
@@ -376,7 +384,9 @@ class CrmModuleRepository:
             stmt = stmt.where(CrmTask.status == "pending", CrmTask.due_at >= now)
         return [task_dict(task, lead) for task, lead in await db.execute(stmt)]
 
-    async def due_task_counts(self, db: AsyncSession) -> dict[str, int]:
+    async def due_task_counts(
+        self, db: AsyncSession, assigned_to: UUID | None = None
+    ) -> dict[str, int]:
         now = datetime.now(UTC)
         day_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
 
@@ -387,6 +397,7 @@ class CrmModuleRepository:
                 .where(
                     CrmTask.tenant_id == self.tenant_id,
                     CrmTask.status == "pending",
+                    *((CrmTask.assigned_to == assigned_to,) if assigned_to else ()),
                     *conditions,
                 )
             )
@@ -543,25 +554,23 @@ class CrmModuleRepository:
         ]
 
     # --- Dashboard ---------------------------------------------------------------
-    async def stats(self, db: AsyncSession, scope: AccessScope) -> dict[str, Any]:
+    async def stats(
+        self, db: AsyncSession, scope: AccessScope, only_me: UUID | None = None
+    ) -> dict[str, Any]:
+        lead_scope = [CrmLead.tenant_id == self.tenant_id]
+        if only_me is not None:
+            lead_scope.append(CrmLead.assigned_to == only_me)
         total = int(
-            await db.scalar(
-                select(func.count()).select_from(CrmLead).where(CrmLead.tenant_id == self.tenant_id)
-            )
-            or 0
+            await db.scalar(select(func.count()).select_from(CrmLead).where(*lead_scope)) or 0
         )
         stage_rows = await db.execute(
-            select(CrmLead.stage_code, func.count())
-            .where(CrmLead.tenant_id == self.tenant_id)
-            .group_by(CrmLead.stage_code)
+            select(CrmLead.stage_code, func.count()).where(*lead_scope).group_by(CrmLead.stage_code)
         )
         counts = {str(code): int(n) for code, n in stage_rows}
         stages = await self.stages(db)
         by_stage = [{**stage_dict(stage), "count": counts.get(stage.code, 0)} for stage in stages]
         source_rows = await db.execute(
-            select(CrmLead.source, func.count())
-            .where(CrmLead.tenant_id == self.tenant_id)
-            .group_by(CrmLead.source)
+            select(CrmLead.source, func.count()).where(*lead_scope).group_by(CrmLead.source)
         )
         by_source = {str(key): int(n) for key, n in source_rows}
         since = datetime.now(UTC) - timedelta(days=29)
@@ -569,9 +578,10 @@ class CrmModuleRepository:
             text(
                 "SELECT to_char(date_trunc('day', created_at), 'YYYY-MM-DD') AS day, count(*) "
                 "FROM crm_leads WHERE tenant_id = :tenant AND created_at >= :since "
+                "AND (CAST(:only_me AS uuid) IS NULL OR assigned_to = :only_me) "
                 "GROUP BY 1 ORDER BY 1"
             ),
-            {"tenant": self.tenant_id, "since": since},
+            {"tenant": self.tenant_id, "since": since, "only_me": only_me},
         )
         daily = {str(row[0]): int(row[1]) for row in daily_rows}
         series = []
@@ -580,14 +590,15 @@ class CrmModuleRepository:
             series.append({"date": day, "count": daily.get(day, 0)})
         converted = sum(counts.get(stage.code, 0) for stage in stages if stage.is_converted)
         recent_leads_stmt = (
-            select(CrmLead)
-            .where(CrmLead.tenant_id == self.tenant_id)
-            .order_by(CrmLead.created_at.desc())
-            .limit(5)
+            select(CrmLead).where(*lead_scope).order_by(CrmLead.created_at.desc()).limit(5)
         )
         recent_activities_stmt = (
             select(CrmActivity)
-            .where(CrmActivity.tenant_id == self.tenant_id)
+            .join(CrmLead, CrmLead.id == CrmActivity.lead_id)
+            .where(
+                CrmActivity.tenant_id == self.tenant_id,
+                *([CrmLead.assigned_to == only_me] if only_me is not None else []),
+            )
             .order_by(CrmActivity.created_at.desc())
             .limit(10)
         )
@@ -597,12 +608,14 @@ class CrmModuleRepository:
             "by_source": by_source,
             "last_30_days": series,
             "conversion_rate": round(converted / total * 100, 1) if total else 0.0,
-            "due_tasks": await self.due_task_counts(db),
-            "top_performers": (await self.sales_performance(db, scope))[:5],
+            "due_tasks": await self.due_task_counts(db, only_me),
+            "top_performers": []
+            if only_me is not None
+            else (await self.sales_performance(db, scope))[:5],
             "recent_leads": [
                 lead_dict(row) for row in (await db.execute(recent_leads_stmt)).scalars()
             ],
-            "recent_imports": (await self.batches(db, limit=5)),
+            "recent_imports": [] if only_me is not None else (await self.batches(db, limit=5)),
             "recent_activities": [
                 activity_dict(row) for row in (await db.execute(recent_activities_stmt)).scalars()
             ],

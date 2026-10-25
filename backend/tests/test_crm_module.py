@@ -5,6 +5,7 @@ from __future__ import annotations
 import io
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from dataclasses import replace
 from datetime import UTC, datetime
 from types import SimpleNamespace
 from typing import Any
@@ -205,6 +206,23 @@ def make_lead(**overrides: Any) -> CrmLead:
     }
     values.update(overrides)
     return CrmLead(**values)
+
+
+@pytest.mark.asyncio
+async def test_salesperson_can_only_read_assigned_leads() -> None:
+    db = FakeDB()
+    ctx = make_ctx(db, frozenset({"crm.view", "crm.manage"}))
+    ctx.scope = replace(ctx.scope, all_companies=False)
+    lead = make_lead(assigned_to=uuid4())
+    db.by_entity[CrmLead] = [lead]
+
+    with pytest.raises(HTTPException) as raised:
+        await api._lead_or_404(ctx, lead.id)
+    assert raised.value.status_code == 404
+
+    own_lead = make_lead(assigned_to=STAFF)
+    db.by_entity[CrmLead] = [own_lead]
+    assert await api._lead_or_404(ctx, own_lead.id) is own_lead
 
 
 def make_stage(code: str = "new", **overrides: Any) -> CrmPipelineStage:

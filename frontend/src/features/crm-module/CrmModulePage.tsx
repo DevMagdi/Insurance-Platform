@@ -186,7 +186,7 @@ function Pipeline({ access, stages, stageLabel, agents, canManage, canConvert, o
       <div className="summary-stat"><div><strong>{board?.open_pipeline_value ?? '0'}</strong><small>قيمة البايبلاين المفتوحة (ج.م)</small></div></div>
     </section>
     <section className="surface-card"><div className="crmm-toolbar">
-      <label className="field-label">المندوب<select value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)}><option value="">الكل</option>{agents.map((a) => <option key={a.id} value={a.id}>{a.full_name}</option>)}</select></label>
+      {!access.roles.includes('sales') && <label className="field-label">البياع<select value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)}><option value="">الكل</option>{agents.map((a) => <option key={a.id} value={a.id}>{a.full_name}</option>)}</select></label>}
       <label className="field-label">المصدر<select value={source} onChange={(e) => setSource(e.target.value)}><option value="">الكل</option>{Object.entries(SOURCE_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></label>
       <span className="muted">اسحب البطاقة وأفلتها في عمود آخر لنقل المرحلة.</span>
     </div></section>
@@ -345,10 +345,10 @@ function Leads({ stages, stageLabel, agents, canManage, canConvert, onError, onN
       <label className="field-label">بحث<input value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} placeholder="اسم / شركة / هاتف / بريد / رقم" /></label>
       <label className="field-label">المرحلة<select value={stage} onChange={(e) => { setStage(e.target.value); setPage(1); }}><option value="">الكل</option>{stages.map((s) => <option key={s.code} value={s.code}>{s.name_ar}</option>)}</select></label>
       <label className="field-label">المصدر<select value={source} onChange={(e) => { setSource(e.target.value); setPage(1); }}><option value="">الكل</option>{Object.entries(SOURCE_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></label>
-      <label className="field-label">المندوب<select value={assignedTo} onChange={(e) => { setAssignedTo(e.target.value); setPage(1); }}><option value="">الكل</option>{agents.map((a) => <option key={a.id} value={a.id}>{a.full_name}</option>)}</select></label>
+      {canConvert && <label className="field-label">البياع<select value={assignedTo} onChange={(e) => { setAssignedTo(e.target.value); setPage(1); }}><option value="">الكل</option>{agents.map((a) => <option key={a.id} value={a.id}>{a.full_name}</option>)}</select></label>}
       {canManage && selected.size > 0 && <>
-        <label className="field-label">إسناد جماعي<select value={bulkAssignee} onChange={(e) => setBulkAssignee(e.target.value)}><option value="">— إلغاء الإسناد —</option>{agents.map((a) => <option key={a.id} value={a.id}>{a.full_name}</option>)}</select></label>
-        <button className="button button-light" type="button" onClick={() => void bulk('/api/crm/leads/bulk-assign', { ids: [...selected], assigned_to: bulkAssignee || null }, 'تم الإسناد الجماعي.')}>إسناد ({selected.size})</button>
+        {canConvert && <><label className="field-label">إسناد جماعي<select value={bulkAssignee} onChange={(e) => setBulkAssignee(e.target.value)}><option value="">— إلغاء الإسناد —</option>{agents.map((a) => <option key={a.id} value={a.id}>{a.full_name}</option>)}</select></label>
+        <button className="button button-light" type="button" onClick={() => void bulk('/api/crm/leads/bulk-assign', { ids: [...selected], assigned_to: bulkAssignee || null }, 'تم الإسناد الجماعي.')}>إسناد ({selected.size})</button></>}
         <label className="field-label">نقل جماعي لمرحلة<select value={bulkStage} onChange={(e) => setBulkStage(e.target.value)}>{stages.filter((s) => s.is_active).map((s) => <option key={s.code} value={s.code}>{s.name_ar}</option>)}</select></label>
         <button className="button button-light" type="button" onClick={() => void bulk('/api/crm/leads/bulk-stage', { ids: [...selected], stage_code: bulkStage }, 'تم نقل المرحلة جماعياً.')}>نقل ({selected.size})</button>
       </>}
@@ -356,7 +356,7 @@ function Leads({ stages, stageLabel, agents, canManage, canConvert, onError, onN
     <section className="surface-card admin-table-card"><div className="table-wrap"><table className="data-table"><thead><tr>
       <th></th>
       <th><button type="button" className="link-button" onClick={() => toggleSort('full_name')}>الاسم / الشركة</button></th>
-      <th>الهاتف</th><th>المصدر</th>
+      <th>الهاتف</th><th>البياع</th><th>المصدر</th>
       <th><button type="button" className="link-button" onClick={() => toggleSort('stage_code')}>المرحلة</button></th>
       <th>الأولوية</th><th>القسط المتوقع</th>
       <th><button type="button" className="link-button" onClick={() => toggleSort('next_followup_at')}>المتابعة</button></th>
@@ -366,6 +366,7 @@ function Leads({ stages, stageLabel, agents, canManage, canConvert, onError, onN
         <td><input type="checkbox" aria-label={`تحديد ${lead.full_name}`} checked={selected.has(lead.id)} onChange={() => toggle(lead.id)} /></td>
         <td><button type="button" className="link-button" onClick={() => void openLead(lead.id)}><strong>{lead.company_name ?? lead.full_name}</strong></button><br /><small>{lead.lead_no}{lead.company_name ? ` · ${lead.full_name}` : ''}</small></td>
         <td dir="ltr">{lead.phone ?? '—'}</td>
+        <td>{agents.find((agent) => agent.id === lead.assigned_to)?.full_name ?? (lead.assigned_to ? '—' : <span className="crmm-badge">غير مسند</span>)}</td>
         <td>{SOURCE_LABELS[lead.source] ?? lead.source}</td>
         <td>{stageLabel(lead.stage_code)}</td>
         <td>{PRIORITY_LABELS[lead.priority] ?? lead.priority}</td>
@@ -374,7 +375,7 @@ function Leads({ stages, stageLabel, agents, canManage, canConvert, onError, onN
         <td>{formatDateTime(lead.created_at)}</td>
         <td>{canManage && <button type="button" className="button button-light button-small" onClick={() => void remove(lead)}>حذف</button>}</td>
       </tr>)}
-      {data && !data.items.length && <tr><td colSpan={10}><div className="empty-inline">لا يوجد عملاء محتملون مطابقون.</div></td></tr>}
+      {data && !data.items.length && <tr><td colSpan={11}><div className="empty-inline">لا يوجد عملاء محتملون مطابقون.</div></td></tr>}
     </tbody></table></div>
       <div className="crmm-pager">
         <button className="button button-light button-small" type="button" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>السابق</button>
@@ -435,6 +436,7 @@ function LeadDrawer({ lead, stages, agents, canManage, canConvert, onClose, onCh
     catch (err) { onError(err instanceof Error ? err.message : 'تعذر إنجاز المهمة.'); }
   };
   const convert = async () => {
+    if (!window.confirm(`تحويل «${lead.company_name ?? lead.full_name}» إلى عميل فعلي؟`)) return;
     try {
       await api(`/api/crm/leads/${lead.id}/convert`, { method: 'POST', body: jsonBody({}) });
       onNotice('تم تحويل العميل المحتمل إلى عميل فعلي بكل بياناته (ملف عميل جاهز).');
@@ -455,7 +457,7 @@ function LeadDrawer({ lead, stages, agents, canManage, canConvert, onClose, onCh
       <label className="field-label">المصدر<select name="source" defaultValue={lead.source}>{Object.entries(SOURCE_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></label>
       <label className="field-label">نوع التأمين<select name="insurance_type" defaultValue={lead.insurance_type}><option value="health">طبي</option><option value="general">عام</option><option value="both">كلاهما</option></select></label>
       <label className="field-label">القسط المتوقع<input name="expected_premium" type="number" min="0" step="0.01" defaultValue={lead.expected_premium ?? ''} /></label>
-      <label className="field-label">المندوب<select name="assigned_to" defaultValue={lead.assigned_to ?? ''}><option value="">غير مسند</option>{agents.map((a) => <option key={a.id} value={a.id}>{a.full_name}</option>)}</select></label>
+      {canConvert && <label className="field-label">البياع<select name="assigned_to" defaultValue={lead.assigned_to ?? ''}><option value="">غير مسند</option>{agents.map((a) => <option key={a.id} value={a.id}>{a.full_name}</option>)}</select></label>}
       <label className="field-label">سبب الخسارة<input name="lost_reason" defaultValue={lead.lost_reason ?? ''} /></label>
       <label className="field-label">ملاحظات<input name="notes" defaultValue={lead.notes ?? ''} /></label>
       <button className="button button-dark" type="submit">حفظ</button>
@@ -538,7 +540,7 @@ function Tasks({ agents, canManage, onError, onNotice }: SharedProps) {
     <section className="surface-card"><div className="crmm-toolbar">
       <label className="field-label">الاستحقاق<select value={due} onChange={(e) => setDue(e.target.value)}><option value="">الكل</option><option value="overdue">متأخرة</option><option value="today">اليوم</option><option value="upcoming">قادمة</option></select></label>
       <label className="field-label">الحالة<select value={status} onChange={(e) => setStatus(e.target.value)}><option value="">الكل</option><option value="pending">معلّقة</option><option value="done">منجزة</option><option value="cancelled">ملغاة</option></select></label>
-      <label className="field-label">المندوب<select value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)}><option value="">الكل</option>{agents.map((a) => <option key={a.id} value={a.id}>{a.full_name}</option>)}</select></label>
+      {agents.length > 1 && <label className="field-label">البياع<select value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)}><option value="">الكل</option>{agents.map((a) => <option key={a.id} value={a.id}>{a.full_name}</option>)}</select></label>}
     </div></section>
     <section className="surface-card admin-table-card"><div className="table-wrap"><table className="data-table"><thead><tr>
       <th>المهمة</th><th>العميل المحتمل</th><th>النوع</th><th>الموعد</th><th>الحالة</th><th>المندوب</th><th></th>

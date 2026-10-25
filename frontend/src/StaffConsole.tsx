@@ -23,6 +23,7 @@ import { SECTION_GLOW } from './features/home/sections';
 
 const AuthPage = lazy(async () => ({ default: (await import('./features/auth/AuthPage')).AuthPage }));
 const OverviewPage = lazy(async () => ({ default: (await import('./features/dashboard/OverviewPage')).OverviewPage }));
+const ReportsPage = lazy(async () => ({ default: (await import('./pages/StaffAnalyticsPage')).StaffAnalyticsPage }));
 const ComplaintQueue = lazy(async () => ({ default: (await import('./features/complaints/ComplaintQueue')).ComplaintQueue }));
 const TicketWorkspace = lazy(async () => ({ default: (await import('./features/complaints/TicketWorkspace')).TicketWorkspace }));
 const AuditPage = lazy(async () => ({ default: (await import('./features/admin/AuditPage')).AuditPage }));
@@ -37,13 +38,13 @@ const CrmModulePage = lazy(async () => ({ default: (await import('./features/crm
 const Launchpad = lazy(async () => ({ default: (await import('./features/home/Launchpad')).Launchpad }));
 
 const CRM_MODULE_TABS = [
-  { tab: 'dashboard', icon: 'chart' as IconName, label: 'Dashboard' },
-  { tab: 'pipeline', icon: 'columns' as IconName, label: 'Pipeline (Kanban)' },
-  { tab: 'leads', icon: 'users' as IconName, label: 'Leads' },
-  { tab: 'tasks', icon: 'check' as IconName, label: 'Tasks' },
-  { tab: 'import', icon: 'download' as IconName, label: 'Import' },
-  { tab: 'performance', icon: 'trend-up' as IconName, label: 'Performance' },
-  { tab: 'history', icon: 'clock' as IconName, label: 'History' },
+  { tab: 'dashboard', icon: 'chart' as IconName, label: 'ملخص العملاء المحتملين' },
+  { tab: 'pipeline', icon: 'columns' as IconName, label: 'لوحة المراحل' },
+  { tab: 'leads', icon: 'users' as IconName, label: 'كل الـ Leads' },
+  { tab: 'tasks', icon: 'check' as IconName, label: 'المتابعات' },
+  { tab: 'import', icon: 'download' as IconName, label: 'استيراد' },
+  { tab: 'performance', icon: 'trend-up' as IconName, label: 'الأداء' },
+  { tab: 'history', icon: 'clock' as IconName, label: 'السجل' },
 ] as const;
 
 const EMPTY_FILTER_OPTIONS: ComplaintFilterOptions = { companies: [], agents: [], statuses: [], priorities: [], channels: [], insurance_types: [] };
@@ -81,17 +82,12 @@ interface NavigationItem {
  * one that was already there.
  */
 const NAVIGATION: NavigationItem[] = [
-  { page: 'complaints', label: 'قائمة الطلبات', icon: 'inbox', section: 'workspace', permission: 'complaints.view' },
-  { page: 'channels', label: 'إعدادات القنوات', icon: 'plug', section: 'workspace', permission: 'integrations.manage' },
-  { page: 'overview', label: 'لوحة المؤشرات', icon: 'chart', section: 'workspace', permission: 'analytics.view', extraPermission: 'complaints.view' },
-  { page: 'insurance-ops', label: 'الوثائق والإصدار', icon: 'building', section: 'workspace', permission: 'crm.view' },
-  { page: 'admin', label: 'لوحة الإدارة', icon: 'overview', section: 'more', permission: 'analytics.view', extraPermission: 'complaints.view' },
-  { page: 'users', label: 'المستخدمون', icon: 'users', section: 'more', permission: 'users.view' },
-  { page: 'customers', label: 'العملاء', icon: 'users', section: 'more', permission: 'users.view' },
-  { page: 'roles', label: 'الأدوار والصلاحيات', icon: 'roles', section: 'more', permission: 'roles.manage' },
-  { page: 'operations', label: 'العمليات والكتالوج', icon: 'settings', section: 'more' },
-  { page: 'audit', label: 'سجل التدقيق', icon: 'audit', section: 'more', permission: 'audit.view' },
-  { page: 'storage', label: 'مركز التخزين', icon: 'layers', section: 'more', permission: 'storage.manage' },
+  { page: 'complaints', label: 'صندوق الطلبات', icon: 'inbox', section: 'workspace', permission: 'complaints.view' },
+  { page: 'crm-module', label: 'العملاء المحتملون', icon: 'users', section: 'workspace', permission: 'crm.view' },
+  { page: 'customers', label: 'العملاء', icon: 'users', section: 'workspace', permission: 'users.view' },
+  { page: 'insurance-ops', label: 'الوثائق والأقساط', icon: 'building', section: 'workspace', permission: 'crm.view' },
+  { page: 'reports', label: 'التقارير', icon: 'chart', section: 'workspace', permission: 'analytics.view' },
+  { page: 'operations', label: 'الإعدادات', icon: 'settings', section: 'workspace' },
 ];
 const OPERATION_REQUIREMENTS: Array<{ permissions: Permission[]; global?: boolean }> = [
   { permissions: ['companies.manage'] }, { permissions: ['categories.manage'] },
@@ -109,6 +105,7 @@ function routeFromPath(pathname: string): AppRoute {
   const ticket = path.match(/^\/staff\/(?:complaints|tickets)\/([^/]+)$/);
   if (ticket?.[1]) return { page: 'ticket', id: decodeURIComponent(ticket[1]) };
   if (path === '/staff/complaints') return { page: 'complaints' };
+  if (path === '/staff/reports') return { page: 'reports' };
   if (path === '/staff/admin') return { page: 'admin' };
   if (path === '/staff/users') return { page: 'users' };
   if (path === '/staff/customers') return { page: 'customers' };
@@ -126,6 +123,7 @@ function routeFromPath(pathname: string): AppRoute {
 function pathForRoute(route: AppRoute): string {
   if (route.page === 'ticket') return `/staff/complaints/${encodeURIComponent(route.id)}`;
   if (route.page === 'overview') return '/staff/overview';
+  if (route.page === 'reports') return '/staff/reports';
   if (route.page === 'complaints') return '/staff/complaints';
   if (route.page === 'crm-module') return `/staff/crm-module/${route.tab}`;
   return `/staff/${route.page}`;
@@ -202,7 +200,6 @@ function App() {
   // Administration is shut by default. Once an operator opens it the choice
   // sticks, so the people who do live there are not re-collapsing it daily.
   const [moreOpen, setMoreOpen] = useState(() => window.localStorage.getItem('wasiq-sidebar-more') === 'open');
-  const [crmOpen, setCrmOpen] = useState(true);
   const [notice, setNotice] = useState('');
   const [theme, setTheme] = useState<Theme>(readTheme);
 
@@ -230,7 +227,11 @@ function App() {
       const overviewDenied = current.page === 'overview'
         && !(hasPermission(result.access, 'analytics.view') && hasPermission(result.access, 'complaints.view'));
       if (isBareLanding || overviewDenied) {
-        const fallback: AppRoute = { page: 'home' };
+        const fallback: AppRoute = hasPermission(result.access, 'analytics.view') && hasPermission(result.access, 'complaints.view')
+          ? { page: 'overview' }
+          : hasPermission(result.access, 'crm.view')
+            ? { page: 'crm-module', tab: 'pipeline' }
+            : { page: 'complaints' };
         window.history.replaceState({}, '', pathForRoute(fallback)); setRoute(fallback);
       }
     } catch (cause) {
@@ -342,6 +343,8 @@ function App() {
     ? <AdminDashboard access={access} range={range} onNavigate={navigate} />
     : route.page === 'overview'
     ? <OverviewPage access={access} range={range} companies={filterOptions.companies} companyId={effectiveCompanyId} insuranceType={effectiveInsuranceType} onCompany={setCompanyId} onInsuranceType={setInsuranceType} onOpenComplaints={() => navigate({ page: 'complaints' })} onOpenTicket={(id) => navigate({ page: 'ticket', id })} onOpenChannels={hasPermission(access, 'integrations.manage') ? () => navigate({ page: 'channels' }) : undefined} onOpenAudit={hasPermission(access, 'audit.view') ? () => navigate({ page: 'audit' }) : undefined} />
+    : route.page === 'reports'
+      ? <ReportsPage embedded />
     : route.page === 'complaints'
       ? <ComplaintQueue access={access} range={range} options={filterOptions} companyNames={companyNames} onOpenTicket={(id) => navigate({ page: 'ticket', id })} />
       : route.page === 'ticket'
@@ -374,7 +377,9 @@ function App() {
       className={`nav-link${currentNav === item.page ? ' active' : ''}`}
       key={item.page}
       aria-current={currentNav === item.page ? 'page' : undefined}
-      onClick={() => navigate({ page: item.page } as AppRoute)}
+      aria-label={item.label}
+      onClick={() => item.page === 'crm-module' ? navigate({ page: 'crm-module', tab: 'pipeline' }) : navigate({ page: item.page } as AppRoute)}
+      title={item.label}
     >
       <span className="nav-icon"><Icon name={item.icon} size={17} /></span>
       <span>{item.label}</span>
@@ -382,10 +387,11 @@ function App() {
     </button>
   );
 
-  return <div className={`staff-console theme-${theme}`}><div className="app-shell" dir="rtl">
+  const isSalesRole = access.roles.includes('sales');
+  return <div className={`staff-console theme-${theme}${isSalesRole ? ' is-sales' : ''}`}><div className="app-shell" dir="rtl">
     {mobileNav && <button className="mobile-scrim" type="button" aria-label="إغلاق القائمة" onClick={() => setMobileNav(false)} />}
-    <aside className={`sidebar${mobileNav ? ' sidebar-open' : ''}${collapsed ? ' is-collapsed' : ''}`}>
-      <div className="sidebar-brand"><img className="brand-mark" src={brand.logo_url} alt="" /><span><strong>{brand.platform_name}</strong><small>عمليات التأمين</small></span><span className="brand-dot" /></div>
+    <aside className={`sidebar${mobileNav ? ' sidebar-open' : ''}${collapsed ? ' is-collapsed' : ''}${route.page === 'complaints' || route.page === 'ticket' ? ' is-queue' : ''}`}>
+      <div className="sidebar-brand"><span className="brand-mark" aria-hidden="true">و</span><span><strong>وسيط · Broker Hub</strong><small>منصة الوساطة التأمينية</small></span></div>
       <button
         className="sidebar-collapse"
         type="button"
@@ -401,43 +407,19 @@ function App() {
         <nav className="nav-section" aria-label="التنقل الرئيسي">
           <button
             type="button"
-            className={`nav-link${currentNav === 'home' ? ' active' : ''}`}
-            aria-current={currentNav === 'home' ? 'page' : undefined}
-            onClick={() => navigate({ page: 'home' })}
+            className={`nav-link${(currentNav === 'home' || currentNav === 'overview') ? ' active' : ''}`}
+            aria-current={(currentNav === 'home' || currentNav === 'overview') ? 'page' : undefined}
+            aria-label="لوحة التحكم"
+            onClick={() => navigate({ page: 'overview' })}
           >
             <span className="nav-icon"><Icon name="grid" size={17} /></span>
-            <span>الرئيسية</span>
+            <span>لوحة التحكم</span>
           </button>
         </nav>
         {workspaceLinks.length > 0 && (
           <nav className="nav-section" aria-label="مساحة العمل">
             <p className="nav-section-title">مساحة العمل</p>
             {workspaceLinks.map(navLink)}
-          </nav>
-        )}
-        {hasPermission(access, 'crm.view') && (
-          <nav className="nav-section" aria-label="CRM">
-            <button
-              type="button"
-              className={`nav-link${currentNav === 'crm-module' ? ' active' : ''}`}
-              aria-expanded={crmOpen || currentNav === 'crm-module'}
-              onClick={() => setCrmOpen((value) => !value)}
-            >
-              <span className="nav-icon"><Icon name="users" size={17} /></span>
-              <span>CRM</span>
-              <Icon name="chevron" size={13} />
-            </button>
-            {(crmOpen || currentNav === 'crm-module') && CRM_MODULE_TABS.map((item) => (
-              <button
-                type="button"
-                key={item.tab}
-                className={`nav-link nav-sublink${route.page === 'crm-module' && route.tab === item.tab ? ' active' : ''}`}
-                aria-current={route.page === 'crm-module' && route.tab === item.tab ? 'page' : undefined}
-                onClick={() => navigate({ page: 'crm-module', tab: item.tab })}
-              >
-                <span>{item.label}</span>
-              </button>
-            ))}
           </nav>
         )}
         {moreLinks.length > 0 && (
@@ -517,7 +499,7 @@ function App() {
     </div>
 
     <div className="main-shell">
-      <header className="topbar"><div className="topbar-leading"><button className="icon-button mobile-menu-button" type="button" aria-label="فتح القائمة" onClick={() => setMobileNav(true)}><Icon name="menu" size={20} /></button>{route.page !== 'home' && <button className="icon-button os-home-button" type="button" aria-label="الرئيسية" title="العودة إلى الرئيسية" onClick={() => navigate({ page: 'home' })}><Icon name="grid" size={18} /></button>}<div className="topbar-breadcrumb"><span>{brand.platform_name}</span><Icon name="chevron" size={13} /><strong>{NAVIGATION.find((item) => item.page === currentNav)?.label ?? (route.page === 'ticket' ? 'مساحة الطلب' : route.page === 'crm-module' ? 'CRM' : route.page === 'home' ? 'الرئيسية' : 'الإدارة')}</strong></div></div>
+      <header className="topbar"><div className="topbar-leading"><button className="icon-button mobile-menu-button" type="button" aria-label="فتح القائمة" onClick={() => setMobileNav(true)}><Icon name="menu" size={20} /></button>{route.page !== 'home' && <button className="icon-button os-home-button" type="button" aria-label="الرئيسية" title="العودة إلى الرئيسية" onClick={() => navigate({ page: 'home' })}><Icon name="grid" size={18} /></button>}<div className="brokerhub-page-heading"><h1>{route.page === 'ticket' ? 'صندوق الطلبات' : route.page === 'crm-module' ? (route.tab === 'pipeline' ? 'العملاء المحتملون' : CRM_MODULE_TABS.find((item) => item.tab === route.tab)?.label ?? 'العملاء المحتملون') : NAVIGATION.find((item) => item.page === currentNav)?.label ?? (route.page === 'overview' || route.page === 'home' ? 'لوحة التحكم' : route.page === 'complaints' ? 'صندوق الطلبات' : 'الإدارة')}</h1><p>{route.page === 'complaints' || route.page === 'ticket' ? 'واتساب والمكالمات والإيميل في مكان واحد' : route.page === 'crm-module' ? 'إدارة علاقات العملاء ومتابعات فريق المبيعات' : 'نظرة واضحة على عمليات الوساطة التأمينية'}</p></div></div>
         <div className="topbar-actions">{showDatePicker && <DateRangePicker value={range} onChange={setRange} />}<button className="command-trigger" type="button" onClick={() => setPaletteOpen(true)} aria-label="فتح مركز الأوامر"><Icon name="search" size={16} /><span>ابحث أو انتقل إلى…</span><kbd>⌘ K</kbd></button><div className="popover-anchor"><button className={`icon-button notification-trigger${notificationsOpen ? ' is-active' : ''}`} type="button" aria-label={`الإشعارات، ${unread} غير مقروءة`} onClick={() => setNotificationsOpen((value) => !value)}><Icon name="bell" size={18} />{unread > 0 && <i className="notification-count">{unread > 9 ? '9+' : unread}</i>}</button>{notificationsOpen && <NotificationPopover items={notifications} loading={notificationsLoading} onRead={(item) => { void onReadNotification(item); }} onClose={() => setNotificationsOpen(false)} />}</div><button className="icon-button theme-toggle" type="button" aria-label={theme === 'dark' ? 'تفعيل الوضع الفاتح' : 'تفعيل الوضع الداكن'} title="تبديل المظهر" onClick={() => setTheme((value) => value === 'dark' ? 'light' : 'dark')}><Icon name={theme === 'dark' ? 'sun' : 'moon'} size={17} /></button>
           <div className="popover-anchor user-menu-anchor">
             <button className="topbar-avatar avatar-circle avatar-active" type="button" aria-haspopup="menu" aria-expanded={userMenuOpen} aria-label="قائمة الحساب" title={access.full_name} onClick={() => setUserMenuOpen((value) => !value)}>{initials(access.full_name)}</button>
@@ -536,18 +518,12 @@ function App() {
       <main className="main-content"><div className="main-content-inner">
         {notice && <div className="inline-alert info global-notice" role="status">{notice}<button className="notice-close" type="button" aria-label="إخفاء" onClick={() => setNotice('')}><Icon name="close" size={14} /></button></div>}
         {route.page === 'crm-module' && hasPermission(access, 'crm.view') && (
-          <div className="os-substrip" role="tablist" aria-label="أقسام CRM">
+          <div className="os-substrip brokerhub-tabs" role="tablist" aria-label="أقسام العملاء المحتملين">
             {CRM_MODULE_TABS.map((item) => (
-              <button
-                type="button"
-                key={item.tab}
-                role="tab"
-                aria-selected={route.tab === item.tab}
+              <button type="button" key={item.tab} role="tab" aria-selected={route.tab === item.tab}
                 className={`os-subcard${route.tab === item.tab ? ' active' : ''}`}
-                onClick={() => navigate({ page: 'crm-module', tab: item.tab })}
-              >
-                <Icon name={item.icon} size={18} />
-                <span>{item.label}</span>
+                onClick={() => navigate({ page: 'crm-module', tab: item.tab })}>
+                <Icon name={item.icon} size={18} /><span>{item.label}</span>
               </button>
             ))}
           </div>
@@ -559,6 +535,13 @@ function App() {
         </div>
       </div></main>
       <footer className="app-footer"><span>{brand.platform_name}</span><span><Icon name="shield" size={13} /> كل إجراء محمي بنطاق الوصول الفعّال</span><button type="button" onClick={() => setShortcutsOpen(true)}><Icon name="keyboard" size={13} /> اختصارات لوحة المفاتيح</button></footer>
+      {isSalesRole && route.page === 'crm-module' && route.tab === 'pipeline' && <button className="brokerhub-mobile-add" type="button" aria-label="إضافة Lead" onClick={() => navigate({ page: 'crm-module', tab: 'leads' })}>+</button>}
+      {isSalesRole && <nav className="brokerhub-mobile-nav" aria-label="التنقل السفلي">
+        <button type="button" className={route.page === 'crm-module' ? 'active' : ''} aria-current={route.page === 'crm-module' ? 'page' : undefined} onClick={() => navigate({ page: 'crm-module', tab: 'pipeline' })}><Icon name="users" size={20} /><span>Leads</span></button>
+        <button type="button" className={route.page === 'complaints' || route.page === 'ticket' ? 'active' : ''} onClick={() => navigate({ page: 'complaints' })}><Icon name="inbox" size={20} /><span>الطلبات</span></button>
+        <button type="button" className={route.page === 'customers' ? 'active' : ''} onClick={() => navigate({ page: 'customers' })}><Icon name="building" size={20} /><span>العملاء</span></button>
+        <button type="button" onClick={() => setUserMenuOpen(true)}><Icon name="users" size={20} /><span>حسابي</span></button>
+      </nav>}
     </div>
     {paletteOpen && <CommandPalette access={access} onNavigate={navigate} onClose={() => setPaletteOpen(false)} />}
     {shortcutsOpen && <Modal title="اختصارات لوحة المفاتيح" eyebrow="تنقّل أسرع" onClose={() => setShortcutsOpen(false)}><div className="shortcut-list"><div><span>فتح مركز الأوامر</span><kbd>⌘ K</kbd></div><div><span>قائمة الطلبات</span><kbd>⌘ ⇧ Q</kbd></div><div><span>الصفحة الرئيسية</span><kbd>⌘ ⇧ D</kbd></div><div><span>هذه القائمة</span><kbd>?</kbd></div><div><span>إغلاق النوافذ</span><kbd>Esc</kbd></div></div></Modal>}

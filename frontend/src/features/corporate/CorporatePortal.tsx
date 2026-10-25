@@ -67,8 +67,17 @@ function DocumentRow({ document }: { document: CorporateDocument }) {
 
 function OverviewTab({ data }: { data: CorporateOverview }) {
   const contracts = data.contracts ?? [];
+  const activeContract = contracts.find((contract) => contract.status === 'active') ?? contracts[0];
   return (
     <div className="corporate-overview">
+      <section className="corporate-welcome-banner">
+        <div>
+          <span>أهلاً بك</span>
+          <strong className="corporate-welcome-company">{data.client.name_ar || data.client.name_en}</strong>
+          <p>{activeContract ? `عقد ${activeContract.contract_no} · يتجدد ${formatDate(activeContract.renews_on)}` : 'بوابة شركتك لدى وسيط'}</p>
+        </div>
+        <div className="corporate-covered-count"><strong>{formatNumber(data.employees_count)}</strong><span>موظف مغطّى</span></div>
+      </section>
       {/* The same four-up KPI row the staff dashboard uses, from the same
           primitive, so the two halves of the product count things the same
           way — including the digits: this grid printed 430 and 42 in Latin
