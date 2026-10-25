@@ -111,6 +111,25 @@ describe('CrmModulePage (unified CRM)', () => {
     await waitFor(() => expect(screen.getByText('12.5')).toBeTruthy());
   });
 
+  it('denies sales-role access to team performance and stage administration', async () => {
+    mockApi();
+    const salesperson: StaffAccess = {
+      ...access,
+      permissions: ['crm.view', 'crm.manage'],
+    };
+    const { rerender } = render(
+      <CrmModulePage access={salesperson} tab="performance" onTab={() => undefined} />,
+    );
+    expect(await screen.findByText('تقارير فريق المبيعات غير متاحة')).toBeTruthy();
+    expect(vi.mocked(api)).not.toHaveBeenCalledWith(
+      expect.stringContaining('/api/crm/reports/sales-performance'),
+    );
+
+    rerender(<CrmModulePage access={salesperson} tab="pipeline" onTab={() => undefined} />);
+    expect(await screen.findByText('شركة النور')).toBeTruthy();
+    expect(screen.queryByText('تخصيص المراحل')).toBeNull();
+  });
+
   it('shows import history batches', async () => {
     mockApi();
     render(<CrmModulePage access={access} tab="history" onTab={() => undefined} />);

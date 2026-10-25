@@ -22,12 +22,16 @@ every table), RLS-enforced, permission-gated (`crm.view` reads,
 `crm.manage` writes, `crm.convert` conversion) and audit-logged on
 every write.
 
-The seeded `sales` role is self-scoped at the API boundary: lead-list and
-Kanban queries are forcibly restricted to `assigned_to = current staff user`,
-and fetching another salesperson's lead returns 404. Dashboard totals,
-recent leads, activities, and follow-up counts use that same assignment
-scope. Team-capable roles retain their existing team views. UI filters are
-not treated as an authorization boundary.
+The seeded `sales` role is self-scoped at the API boundary whenever it has
+`crm.manage` but not `crm.convert`, regardless of the broad company-scope flag:
+lead-list/search, detail, updates, Kanban, stats/KPIs, task reads/counts, imports,
+import error exports and sales-performance queries are restricted to the current
+seller or their assigned leads. A seller attempting to access a teammate's
+lead/import batch receives 404; forbidden reassignment/stage administration is
+rejected. Seller-created and imported leads are assigned to that seller. Stage
+lead counts are self-scoped. Manager-level reassignment remains available and is
+written to the activity/audit log. Team-capable roles retain the existing team
+views. UI filters are not treated as an authorization boundary.
 
 ## Database (`crm_*` only)
 
@@ -66,11 +70,11 @@ cd backend && alembic downgrade -1      # restore the split 039 shape
 
 | Area | Endpoints |
 | --- | --- |
-| Stages | `GET /stages` (+`?include_inactive=true`, each with lead `count`), `POST /stages`, `PATCH /stages/{id}`, `DELETE /stages/{id}` (409 when non-empty), `POST /stages/reorder` |
+| Stages | `GET /stages` (+`?include_inactive=true`, each with lead `count`; seller counts are self-scoped), `POST /stages`, `PATCH /stages/{id}`, `DELETE /stages/{id}` (409 when non-empty), `POST /stages/reorder` (mutations require manager-level CRM access) |
 | Leads | `GET /leads` (search incl. company/`lead_no`, `stage_code`, `source`, `priority`, `assigned_to`, date range, `due_before`, sort, pagination), `POST /leads`, `GET /leads/{id}` (activities + tasks), `PATCH`, `DELETE`, `POST /leads/{id}/move` (Kanban drop; stamps `closed_at`), `POST /leads/bulk-assign`, `POST /leads/bulk-stage`, `POST /leads/{id}/activities`, `POST /leads/{id}/convert` (`crm.convert`; one-click corporate client via the definer function, stage becomes `converted`) |
 | Tasks | `GET /tasks` (`status`, `type`, `assigned_to`, `lead_id`, `due=overdue\|today\|upcoming` + `due_counts`), `POST /leads/{id}/tasks`, `PATCH /tasks/{id}`, `POST /tasks/{id}/complete`, `DELETE /tasks/{id}` — every change recomputes the lead's `next_followup_at` |
 | Kanban | `GET /pipeline` (stages with counts, per-stage value and cards; `assigned_to`/`source`/date filters; totals, win/conversion rates, open pipeline value) |
-| Performance | `GET /reports/sales-performance?date_from=&date_to=&source=&stage_code=` — per salesperson: leads, won/lost/converted, conversion & win rates, won/pipeline value, average close days, tasks done/overdue. Staff without global company scope see only their own row. |
+| Performance | `GET /reports/sales-performance?date_from=&date_to=&source=&stage_code=` — per salesperson: leads, won/lost/converted, conversion & win rates, won/pipeline value, average close days, tasks done/overdue. Sales-role users see only their own row; manager/analyst scope follows the existing company-scope behavior. |
 | Dashboard | `GET /stats` — totals, `by_stage` (with stage names), by source, zero-filled last-30-days, conversion rate, due-task counts, top performers, recent leads/imports/activities. |
 | Import | `POST /imports` (+`/imports/preview`), `GET /imports`, `GET /imports/{id}`, `GET /imports/{id}/errors.csv`, `GET /imports/template.xlsx` — see "Excel import". |
 

@@ -162,12 +162,13 @@ class CrmModuleRepository:
         )
         return (await db.execute(stmt)).scalar_one_or_none()
 
-    async def stage_lead_count(self, db: AsyncSession, code: str) -> int:
-        stmt = (
-            select(func.count())
-            .select_from(CrmLead)
-            .where(CrmLead.tenant_id == self.tenant_id, CrmLead.stage_code == code)
-        )
+    async def stage_lead_count(
+        self, db: AsyncSession, code: str, assigned_to: UUID | None = None
+    ) -> int:
+        filters = [CrmLead.tenant_id == self.tenant_id, CrmLead.stage_code == code]
+        if assigned_to is not None:
+            filters.append(CrmLead.assigned_to == assigned_to)
+        stmt = select(func.count()).select_from(CrmLead).where(*filters)
         return int(await db.scalar(stmt) or 0)
 
     # --- Leads ---------------------------------------------------------------
@@ -385,22 +386,22 @@ class CrmModuleRepository:
         return [task_dict(task, lead) for task, lead in await db.execute(stmt)]
 
     async def due_task_counts(
-        self, db: AsyncSession, assigned_to: UUID | None = None
+        self, db: AsyncSession, lead_assigned_to: UUID | None = None
     ) -> dict[str, int]:
         now = datetime.now(UTC)
         day_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
 
         async def count(*conditions: Any) -> int:
-            stmt = (
-                select(func.count())
-                .select_from(CrmTask)
-                .where(
-                    CrmTask.tenant_id == self.tenant_id,
-                    CrmTask.status == "pending",
-                    *((CrmTask.assigned_to == assigned_to,) if assigned_to else ()),
-                    *conditions,
-                )
-            )
+            stmt = select(func.count()).select_from(CrmTask)
+            filters = [
+                CrmTask.tenant_id == self.tenant_id,
+                CrmTask.status == "pending",
+                *conditions,
+            ]
+            if lead_assigned_to is not None:
+                stmt = stmt.join(CrmLead, CrmLead.id == CrmTask.lead_id)
+                filters.append(CrmLead.assigned_to == lead_assigned_to)
+            stmt = stmt.where(*filters)
             return int(await db.scalar(stmt) or 0)
 
         return {
@@ -427,6 +428,7 @@ class CrmModuleRepository:
         db: AsyncSession,
         scope: AccessScope,
         *,
+        only_me: UUID | None = None,
         date_from: datetime | None = None,
         date_to: datetime | None = None,
         source: str | None = None,
@@ -476,8 +478,11 @@ class CrmModuleRepository:
                 "date_to": date_to,
                 "source": source,
                 "stage_code": stage_code,
-                # Scoped staff only get their own row (pre-unification rule).
-                "only_me": None if scope.all_companies else scope.actor.id,
+                # Explicit salesperson scoping wins; otherwise preserve the
+                # existing company-scope behavior for managers and analysts.
+                "only_me": only_me
+                if only_me is not None
+                else (None if scope.all_companies else scope.actor.id),
             },
         )
         result = []
@@ -522,13 +527,13 @@ class CrmModuleRepository:
             found_emails = {str(row[0]) for row in rows}
         return found_phones, found_emails
 
-    async def batches(self, db: AsyncSession, limit: int = 100) -> list[dict[str, Any]]:
-        stmt = (
-            select(CrmImportBatch)
-            .where(CrmImportBatch.tenant_id == self.tenant_id)
-            .order_by(CrmImportBatch.created_at.desc())
-            .limit(limit)
-        )
+    async def batches(
+        self, db: AsyncSession, limit: int = 100, uploaded_by: UUID | None = None
+    ) -> list[dict[str, Any]]:
+        stmt = select(CrmImportBatch).where(CrmImportBatch.tenant_id == self.tenant_id)
+        if uploaded_by is not None:
+            stmt = stmt.where(CrmImportBatch.uploaded_by == uploaded_by)
+        stmt = stmt.order_by(CrmImportBatch.created_at.desc()).limit(limit)
         return [batch_dict(row) for row in (await db.execute(stmt)).scalars()]
 
     async def batch(self, db: AsyncSession, batch_id: UUID) -> CrmImportBatch | None:

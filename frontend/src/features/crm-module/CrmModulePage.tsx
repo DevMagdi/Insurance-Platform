@@ -108,7 +108,9 @@ export function CrmModulePage({ access, tab, onTab }: { access: StaffAccess; tab
     {tab === 'leads' && <Leads {...shared} />}
     {tab === 'tasks' && <Tasks {...shared} />}
     {tab === 'import' && <ImportLeads canManage={canManage} onError={setError} onNotice={setNotice} onDone={() => onTab('history')} />}
-    {tab === 'performance' && <Performance onError={setError} />}
+    {tab === 'performance' && (canConvert
+      ? <Performance onError={setError} />
+      : <AccessDenied title="تقارير فريق المبيعات غير متاحة" />)}
     {tab === 'history' && <ImportHistory onError={setError} />}
   </div>;
 }
@@ -221,7 +223,7 @@ function Pipeline({ access, stages, stageLabel, agents, canManage, canConvert, o
         </div>
       ))}
     </div>
-    {canManage && <StageManager stages={stages} onChanged={async () => { await reloadStages(); await load(); }} onError={onError} onNotice={onNotice} />}
+    {canConvert && <StageManager stages={stages} onChanged={async () => { await reloadStages(); await load(); }} onError={onError} onNotice={onNotice} />}
     {detail && <LeadDrawer lead={detail} stages={stages} agents={agents} canManage={canManage} canConvert={canConvert} access={access} onClose={() => setDetail(null)} onChanged={async () => { await openLead(detail.id); await load(); }} onError={onError} onNotice={onNotice} />}
   </>;
 }

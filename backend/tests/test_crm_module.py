@@ -21,6 +21,7 @@ from app.api.deps import RequestContext, require_permission
 from app.db import Actor
 from app.domain.access import AccessScope
 from app.domain.crm_module_schemas import (
+    CrmBulkAssign,
     CrmBulkStage,
     CrmLeadCreate,
     CrmLeadMove,
@@ -184,7 +185,9 @@ def make_ctx(db: FakeDB, permissions: frozenset[str] | None = None) -> RequestCo
         uuid4(),
         1,
         AccessScope(actor=actor, all_companies=True, ownership=OwnershipLevel.ALL),
-        permissions if permissions is not None else frozenset({"crm.view", "crm.manage"}),
+        permissions
+        if permissions is not None
+        else frozenset({"crm.view", "crm.manage", "crm.convert"}),
         None,
         SimpleNamespace(),  # type: ignore[arg-type]
     )
@@ -209,20 +212,102 @@ def make_lead(**overrides: Any) -> CrmLead:
 
 
 @pytest.mark.asyncio
-async def test_salesperson_can_only_read_assigned_leads() -> None:
+async def test_salesperson_cannot_read_teammate_lead_through_detail_activity_convert_or_move() -> (
+    None
+):
     db = FakeDB()
-    ctx = make_ctx(db, frozenset({"crm.view", "crm.manage"}))
-    ctx.scope = replace(ctx.scope, all_companies=False)
-    lead = make_lead(assigned_to=uuid4())
-    db.by_entity[CrmLead] = [lead]
+    salesperson = make_ctx(db, frozenset({"crm.view", "crm.manage"}))
+    salesperson.scope = replace(salesperson.scope, all_companies=False)
+    other = make_lead(assigned_to=uuid4())
+    db.by_entity[CrmLead] = [other]
+
+    for call in (
+        api.get_lead(other.id, salesperson),
+        api.add_activity(
+            other.id,
+            api.CrmActivityCreate(type="note", description="unauthorized"),
+            salesperson,
+            None,
+        ),
+        api.move_lead(other.id, CrmLeadMove(stage_code="contacted"), salesperson, None),
+        api.convert_lead(other.id, api.CrmLeadConvert(), salesperson, None),
+    ):
+        with pytest.raises(HTTPException) as raised:
+            await call
+        assert raised.value.status_code == 404
 
     with pytest.raises(HTTPException) as raised:
-        await api._lead_or_404(ctx, lead.id)
+        await api.update_lead(other.id, CrmLeadUpdate(notes="nope"), salesperson, None)
     assert raised.value.status_code == 404
+    with pytest.raises(HTTPException) as raised:
+        await api.bulk_assign(CrmBulkAssign(ids=[other.id], assigned_to=STAFF), salesperson, None)
+    assert raised.value.status_code == 403
 
-    own_lead = make_lead(assigned_to=STAFF)
-    db.by_entity[CrmLead] = [own_lead]
-    assert await api._lead_or_404(ctx, own_lead.id) is own_lead
+    own = make_lead(assigned_to=STAFF)
+    db.by_entity[CrmLead] = [own]
+    with pytest.raises(HTTPException) as raised:
+        await api.update_lead(own.id, CrmLeadUpdate(assigned_to=uuid4()), salesperson, None)
+    assert raised.value.status_code == 403
+
+    manager = make_ctx(db)
+    db.by_entity[CrmLead] = [other]
+    assert await api._lead_or_404(manager, other.id) is other
+    reassigned_to = uuid4()
+    await api.update_lead(other.id, CrmLeadUpdate(assigned_to=reassigned_to), manager, None)
+    assert any(
+        getattr(row, "type", None) == "assignment" and row.lead_id == other.id for row in db.added
+    )
+
+
+async def test_salesperson_stage_counts_are_self_scoped_and_stage_admin_is_denied(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    db = FakeDB()
+    salesperson = make_ctx(db, frozenset({"crm.view", "crm.manage"}))
+    observed: list[UUID | None] = []
+
+    async def stages(_db: Any, include_inactive: bool = False) -> list[CrmPipelineStage]:
+        return [make_stage("new")]
+
+    async def stage_lead_count(_db: Any, _code: str, assigned_to: UUID | None = None) -> int:
+        observed.append(assigned_to)
+        return 2
+
+    monkeypatch.setattr(api.repo, "stages", stages)
+    monkeypatch.setattr(api.repo, "stage_lead_count", stage_lead_count)
+    result = await api.list_stages(salesperson)
+    assert result["stages"][0]["count"] == 2
+    assert observed == [STAFF]
+
+    with pytest.raises(HTTPException) as raised:
+        await api.create_stage(
+            CrmStageCreate(code="custom", name_ar="مخصص", name_en="Custom"), salesperson, None
+        )
+    assert raised.value.status_code == 403
+
+
+async def test_salesperson_list_and_pipeline_are_forced_to_self(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    db = FakeDB()
+    salesperson = make_ctx(db, frozenset({"crm.view", "crm.manage"}))
+    salesperson.scope = replace(salesperson.scope, all_companies=False)
+    observed: dict[str, Any] = {}
+
+    async def leads_page(_db: Any, **kwargs: Any) -> dict[str, Any]:
+        observed["leads"] = kwargs
+        return {"items": [], "total": 0, "page": 1, "page_size": 20, "pages": 0}
+
+    async def pipeline_board(_db: Any, **kwargs: Any) -> dict[str, Any]:
+        observed["pipeline"] = kwargs
+        return {"stages": []}
+
+    monkeypatch.setattr(api.repo, "leads_page", leads_page)
+    monkeypatch.setattr(api.repo, "pipeline_board", pipeline_board)
+    await api.list_leads(salesperson)
+    await api.pipeline(salesperson, assigned_to=uuid4())
+    assert observed["leads"]["only_me"] == STAFF
+    assert observed["pipeline"]["assigned_to"] == STAFF
 
 
 def make_stage(code: str = "new", **overrides: Any) -> CrmPipelineStage:
@@ -364,6 +449,37 @@ async def test_convert_refuses_a_second_conversion() -> None:
 
 def _upload(name: str, content: bytes) -> UploadFile:
     return UploadFile(filename=name, file=io.BytesIO(content))
+
+
+async def test_salesperson_import_is_assigned_to_self_and_batches_are_private(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    db = FakeDB()
+    salesperson = make_ctx(db, frozenset({"crm.view", "crm.manage"}))
+    csv = b"full_name,phone\nMona,01012345678\n"
+    await api.import_leads(salesperson, None, _upload("seller.csv", csv))
+    imported = next(row for row in db.added if isinstance(row, CrmLead))
+    assert imported.assigned_to == STAFF
+
+    observed: dict[str, Any] = {}
+
+    async def batches(_db: Any, **kwargs: Any) -> list[dict[str, Any]]:
+        observed.update(kwargs)
+        return []
+
+    monkeypatch.setattr(api.repo, "batches", batches)
+    assert await api.list_imports(salesperson) == {"imports": []}
+    assert observed["uploaded_by"] == STAFF
+
+    other_batch = SimpleNamespace(uploaded_by=uuid4())
+
+    async def batch(_db: Any, _batch_id: UUID) -> Any:
+        return other_batch
+
+    monkeypatch.setattr(api.repo, "batch", batch)
+    with pytest.raises(HTTPException) as raised:
+        await api._batch_or_404(salesperson, uuid4())
+    assert raised.value.status_code == 404
 
 
 async def test_import_endpoint_preview_summary_and_error_ledger() -> None:

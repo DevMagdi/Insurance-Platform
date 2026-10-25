@@ -519,7 +519,7 @@ function App() {
         {notice && <div className="inline-alert info global-notice" role="status">{notice}<button className="notice-close" type="button" aria-label="إخفاء" onClick={() => setNotice('')}><Icon name="close" size={14} /></button></div>}
         {route.page === 'crm-module' && hasPermission(access, 'crm.view') && (
           <div className="os-substrip brokerhub-tabs" role="tablist" aria-label="أقسام العملاء المحتملين">
-            {CRM_MODULE_TABS.map((item) => (
+            {CRM_MODULE_TABS.filter((item) => item.tab !== 'performance' || hasPermission(access, 'crm.convert')).map((item) => (
               <button type="button" key={item.tab} role="tab" aria-selected={route.tab === item.tab}
                 className={`os-subcard${route.tab === item.tab ? ' active' : ''}`}
                 onClick={() => navigate({ page: 'crm-module', tab: item.tab })}>
