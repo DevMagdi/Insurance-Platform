@@ -1,7 +1,7 @@
 """Excel/CSV parsing, column mapping and de-duplication for CRM lead imports.
 
 Pure and database-free (unit-tested offline). ``.xlsx``/``.csv`` reuse the
-platform parser (`app.services.crm.parse_tabular`, Arabic header aliases);
+platform parser (app.services.tabular.parse_tabular, Arabic header aliases);
 legacy ``.xls`` is read with xlrd. File contents are never trusted: every
 row is mapped, normalized and validated here, and anything unusable becomes
 a per-row error with a stable machine-readable reason.
@@ -14,7 +14,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from app.domain.enums import CrmLeadSource
-from app.services.crm import _canonical_header, _rows_from_matrix, normalize_mobile, parse_tabular
+from app.services.tabular import canonical_header, normalize_mobile, parse_tabular, rows_from_matrix
 
 MAX_IMPORT_BYTES = 5_242_880
 _ACCEPTED = (".xlsx", ".xls", ".csv")
@@ -77,7 +77,7 @@ def parse_leads_file(filename: str, content: bytes) -> list[dict[str, str]]:
             matrix = (
                 [sheet.cell_value(r, c) for c in range(sheet.ncols)] for r in range(sheet.nrows)
             )
-            return _remap_headers(_rows_from_matrix(list(matrix)))
+            return _remap_headers(rows_from_matrix(list(matrix)))
         except Exception as exc:  # xlrd raises several private error types.
             raise ValueError("The .xls file could not be read") from exc
     return _remap_headers(parse_tabular(filename, content))
@@ -92,7 +92,7 @@ def _remap_headers(rows: list[dict[str, str]]) -> list[dict[str, str]]:
             # aliases up in the spaced form as well ("اسم_العميل" -> "اسم العميل").
             spaced = key.replace("_", " ").strip().lower()
             canonical = CRM_HEADER_ALIASES.get(spaced) or CRM_HEADER_ALIASES.get(
-                key, _canonical_header(key)
+                key, canonical_header(key)
             )
             if canonical == "mobile":
                 canonical = "phone"
