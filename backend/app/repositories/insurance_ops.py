@@ -1,8 +1,10 @@
-"""CRM / policy-lifecycle queries.
+"""Insurance-operations queries (issuing, policy lifecycle, imports).
 
-Staff company scope is applied in Python on top of PostgreSQL RLS (which only
-lets the ``staff`` actor scope touch these tables at all): a staff member
-scoped to specific insurers never sees other insurers' leads or policies.
+Staff company scope is applied in Python on top of PostgreSQL RLS
+(which only lets the ``staff`` actor scope touch these tables at all):
+a staff member scoped to specific insurers never sees other insurers'
+policies or issuing files. Sales CRM queries live in
+``app.repositories.crm_module`` since the CRM unification (041).
 """
 
 from __future__ import annotations
@@ -11,23 +13,20 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import ColumnElement, and_, false, func, or_, select, text, true
+from sqlalchemy import ColumnElement, and_, false, or_, select, text, true
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domain.access import AccessScope
-from app.models.crm import (
-    DEFAULT_TENANT_ID,
+from app.models.insurance_ops import (
     BrokeragePolicy,
     CommissionSettlement,
     ImportJob,
     IssuingChecklistItem,
     IssuingChecklistTemplate,
     IssuingRequest,
-    Lead,
-    LeadActivity,
-    PipelineStage,
     PolicyInstallment,
 )
+from app.models.tenancy import DEFAULT_TENANT_ID
 
 
 def _insurer_scope(scope: AccessScope, column: Any, assignee: Any = None) -> ColumnElement[bool]:
@@ -39,7 +38,7 @@ def _insurer_scope(scope: AccessScope, column: Any, assignee: Any = None) -> Col
         return false()
     scoped: ColumnElement[bool] = column.in_(scope.company_ids)
     if assignee is not None:
-        # A lead with no insurer chosen yet still belongs to its assignee.
+        # A row with no insurer chosen yet still belongs to its assignee.
         scoped = or_(scoped, and_(column.is_(None), assignee == scope.actor.id))
     return scoped
 
@@ -48,178 +47,8 @@ def _iso(value: Any) -> Any:
     return value.isoformat() if hasattr(value, "isoformat") else value
 
 
-def lead_dict(lead: Lead) -> dict[str, Any]:
-    return {
-        "id": str(lead.id),
-        "lead_no": lead.lead_no,
-        "company_name": lead.company_name,
-        "contact_name": lead.contact_name,
-        "mobile": lead.mobile,
-        "email": lead.email,
-        "source": lead.source,
-        "insurance_type": lead.insurance_type,
-        "insurer_company_id": str(lead.insurer_company_id) if lead.insurer_company_id else None,
-        "stage_code": lead.stage_code,
-        "assigned_staff_id": str(lead.assigned_staff_id) if lead.assigned_staff_id else None,
-        "expected_premium": str(lead.expected_premium)
-        if lead.expected_premium is not None
-        else None,
-        "notes": lead.notes,
-        "lost_reason": lead.lost_reason,
-        "converted_corporate_client_id": (
-            str(lead.converted_corporate_client_id) if lead.converted_corporate_client_id else None
-        ),
-        "converted_at": _iso(lead.converted_at),
-        "next_followup_at": _iso(lead.next_followup_at),
-        "created_at": _iso(lead.created_at),
-        "updated_at": _iso(lead.updated_at),
-    }
-
-
-class CrmRepository:
+class InsuranceOpsRepository:
     tenant_id = DEFAULT_TENANT_ID
-
-    async def stages(self, db: AsyncSession) -> list[dict[str, Any]]:
-        rows = await db.execute(
-            select(PipelineStage)
-            .where(PipelineStage.tenant_id == self.tenant_id, PipelineStage.is_active.is_(True))
-            .order_by(PipelineStage.sort_order, PipelineStage.code)
-        )
-        return [
-            {
-                "id": str(row.id),
-                "code": row.code,
-                "name_ar": row.name_ar,
-                "name_en": row.name_en,
-                "sort_order": row.sort_order,
-                "is_won": row.is_won,
-                "is_lost": row.is_lost,
-                "is_converted": row.is_converted,
-            }
-            for row in rows.scalars()
-        ]
-
-    async def leads(
-        self,
-        db: AsyncSession,
-        scope: AccessScope,
-        *,
-        stage: str | None = None,
-        source: str | None = None,
-        assigned: UUID | None = None,
-        q: str | None = None,
-        limit: int = 200,
-    ) -> list[dict[str, Any]]:
-        stmt = (
-            select(Lead)
-            .where(
-                Lead.tenant_id == self.tenant_id,
-                _insurer_scope(scope, Lead.insurer_company_id, Lead.assigned_staff_id),
-            )
-            .order_by(Lead.updated_at.desc())
-            .limit(limit)
-        )
-        if stage:
-            stmt = stmt.where(Lead.stage_code == stage)
-        if source:
-            stmt = stmt.where(Lead.source == source)
-        if assigned:
-            stmt = stmt.where(Lead.assigned_staff_id == assigned)
-        if q:
-            like = f"%{q}%"
-            stmt = stmt.where(
-                or_(
-                    Lead.company_name.ilike(like),
-                    Lead.contact_name.ilike(like),
-                    Lead.mobile.ilike(like),
-                )
-            )
-        return [lead_dict(row) for row in (await db.execute(stmt)).scalars()]
-
-    async def lead(self, db: AsyncSession, scope: AccessScope, lead_id: UUID) -> Lead | None:
-        stmt = select(Lead).where(
-            Lead.id == lead_id,
-            Lead.tenant_id == self.tenant_id,
-            _insurer_scope(scope, Lead.insurer_company_id, Lead.assigned_staff_id),
-        )
-        return (await db.execute(stmt)).scalar_one_or_none()
-
-    async def activities(self, db: AsyncSession, lead_id: UUID) -> list[dict[str, Any]]:
-        rows = await db.execute(
-            select(LeadActivity)
-            .where(LeadActivity.lead_id == lead_id)
-            .order_by(LeadActivity.created_at.desc())
-        )
-        return [
-            {
-                "id": str(row.id),
-                "kind": row.kind,
-                "title": row.title,
-                "body": row.body,
-                "due_at": _iso(row.due_at),
-                "done_at": _iso(row.done_at),
-                "outcome": row.outcome,
-                "created_at": _iso(row.created_at),
-            }
-            for row in rows.scalars()
-        ]
-
-    async def pipeline(self, db: AsyncSession, scope: AccessScope) -> dict[str, Any]:
-        stages = await self.stages(db)
-        counts = {
-            row.stage_code: row.n
-            for row in await db.execute(
-                select(Lead.stage_code, func.count().label("n"))
-                .where(
-                    Lead.tenant_id == self.tenant_id,
-                    _insurer_scope(scope, Lead.insurer_company_id, Lead.assigned_staff_id),
-                )
-                .group_by(Lead.stage_code)
-            )
-        }
-        by_stage = {
-            stage["code"]: {**stage, "count": counts.get(stage["code"], 0)} for stage in stages
-        }
-        total = sum(counts.values())
-        won = sum(n for code, n in counts.items() if by_stage.get(code, {}).get("is_won"))
-        lost = sum(n for code, n in counts.items() if by_stage.get(code, {}).get("is_lost"))
-        converted = sum(
-            n for code, n in counts.items() if by_stage.get(code, {}).get("is_converted")
-        )
-        closed = won + lost + converted
-        return {
-            "stages": list(by_stage.values()),
-            "total": total,
-            "won": won,
-            "lost": lost,
-            "converted": converted,
-            "win_rate": round((won + converted) / closed * 100, 1) if closed else 0.0,
-            "conversion_rate": round(converted / total * 100, 1) if total else 0.0,
-        }
-
-    async def sales_performance(self, db: AsyncSession, scope: AccessScope) -> list[dict[str, Any]]:
-        stmt = text(
-            """
-            SELECT s.id::text AS staff_id, s.full_name,
-                   count(l.id) AS leads,
-                   count(*) FILTER (WHERE l.stage_code IN
-                       (SELECT code FROM pipeline_stages WHERE is_won OR is_converted)) AS won,
-                   count(*) FILTER (WHERE l.converted_at IS NOT NULL) AS converted,
-                   COALESCE(sum(l.expected_premium), 0) AS expected_premium
-            FROM leads l JOIN staff_users s ON s.id = l.assigned_staff_id
-            WHERE l.tenant_id = :tenant
-            GROUP BY s.id, s.full_name ORDER BY won DESC, leads DESC
-            """
-        )
-        if not scope.all_companies:
-            # Scoped staff only get their own row.
-            stmt = text(stmt.text.replace("GROUP BY", "AND l.assigned_staff_id = :me GROUP BY"))
-            rows = await db.execute(stmt, {"tenant": self.tenant_id, "me": scope.actor.id})
-        else:
-            rows = await db.execute(stmt, {"tenant": self.tenant_id})
-        return [
-            {**dict(row._mapping), "expected_premium": str(row.expected_premium)} for row in rows
-        ]
 
     async def policies(
         self, db: AsyncSession, scope: AccessScope, limit: int = 200

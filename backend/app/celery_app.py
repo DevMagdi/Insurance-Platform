@@ -1,7 +1,7 @@
 """Celery app for Phase 1/2 periodic work (spec stack: FastAPI+PG+Redis+Celery).
 
 Beat schedule:
-- overdue lead follow-ups surfaced hourly;
+- due CRM task reminders stamped hourly (unified CRM, ``crm_tasks``);
 - premium installments flipped to ``overdue`` daily;
 - policy renewal alerts armed daily (30 days ahead, once per policy).
 
@@ -37,8 +37,8 @@ celery_app.conf.update(
     task_acks_late=True,
     worker_prefetch_multiplier=1,
     beat_schedule={
-        "lead-followups-due": {
-            "task": "app.celery_app.lead_followups_due",
+        "crm-task-reminders": {
+            "task": "app.celery_app.crm_task_reminders",
             "schedule": crontab(minute=5),
         },
         "installments-overdue": {
@@ -69,9 +69,17 @@ def _run(sql: str) -> int:
         engine.dispose()  # type: ignore[attr-defined]
 
 
-@celery_app.task(name="app.celery_app.lead_followups_due")  # type: ignore[untyped-decorator]
-def lead_followups_due() -> dict[str, int]:
-    """Count leads whose follow-up is due (the CRM dashboard reads the same rows)."""
+@celery_app.task(name="app.celery_app.crm_task_reminders")  # type: ignore[untyped-decorator]
+def crm_task_reminders() -> dict[str, int]:
+    """Stamp due CRM tasks for reminding and count leads awaiting follow-up.
+
+    Idempotent: only pending tasks whose reminder was never sent are
+    stamped; the Tasks tab badges read the same rows.
+    """
+    reminders = _run(
+        "UPDATE crm_tasks SET reminder_sent_at = now(), updated_at = now()"
+        " WHERE status = 'pending' AND due_at <= now() AND reminder_sent_at IS NULL"
+    )
     engine = _engine()
     try:
         with engine.connect() as connection:  # type: ignore[attr-defined]
@@ -79,7 +87,7 @@ def lead_followups_due() -> dict[str, int]:
             due = (
                 connection.execute(
                     text(
-                        "SELECT count(*) FROM leads WHERE next_followup_at IS NOT NULL"
+                        "SELECT count(*) FROM crm_leads WHERE next_followup_at IS NOT NULL"
                         " AND next_followup_at <= now()"
                         " AND converted_at IS NULL"
                     )
@@ -88,8 +96,8 @@ def lead_followups_due() -> dict[str, int]:
             )
     finally:
         engine.dispose()  # type: ignore[attr-defined]
-    logger.info("lead follow-ups due: %s", due)
-    return {"due": int(due)}
+    logger.info("crm task reminders stamped: %s (leads due: %s)", reminders, due)
+    return {"reminders": reminders, "due_leads": int(due)}
 
 
 @celery_app.task(name="app.celery_app.mark_overdue_installments")  # type: ignore[untyped-decorator]

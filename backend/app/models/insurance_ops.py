@@ -1,11 +1,11 @@
-"""Multi-tenant Phase 1/2 entities: tenancy, Sales CRM, issuing, policy lifecycle.
+"""Insurance-operations entities: issuing workflow and policy lifecycle.
 
-Every table here carries ``tenant_id`` from day one (spec rule: every entity is
-multi-tenant). The single existing brokerage deployment is the default tenant
-seeded by migration 039; new tenants are ordinary rows in ``tenants``.
-Status-like fields are checked TEXT in PostgreSQL (see migration 039) so a
-tenant can customise pipeline stages without DDL; ``app.domain.enums`` holds
-the API-level value sets.
+Every table here carries ``tenant_id`` from day one. Sales CRM used to
+live in this module too; since migration 041 the *only* CRM in the
+platform is the unified module in ``app.models.crm_module`` (``crm_*``
+tables) — ``IssuingRequest.lead_id`` now references ``crm_leads``.
+Status-like fields are checked TEXT in PostgreSQL (see migration 039);
+``app.domain.enums`` holds the API-level value sets.
 """
 
 from __future__ import annotations
@@ -29,93 +29,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base
-
-# The brokerage that already runs on this platform (seeded by migration 039).
-DEFAULT_TENANT_ID = UUID("00000000-0000-4000-8000-0000000000a1")
-_TENANT_DEFAULT = text("'00000000-0000-4000-8000-0000000000a1'::uuid")
-
-
-class Tenant(Base):
-    __tablename__ = "tenants"
-
-    id: Mapped[UUID] = mapped_column(primary_key=True, server_default=func.gen_random_uuid())
-    slug: Mapped[str] = mapped_column(Text, unique=True)
-    name: Mapped[str] = mapped_column(Text)
-    is_active: Mapped[bool] = mapped_column(Boolean, server_default=text("true"))
-    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
-    updated_at: Mapped[datetime] = mapped_column(server_default=func.now())
-
-
-class PipelineStage(Base):
-    """A tenant-customisable sales pipeline stage (spec: حالات قابلة للتخصيص)."""
-
-    __tablename__ = "pipeline_stages"
-
-    id: Mapped[UUID] = mapped_column(primary_key=True, server_default=func.gen_random_uuid())
-    tenant_id: Mapped[UUID] = mapped_column(
-        ForeignKey("tenants.id"), server_default=_TENANT_DEFAULT
-    )
-    code: Mapped[str] = mapped_column(Text)
-    name_ar: Mapped[str] = mapped_column(Text)
-    name_en: Mapped[str] = mapped_column(Text)
-    sort_order: Mapped[int] = mapped_column(Integer, server_default=text("0"))
-    is_won: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
-    is_lost: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
-    is_converted: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
-    is_active: Mapped[bool] = mapped_column(Boolean, server_default=text("true"))
-    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
-    updated_at: Mapped[datetime] = mapped_column(server_default=func.now())
-
-
-class Lead(Base):
-    __tablename__ = "leads"
-
-    id: Mapped[UUID] = mapped_column(primary_key=True, server_default=func.gen_random_uuid())
-    tenant_id: Mapped[UUID] = mapped_column(
-        ForeignKey("tenants.id"), server_default=_TENANT_DEFAULT
-    )
-    lead_no: Mapped[str] = mapped_column(Text, unique=True)
-    company_name: Mapped[str] = mapped_column(Text)
-    contact_name: Mapped[str | None] = mapped_column(Text)
-    mobile: Mapped[str | None] = mapped_column(Text)
-    email: Mapped[str | None] = mapped_column(Text)
-    source: Mapped[str] = mapped_column(Text, server_default="manual")
-    insurance_type: Mapped[str] = mapped_column(Text, server_default="general")
-    insurer_company_id: Mapped[UUID | None] = mapped_column(ForeignKey("insurance_companies.id"))
-    stage_code: Mapped[str] = mapped_column(Text, server_default="new")
-    assigned_staff_id: Mapped[UUID | None] = mapped_column(ForeignKey("staff_users.id"))
-    expected_premium: Mapped[Decimal | None] = mapped_column(Numeric(14, 2))
-    notes: Mapped[str | None] = mapped_column(Text)
-    lost_reason: Mapped[str | None] = mapped_column(Text)
-    converted_corporate_client_id: Mapped[UUID | None] = mapped_column(
-        ForeignKey("corporate_clients.id")
-    )
-    converted_at: Mapped[datetime | None]
-    # Next scheduled follow-up; the Celery beat job surfaces overdue ones.
-    next_followup_at: Mapped[datetime | None]
-    created_by: Mapped[UUID | None] = mapped_column(ForeignKey("staff_users.id"))
-    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
-    updated_at: Mapped[datetime] = mapped_column(server_default=func.now())
-
-
-class LeadActivity(Base):
-    """Calls, meetings, notes, tasks and appointments against a lead."""
-
-    __tablename__ = "lead_activities"
-
-    id: Mapped[UUID] = mapped_column(primary_key=True, server_default=func.gen_random_uuid())
-    tenant_id: Mapped[UUID] = mapped_column(
-        ForeignKey("tenants.id"), server_default=_TENANT_DEFAULT
-    )
-    lead_id: Mapped[UUID] = mapped_column(ForeignKey("leads.id"))
-    kind: Mapped[str] = mapped_column(Text)
-    title: Mapped[str] = mapped_column(Text)
-    body: Mapped[str | None] = mapped_column(Text)
-    due_at: Mapped[datetime | None]
-    done_at: Mapped[datetime | None]
-    outcome: Mapped[str | None] = mapped_column(Text)
-    created_by: Mapped[UUID | None] = mapped_column(ForeignKey("staff_users.id"))
-    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+from app.models.tenancy import TENANT_DEFAULT_SQL as _TENANT_DEFAULT
 
 
 class IssuingChecklistTemplate(Base):
@@ -139,7 +53,7 @@ class IssuingRequest(Base):
     tenant_id: Mapped[UUID] = mapped_column(
         ForeignKey("tenants.id"), server_default=_TENANT_DEFAULT
     )
-    lead_id: Mapped[UUID | None] = mapped_column(ForeignKey("leads.id"))
+    lead_id: Mapped[UUID | None] = mapped_column(ForeignKey("crm_leads.id"))
     corporate_client_id: Mapped[UUID | None] = mapped_column(ForeignKey("corporate_clients.id"))
     insurer_company_id: Mapped[UUID] = mapped_column(ForeignKey("insurance_companies.id"))
     insurance_type: Mapped[str] = mapped_column(Text)

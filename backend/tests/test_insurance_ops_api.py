@@ -1,4 +1,6 @@
-"""CRM API handlers + repository exercised offline with a fake session.
+"""Insurance-operations handlers + repository exercised offline with a fake session.
+
+Sales CRM handler tests live in ``test_crm_module`` since the unification.
 
 The PostgreSQL side (RLS policies, SECURITY DEFINER converters/importers,
 gateway payment recording) is covered by the integration suite; here we pin
@@ -20,37 +22,29 @@ from uuid import UUID, uuid4
 import pytest
 from fastapi import HTTPException, UploadFile
 
-from app.api import crm as crm_api
+from app.api import insurance_ops as crm_api
 from app.api.deps import RequestContext
 from app.db import Actor
 from app.domain.access import AccessScope
-from app.domain.crm_schemas import (
+from app.domain.enums import OwnershipLevel
+from app.domain.insurance_ops_schemas import (
     BrokeragePolicyCreate,
     ChecklistItemUpdate,
     InstallmentPay,
     IssuingCreate,
     IssuingUpdate,
-    LeadActivityCreate,
-    LeadConvert,
-    LeadCreate,
-    LeadUpdate,
     PaymentIntentCreate,
-    PipelineStageUpsert,
     SettlementUpdate,
 )
-from app.domain.enums import OwnershipLevel
-from app.models.crm import (
+from app.models.insurance_ops import (
     BrokeragePolicy,
     CommissionSettlement,
     IssuingChecklistItem,
     IssuingChecklistTemplate,
     IssuingRequest,
-    Lead,
-    LeadActivity,
-    PipelineStage,
     PolicyInstallment,
 )
-from app.repositories.crm import CrmRepository
+from app.repositories.insurance_ops import InsuranceOpsRepository as CrmRepository
 
 STAFF = UUID("11111111-1111-4111-8111-111111111111")
 INSURER = UUID("22222222-2222-4222-8222-222222222222")
@@ -134,77 +128,8 @@ def make_ctx(db: FakeDB, *, all_companies: bool = True) -> RequestContext:
     )
 
 
-def make_lead(**overrides: Any) -> Lead:
-    values: dict[str, Any] = {
-        "id": uuid4(),
-        "tenant_id": CrmRepository.tenant_id,
-        "lead_no": "LEAD-2026-ABC123",
-        "company_name": "Acme",
-        "source": "manual",
-        "insurance_type": "health",
-        "stage_code": "new",
-        "created_at": datetime.now(UTC),
-        "updated_at": datetime.now(UTC),
-    }
-    values.update(overrides)
-    return Lead(**values)
-
-
 def audits(db: FakeDB) -> list[Any]:
     return [row for row in db.added if row.__class__.__name__ == "AuditLog"]
-
-
-async def test_stage_upsert_and_lead_lifecycle_write_audit_rows() -> None:
-    db = FakeDB()
-    ctx = make_ctx(db)
-    saved = await crm_api.upsert_stage(
-        PipelineStageUpsert(
-            code="site_visit", name_ar="زيارة", name_en="Site visit", sort_order=35
-        ),
-        ctx,
-        None,
-    )
-    assert saved["code"] == "site_visit"
-    created = await crm_api.create_lead(
-        LeadCreate(company_name="Acme", mobile="+201012345678", source="whatsapp"), ctx, None
-    )
-    assert created["lead_no"].startswith("LEAD-")
-    lead = next(row for row in db.added if isinstance(row, Lead))
-    db.by_entity[Lead] = [lead]
-    moved = await crm_api.update_lead(lead.id, LeadUpdate(stage_code="meeting"), ctx, None)
-    assert moved["stage_code"] == "meeting"
-    activity = await crm_api.add_activity(
-        lead.id,
-        LeadActivityCreate(
-            kind="meeting", title="Kickoff", due_at=datetime(2026, 11, 1, tzinfo=UTC)
-        ),
-        ctx,
-        None,
-    )
-    assert activity["kind"] == "meeting"
-    assert lead.next_followup_at is not None
-    assert {row.action for row in audits(db)} >= {
-        "pipeline_stage_saved",
-        "lead_created",
-        "lead_updated",
-        "lead_activity_added",
-    }
-    with pytest.raises(HTTPException, match="not found"):
-        await crm_api.update_lead(uuid4(), LeadUpdate(stage_code="won"), make_ctx(FakeDB()), None)
-
-
-async def test_lead_convert_is_one_click_and_not_repeatable() -> None:
-    db = FakeDB()
-    lead = make_lead()
-    db.by_entity[Lead] = [lead]
-    db.scalar_value = CLIENT
-    ctx = make_ctx(db)
-    result = await crm_api.convert_lead(lead.id, LeadConvert(), ctx, None)
-    assert result["corporate_client_id"] == str(CLIENT)
-    assert audits(db)[-1].action == "lead_converted"
-    lead.converted_corporate_client_id = CLIENT
-    with pytest.raises(HTTPException, match="already converted"):
-        await crm_api.convert_lead(lead.id, LeadConvert(), ctx, None)
 
 
 async def test_policy_creation_builds_installments_and_settlement() -> None:
@@ -309,12 +234,6 @@ def _upload(name: str, content: bytes) -> UploadFile:
 async def test_excel_import_reports_per_row_errors_and_audits() -> None:
     db = FakeDB()
     ctx = make_ctx(db)
-    csv = (
-        b"company_name,mobile,expected_premium\nAcme,01012345678,1000\n"
-        b",01012345678,5\nBad,,notanumber\n"
-    )
-    result = await crm_api.import_leads(ctx, None, _upload("leads.csv", csv))
-    assert result["rows_succeeded"] == 1 and result["rows_failed"] == 2
     employees = b"full_name,mobile\nMona,01012345678\nNoMobile,\n"
     result = await crm_api.import_employees(ctx, None, _upload("staff.csv", employees), CLIENT)
     assert result["rows_succeeded"] == 1 and result["rows_failed"] == 1
@@ -323,34 +242,13 @@ async def test_excel_import_reports_per_row_errors_and_audits() -> None:
     assert result["rows_succeeded"] == 1
     assert {row.action for row in audits(db)} == {"excel_import_completed"}
     with pytest.raises(HTTPException, match="xlsx"):
-        await crm_api.import_leads(ctx, None, _upload("leads.txt", b"x"))
+        await crm_api.import_clients(ctx, None, _upload("clients.txt", b"x"))
 
 
 async def test_repository_reads_scope_and_aggregate() -> None:
     db = FakeDB()
     repo = CrmRepository()
     ctx = make_ctx(db)
-    stage = PipelineStage(
-        id=uuid4(),
-        tenant_id=repo.tenant_id,
-        code="won",
-        name_ar="ربح",
-        name_en="Won",
-        sort_order=10,
-        is_won=True,
-        is_lost=False,
-        is_converted=False,
-        is_active=True,
-    )
-    lead = make_lead(stage_code="won")
-    activity = LeadActivity(
-        id=uuid4(),
-        tenant_id=repo.tenant_id,
-        lead_id=lead.id,
-        kind="call",
-        title="Intro",
-        created_at=datetime.now(UTC),
-    )
     policy = BrokeragePolicy(
         id=uuid4(),
         tenant_id=repo.tenant_id,
@@ -369,29 +267,17 @@ async def test_repository_reads_scope_and_aggregate() -> None:
     )
     db.by_entity.update(
         {
-            PipelineStage: [stage],
-            Lead: [lead],
-            LeadActivity: [activity],
             BrokeragePolicy: [policy],
             PolicyInstallment: [],
             CommissionSettlement: [],
             IssuingRequest: [],
         }
     )
-    db.aggregate_rows = [SimpleNamespace(stage_code="won", n=3)]
-    assert await repo.stages(db)  # type: ignore[arg-type]
-    assert (await repo.leads(db, ctx.scope, stage="won", q="ac"))[0]["lead_no"] == lead.lead_no  # type: ignore[arg-type]
-    assert (await repo.activities(db, lead.id))[0]["kind"] == "call"  # type: ignore[arg-type]
-    summary = await repo.pipeline(db, ctx.scope)  # type: ignore[arg-type]
-    assert summary["won"] == 3 and summary["win_rate"] == 100.0
     assert (await repo.policies(db, ctx.scope))[0]["policy_no"] == "POL-9"  # type: ignore[arg-type]
     detail = await repo.policy_detail(db, ctx.scope, policy.id)  # type: ignore[arg-type]
     assert detail is not None and detail["installments"] == []
     assert await repo.renewals(db, ctx.scope, 365)  # type: ignore[arg-type]
     assert await repo.issuing(db, ctx.scope) == []  # type: ignore[arg-type]
-    # Scoped-out actor (customer scope) sees nothing.
-    customer_scope = AccessScope(actor=Actor(id=STAFF, scope="customer"))  # type: ignore[arg-type]
-    assert await repo.leads(db, customer_scope) is not None  # predicate is in SQL; rows are faked
     insurer_row = SimpleNamespace(
         _mapping={
             "insurer_company_id": str(INSURER),
@@ -449,21 +335,6 @@ async def test_client_folder_and_document_search_reads() -> None:
     db.by_entity[BrokeragePolicy] = []
     search = await repo.document_search(db, "وثيقة")  # type: ignore[arg-type]
     assert search == {"documents": [], "policies": [], "tickets": []}
-    sales_row = SimpleNamespace(
-        _mapping={
-            "staff_id": str(STAFF),
-            "full_name": "Sales",
-            "leads": 5,
-            "won": 2,
-            "converted": 1,
-            "expected_premium": "100",
-        },
-        expected_premium="100",
-    )
-    db.text_queue = [[sales_row]]
-    ctx = make_ctx(db)
-    sales = await repo.sales_performance(db, ctx.scope)  # type: ignore[arg-type]
-    assert sales[0]["won"] == 2
 
 
 async def test_lookup_endpoints_and_lists() -> None:
@@ -474,10 +345,6 @@ async def test_lookup_endpoints_and_lists() -> None:
     assert found["caller"]["full_name"] == "Mona"
     with pytest.raises(HTTPException, match="valid Egyptian"):
         await crm_api.caller_lookup(ctx, "12345678901")
-    db.by_entity[PipelineStage] = []
-    assert await crm_api.list_stages(ctx) == {"stages": []}
-    assert (await crm_api.list_leads(ctx))["leads"] == []
-    assert (await crm_api.pipeline(ctx))["total"] == 0
     assert (await crm_api.list_policies(ctx))["policies"] == []
     assert (await crm_api.renewals(ctx, 30))["renewals"] == []
     assert (await crm_api.list_issuing(ctx))["issuing"] == []
@@ -486,11 +353,8 @@ async def test_lookup_endpoints_and_lists() -> None:
     assert (await crm_api.document_search(ctx, "abc"))["tickets"] == []
     db.text_queue = [[]]
     assert (await crm_api.insurer_performance(ctx, 90))["insurers"] == []
-    assert (await crm_api.sales_performance(ctx))["salespeople"] == []
     db.text_queue = [[]]
     with pytest.raises(HTTPException, match="Client not found"):
         await crm_api.client_folder(CLIENT, ctx)
-    with pytest.raises(HTTPException, match="Lead not found"):
-        await crm_api.get_lead(uuid4(), ctx)
     with pytest.raises(HTTPException, match="Policy not found"):
         await crm_api.get_policy(uuid4(), ctx)

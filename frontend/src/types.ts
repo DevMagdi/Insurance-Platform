@@ -348,6 +348,6 @@ export type AppRoute =
   | { page: 'channels' }
   | { page: 'operations' }
   | { page: 'audit' }
-  | { page: 'crm' }
-  | { page: 'crm-module'; tab: 'dashboard' | 'leads' | 'import' | 'history' }
+  | { page: 'insurance-ops' }
+  | { page: 'crm-module'; tab: 'dashboard' | 'pipeline' | 'leads' | 'tasks' | 'import' | 'performance' | 'history' }
   | { page: 'storage' };

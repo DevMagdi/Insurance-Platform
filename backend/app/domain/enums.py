@@ -110,22 +110,6 @@ class IntakeState(StrEnum):
 # stages without a schema migration; these enums are the API contract.
 
 
-class LeadSource(StrEnum):
-    MANUAL = "manual"
-    WHATSAPP = "whatsapp"
-    CALL = "call"
-    EMAIL = "email"
-    PORTAL = "portal"
-
-
-class LeadActivityKind(StrEnum):
-    CALL = "call"
-    MEETING = "meeting"
-    NOTE = "note"
-    TASK = "task"
-    APPOINTMENT = "appointment"
-
-
 class InstallmentPlan(StrEnum):
     """Premium billing cadence for a brokerage policy (Phase 2 spec)."""
 
@@ -169,15 +153,28 @@ class ImportKind(StrEnum):
     LEADS = "leads"
 
 
-# --- Isolated CRM module (crm_* tables, /api/crm) -----------------------------
+# --- Unified CRM module — the only CRM (crm_* tables, /api/crm) ---------------
 
 
-class CrmLeadStatus(StrEnum):
-    NEW = "new"
-    CONTACTED = "contacted"
-    QUALIFIED = "qualified"
-    CONVERTED = "converted"
-    LOST = "lost"
+class CrmLeadPriority(StrEnum):
+    LOW = "low"
+    NORMAL = "normal"
+    HIGH = "high"
+    URGENT = "urgent"
+
+
+class CrmTaskType(StrEnum):
+    CALL = "call"
+    MEETING = "meeting"
+    EMAIL = "email"
+    WHATSAPP = "whatsapp"
+    TASK = "task"
+
+
+class CrmTaskStatus(StrEnum):
+    PENDING = "pending"
+    DONE = "done"
+    CANCELLED = "cancelled"
 
 
 class CrmLeadSource(StrEnum):
@@ -193,7 +190,9 @@ class CrmLeadSource(StrEnum):
 class CrmActivityType(StrEnum):
     CALL = "call"
     NOTE = "note"
-    STATUS_CHANGE = "status_change"
+    STAGE_CHANGE = "stage_change"
+    TASK = "task"
+    CONVERSION = "conversion"
     WHATSAPP = "whatsapp"
     EMAIL = "email"
     MEETING = "meeting"

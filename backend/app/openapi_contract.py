@@ -16,10 +16,10 @@ from app.api import (
     audit,
     auth,
     catalog,
-    crm,
     crm_module,
     customer,
     exports,
+    insurance_ops,
     integration_webhooks,
     integrations,
     operations,
@@ -113,8 +113,8 @@ def decorate_spec(app: FastAPI, spec: dict[str, Any]) -> dict[str, Any]:
         *privacy.router.routes,
         *storage_admin.router.routes,
         *platform.router.routes,
-        *crm.router.routes,
-        *crm.payments_router.routes,
+        *insurance_ops.router.routes,
+        *insurance_ops.payments_router.routes,
         *crm_module.router.routes,
     ]
     for route in routes:
