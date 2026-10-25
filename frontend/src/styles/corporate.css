@@ -19,7 +19,7 @@
   place-items: center;
   padding: 32px 20px;
   background:
-    radial-gradient(1200px 600px at 50% -10%, rgba(139, 92, 246, 0.1), transparent 60%),
+    radial-gradient(1200px 600px at 50% -10%, rgba(198, 167, 94, 0.1), transparent 60%),
     var(--surface-0);
 }
 
@@ -39,7 +39,7 @@
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.08em;
-  color: var(--accent);
+  color: var(--accent-ink);
   margin-bottom: 10px;
 }
 
@@ -94,7 +94,7 @@
 }
 
 .corporate-auth-foot a {
-  color: var(--accent);
+  color: var(--accent-ink);
   font-weight: 600;
 }
 
@@ -343,7 +343,7 @@
 .corporate-amount {
   font-size: 20px !important;
   font-weight: 800 !important;
-  color: var(--accent);
+  color: var(--accent-ink);
 }
 
 .corporate-renewal-calm { color: var(--success); }
@@ -372,7 +372,7 @@
 .corporate-chip-reopened,
 .corporate-chip-expired,
 .corporate-chip-cancelled { background: var(--danger-soft); color: var(--danger); }
-.corporate-chip-transferred { background: var(--violet-soft); color: var(--violet); }
+.corporate-chip-transferred { background: var(--st-transferred-bg); color: var(--st-transferred-fg); }
 
 /* --- Members ------------------------------------------------------------ */
 
