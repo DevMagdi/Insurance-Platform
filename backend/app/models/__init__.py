@@ -48,6 +48,7 @@ from app.models.crm import (
     PolicyInstallment,
     Tenant,
 )
+from app.models.crm_module import CrmActivity, CrmImportBatch, CrmImportError, CrmLead
 from app.models.identity import Customer, InsuranceCompany, Policy
 from app.models.operations import (
     ApiKey,
@@ -107,6 +108,10 @@ __all__ = [
     "CorporateContract",
     "CorporateContractDocument",
     "CorporateUser",
+    "CrmActivity",
+    "CrmImportBatch",
+    "CrmImportError",
+    "CrmLead",
     "CsatResponse",
     "Customer",
     "Department",
