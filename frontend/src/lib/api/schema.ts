@@ -684,6 +684,50 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/corporate/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Corporate Archive
+         * @description The company's whole request history, filtered and paged.
+         *
+         *     One search box covers ticket number, subject, employee name, mobile,
+         *     policy and card number, because that is how someone actually looks for a
+         *     request they half-remember.
+         */
+        get: operations["corporate_archive_api_corporate_archive_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/corporate/archive/{request_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Corporate Archive Detail
+         * @description One archived request: its messages, attachments, calls and events.
+         */
+        get: operations["corporate_archive_detail_api_corporate_archive__request_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/corporate/documents": {
         parameters: {
             query?: never;
@@ -722,6 +766,106 @@ export interface paths {
         get: operations["corporate_document_download_api_corporate_documents__document_id__get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/staff/corporate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Corporate Clients
+         * @description Every corporate client with its contracts and portal users.
+         */
+        get: operations["list_corporate_clients_api_staff_corporate_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/staff/corporate/clients": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Upsert Corporate Client
+         * @description Register a company, or amend one already registered.
+         */
+        put: operations["upsert_corporate_client_api_staff_corporate_clients_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/staff/corporate/contracts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Upsert Corporate Contract
+         * @description Record or amend the contract a company signed with the brokerage.
+         */
+        put: operations["upsert_corporate_contract_api_staff_corporate_contracts_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/staff/corporate/users": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Corporate User
+         * @description Issue the username and password a company signs in with.
+         */
+        post: operations["create_corporate_user_api_staff_corporate_users_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/staff/corporate/members": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Link Corporate Member
+         * @description Attach an existing customer to a company as one of its employees.
+         */
+        post: operations["link_corporate_member_api_staff_corporate_members_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2459,6 +2603,83 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/webhooks/twilio/{company_id}/voice": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Twilio Voice Answer
+         * @description The number's 'A call comes in' URL: greets and asks for consent.
+         */
+        post: operations["twilio_voice_answer_api_webhooks_twilio__company_id__voice_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/webhooks/twilio/{company_id}/voice/consent": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Twilio Voice Consent
+         * @description Either start recording or open the request without audio.
+         */
+        post: operations["twilio_voice_consent_api_webhooks_twilio__company_id__voice_consent_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/webhooks/twilio/{company_id}/voice/recording": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Twilio Voice Recording
+         * @description Twilio's recordingStatusCallback, which omits the caller's number.
+         */
+        post: operations["twilio_voice_recording_api_webhooks_twilio__company_id__voice_recording_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/webhooks/whatsapp_cloud/{company_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Verify Whatsapp Webhook */
+        get: operations["verify_whatsapp_webhook_api_webhooks_whatsapp_cloud__company_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/webhooks/whatsapp/{company_id}": {
         parameters: {
             query?: never;
@@ -2835,6 +3056,475 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/staff/crm/stages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Stages */
+        get: operations["list_stages_api_staff_crm_stages_get"];
+        /**
+         * Upsert Stage
+         * @description Create or amend a tenant-customisable pipeline stage.
+         */
+        put: operations["upsert_stage_api_staff_crm_stages_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/staff/crm/leads": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Leads */
+        get: operations["list_leads_api_staff_crm_leads_get"];
+        put?: never;
+        /**
+         * Create Lead
+         * @description Add a lead at any time — manually or captured from WhatsApp/call/email.
+         */
+        post: operations["create_lead_api_staff_crm_leads_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/staff/crm/leads/{lead_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Lead */
+        get: operations["get_lead_api_staff_crm_leads__lead_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update Lead */
+        patch: operations["update_lead_api_staff_crm_leads__lead_id__patch"];
+        trace?: never;
+    };
+    "/api/staff/crm/leads/{lead_id}/activities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Add Activity
+         * @description Log a call/meeting/note/task/appointment; tasks arm the follow-up reminder.
+         */
+        post: operations["add_activity_api_staff_crm_leads__lead_id__activities_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/staff/crm/leads/{lead_id}/convert": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Convert Lead
+         * @description One-click conversion: creates the corporate client with all lead data.
+         */
+        post: operations["convert_lead_api_staff_crm_leads__lead_id__convert_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/staff/crm/pipeline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Pipeline */
+        get: operations["pipeline_api_staff_crm_pipeline_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/staff/crm/reports/sales-performance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Sales Performance */
+        get: operations["sales_performance_api_staff_crm_reports_sales_performance_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/staff/crm/policies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Policies */
+        get: operations["list_policies_api_staff_crm_policies_get"];
+        put?: never;
+        /**
+         * Create Policy
+         * @description Create a policy, its installment schedule and its commission settlement.
+         */
+        post: operations["create_policy_api_staff_crm_policies_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/staff/crm/policies/{policy_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Policy */
+        get: operations["get_policy_api_staff_crm_policies__policy_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/staff/crm/renewals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Renewals */
+        get: operations["renewals_api_staff_crm_renewals_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/staff/crm/settlements/{settlement_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update Settlement */
+        patch: operations["update_settlement_api_staff_crm_settlements__settlement_id__patch"];
+        trace?: never;
+    };
+    "/api/staff/crm/installments/{installment_id}/pay": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Pay Installment */
+        post: operations["pay_installment_api_staff_crm_installments__installment_id__pay_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/staff/crm/installments/{installment_id}/payment-intent": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Payment Intent
+         * @description Open a Fawry/Paymob charge. Fail-closed until credentials are configured.
+         */
+        post: operations["payment_intent_api_staff_crm_installments__installment_id__payment_intent_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/staff/crm/issuing": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Issuing */
+        get: operations["list_issuing_api_staff_crm_issuing_get"];
+        put?: never;
+        /**
+         * Create Issuing
+         * @description Open an issuing file with the required-documents checklist for its type.
+         */
+        post: operations["create_issuing_api_staff_crm_issuing_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/staff/crm/issuing/{issuing_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Update Issuing
+         * @description Internal review → sent to insurer → issued, with the checklist gate.
+         */
+        patch: operations["update_issuing_api_staff_crm_issuing__issuing_id__patch"];
+        trace?: never;
+    };
+    "/api/staff/crm/issuing/items/{item_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update Checklist Item */
+        patch: operations["update_checklist_item_api_staff_crm_issuing_items__item_id__patch"];
+        trace?: never;
+    };
+    "/api/staff/crm/imports/employees": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Import Employees
+         * @description Import insured employees of a corporate client from Excel/CSV.
+         */
+        post: operations["import_employees_api_staff_crm_imports_employees_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/staff/crm/imports/clients": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Import Clients
+         * @description Import existing corporate clients from Excel/CSV.
+         */
+        post: operations["import_clients_api_staff_crm_imports_clients_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/staff/crm/imports/leads": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Import Leads
+         * @description Import sales leads from Excel/CSV.
+         */
+        post: operations["import_leads_api_staff_crm_imports_leads_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/staff/crm/imports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Imports */
+        get: operations["list_imports_api_staff_crm_imports_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/staff/crm/client-folder/{corporate_client_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Client Folder */
+        get: operations["client_folder_api_staff_crm_client_folder__corporate_client_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/staff/crm/caller-lookup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Caller Lookup
+         * @description Identify a caller by mobile: employee, his company and his policy.
+         */
+        get: operations["caller_lookup_api_staff_crm_caller_lookup_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/staff/crm/insurer-performance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Insurer Performance */
+        get: operations["insurer_performance_api_staff_crm_insurer_performance_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/staff/crm/document-search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Document Search */
+        get: operations["document_search_api_staff_crm_document_search_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/payments/{provider}/webhook": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Payment Webhook
+         * @description Signed gateway callback: marks the referenced installment paid exactly once.
+         */
+        post: operations["payment_webhook_api_payments__provider__webhook_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/public/config": {
         parameters: {
             query?: never;
@@ -3091,6 +3781,68 @@ export interface components {
              */
             is_active: boolean;
         };
+        /** Body_import_clients_api_staff_crm_imports_clients_post */
+        Body_import_clients_api_staff_crm_imports_clients_post: {
+            /** File */
+            file: string;
+        };
+        /** Body_import_employees_api_staff_crm_imports_employees_post */
+        Body_import_employees_api_staff_crm_imports_employees_post: {
+            /** File */
+            file: string;
+            /**
+             * Corporate Client Id
+             * Format: uuid
+             */
+            corporate_client_id: string;
+        };
+        /** Body_import_leads_api_staff_crm_imports_leads_post */
+        Body_import_leads_api_staff_crm_imports_leads_post: {
+            /** File */
+            file: string;
+        };
+        /** BrokeragePolicyCreate */
+        BrokeragePolicyCreate: {
+            /**
+             * Corporate Client Id
+             * Format: uuid
+             */
+            corporate_client_id: string;
+            /**
+             * Insurer Company Id
+             * Format: uuid
+             */
+            insurer_company_id: string;
+            /** Policy No */
+            policy_no: string;
+            insurance_type: components["schemas"]["InsuranceType"];
+            /**
+             * Starts On
+             * Format: date
+             */
+            starts_on: string;
+            /**
+             * Ends On
+             * Format: date
+             */
+            ends_on: string;
+            /** Premium */
+            premium: number | string;
+            /**
+             * Currency
+             * @default EGP
+             */
+            currency: string;
+            /** @default cash */
+            installment_plan: components["schemas"]["InstallmentPlan"];
+            /**
+             * Commission Rate
+             * @default 0.05
+             */
+            commission_rate: number | string;
+            /** Issuing Request Id */
+            issuing_request_id?: string | null;
+        };
         /** BulkAction */
         BulkAction: {
             /**
@@ -3168,6 +3920,17 @@ export interface components {
             challenge: string;
             /** Password */
             password: string;
+        };
+        /**
+         * ChecklistItemStatus
+         * @enum {string}
+         */
+        ChecklistItemStatus: "pending" | "received" | "verified" | "rejected";
+        /** ChecklistItemUpdate */
+        ChecklistItemUpdate: {
+            status: components["schemas"]["ChecklistItemStatus"];
+            /** Notes */
+            notes?: string | null;
         };
         /**
          * CommunicationChannel
@@ -3293,7 +4056,7 @@ export interface components {
              * Provider
              * @enum {string}
              */
-            provider: "smtp" | "sendgrid" | "ses" | "gmail_oauth" | "outlook_oauth" | "whatsapp_cloud" | "email_webhook" | "imap" | "twilio_sms" | "mock_llm" | "openai" | "mock_voice" | "twilio" | "vonage" | "openai_speech" | "clamav";
+            provider: "smtp" | "sendgrid" | "ses" | "gmail_oauth" | "outlook_oauth" | "whatsapp_cloud" | "whatsapp_360dialog" | "email_webhook" | "imap" | "twilio_sms" | "mock_llm" | "openai" | "mock_voice" | "twilio" | "vonage" | "openai_speech" | "clamav";
         };
         /**
          * ConsentPurpose
@@ -3306,6 +4069,73 @@ export interface components {
             /** Granted */
             granted: boolean;
         };
+        /**
+         * ContractStatus
+         * @enum {string}
+         */
+        ContractStatus: "draft" | "active" | "suspended" | "expired" | "terminated";
+        /** CorporateClientUpsert */
+        CorporateClientUpsert: {
+            /** Id */
+            id?: string | null;
+            /** Slug */
+            slug: string;
+            /** Name Ar */
+            name_ar: string;
+            /** Name En */
+            name_en: string;
+            /** Tax Id */
+            tax_id?: string | null;
+            /** Contact Name */
+            contact_name?: string | null;
+            /** Contact Email */
+            contact_email?: string | null;
+            /** Contact Mobile */
+            contact_mobile?: string | null;
+            /** Address */
+            address?: string | null;
+            /**
+             * Is Active
+             * @default true
+             */
+            is_active: boolean;
+        };
+        /** CorporateContractUpsert */
+        CorporateContractUpsert: {
+            /** Id */
+            id?: string | null;
+            /**
+             * Corporate Client Id
+             * Format: uuid
+             */
+            corporate_client_id: string;
+            /** Contract No */
+            contract_no: string;
+            /** Contract Value */
+            contract_value: number | string;
+            /**
+             * Currency
+             * @default EGP
+             */
+            currency: string;
+            payment_frequency: components["schemas"]["PaymentFrequency"];
+            /**
+             * Starts On
+             * Format: date
+             */
+            starts_on: string;
+            /**
+             * Renews On
+             * Format: date
+             */
+            renews_on: string;
+            /** @default active */
+            status: components["schemas"]["ContractStatus"];
+            /** Headcount */
+            headcount?: number | null;
+            /** Notes */
+            notes?: string | null;
+        };
         /** CorporateLoginRequest */
         CorporateLoginRequest: {
             /** Username */
@@ -3313,12 +4143,43 @@ export interface components {
             /** Password */
             password: string;
         };
+        /** CorporateMemberLink */
+        CorporateMemberLink: {
+            /**
+             * Customer Id
+             * Format: uuid
+             */
+            customer_id: string;
+            /**
+             * Corporate Client Id
+             * Format: uuid
+             */
+            corporate_client_id: string;
+            /** Employee Code */
+            employee_code?: string | null;
+        };
         /** CorporatePasswordChange */
         CorporatePasswordChange: {
             /** Current Password */
             current_password: string;
             /** New Password */
             new_password: string;
+        };
+        /** CorporateUserCreate */
+        CorporateUserCreate: {
+            /**
+             * Corporate Client Id
+             * Format: uuid
+             */
+            corporate_client_id: string;
+            /** Username */
+            username: string;
+            /** Full Name */
+            full_name: string;
+            /** Email */
+            email?: string | null;
+            /** Password */
+            password: string;
         };
         /** CsatRequest */
         CsatRequest: {
@@ -3426,6 +4287,19 @@ export interface components {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
         };
+        /** InstallmentPay */
+        InstallmentPay: {
+            /** @default manual */
+            provider: components["schemas"]["PaymentProviderName"];
+            /** Reference */
+            reference?: string | null;
+        };
+        /**
+         * InstallmentPlan
+         * @description Premium billing cadence for a brokerage policy (Phase 2 spec).
+         * @enum {string}
+         */
+        InstallmentPlan: "monthly" | "quarterly" | "semi_annual" | "cash";
         /**
          * InsuranceType
          * @enum {string}
@@ -3452,7 +4326,7 @@ export interface components {
              * Provider
              * @enum {string}
              */
-            provider: "smtp" | "sendgrid" | "ses" | "gmail_oauth" | "outlook_oauth" | "whatsapp_cloud" | "email_webhook" | "imap" | "twilio_sms" | "mock_llm" | "openai" | "mock_voice" | "twilio" | "vonage" | "openai_speech" | "clamav";
+            provider: "smtp" | "sendgrid" | "ses" | "gmail_oauth" | "outlook_oauth" | "whatsapp_cloud" | "whatsapp_360dialog" | "email_webhook" | "imap" | "twilio_sms" | "mock_llm" | "openai" | "mock_voice" | "twilio" | "vonage" | "openai_speech" | "clamav";
             /**
              * Enabled
              * @default true
@@ -3482,6 +4356,130 @@ export interface components {
             profile?: components["schemas"]["StaffPersonalData"] | null;
             /** Avatar Base64 */
             avatar_base64?: string | null;
+        };
+        /** IssuingCreate */
+        IssuingCreate: {
+            /**
+             * Insurer Company Id
+             * Format: uuid
+             */
+            insurer_company_id: string;
+            insurance_type: components["schemas"]["InsuranceType"];
+            /** Lead Id */
+            lead_id?: string | null;
+            /** Corporate Client Id */
+            corporate_client_id?: string | null;
+            /** Assigned Staff Id */
+            assigned_staff_id?: string | null;
+            /** Notes */
+            notes?: string | null;
+        };
+        /**
+         * IssuingStatus
+         * @enum {string}
+         */
+        IssuingStatus: "draft" | "internal_review" | "sent_to_insurer" | "issued" | "rejected";
+        /** IssuingUpdate */
+        IssuingUpdate: {
+            status?: components["schemas"]["IssuingStatus"] | null;
+            /** Assigned Staff Id */
+            assigned_staff_id?: string | null;
+            /** Insurer Reference */
+            insurer_reference?: string | null;
+            /** Notes */
+            notes?: string | null;
+        };
+        /** LeadActivityCreate */
+        LeadActivityCreate: {
+            kind: components["schemas"]["LeadActivityKind"];
+            /** Title */
+            title: string;
+            /** Body */
+            body?: string | null;
+            /** Due At */
+            due_at?: string | null;
+            /** Done At */
+            done_at?: string | null;
+            /** Outcome */
+            outcome?: string | null;
+        };
+        /**
+         * LeadActivityKind
+         * @enum {string}
+         */
+        LeadActivityKind: "call" | "meeting" | "note" | "task" | "appointment";
+        /**
+         * LeadConvert
+         * @description One-click Lead → client conversion; slug/name default from the lead.
+         */
+        LeadConvert: {
+            /** Slug */
+            slug?: string | null;
+            /** Name Ar */
+            name_ar?: string | null;
+            /** Name En */
+            name_en?: string | null;
+        };
+        /** LeadCreate */
+        LeadCreate: {
+            /** Company Name */
+            company_name: string;
+            /** Contact Name */
+            contact_name?: string | null;
+            /** Mobile */
+            mobile?: string | null;
+            /** Email */
+            email?: string | null;
+            /** @default manual */
+            source: components["schemas"]["LeadSource"];
+            /** @default general */
+            insurance_type: components["schemas"]["InsuranceType"];
+            /** Insurer Company Id */
+            insurer_company_id?: string | null;
+            /**
+             * Stage Code
+             * @default new
+             */
+            stage_code: string;
+            /** Assigned Staff Id */
+            assigned_staff_id?: string | null;
+            /** Expected Premium */
+            expected_premium?: number | string | null;
+            /** Notes */
+            notes?: string | null;
+            /** Next Followup At */
+            next_followup_at?: string | null;
+        };
+        /**
+         * LeadSource
+         * @enum {string}
+         */
+        LeadSource: "manual" | "whatsapp" | "call" | "email" | "portal";
+        /** LeadUpdate */
+        LeadUpdate: {
+            /** Company Name */
+            company_name?: string | null;
+            /** Contact Name */
+            contact_name?: string | null;
+            /** Mobile */
+            mobile?: string | null;
+            /** Email */
+            email?: string | null;
+            insurance_type?: components["schemas"]["InsuranceType"] | null;
+            /** Insurer Company Id */
+            insurer_company_id?: string | null;
+            /** Stage Code */
+            stage_code?: string | null;
+            /** Assigned Staff Id */
+            assigned_staff_id?: string | null;
+            /** Expected Premium */
+            expected_premium?: number | string | null;
+            /** Notes */
+            notes?: string | null;
+            /** Lost Reason */
+            lost_reason?: string | null;
+            /** Next Followup At */
+            next_followup_at?: string | null;
         };
         /** MergeRequest */
         MergeRequest: {
@@ -3539,6 +4537,57 @@ export interface components {
          * @enum {string}
          */
         OwnershipLevel: "own" | "team" | "all";
+        /**
+         * PaymentFrequency
+         * @description Billing cadence of a brokerage contract with a corporate client.
+         * @enum {string}
+         */
+        PaymentFrequency: "monthly" | "quarterly" | "semi_annual" | "annual";
+        /** PaymentIntentCreate */
+        PaymentIntentCreate: {
+            provider: components["schemas"]["PaymentProviderName"];
+        };
+        /**
+         * PaymentProviderName
+         * @enum {string}
+         */
+        PaymentProviderName: "fawry" | "paymob" | "manual";
+        /** PipelineStageUpsert */
+        PipelineStageUpsert: {
+            /** Id */
+            id?: string | null;
+            /** Code */
+            code: string;
+            /** Name Ar */
+            name_ar: string;
+            /** Name En */
+            name_en: string;
+            /**
+             * Sort Order
+             * @default 0
+             */
+            sort_order: number;
+            /**
+             * Is Won
+             * @default false
+             */
+            is_won: boolean;
+            /**
+             * Is Lost
+             * @default false
+             */
+            is_lost: boolean;
+            /**
+             * Is Converted
+             * @default false
+             */
+            is_converted: boolean;
+            /**
+             * Is Active
+             * @default true
+             */
+            is_active: boolean;
+        };
         /** PlatformBrandRequest */
         PlatformBrandRequest: {
             /** Platform Name */
@@ -3762,6 +4811,13 @@ export interface components {
             agent_note?: string | null;
             /** Attachment Ids */
             attachment_ids?: string[];
+        };
+        /** SettlementUpdate */
+        SettlementUpdate: {
+            /** Received Amount */
+            received_amount: number | string;
+            /** Notes */
+            notes?: string | null;
         };
         /** SlaRuleSpec */
         SlaRuleSpec: {
@@ -5345,6 +6401,78 @@ export interface operations {
             };
         };
     };
+    corporate_archive_api_corporate_archive_get: {
+        parameters: {
+            query?: {
+                search?: string | null;
+                status?: string | null;
+                source?: string | null;
+                date_from?: string | null;
+                date_to?: string | null;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    corporate_archive_detail_api_corporate_archive__request_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                request_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     corporate_documents_api_corporate_documents_get: {
         parameters: {
             query?: never;
@@ -5385,6 +6513,168 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_corporate_clients_api_staff_corporate_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    upsert_corporate_client_api_staff_corporate_clients_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CorporateClientUpsert"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    upsert_corporate_contract_api_staff_corporate_contracts_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CorporateContractUpsert"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_corporate_user_api_staff_corporate_users_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CorporateUserCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    link_corporate_member_api_staff_corporate_members_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CorporateMemberLink"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
             /** @description Validation Error */
@@ -9372,7 +10662,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                provider: "email_webhook" | "whatsapp_cloud" | "mock_voice" | "twilio" | "twilio_sms" | "vonage";
+                provider: "email_webhook" | "whatsapp_cloud" | "whatsapp" | "mock_voice" | "twilio" | "twilio_sms" | "vonage";
                 company_id: string;
             };
             cookie?: never;
@@ -9388,6 +10678,134 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    twilio_voice_answer_api_webhooks_twilio__company_id__voice_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                company_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    twilio_voice_consent_api_webhooks_twilio__company_id__voice_consent_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                company_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    twilio_voice_recording_api_webhooks_twilio__company_id__voice_recording_post: {
+        parameters: {
+            query?: {
+                caller?: string;
+            };
+            header?: never;
+            path: {
+                company_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    verify_whatsapp_webhook_api_webhooks_whatsapp_cloud__company_id__get: {
+        parameters: {
+            query?: {
+                "hub.mode"?: string | null;
+                "hub.verify_token"?: string | null;
+                "hub.challenge"?: string | null;
+            };
+            header?: never;
+            path: {
+                company_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/plain": string;
                 };
             };
             /** @description Validation Error */
@@ -10286,6 +11704,1024 @@ export interface operations {
         responses: {
             /** @description Successful Response */
             200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_stages_api_staff_crm_stages_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    upsert_stage_api_staff_crm_stages_put: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Must equal the csrf_token cookie (double-submit). */
+                "X-CSRF-Token": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PipelineStageUpsert"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_leads_api_staff_crm_leads_get: {
+        parameters: {
+            query?: {
+                stage?: string | null;
+                source?: string | null;
+                assigned?: string | null;
+                q?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_lead_api_staff_crm_leads_post: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Must equal the csrf_token cookie (double-submit). */
+                "X-CSRF-Token": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LeadCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_lead_api_staff_crm_leads__lead_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                lead_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_lead_api_staff_crm_leads__lead_id__patch: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Must equal the csrf_token cookie (double-submit). */
+                "X-CSRF-Token": string;
+            };
+            path: {
+                lead_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LeadUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    add_activity_api_staff_crm_leads__lead_id__activities_post: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Must equal the csrf_token cookie (double-submit). */
+                "X-CSRF-Token": string;
+            };
+            path: {
+                lead_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LeadActivityCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    convert_lead_api_staff_crm_leads__lead_id__convert_post: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Must equal the csrf_token cookie (double-submit). */
+                "X-CSRF-Token": string;
+            };
+            path: {
+                lead_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LeadConvert"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    pipeline_api_staff_crm_pipeline_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    sales_performance_api_staff_crm_reports_sales_performance_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    list_policies_api_staff_crm_policies_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    create_policy_api_staff_crm_policies_post: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Must equal the csrf_token cookie (double-submit). */
+                "X-CSRF-Token": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BrokeragePolicyCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_policy_api_staff_crm_policies__policy_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                policy_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    renewals_api_staff_crm_renewals_get: {
+        parameters: {
+            query?: {
+                days?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_settlement_api_staff_crm_settlements__settlement_id__patch: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Must equal the csrf_token cookie (double-submit). */
+                "X-CSRF-Token": string;
+            };
+            path: {
+                settlement_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SettlementUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    pay_installment_api_staff_crm_installments__installment_id__pay_post: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Must equal the csrf_token cookie (double-submit). */
+                "X-CSRF-Token": string;
+            };
+            path: {
+                installment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InstallmentPay"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    payment_intent_api_staff_crm_installments__installment_id__payment_intent_post: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Must equal the csrf_token cookie (double-submit). */
+                "X-CSRF-Token": string;
+            };
+            path: {
+                installment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PaymentIntentCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_issuing_api_staff_crm_issuing_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    create_issuing_api_staff_crm_issuing_post: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Must equal the csrf_token cookie (double-submit). */
+                "X-CSRF-Token": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IssuingCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_issuing_api_staff_crm_issuing__issuing_id__patch: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Must equal the csrf_token cookie (double-submit). */
+                "X-CSRF-Token": string;
+            };
+            path: {
+                issuing_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IssuingUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_checklist_item_api_staff_crm_issuing_items__item_id__patch: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Must equal the csrf_token cookie (double-submit). */
+                "X-CSRF-Token": string;
+            };
+            path: {
+                item_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChecklistItemUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    import_employees_api_staff_crm_imports_employees_post: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Must equal the csrf_token cookie (double-submit). */
+                "X-CSRF-Token": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_import_employees_api_staff_crm_imports_employees_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    import_clients_api_staff_crm_imports_clients_post: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Must equal the csrf_token cookie (double-submit). */
+                "X-CSRF-Token": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_import_clients_api_staff_crm_imports_clients_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    import_leads_api_staff_crm_imports_leads_post: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Must equal the csrf_token cookie (double-submit). */
+                "X-CSRF-Token": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_import_leads_api_staff_crm_imports_leads_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_imports_api_staff_crm_imports_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    client_folder_api_staff_crm_client_folder__corporate_client_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                corporate_client_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    caller_lookup_api_staff_crm_caller_lookup_get: {
+        parameters: {
+            query: {
+                mobile: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    insurer_performance_api_staff_crm_insurer_performance_get: {
+        parameters: {
+            query?: {
+                days?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    document_search_api_staff_crm_document_search_get: {
+        parameters: {
+            query: {
+                q: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    payment_webhook_api_payments__provider__webhook_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                provider: components["schemas"]["PaymentProviderName"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
                 headers: {
                     [name: string]: unknown;
                 };

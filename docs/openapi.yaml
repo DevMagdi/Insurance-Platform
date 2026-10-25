@@ -8527,6 +8527,1064 @@ paths:
       security:
       - AccessCookie: []
       x-required-permission: storage.manage
+  /api/staff/crm/stages:
+    get:
+      tags:
+      - crm
+      summary: List Stages
+      operationId: list_stages_api_staff_crm_stages_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response List Stages Api Staff Crm Stages Get
+      security:
+      - AccessCookie: []
+      x-required-permission: crm.view
+    put:
+      tags:
+      - crm
+      summary: Upsert Stage
+      description: Create or amend a tenant-customisable pipeline stage.
+      operationId: upsert_stage_api_staff_crm_stages_put
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PipelineStageUpsert'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response Upsert Stage Api Staff Crm Stages Put
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: crm.manage
+      parameters:
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
+  /api/staff/crm/leads:
+    get:
+      tags:
+      - crm
+      summary: List Leads
+      operationId: list_leads_api_staff_crm_leads_get
+      parameters:
+      - name: stage
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Stage
+      - name: source
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Source
+      - name: assigned
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Assigned
+      - name: q
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            maxLength: 120
+          - type: 'null'
+          title: Q
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response List Leads Api Staff Crm Leads Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: crm.view
+    post:
+      tags:
+      - crm
+      summary: Create Lead
+      description: Add a lead at any time — manually or captured from WhatsApp/call/email.
+      operationId: create_lead_api_staff_crm_leads_post
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LeadCreate'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Create Lead Api Staff Crm Leads Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: crm.manage
+      parameters:
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
+  /api/staff/crm/leads/{lead_id}:
+    get:
+      tags:
+      - crm
+      summary: Get Lead
+      operationId: get_lead_api_staff_crm_leads__lead_id__get
+      parameters:
+      - name: lead_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Lead Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Get Lead Api Staff Crm Leads  Lead Id  Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: crm.view
+    patch:
+      tags:
+      - crm
+      summary: Update Lead
+      operationId: update_lead_api_staff_crm_leads__lead_id__patch
+      parameters:
+      - name: lead_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Lead Id
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LeadUpdate'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Update Lead Api Staff Crm Leads  Lead Id  Patch
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: crm.manage
+  /api/staff/crm/leads/{lead_id}/activities:
+    post:
+      tags:
+      - crm
+      summary: Add Activity
+      description: Log a call/meeting/note/task/appointment; tasks arm the follow-up
+        reminder.
+      operationId: add_activity_api_staff_crm_leads__lead_id__activities_post
+      parameters:
+      - name: lead_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Lead Id
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LeadActivityCreate'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Add Activity Api Staff Crm Leads  Lead Id  Activities
+                  Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: crm.manage
+  /api/staff/crm/leads/{lead_id}/convert:
+    post:
+      tags:
+      - crm
+      summary: Convert Lead
+      description: 'One-click conversion: creates the corporate client with all lead
+        data.'
+      operationId: convert_lead_api_staff_crm_leads__lead_id__convert_post
+      parameters:
+      - name: lead_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Lead Id
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LeadConvert'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Convert Lead Api Staff Crm Leads  Lead Id  Convert
+                  Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: crm.convert
+  /api/staff/crm/pipeline:
+    get:
+      tags:
+      - crm
+      summary: Pipeline
+      operationId: pipeline_api_staff_crm_pipeline_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response Pipeline Api Staff Crm Pipeline Get
+      security:
+      - AccessCookie: []
+      x-required-permission: crm.view
+  /api/staff/crm/reports/sales-performance:
+    get:
+      tags:
+      - crm
+      summary: Sales Performance
+      operationId: sales_performance_api_staff_crm_reports_sales_performance_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response Sales Performance Api Staff Crm Reports Sales Performance
+                  Get
+      security:
+      - AccessCookie: []
+      x-required-permission: crm.view
+  /api/staff/crm/policies:
+    get:
+      tags:
+      - crm
+      summary: List Policies
+      operationId: list_policies_api_staff_crm_policies_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response List Policies Api Staff Crm Policies Get
+      security:
+      - AccessCookie: []
+      x-required-permission: policies.view
+    post:
+      tags:
+      - crm
+      summary: Create Policy
+      description: Create a policy, its installment schedule and its commission settlement.
+      operationId: create_policy_api_staff_crm_policies_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BrokeragePolicyCreate'
+        required: true
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response Create Policy Api Staff Crm Policies Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: policies.manage
+      parameters:
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
+  /api/staff/crm/policies/{policy_id}:
+    get:
+      tags:
+      - crm
+      summary: Get Policy
+      operationId: get_policy_api_staff_crm_policies__policy_id__get
+      parameters:
+      - name: policy_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Policy Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Get Policy Api Staff Crm Policies  Policy Id  Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: policies.view
+  /api/staff/crm/renewals:
+    get:
+      tags:
+      - crm
+      summary: Renewals
+      operationId: renewals_api_staff_crm_renewals_get
+      parameters:
+      - name: days
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 365
+          minimum: 1
+          default: 30
+          title: Days
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Renewals Api Staff Crm Renewals Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: policies.view
+  /api/staff/crm/settlements/{settlement_id}:
+    patch:
+      tags:
+      - crm
+      summary: Update Settlement
+      operationId: update_settlement_api_staff_crm_settlements__settlement_id__patch
+      parameters:
+      - name: settlement_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Settlement Id
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SettlementUpdate'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Update Settlement Api Staff Crm Settlements  Settlement
+                  Id  Patch
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: policies.manage
+  /api/staff/crm/installments/{installment_id}/pay:
+    post:
+      tags:
+      - crm
+      summary: Pay Installment
+      operationId: pay_installment_api_staff_crm_installments__installment_id__pay_post
+      parameters:
+      - name: installment_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Installment Id
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InstallmentPay'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Pay Installment Api Staff Crm Installments  Installment
+                  Id  Pay Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: payments.manage
+  /api/staff/crm/installments/{installment_id}/payment-intent:
+    post:
+      tags:
+      - crm
+      summary: Payment Intent
+      description: Open a Fawry/Paymob charge. Fail-closed until credentials are configured.
+      operationId: payment_intent_api_staff_crm_installments__installment_id__payment_intent_post
+      parameters:
+      - name: installment_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Installment Id
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PaymentIntentCreate'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Payment Intent Api Staff Crm Installments  Installment
+                  Id  Payment Intent Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: payments.manage
+  /api/staff/crm/issuing:
+    get:
+      tags:
+      - crm
+      summary: List Issuing
+      operationId: list_issuing_api_staff_crm_issuing_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response List Issuing Api Staff Crm Issuing Get
+      security:
+      - AccessCookie: []
+      x-required-permission: issuing.view
+    post:
+      tags:
+      - crm
+      summary: Create Issuing
+      description: Open an issuing file with the required-documents checklist for
+        its type.
+      operationId: create_issuing_api_staff_crm_issuing_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IssuingCreate'
+        required: true
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response Create Issuing Api Staff Crm Issuing Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: issuing.manage
+      parameters:
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
+  /api/staff/crm/issuing/{issuing_id}:
+    patch:
+      tags:
+      - crm
+      summary: Update Issuing
+      description: Internal review → sent to insurer → issued, with the checklist
+        gate.
+      operationId: update_issuing_api_staff_crm_issuing__issuing_id__patch
+      parameters:
+      - name: issuing_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Issuing Id
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IssuingUpdate'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Update Issuing Api Staff Crm Issuing  Issuing Id  Patch
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: issuing.manage
+  /api/staff/crm/issuing/items/{item_id}:
+    patch:
+      tags:
+      - crm
+      summary: Update Checklist Item
+      operationId: update_checklist_item_api_staff_crm_issuing_items__item_id__patch
+      parameters:
+      - name: item_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Item Id
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChecklistItemUpdate'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Update Checklist Item Api Staff Crm Issuing Items  Item
+                  Id  Patch
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: issuing.manage
+  /api/staff/crm/imports/employees:
+    post:
+      tags:
+      - crm
+      summary: Import Employees
+      description: Import insured employees of a corporate client from Excel/CSV.
+      operationId: import_employees_api_staff_crm_imports_employees_post
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Body_import_employees_api_staff_crm_imports_employees_post'
+        required: true
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response Import Employees Api Staff Crm Imports Employees Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: imports.manage
+      parameters:
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
+  /api/staff/crm/imports/clients:
+    post:
+      tags:
+      - crm
+      summary: Import Clients
+      description: Import existing corporate clients from Excel/CSV.
+      operationId: import_clients_api_staff_crm_imports_clients_post
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Body_import_clients_api_staff_crm_imports_clients_post'
+        required: true
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response Import Clients Api Staff Crm Imports Clients Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: imports.manage
+      parameters:
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
+  /api/staff/crm/imports/leads:
+    post:
+      tags:
+      - crm
+      summary: Import Leads
+      description: Import sales leads from Excel/CSV.
+      operationId: import_leads_api_staff_crm_imports_leads_post
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Body_import_leads_api_staff_crm_imports_leads_post'
+        required: true
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response Import Leads Api Staff Crm Imports Leads Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: imports.manage
+      parameters:
+      - name: X-CSRF-Token
+        in: header
+        required: true
+        description: Must equal the csrf_token cookie (double-submit).
+        schema:
+          type: string
+  /api/staff/crm/imports:
+    get:
+      tags:
+      - crm
+      summary: List Imports
+      operationId: list_imports_api_staff_crm_imports_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response List Imports Api Staff Crm Imports Get
+      security:
+      - AccessCookie: []
+      x-required-permission: imports.manage
+  /api/staff/crm/client-folder/{corporate_client_id}:
+    get:
+      tags:
+      - crm
+      summary: Client Folder
+      operationId: client_folder_api_staff_crm_client_folder__corporate_client_id__get
+      parameters:
+      - name: corporate_client_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Corporate Client Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Client Folder Api Staff Crm Client Folder  Corporate
+                  Client Id  Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: crm.view
+  /api/staff/crm/caller-lookup:
+    get:
+      tags:
+      - crm
+      summary: Caller Lookup
+      description: 'Identify a caller by mobile: employee, his company and his policy.'
+      operationId: caller_lookup_api_staff_crm_caller_lookup_get
+      parameters:
+      - name: mobile
+        in: query
+        required: true
+        schema:
+          type: string
+          minLength: 11
+          maxLength: 15
+          title: Mobile
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Caller Lookup Api Staff Crm Caller Lookup Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: crm.view
+  /api/staff/crm/insurer-performance:
+    get:
+      tags:
+      - crm
+      summary: Insurer Performance
+      operationId: insurer_performance_api_staff_crm_insurer_performance_get
+      parameters:
+      - name: days
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 730
+          minimum: 1
+          default: 90
+          title: Days
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Insurer Performance Api Staff Crm Insurer Performance
+                  Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: crm.view
+  /api/staff/crm/document-search:
+    get:
+      tags:
+      - crm
+      summary: Document Search
+      operationId: document_search_api_staff_crm_document_search_get
+      parameters:
+      - name: q
+        in: query
+        required: true
+        schema:
+          type: string
+          minLength: 2
+          maxLength: 120
+          title: Q
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Document Search Api Staff Crm Document Search Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - AccessCookie: []
+      x-required-permission: crm.view
+  /api/payments/{provider}/webhook:
+    post:
+      tags:
+      - payments
+      summary: Payment Webhook
+      description: 'Signed gateway callback: marks the referenced installment paid
+        exactly once.'
+      operationId: payment_webhook_api_payments__provider__webhook_post
+      parameters:
+      - name: provider
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/PaymentProviderName'
+      responses:
+        '202':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Payment Webhook Api Payments  Provider  Webhook Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security: []
   /api/public/config:
     get:
       tags:
@@ -8960,6 +10018,107 @@ components:
       additionalProperties: false
       type: object
       title: AssignmentRuleSpec
+    Body_import_clients_api_staff_crm_imports_clients_post:
+      properties:
+        file:
+          type: string
+          contentMediaType: application/octet-stream
+          title: File
+      type: object
+      required:
+      - file
+      title: Body_import_clients_api_staff_crm_imports_clients_post
+    Body_import_employees_api_staff_crm_imports_employees_post:
+      properties:
+        file:
+          type: string
+          contentMediaType: application/octet-stream
+          title: File
+        corporate_client_id:
+          type: string
+          format: uuid
+          title: Corporate Client Id
+      type: object
+      required:
+      - file
+      - corporate_client_id
+      title: Body_import_employees_api_staff_crm_imports_employees_post
+    Body_import_leads_api_staff_crm_imports_leads_post:
+      properties:
+        file:
+          type: string
+          contentMediaType: application/octet-stream
+          title: File
+      type: object
+      required:
+      - file
+      title: Body_import_leads_api_staff_crm_imports_leads_post
+    BrokeragePolicyCreate:
+      properties:
+        corporate_client_id:
+          type: string
+          format: uuid
+          title: Corporate Client Id
+        insurer_company_id:
+          type: string
+          format: uuid
+          title: Insurer Company Id
+        policy_no:
+          type: string
+          maxLength: 80
+          minLength: 3
+          title: Policy No
+        insurance_type:
+          $ref: '#/components/schemas/InsuranceType'
+        starts_on:
+          type: string
+          format: date
+          title: Starts On
+        ends_on:
+          type: string
+          format: date
+          title: Ends On
+        premium:
+          anyOf:
+          - type: number
+            maximum: 999999999.0
+            exclusiveMinimum: 0.0
+          - type: string
+          title: Premium
+        currency:
+          type: string
+          maxLength: 3
+          minLength: 3
+          title: Currency
+          default: EGP
+        installment_plan:
+          $ref: '#/components/schemas/InstallmentPlan'
+          default: cash
+        commission_rate:
+          anyOf:
+          - type: number
+            maximum: 1.0
+            minimum: 0.0
+          - type: string
+          title: Commission Rate
+          default: '0.05'
+        issuing_request_id:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Issuing Request Id
+      additionalProperties: false
+      type: object
+      required:
+      - corporate_client_id
+      - insurer_company_id
+      - policy_no
+      - insurance_type
+      - starts_on
+      - ends_on
+      - premium
+      title: BrokeragePolicyCreate
     BulkAction:
       properties:
         action:
@@ -9136,6 +10295,29 @@ components:
       - challenge
       - password
       title: ChangePasswordRequest
+    ChecklistItemStatus:
+      type: string
+      enum:
+      - pending
+      - received
+      - verified
+      - rejected
+      title: ChecklistItemStatus
+    ChecklistItemUpdate:
+      properties:
+        status:
+          $ref: '#/components/schemas/ChecklistItemStatus'
+        notes:
+          anyOf:
+          - type: string
+            maxLength: 1000
+          - type: 'null'
+          title: Notes
+      additionalProperties: false
+      type: object
+      required:
+      - status
+      title: ChecklistItemUpdate
     CommunicationChannel:
       type: string
       enum:
@@ -9410,6 +10592,7 @@ components:
           - gmail_oauth
           - outlook_oauth
           - whatsapp_cloud
+          - whatsapp_360dialog
           - email_webhook
           - imap
           - twilio_sms
@@ -9881,6 +11064,29 @@ components:
           title: Detail
       type: object
       title: HTTPValidationError
+    InstallmentPay:
+      properties:
+        provider:
+          $ref: '#/components/schemas/PaymentProviderName'
+          default: manual
+        reference:
+          anyOf:
+          - type: string
+            maxLength: 120
+          - type: 'null'
+          title: Reference
+      additionalProperties: false
+      type: object
+      title: InstallmentPay
+    InstallmentPlan:
+      type: string
+      enum:
+      - monthly
+      - quarterly
+      - semi_annual
+      - cash
+      title: InstallmentPlan
+      description: Premium billing cadence for a brokerage policy (Phase 2 spec).
     InsuranceType:
       type: string
       enum:
@@ -9917,6 +11123,7 @@ components:
           - gmail_oauth
           - outlook_oauth
           - whatsapp_cloud
+          - whatsapp_360dialog
           - email_webhook
           - imap
           - twilio_sms
@@ -9998,6 +11205,314 @@ components:
       - token
       - password
       title: InviteAcceptRequest
+    IssuingCreate:
+      properties:
+        insurer_company_id:
+          type: string
+          format: uuid
+          title: Insurer Company Id
+        insurance_type:
+          $ref: '#/components/schemas/InsuranceType'
+        lead_id:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Lead Id
+        corporate_client_id:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Corporate Client Id
+        assigned_staff_id:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Assigned Staff Id
+        notes:
+          anyOf:
+          - type: string
+            maxLength: 4000
+          - type: 'null'
+          title: Notes
+      additionalProperties: false
+      type: object
+      required:
+      - insurer_company_id
+      - insurance_type
+      title: IssuingCreate
+    IssuingStatus:
+      type: string
+      enum:
+      - draft
+      - internal_review
+      - sent_to_insurer
+      - issued
+      - rejected
+      title: IssuingStatus
+    IssuingUpdate:
+      properties:
+        status:
+          anyOf:
+          - $ref: '#/components/schemas/IssuingStatus'
+          - type: 'null'
+        assigned_staff_id:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Assigned Staff Id
+        insurer_reference:
+          anyOf:
+          - type: string
+            maxLength: 120
+          - type: 'null'
+          title: Insurer Reference
+        notes:
+          anyOf:
+          - type: string
+            maxLength: 4000
+          - type: 'null'
+          title: Notes
+      additionalProperties: false
+      type: object
+      title: IssuingUpdate
+    LeadActivityCreate:
+      properties:
+        kind:
+          $ref: '#/components/schemas/LeadActivityKind'
+        title:
+          type: string
+          maxLength: 200
+          minLength: 1
+          title: Title
+        body:
+          anyOf:
+          - type: string
+            maxLength: 4000
+          - type: 'null'
+          title: Body
+        due_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Due At
+        done_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Done At
+        outcome:
+          anyOf:
+          - type: string
+            maxLength: 500
+          - type: 'null'
+          title: Outcome
+      additionalProperties: false
+      type: object
+      required:
+      - kind
+      - title
+      title: LeadActivityCreate
+    LeadActivityKind:
+      type: string
+      enum:
+      - call
+      - meeting
+      - note
+      - task
+      - appointment
+      title: LeadActivityKind
+    LeadConvert:
+      properties:
+        slug:
+          anyOf:
+          - type: string
+            maxLength: 80
+            pattern: ^[a-z][a-z0-9-]*$
+          - type: 'null'
+          title: Slug
+        name_ar:
+          anyOf:
+          - type: string
+            maxLength: 200
+          - type: 'null'
+          title: Name Ar
+        name_en:
+          anyOf:
+          - type: string
+            maxLength: 200
+          - type: 'null'
+          title: Name En
+      additionalProperties: false
+      type: object
+      title: LeadConvert
+      description: One-click Lead → client conversion; slug/name default from the
+        lead.
+    LeadCreate:
+      properties:
+        company_name:
+          type: string
+          maxLength: 200
+          minLength: 2
+          title: Company Name
+        contact_name:
+          anyOf:
+          - type: string
+            maxLength: 160
+          - type: 'null'
+          title: Contact Name
+        mobile:
+          anyOf:
+          - type: string
+            pattern: ^\+201[0-9]{9}$
+          - type: 'null'
+          title: Mobile
+        email:
+          anyOf:
+          - type: string
+            maxLength: 254
+          - type: 'null'
+          title: Email
+        source:
+          $ref: '#/components/schemas/LeadSource'
+          default: manual
+        insurance_type:
+          $ref: '#/components/schemas/InsuranceType'
+          default: general
+        insurer_company_id:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Insurer Company Id
+        stage_code:
+          type: string
+          maxLength: 40
+          title: Stage Code
+          default: new
+        assigned_staff_id:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Assigned Staff Id
+        expected_premium:
+          anyOf:
+          - type: number
+            maximum: 999999999.0
+            minimum: 0.0
+          - type: string
+          - type: 'null'
+          title: Expected Premium
+        notes:
+          anyOf:
+          - type: string
+            maxLength: 4000
+          - type: 'null'
+          title: Notes
+        next_followup_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Next Followup At
+      additionalProperties: false
+      type: object
+      required:
+      - company_name
+      title: LeadCreate
+    LeadSource:
+      type: string
+      enum:
+      - manual
+      - whatsapp
+      - call
+      - email
+      - portal
+      title: LeadSource
+    LeadUpdate:
+      properties:
+        company_name:
+          anyOf:
+          - type: string
+            maxLength: 200
+            minLength: 2
+          - type: 'null'
+          title: Company Name
+        contact_name:
+          anyOf:
+          - type: string
+            maxLength: 160
+          - type: 'null'
+          title: Contact Name
+        mobile:
+          anyOf:
+          - type: string
+            pattern: ^\+201[0-9]{9}$
+          - type: 'null'
+          title: Mobile
+        email:
+          anyOf:
+          - type: string
+            maxLength: 254
+          - type: 'null'
+          title: Email
+        insurance_type:
+          anyOf:
+          - $ref: '#/components/schemas/InsuranceType'
+          - type: 'null'
+        insurer_company_id:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Insurer Company Id
+        stage_code:
+          anyOf:
+          - type: string
+            maxLength: 40
+          - type: 'null'
+          title: Stage Code
+        assigned_staff_id:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Assigned Staff Id
+        expected_premium:
+          anyOf:
+          - type: number
+            maximum: 999999999.0
+            minimum: 0.0
+          - type: string
+          - type: 'null'
+          title: Expected Premium
+        notes:
+          anyOf:
+          - type: string
+            maxLength: 4000
+          - type: 'null'
+          title: Notes
+        lost_reason:
+          anyOf:
+          - type: string
+            maxLength: 500
+          - type: 'null'
+          title: Lost Reason
+        next_followup_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Next Followup At
+      additionalProperties: false
+      type: object
+      title: LeadUpdate
     MergeRequest:
       properties:
         target_id:
@@ -10086,6 +11601,75 @@ components:
       - annual
       title: PaymentFrequency
       description: Billing cadence of a brokerage contract with a corporate client.
+    PaymentIntentCreate:
+      properties:
+        provider:
+          $ref: '#/components/schemas/PaymentProviderName'
+      additionalProperties: false
+      type: object
+      required:
+      - provider
+      title: PaymentIntentCreate
+    PaymentProviderName:
+      type: string
+      enum:
+      - fawry
+      - paymob
+      - manual
+      title: PaymentProviderName
+    PipelineStageUpsert:
+      properties:
+        id:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Id
+        code:
+          type: string
+          maxLength: 40
+          minLength: 2
+          pattern: ^[a-z][a-z0-9_]*$
+          title: Code
+        name_ar:
+          type: string
+          maxLength: 80
+          minLength: 1
+          title: Name Ar
+        name_en:
+          type: string
+          maxLength: 80
+          minLength: 1
+          title: Name En
+        sort_order:
+          type: integer
+          maximum: 1000.0
+          minimum: 0.0
+          title: Sort Order
+          default: 0
+        is_won:
+          type: boolean
+          title: Is Won
+          default: false
+        is_lost:
+          type: boolean
+          title: Is Lost
+          default: false
+        is_converted:
+          type: boolean
+          title: Is Converted
+          default: false
+        is_active:
+          type: boolean
+          title: Is Active
+          default: true
+      additionalProperties: false
+      type: object
+      required:
+      - code
+      - name_ar
+      - name_en
+      title: PipelineStageUpsert
     PlatformBrandRequest:
       properties:
         platform_name:
@@ -10536,6 +12120,26 @@ components:
       additionalProperties: false
       type: object
       title: SendComplaintEmailRequest
+    SettlementUpdate:
+      properties:
+        received_amount:
+          anyOf:
+          - type: number
+            maximum: 999999999.0
+            minimum: 0.0
+          - type: string
+          title: Received Amount
+        notes:
+          anyOf:
+          - type: string
+            maxLength: 1000
+          - type: 'null'
+          title: Notes
+      additionalProperties: false
+      type: object
+      required:
+      - received_amount
+      title: SettlementUpdate
     SlaRuleSpec:
       properties:
         company_id:

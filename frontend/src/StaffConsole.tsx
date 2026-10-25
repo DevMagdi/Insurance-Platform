@@ -29,6 +29,7 @@ const UsersPage = lazy(async () => ({ default: (await import('./features/admin/U
 const CustomersPage = lazy(async () => ({ default: (await import('./features/admin/CustomersPage')).CustomersPage }));
 const AdminDashboard = lazy(async () => ({ default: (await import('./features/admin/AdminDashboard')).AdminDashboard }));
 const StoragePage = lazy(async () => ({ default: (await import('./features/admin/StoragePage')).StoragePage }));
+const CrmPage = lazy(async () => ({ default: (await import('./features/crm/CrmPage')).CrmPage }));
 
 const EMPTY_FILTER_OPTIONS: ComplaintFilterOptions = { companies: [], agents: [], statuses: [], priorities: [], channels: [], insurance_types: [] };
 /** Filter options come from the server; tolerate a partial payload instead of blanking the console. */
@@ -68,6 +69,7 @@ const NAVIGATION: NavigationItem[] = [
   { page: 'complaints', label: 'قائمة الطلبات', icon: 'inbox', section: 'workspace', permission: 'complaints.view' },
   { page: 'channels', label: 'إعدادات القنوات', icon: 'plug', section: 'workspace', permission: 'integrations.manage' },
   { page: 'overview', label: 'لوحة المؤشرات', icon: 'chart', section: 'workspace', permission: 'analytics.view', extraPermission: 'complaints.view' },
+  { page: 'crm', label: 'المبيعات والوثائق', icon: 'building', section: 'workspace', permission: 'crm.view' },
   { page: 'admin', label: 'لوحة الإدارة', icon: 'overview', section: 'more', permission: 'analytics.view', extraPermission: 'complaints.view' },
   { page: 'users', label: 'المستخدمون', icon: 'users', section: 'more', permission: 'users.view' },
   { page: 'customers', label: 'العملاء', icon: 'users', section: 'more', permission: 'users.view' },
@@ -100,6 +102,7 @@ function routeFromPath(pathname: string): AppRoute {
   if (path === '/staff/operations') return { page: 'operations' };
   if (path === '/staff/audit') return { page: 'audit' };
   if (path === '/staff/storage') return { page: 'storage' };
+  if (path === '/staff/crm') return { page: 'crm' };
   return { page: 'overview' };
 }
 function pathForRoute(route: AppRoute): string {
@@ -352,7 +355,9 @@ function App() {
               ? <OperationsPage access={access} range={range} inScopeCompanies={scopeCompanies} />
               : route.page === 'storage'
                 ? <StoragePage access={access} />
-                : <AuditPage access={access} range={range} />;
+                : route.page === 'crm'
+                  ? <CrmPage access={access} />
+                  : <AuditPage access={access} range={range} />;
   const workspaceLinks = visibleNavigation.filter((item) => item.section === 'workspace');
   const moreLinks = visibleNavigation.filter((item) => item.section === 'more');
   // A collapsed group must never hide where you actually are.
@@ -435,7 +440,7 @@ function App() {
       <main className="main-content"><div className="main-content-inner">
         {notice && <div className="inline-alert info global-notice" role="status">{notice}<button className="notice-close" type="button" aria-label="إخفاء" onClick={() => setNotice('')}><Icon name="close" size={14} /></button></div>}
         <Suspense fallback={<div className="loading-surface"><span className="loading-spinner" /> جارٍ تحميل مساحة العمل…</div>}>
-          {route.page === 'admin' && !canViewAdminDashboard(access) ? <AccessDenied title="لوحة الإدارة غير متاحة" /> : route.page === 'overview' && !(hasPermission(access, 'analytics.view') && hasPermission(access, 'complaints.view')) ? <AccessDenied title="لوحة المؤشرات غير متاحة" /> : route.page === 'complaints' || route.page === 'ticket' ? pageContent : route.page === 'users' && !hasPermission(access, 'users.view') ? <AccessDenied title="إدارة المستخدمين غير متاحة" /> : route.page === 'roles' && !hasPermission(access, 'roles.manage') ? <AccessDenied title="إدارة الأدوار غير متاحة" /> : route.page === 'channels' && !hasPermission(access, 'integrations.manage') ? <AccessDenied title="إعدادات القنوات غير متاحة" /> : route.page === 'operations' && !operationsAllowed(access) ? <AccessDenied title="إعدادات الإدارة غير متاحة" /> : route.page === 'storage' && !storageAllowed(access) ? <AccessDenied title="مركز التخزين غير متاح" /> : route.page === 'audit' && !hasPermission(access, 'audit.view') ? <AccessDenied title="سجل التدقيق غير متاح" /> : pageContent}
+          {route.page === 'admin' && !canViewAdminDashboard(access) ? <AccessDenied title="لوحة الإدارة غير متاحة" /> : route.page === 'overview' && !(hasPermission(access, 'analytics.view') && hasPermission(access, 'complaints.view')) ? <AccessDenied title="لوحة المؤشرات غير متاحة" /> : route.page === 'complaints' || route.page === 'ticket' ? pageContent : route.page === 'users' && !hasPermission(access, 'users.view') ? <AccessDenied title="إدارة المستخدمين غير متاحة" /> : route.page === 'roles' && !hasPermission(access, 'roles.manage') ? <AccessDenied title="إدارة الأدوار غير متاحة" /> : route.page === 'channels' && !hasPermission(access, 'integrations.manage') ? <AccessDenied title="إعدادات القنوات غير متاحة" /> : route.page === 'operations' && !operationsAllowed(access) ? <AccessDenied title="إعدادات الإدارة غير متاحة" /> : route.page === 'storage' && !storageAllowed(access) ? <AccessDenied title="مركز التخزين غير متاح" /> : route.page === 'audit' && !hasPermission(access, 'audit.view') ? <AccessDenied title="سجل التدقيق غير متاح" /> : route.page === 'crm' && !hasPermission(access, 'crm.view') ? <AccessDenied title="المبيعات والوثائق غير متاحة" /> : pageContent}
         </Suspense>
       </div></main>
       <footer className="app-footer"><span>{brand.platform_name}</span><span><Icon name="shield" size={13} /> كل إجراء محمي بنطاق الوصول الفعّال</span><button type="button" onClick={() => setShortcutsOpen(true)}><Icon name="keyboard" size={13} /> اختصارات لوحة المفاتيح</button></footer>

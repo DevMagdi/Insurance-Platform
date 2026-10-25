@@ -16,6 +16,7 @@ from app.api import (
     audit,
     auth,
     catalog,
+    crm,
     customer,
     exports,
     integration_webhooks,
@@ -48,6 +49,8 @@ PUBLIC = {
     "/api/auth/staff/2fa/enroll/start",
     "/api/auth/staff/2fa/enroll/confirm",
     "/api/public/config",
+    # Gateway callbacks authenticate by HMAC signature, not by cookie.
+    "/api/payments/{provider}/webhook",
 }
 
 
@@ -109,6 +112,8 @@ def decorate_spec(app: FastAPI, spec: dict[str, Any]) -> dict[str, Any]:
         *privacy.router.routes,
         *storage_admin.router.routes,
         *platform.router.routes,
+        *crm.router.routes,
+        *crm.payments_router.routes,
     ]
     for route in routes:
         if not isinstance(route, APIRoute) or not route.include_in_schema:

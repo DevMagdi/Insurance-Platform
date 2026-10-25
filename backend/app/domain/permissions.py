@@ -45,6 +45,16 @@ PERMISSIONS: Final[frozenset[str]] = frozenset(
         "requests.intake",
         "corporate.view",
         "corporate.manage",
+        # Phase 2: Sales CRM, policy lifecycle, issuing, imports, payments.
+        "crm.view",
+        "crm.manage",
+        "crm.convert",
+        "policies.view",
+        "policies.manage",
+        "issuing.view",
+        "issuing.manage",
+        "imports.manage",
+        "payments.manage",
     }
 )
 

@@ -59,6 +59,7 @@ from app.services.integration_providers import (
     VoiceProvider,
     WhatsAppCloudProvider,
     WhatsAppSendRequest,
+    build_whatsapp_provider,
     fetch_twilio_recording,
     normalize_inbound_voice_event,
 )
@@ -657,7 +658,14 @@ async def _process_integration_job(ctx: dict[str, Any], row: Any) -> None:
                 language=str(payload.get("language", "en")),
                 parameters=tuple(str(value)[:200] for value in payload.get("parameters", [])[:10]),
             )
-            whatsapp_result = await WhatsAppCloudProvider(config).send(
+            # Default transport stays on this module's name so deployments (and
+            # tests) can substitute it; a configured BSP takes the factory path.
+            whatsapp_provider = (
+                build_whatsapp_provider(config)
+                if config.get("bsp")
+                else WhatsAppCloudProvider(config)
+            )
+            whatsapp_result = await whatsapp_provider.send(
                 whatsapp_request, idempotency_key=digest.hex()
             )
             await _complete_integration_job(

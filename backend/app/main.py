@@ -30,6 +30,7 @@ from app.api import (
     catalog,
     corporate,
     corporate_admin,
+    crm,
     customer,
     exports,
     integration_webhooks,
@@ -250,6 +251,8 @@ app.include_router(operations.router)
 app.include_router(websocket.router)
 app.include_router(privacy.router)
 app.include_router(storage_admin.router)
+app.include_router(crm.router)
+app.include_router(crm.payments_router)
 app.include_router(platform.router)
 
 

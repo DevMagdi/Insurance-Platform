@@ -143,6 +143,40 @@ services:
       postgres:
         condition: service_healthy
 
+  # Celery (Phase 2): lead follow-ups, overdue installments, renewal alerts.
+  # The ARQ worker above keeps the transactional outbox/scan pipeline.
+  celery_worker:
+    build:
+      context: .
+      dockerfile: infra/Dockerfile.backend
+    environment:
+      WORKER_DATABASE_URL: postgresql+asyncpg://app_worker:${APP_WORKER_DB_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      REDIS_URL: redis://redis:6379/0
+      ENVIRONMENT: development
+    command: ['celery', '-A', 'app.celery_app.celery_app', 'worker', '--loglevel=INFO']
+    restart: unless-stopped
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+
+  celery_beat:
+    build:
+      context: .
+      dockerfile: infra/Dockerfile.backend
+    environment:
+      WORKER_DATABASE_URL: postgresql+asyncpg://app_worker:${APP_WORKER_DB_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      REDIS_URL: redis://redis:6379/0
+      ENVIRONMENT: development
+    command: ['celery', '-A', 'app.celery_app.celery_app', 'beat', '--loglevel=INFO']
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+
   bootstrap_admin:
     build:
       context: .
