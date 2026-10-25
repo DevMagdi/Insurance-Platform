@@ -3,9 +3,9 @@
    tokens (design-system.css) so the module matches the console in both
    themes; hexes appear only as token fallbacks. */
 .crmm-drop { border: 2px dashed var(--line-strong, #c9d2e4); border-radius: var(--r-card, 16px); padding: 28px; text-align: center; transition: border-color .15s, background .15s; }
-.crmm-drop.is-over { border-color: var(--accent, #c6a75e); background: var(--wash-accent, rgba(198, 167, 94, .09)); }
-.crmm-progress { height: 10px; border-radius: var(--r-pill, 999px); background: var(--surface-3, #dfe7f0); overflow: hidden; }
-.crmm-progress > div { height: 100%; background: linear-gradient(90deg, var(--gold-600, #c6a75e), var(--gold-500, #d4af37)); transition: width .2s; }
+.crmm-drop.is-over { border-color: var(--accent, #b88a2b); background: var(--wash-accent, rgba(184, 138, 43, .1)); }
+.crmm-progress { height: 10px; border-radius: var(--r-pill, 999px); background: var(--surface-3, #e6dfd3); overflow: hidden; }
+.crmm-progress > div { height: 100%; background: linear-gradient(90deg, var(--gold-600, #b88a2b), var(--gold-500, #c99a3a)); transition: width .2s; }
 .crmm-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
 .crmm-toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; }
 .crmm-pager { display: flex; gap: 8px; align-items: center; justify-content: flex-end; padding: 10px 0; }
@@ -14,10 +14,10 @@
 
 /* Kanban: quiet navy columns, cards with a material lift, gold drop target. */
 .crmm-kanban { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(230px, 1fr); gap: 12px; overflow-x: auto; padding-bottom: 8px; }
-.crmm-column { background: var(--surface-2, #16233b); border: 1px solid var(--line-soft, transparent); border-radius: var(--r-lg, 14px); padding: 10px; min-height: 180px; transition: border-color .15s, box-shadow .15s; }
-.crmm-column.is-over { border-color: var(--accent, #c6a75e); box-shadow: inset 0 0 0 1px var(--accent, #c6a75e), var(--shadow-sm, none); }
+.crmm-column { background: var(--surface-2, #1f2a37); border: 1px solid var(--line-soft, transparent); border-radius: var(--r-lg, 14px); padding: 10px; min-height: 180px; transition: border-color .15s, box-shadow .15s; }
+.crmm-column.is-over { border-color: var(--accent, #b88a2b); box-shadow: inset 0 0 0 1px var(--accent, #b88a2b), var(--shadow-sm, none); }
 .crmm-column h4 { margin: 2px 2px 10px; display: flex; justify-content: space-between; align-items: center; color: var(--ink-800, inherit); }
-.crmm-card { background: var(--surface-1, #111b2e); border: 1px solid var(--line, #d9dee8); border-radius: var(--r-md, 12px); padding: 10px; margin-bottom: 8px; cursor: pointer; box-shadow: var(--shadow-xs, none); transition: box-shadow .15s, transform .15s, border-color .15s; }
+.crmm-card { background: var(--surface-1, #17202a); border: 1px solid var(--line, #d9dee8); border-radius: var(--r-md, 12px); padding: 10px; margin-bottom: 8px; cursor: pointer; box-shadow: var(--shadow-xs, none); transition: box-shadow .15s, transform .15s, border-color .15s; }
 .crmm-card:hover { border-color: var(--line-strong, #c9d2e4); box-shadow: var(--shadow-md, none); transform: translateY(-1px); }
 .crmm-card[draggable="true"] { cursor: grab; }
 .crmm-card[draggable="true"]:active { cursor: grabbing; box-shadow: var(--shadow-lg, none); }
@@ -25,6 +25,6 @@
 .crmm-card small { display: block; color: var(--ink-500, inherit); margin-top: 2px; }
 .crmm-stage-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--line-soft, #eef0f5); }
 .crmm-stage-actions { display: inline-flex; gap: 6px; }
-.crmm-badge { display: inline-block; border-radius: var(--r-pill, 999px); padding: 1px 9px; font-size: .8em; color: var(--ink-700, inherit); background: var(--surface-3, #dfe7f0); }
-.crmm-badge-overdue, .crmm-overdue { color: var(--danger, #b03045); font-weight: 700; }
-.crmm-badge-overdue { background: var(--danger-soft, rgba(176, 48, 69, .12)); }
+.crmm-badge { display: inline-block; border-radius: var(--r-pill, 999px); padding: 1px 9px; font-size: .8em; color: var(--ink-700, inherit); background: var(--surface-3, #e6dfd3); }
+.crmm-badge-overdue, .crmm-overdue { color: var(--danger, #b3362e); font-weight: 700; }
+.crmm-badge-overdue { background: var(--danger-soft, rgba(179, 54, 46, .1)); }
