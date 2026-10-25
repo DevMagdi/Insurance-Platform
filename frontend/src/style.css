@@ -7,36 +7,36 @@
 @import './styles/corporate.css';
 
 @theme {
-  /* Zinc canvas + violet accent, available as Tailwind utilities
-     (bg-base, text-accent, border-hairline, …).
-     The `navy`/`gold` names from the previous palette are kept as aliases at
-     the bottom so existing utility classes keep resolving — they now point at
-     zinc and violet. */
-  --color-base: #09090b;
-  --color-raised: #18181b;
-  --color-elevated: #27272a;
-  --color-hairline: #3f3f46;
-  --color-accent-500: #8b5cf6;
-  --color-accent-600: #7c3aed;
-  --color-accent-400: #a78bfa;
-  --color-emerald: #34d399;
-  --color-cream: #fafafa;
-  --color-ink: #fafafa;
-  --color-ink-muted: #a1a1aa;
-  --color-ink-faint: #8f8f99;
+  /* Premium insurance identity, available as Tailwind utilities
+     (bg-base, text-accent, border-hairline, …): deep navy-ink canvas,
+     measured gold accent, calm emerald. These mirror the dark-theme
+     tokens in design-system.css; theme-aware surfaces belong to the
+     CSS variables, not to static utilities. */
+  --color-base: #0b1220;
+  --color-raised: #111b2e;
+  --color-elevated: #16233b;
+  --color-hairline: #22345a;
+  --color-accent-500: #d4af37;
+  --color-accent-600: #c6a75e;
+  --color-accent-400: #e3c878;
+  --color-emerald: #3dbe9e;
+  --color-cream: #f6f3ec;
+  --color-ink: #f6f3ec;
+  --color-ink-muted: #93a5bf;
+  --color-ink-faint: #8b9db8;
 
-  /* Aliases from the retired navy/gold palette. */
-  --color-navy: #09090b;
-  --color-navy-deep: #000000;
-  --color-midnight: #18181b;
-  --color-gold: #8b5cf6;
-  --color-gold-hover: #a78bfa;
-  --color-gold-deep: #6d28d9;
+  /* House names, same palette. */
+  --color-navy: #0b1220;
+  --color-navy-deep: #050a14;
+  --color-midnight: #0f1d33;
+  --color-gold: #c6a75e;
+  --color-gold-hover: #d4af37;
+  --color-gold-deep: #9a7b32;
 
   --radius-lg: 14px;
-  --radius-xl: 18px;
-  --radius-2xl: 22px;
-  --radius-3xl: 28px;
+  --radius-xl: 16px;
+  --radius-2xl: 20px;
+  --radius-3xl: 24px;
 
   --font-arabic: 'Cairo', 'Tajawal', 'Inter', system-ui, sans-serif;
   --font-latin: 'Inter', 'Cairo', system-ui, sans-serif;
