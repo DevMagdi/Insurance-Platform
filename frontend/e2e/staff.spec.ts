@@ -102,6 +102,12 @@ test('staff login exposes the TOTP challenge step', async ({ page }) => {
   await expect(page.getByLabel(/6-digit authenticator code/)).toBeVisible();
 });
 
+test('legacy people deep links remain gated by users.view', async ({ page }) => {
+  await mockStaffApi(page);
+  await page.goto('/staff/people');
+  await expect(page.getByText('دليل الأفراد غير متاح')).toBeVisible();
+});
+
 test('staff queue opens a ticket and renders the workspace actions', async ({ page }) => {
   await mockStaffApi(page);
   await page.goto('/staff/complaints');
