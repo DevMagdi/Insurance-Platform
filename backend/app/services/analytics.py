@@ -173,6 +173,24 @@ class AnalyticsService:
             raise HTTPException(status_code=422, detail="Limit analytics to 366 days")
         return filters.date_from, filters.date_to
 
+    async def channel_series(
+        self, db: AsyncSession, scope: AccessScope, filters: ComplaintFilter
+    ) -> list[dict[str, Any]]:
+        """Return seven-day-chart-ready channel counts without exposing ticket rows."""
+        self._require_window(scope, filters)
+        grouped = await self.repository.channel_series(db, scope, filters)
+        days: dict[str, dict[str, int]] = {}
+        for timestamp, channel, count in grouped:
+            day = (
+                timestamp.date().isoformat() if hasattr(timestamp, "date") else str(timestamp)[:10]
+            )
+            bucket = days.setdefault(day, {"whatsapp": 0, "calls": 0})
+            if channel == "whatsapp":
+                bucket["whatsapp"] += count
+            elif channel in {"phone", "ai_voice"}:
+                bucket["calls"] += count
+        return [{"date": day, **counts} for day, counts in sorted(days.items())]
+
     async def overview(
         self, db: AsyncSession, scope: AccessScope, filters: ComplaintFilter, version: int
     ) -> dict[str, Any]:

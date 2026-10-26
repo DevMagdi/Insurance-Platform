@@ -9,7 +9,7 @@ vi.mock('../../api', () => ({
   apiResponse: vi.fn(),
   jsonBody: (value: unknown) => JSON.stringify(value),
 }));
-afterEach(() => { cleanup(); vi.clearAllMocks(); });
+afterEach(() => { cleanup(); vi.clearAllMocks(); vi.unstubAllGlobals(); });
 
 const access: StaffAccess = {
   id: 'staff-1', email: 'crm@example.invalid', full_name: 'CRM User', status: 'active', token_version: 1,
@@ -55,7 +55,9 @@ function mockApi() {
     if (path === '/api/crm/leads/lead-1') return lead;
     if (path.startsWith('/api/crm/tasks')) return { tasks: lead.tasks.map((t) => ({ ...t, lead_name: 'شركة النور', lead_no: lead.lead_no })), due_counts: { overdue: 1, today: 0, next_7_days: 2 } };
     if (path.startsWith('/api/crm/reports/sales-performance')) return { salespeople: perf };
-    if (path === '/api/staff/users') return { items: [{ id: 'staff-1', full_name: 'CRM User' }] };
+    if (path === '/api/staff/users') return { items: [
+      { id: 'staff-1', full_name: 'CRM User' }, { id: 'staff-2', full_name: 'Seller Two' },
+    ] };
     if (path === '/api/crm/imports') return { imports: [{ id: 'b1', file_name: 'leads.xlsx', total_rows: 4, success_rows: 2, failed_rows: 2, status: 'completed_with_errors', created_at: '2026-10-24T09:00:00Z' }] };
     return {};
   });
@@ -86,12 +88,19 @@ describe('CrmModulePage (unified CRM)', () => {
   it('lists leads and opens the drawer with tasks, timeline and convert', async () => {
     mockApi();
     render(<CrmModulePage access={access} tab="leads" onTab={() => undefined} />);
+    fireEvent.change(screen.getByLabelText('الهاتف'), { target: { value: lead.phone } });
+    expect(await screen.findByText(/هذا الهاتف مرتبط مسبقاً بـشركة النور/)).toBeTruthy();
+    expect((screen.getByRole('button', { name: 'إضافة' }) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.change(screen.getByLabelText('الهاتف'), { target: { value: '' } });
     fireEvent.click(await screen.findByText('شركة النور'));
     expect(await screen.findByText('سجل الأنشطة')).toBeTruthy();
+    const stepper = screen.getByRole('navigation', { name: 'مراحل العميل المحتمل' });
+    expect(stepper.querySelector('[aria-current="step"]')?.textContent).toContain('جديد');
     expect(screen.getByText(/Imported/)).toBeTruthy();
     expect(screen.getByText('مهام ومتابعات هذا العميل')).toBeTruthy();
     expect(screen.getByText(/Chase quote/)).toBeTruthy();
     const convert = screen.getByText('تحويل إلى عميل فعلي');
+    vi.stubGlobal('confirm', vi.fn(() => true));
     fireEvent.click(convert);
     await waitFor(() => expect(vi.mocked(api)).toHaveBeenCalledWith('/api/crm/leads/lead-1/convert', expect.objectContaining({ method: 'POST' })));
   });
@@ -108,6 +117,37 @@ describe('CrmModulePage (unified CRM)', () => {
     render(<CrmModulePage access={access} tab="performance" onTab={() => undefined} />);
     expect(await screen.findByText(/متوسط زمن الإغلاق/)).toBeTruthy();
     await waitFor(() => expect(screen.getByText('12.5')).toBeTruthy());
+    fireEvent.click(screen.getByRole('button', { name: 'إعادة الإسناد' }));
+    expect(await screen.findByLabelText('البياع الجديد')).toBeTruthy();
+    expect(await screen.findByText('شركة النور')).toBeTruthy();
+    fireEvent.click(screen.getByLabelText(/شركة النور/));
+    fireEvent.change(screen.getByLabelText('البياع الجديد'), { target: { value: 'staff-2' } });
+    fireEvent.click(screen.getByRole('button', { name: /إعادة إسناد المحدد/ }));
+    await waitFor(() => expect(vi.mocked(api)).toHaveBeenCalledWith(
+      '/api/crm/leads/bulk-assign',
+      expect.objectContaining({ method: 'POST', body: JSON.stringify({ ids: ['lead-1'], assigned_to: 'staff-2' }) }),
+    ));
+  });
+
+  it('denies sales-role access to team performance and stage administration', async () => {
+    mockApi();
+    const salesperson: StaffAccess = {
+      ...access,
+      permissions: ['crm.view', 'crm.manage'],
+    };
+    const { rerender } = render(
+      <CrmModulePage access={salesperson} tab="performance" onTab={() => undefined} />,
+    );
+    expect(await screen.findByText('تقارير فريق المبيعات غير متاحة')).toBeTruthy();
+    expect(vi.mocked(api)).not.toHaveBeenCalledWith(
+      expect.stringContaining('/api/crm/reports/sales-performance'),
+    );
+
+    rerender(<CrmModulePage access={salesperson} tab="pipeline" onTab={() => undefined} />);
+    expect(await screen.findByText('شركة النور')).toBeTruthy();
+    expect(screen.getByRole('status').textContent).toContain('المسندون إليك فقط');
+    expect(screen.queryByLabelText('البياع')).toBeNull();
+    expect(screen.queryByText('تخصيص المراحل')).toBeNull();
   });
 
   it('shows import history batches', async () => {

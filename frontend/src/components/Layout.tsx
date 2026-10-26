@@ -114,7 +114,7 @@ export function Layout({ children }: { children: ReactNode }) {
   // Console screens ship their own full-bleed shell (sidebar, topbar, theme).
   // Wrapping them in the customer `max-w-6xl` column squeezed the console into a
   // 1120px island with 160px gutters on a 1440px screen.
-  if ((path.startsWith('/staff') || path.startsWith('/dashboard')) && path !== '/staff/login') {
+  if (path.startsWith('/staff') || path.startsWith('/dashboard')) {
     return <>{children}</>;
   }
 

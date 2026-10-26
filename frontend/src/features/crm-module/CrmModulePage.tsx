@@ -108,7 +108,9 @@ export function CrmModulePage({ access, tab, onTab }: { access: StaffAccess; tab
     {tab === 'leads' && <Leads {...shared} />}
     {tab === 'tasks' && <Tasks {...shared} />}
     {tab === 'import' && <ImportLeads canManage={canManage} onError={setError} onNotice={setNotice} onDone={() => onTab('history')} />}
-    {tab === 'performance' && <Performance onError={setError} />}
+    {tab === 'performance' && (canConvert
+      ? <Performance onError={setError} onNotice={setNotice} agents={agents} />
+      : <AccessDenied title="تقارير فريق المبيعات غير متاحة" />)}
     {tab === 'history' && <ImportHistory onError={setError} />}
   </div>;
 }
@@ -186,7 +188,8 @@ function Pipeline({ access, stages, stageLabel, agents, canManage, canConvert, o
       <div className="summary-stat"><div><strong>{board?.open_pipeline_value ?? '0'}</strong><small>قيمة البايبلاين المفتوحة (ج.م)</small></div></div>
     </section>
     <section className="surface-card"><div className="crmm-toolbar">
-      <label className="field-label">المندوب<select value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)}><option value="">الكل</option>{agents.map((a) => <option key={a.id} value={a.id}>{a.full_name}</option>)}</select></label>
+      {canConvert && <label className="field-label">البياع<select value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)}><option value="">الكل</option>{agents.map((a) => <option key={a.id} value={a.id}>{a.full_name}</option>)}</select></label>}
+      {canManage && !canConvert && <span className="crmm-scope-pill" role="status">عرض معزول: العملاء المحتملون المسندون إليك فقط</span>}
       <label className="field-label">المصدر<select value={source} onChange={(e) => setSource(e.target.value)}><option value="">الكل</option>{Object.entries(SOURCE_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></label>
       <span className="muted">اسحب البطاقة وأفلتها في عمود آخر لنقل المرحلة.</span>
     </div></section>
@@ -221,7 +224,7 @@ function Pipeline({ access, stages, stageLabel, agents, canManage, canConvert, o
         </div>
       ))}
     </div>
-    {canManage && <StageManager stages={stages} onChanged={async () => { await reloadStages(); await load(); }} onError={onError} onNotice={onNotice} />}
+    {canConvert && <StageManager stages={stages} onChanged={async () => { await reloadStages(); await load(); }} onError={onError} onNotice={onNotice} />}
     {detail && <LeadDrawer lead={detail} stages={stages} agents={agents} canManage={canManage} canConvert={canConvert} access={access} onClose={() => setDetail(null)} onChanged={async () => { await openLead(detail.id); await load(); }} onError={onError} onNotice={onNotice} />}
   </>;
 }
@@ -285,6 +288,21 @@ function Leads({ stages, stageLabel, agents, canManage, canConvert, onError, onN
   const [detail, setDetail] = useState<Lead | null>(null);
   const [bulkAssignee, setBulkAssignee] = useState('');
   const [bulkStage, setBulkStage] = useState('contacted');
+  const [newLeadPhone, setNewLeadPhone] = useState('');
+  const [duplicatePhoneLead, setDuplicatePhoneLead] = useState<Lead | null>(null);
+
+  useEffect(() => {
+    const phone = newLeadPhone.trim();
+    if (phone.length < 8) return;
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => {
+      const query = new URLSearchParams({ search: phone, page: '1', page_size: '100' });
+      void api<LeadsPage>(`/api/crm/leads?${query}`, { signal: controller.signal })
+        .then((result) => setDuplicatePhoneLead(result.items.find((lead) => lead.phone === phone) ?? null))
+        .catch(() => { if (!controller.signal.aborted) setDuplicatePhoneLead(null); });
+    }, 300);
+    return () => { window.clearTimeout(timer); controller.abort(); };
+  }, [newLeadPhone]);
 
   const load = useCallback(async () => {
     const query = new URLSearchParams({ page: String(page), page_size: '20', sort, order });
@@ -324,7 +342,7 @@ function Leads({ stages, stageLabel, agents, canManage, canConvert, onError, onN
           notes: form.get('notes') || null,
         }),
       });
-      onNotice('تمت إضافة العميل المحتمل.'); event.currentTarget.reset(); await load();
+      onNotice('تمت إضافة العميل المحتمل.'); event.currentTarget.reset(); setNewLeadPhone(''); setDuplicatePhoneLead(null); await load();
     } catch (err) { onError(err instanceof Error ? err.message : 'تعذر الإضافة.'); }
   };
 
@@ -332,23 +350,25 @@ function Leads({ stages, stageLabel, agents, canManage, canConvert, onError, onN
     {canManage && <section className="surface-card"><h3>إضافة Lead</h3><form className="crmm-toolbar" onSubmit={createLead}>
       <label className="field-label">الاسم / جهة الاتصال<input name="full_name" required minLength={2} /></label>
       <label className="field-label">الشركة (اختياري)<input name="company_name" /></label>
-      <label className="field-label">الهاتف<input name="phone" dir="ltr" placeholder="010…" /></label>
+      <label className="field-label">الهاتف<input name="phone" type="tel" dir="ltr" placeholder="010…" value={newLeadPhone} onChange={(event) => { setNewLeadPhone(event.target.value); setDuplicatePhoneLead(null); }} aria-label="الهاتف" aria-describedby={duplicatePhoneLead ? 'crm-lead-phone-duplicate' : undefined} />
+        {duplicatePhoneLead && <small id="crm-lead-phone-duplicate" className="crmm-duplicate-warning" role="status">هذا الهاتف مرتبط مسبقاً بـ{duplicatePhoneLead.company_name ?? duplicatePhoneLead.full_name} ({duplicatePhoneLead.lead_no}).</small>}
+      </label>
       <label className="field-label">البريد<input name="email" type="email" dir="ltr" /></label>
       <label className="field-label">المصدر<select name="source">{Object.entries(SOURCE_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></label>
       <label className="field-label">الأولوية<select name="priority">{Object.entries(PRIORITY_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></label>
       <label className="field-label">نوع التأمين<select name="insurance_type"><option value="health">طبي</option><option value="general">عام</option><option value="both">كلاهما</option></select></label>
       <label className="field-label">القسط المتوقع<input name="expected_premium" type="number" min="0" step="0.01" /></label>
       <label className="field-label">ملاحظات<input name="notes" /></label>
-      <button className="button button-dark" type="submit">إضافة</button>
+      <button className="button button-dark" type="submit" disabled={Boolean(duplicatePhoneLead)}>إضافة</button>
     </form></section>}
     <section className="surface-card"><div className="crmm-toolbar">
       <label className="field-label">بحث<input value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} placeholder="اسم / شركة / هاتف / بريد / رقم" /></label>
       <label className="field-label">المرحلة<select value={stage} onChange={(e) => { setStage(e.target.value); setPage(1); }}><option value="">الكل</option>{stages.map((s) => <option key={s.code} value={s.code}>{s.name_ar}</option>)}</select></label>
       <label className="field-label">المصدر<select value={source} onChange={(e) => { setSource(e.target.value); setPage(1); }}><option value="">الكل</option>{Object.entries(SOURCE_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></label>
-      <label className="field-label">المندوب<select value={assignedTo} onChange={(e) => { setAssignedTo(e.target.value); setPage(1); }}><option value="">الكل</option>{agents.map((a) => <option key={a.id} value={a.id}>{a.full_name}</option>)}</select></label>
+      {canConvert && <label className="field-label">البياع<select value={assignedTo} onChange={(e) => { setAssignedTo(e.target.value); setPage(1); }}><option value="">الكل</option>{agents.map((a) => <option key={a.id} value={a.id}>{a.full_name}</option>)}</select></label>}
       {canManage && selected.size > 0 && <>
-        <label className="field-label">إسناد جماعي<select value={bulkAssignee} onChange={(e) => setBulkAssignee(e.target.value)}><option value="">— إلغاء الإسناد —</option>{agents.map((a) => <option key={a.id} value={a.id}>{a.full_name}</option>)}</select></label>
-        <button className="button button-light" type="button" onClick={() => void bulk('/api/crm/leads/bulk-assign', { ids: [...selected], assigned_to: bulkAssignee || null }, 'تم الإسناد الجماعي.')}>إسناد ({selected.size})</button>
+        {canConvert && <><label className="field-label">إسناد جماعي<select value={bulkAssignee} onChange={(e) => setBulkAssignee(e.target.value)}><option value="">— إلغاء الإسناد —</option>{agents.map((a) => <option key={a.id} value={a.id}>{a.full_name}</option>)}</select></label>
+        <button className="button button-light" type="button" onClick={() => void bulk('/api/crm/leads/bulk-assign', { ids: [...selected], assigned_to: bulkAssignee || null }, 'تم الإسناد الجماعي.')}>إسناد ({selected.size})</button></>}
         <label className="field-label">نقل جماعي لمرحلة<select value={bulkStage} onChange={(e) => setBulkStage(e.target.value)}>{stages.filter((s) => s.is_active).map((s) => <option key={s.code} value={s.code}>{s.name_ar}</option>)}</select></label>
         <button className="button button-light" type="button" onClick={() => void bulk('/api/crm/leads/bulk-stage', { ids: [...selected], stage_code: bulkStage }, 'تم نقل المرحلة جماعياً.')}>نقل ({selected.size})</button>
       </>}
@@ -356,7 +376,7 @@ function Leads({ stages, stageLabel, agents, canManage, canConvert, onError, onN
     <section className="surface-card admin-table-card"><div className="table-wrap"><table className="data-table"><thead><tr>
       <th></th>
       <th><button type="button" className="link-button" onClick={() => toggleSort('full_name')}>الاسم / الشركة</button></th>
-      <th>الهاتف</th><th>المصدر</th>
+      <th>الهاتف</th><th>البياع</th><th>المصدر</th>
       <th><button type="button" className="link-button" onClick={() => toggleSort('stage_code')}>المرحلة</button></th>
       <th>الأولوية</th><th>القسط المتوقع</th>
       <th><button type="button" className="link-button" onClick={() => toggleSort('next_followup_at')}>المتابعة</button></th>
@@ -366,6 +386,7 @@ function Leads({ stages, stageLabel, agents, canManage, canConvert, onError, onN
         <td><input type="checkbox" aria-label={`تحديد ${lead.full_name}`} checked={selected.has(lead.id)} onChange={() => toggle(lead.id)} /></td>
         <td><button type="button" className="link-button" onClick={() => void openLead(lead.id)}><strong>{lead.company_name ?? lead.full_name}</strong></button><br /><small>{lead.lead_no}{lead.company_name ? ` · ${lead.full_name}` : ''}</small></td>
         <td dir="ltr">{lead.phone ?? '—'}</td>
+        <td>{agents.find((agent) => agent.id === lead.assigned_to)?.full_name ?? (lead.assigned_to ? '—' : <span className="crmm-badge">غير مسند</span>)}</td>
         <td>{SOURCE_LABELS[lead.source] ?? lead.source}</td>
         <td>{stageLabel(lead.stage_code)}</td>
         <td>{PRIORITY_LABELS[lead.priority] ?? lead.priority}</td>
@@ -374,7 +395,7 @@ function Leads({ stages, stageLabel, agents, canManage, canConvert, onError, onN
         <td>{formatDateTime(lead.created_at)}</td>
         <td>{canManage && <button type="button" className="button button-light button-small" onClick={() => void remove(lead)}>حذف</button>}</td>
       </tr>)}
-      {data && !data.items.length && <tr><td colSpan={10}><div className="empty-inline">لا يوجد عملاء محتملون مطابقون.</div></td></tr>}
+      {data && !data.items.length && <tr><td colSpan={11}><div className="empty-inline">لا يوجد عملاء محتملون مطابقون.</div></td></tr>}
     </tbody></table></div>
       <div className="crmm-pager">
         <button className="button button-light button-small" type="button" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>السابق</button>
@@ -434,9 +455,19 @@ function LeadDrawer({ lead, stages, agents, canManage, canConvert, onClose, onCh
     try { await api(`/api/crm/tasks/${task.id}/complete`, { method: 'POST', body: jsonBody({}) }); await onChanged(); }
     catch (err) { onError(err instanceof Error ? err.message : 'تعذر إنجاز المهمة.'); }
   };
+  const pipelineSteps = stages
+    .filter((stage) => stage.is_active && !stage.is_lost)
+    .sort((left, right) => left.sort_order - right.sort_order);
+  const currentStageIndex = pipelineSteps.findIndex((stage) => stage.code === lead.stage_code);
   const convert = async () => {
+    if (!window.confirm(`تحويل «${lead.company_name ?? lead.full_name}» إلى عميل فعلي؟`)) return;
     try {
-      await api(`/api/crm/leads/${lead.id}/convert`, { method: 'POST', body: jsonBody({}) });
+      const converted = await api<{ corporate_client_id: string }>(`/api/crm/leads/${lead.id}/convert`, { method: 'POST', body: jsonBody({}) });
+      window.localStorage.setItem('brokerhub:last-converted-client', JSON.stringify({
+        id: converted.corporate_client_id,
+        name: lead.company_name ?? lead.full_name,
+        at: Date.now(),
+      }));
       onNotice('تم تحويل العميل المحتمل إلى عميل فعلي بكل بياناته (ملف عميل جاهز).');
       await onChanged();
     } catch (err) { onError(err instanceof Error ? err.message : 'تعذر التحويل.'); }
@@ -445,6 +476,13 @@ function LeadDrawer({ lead, stages, agents, canManage, canConvert, onClose, onCh
     {lead.converted_corporate_client_id
       ? <p className="inline-alert" role="status">محوّل إلى عميل فعلي — افتح «ملف العميل» من مساحة الوثائق والإصدار لعرض العقد والوثائق والموظفين.</p>
       : canConvert && <button className="button button-dark" type="button" onClick={() => void convert()}>تحويل إلى عميل فعلي</button>}
+    {pipelineSteps.length > 0 && <nav className="crmm-lead-stepper" aria-label="مراحل العميل المحتمل">
+      <ol>{pipelineSteps.map((stage, index) => <li
+        key={stage.id}
+        className={stage.code === lead.stage_code ? 'is-current' : index < currentStageIndex ? 'is-complete' : ''}
+        aria-current={stage.code === lead.stage_code ? 'step' : undefined}
+      ><span className="crmm-step-number">{index + 1}</span><span>{stage.name_ar}</span></li>)}</ol>
+    </nav>}
     {canManage ? <form className="crmm-toolbar" onSubmit={save}>
       <label className="field-label">الاسم<input name="full_name" defaultValue={lead.full_name} required /></label>
       <label className="field-label">الشركة<input name="company_name" defaultValue={lead.company_name ?? ''} /></label>
@@ -455,7 +493,7 @@ function LeadDrawer({ lead, stages, agents, canManage, canConvert, onClose, onCh
       <label className="field-label">المصدر<select name="source" defaultValue={lead.source}>{Object.entries(SOURCE_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></label>
       <label className="field-label">نوع التأمين<select name="insurance_type" defaultValue={lead.insurance_type}><option value="health">طبي</option><option value="general">عام</option><option value="both">كلاهما</option></select></label>
       <label className="field-label">القسط المتوقع<input name="expected_premium" type="number" min="0" step="0.01" defaultValue={lead.expected_premium ?? ''} /></label>
-      <label className="field-label">المندوب<select name="assigned_to" defaultValue={lead.assigned_to ?? ''}><option value="">غير مسند</option>{agents.map((a) => <option key={a.id} value={a.id}>{a.full_name}</option>)}</select></label>
+      {canConvert && <label className="field-label">البياع<select name="assigned_to" defaultValue={lead.assigned_to ?? ''}><option value="">غير مسند</option>{agents.map((a) => <option key={a.id} value={a.id}>{a.full_name}</option>)}</select></label>}
       <label className="field-label">سبب الخسارة<input name="lost_reason" defaultValue={lead.lost_reason ?? ''} /></label>
       <label className="field-label">ملاحظات<input name="notes" defaultValue={lead.notes ?? ''} /></label>
       <button className="button button-dark" type="submit">حفظ</button>
@@ -538,7 +576,7 @@ function Tasks({ agents, canManage, onError, onNotice }: SharedProps) {
     <section className="surface-card"><div className="crmm-toolbar">
       <label className="field-label">الاستحقاق<select value={due} onChange={(e) => setDue(e.target.value)}><option value="">الكل</option><option value="overdue">متأخرة</option><option value="today">اليوم</option><option value="upcoming">قادمة</option></select></label>
       <label className="field-label">الحالة<select value={status} onChange={(e) => setStatus(e.target.value)}><option value="">الكل</option><option value="pending">معلّقة</option><option value="done">منجزة</option><option value="cancelled">ملغاة</option></select></label>
-      <label className="field-label">المندوب<select value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)}><option value="">الكل</option>{agents.map((a) => <option key={a.id} value={a.id}>{a.full_name}</option>)}</select></label>
+      {agents.length > 1 && <label className="field-label">البياع<select value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)}><option value="">الكل</option>{agents.map((a) => <option key={a.id} value={a.id}>{a.full_name}</option>)}</select></label>}
     </div></section>
     <section className="surface-card admin-table-card"><div className="table-wrap"><table className="data-table"><thead><tr>
       <th>المهمة</th><th>العميل المحتمل</th><th>النوع</th><th>الموعد</th><th>الحالة</th><th>المندوب</th><th></th>
@@ -560,10 +598,16 @@ function Tasks({ agents, canManage, onError, onNotice }: SharedProps) {
   </>;
 }
 
-function Performance({ onError }: { onError: (v: string) => void }) {
+function Performance({ onError, onNotice, agents }: {
+  onError: (v: string) => void; onNotice: (v: string) => void; agents: Agent[];
+}) {
   const [rows, setRows] = useState<PerfRow[]>([]);
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
+  const [reassigning, setReassigning] = useState<PerfRow | null>(null);
+  const [leads, setLeads] = useState<Lead[]>([]);
+  const [selectedLeadIds, setSelectedLeadIds] = useState<Set<string>>(new Set());
+  const [targetSeller, setTargetSeller] = useState('');
   const load = useCallback(async () => {
     const query = new URLSearchParams();
     if (from) query.set('date_from', new Date(from).toISOString());
@@ -572,6 +616,30 @@ function Performance({ onError }: { onError: (v: string) => void }) {
     catch (err) { onError(err instanceof Error ? err.message : 'تعذر تحميل أداء البياعين.'); }
   }, [from, to, onError]);
   useEffect(() => { const run = async () => { await load(); }; void run(); }, [load]);
+
+  const openReassignment = async (seller: PerfRow) => {
+    try {
+      const query = new URLSearchParams({ assigned_to: seller.staff_id, page: '1', page_size: '100' });
+      const result = await api<LeadsPage>(`/api/crm/leads?${query}`);
+      setReassigning(seller);
+      setLeads(result.items);
+      setSelectedLeadIds(new Set());
+      setTargetSeller('');
+    } catch (err) { onError(err instanceof Error ? err.message : 'تعذر تحميل Leads المسندة للبياع.'); }
+  };
+  const submitReassignment = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!reassigning || !targetSeller || selectedLeadIds.size === 0) return;
+    try {
+      await api('/api/crm/leads/bulk-assign', {
+        method: 'POST', body: jsonBody({ ids: [...selectedLeadIds], assigned_to: targetSeller }),
+      });
+      onNotice(`تمت إعادة إسناد ${selectedLeadIds.size} من العملاء المحتملين.`);
+      setReassigning(null);
+      await load();
+    } catch (err) { onError(err instanceof Error ? err.message : 'تعذرت إعادة الإسناد.'); }
+  };
+
   return <>
     <section className="surface-card"><div className="crmm-toolbar">
       <label className="field-label">من تاريخ<input type="date" value={from} onChange={(e) => setFrom(e.target.value)} /></label>
@@ -581,16 +649,34 @@ function Performance({ onError }: { onError: (v: string) => void }) {
       <ResponsiveContainer width="100%" height={240}><BarChart data={rows}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="full_name" /><YAxis /><Tooltip /><Bar dataKey="conversion_rate" fill="#6b9ac4" name="معدل التحويل ٪" radius={[6, 6, 0, 0]} /></BarChart></ResponsiveContainer>
     </section>
     <section className="surface-card admin-table-card"><div className="table-wrap"><table className="data-table"><thead><tr>
-      <th>البياع</th><th>Leads</th><th>ربح</th><th>خسارة</th><th>تحويل</th><th>معدل التحويل</th><th>قيمة الصفقات الرابحة</th><th>قيمة البايبلاين</th><th>متوسط زمن الإغلاق (يوم)</th><th>مهام منجزة</th><th>مهام متأخرة</th>
+      <th>البياع</th><th>Leads</th><th>ربح</th><th>خسارة</th><th>تحويل</th><th>معدل التحويل</th><th>قيمة الصفقات الرابحة</th><th>قيمة البايبلاين</th><th>متوسط زمن الإغلاق (يوم)</th><th>مهام منجزة</th><th>مهام متأخرة</th><th>إجراء</th>
     </tr></thead><tbody>
       {rows.map((row) => <tr key={row.staff_id}>
         <td><strong>{row.full_name}</strong></td><td>{formatNumber(row.leads)}</td><td>{formatNumber(row.won)}</td><td>{formatNumber(row.lost)}</td>
         <td>{formatNumber(row.converted)}</td><td>{row.conversion_rate}٪</td><td>{row.won_value}</td><td>{row.pipeline_value}</td>
         <td>{row.avg_close_days ?? '—'}</td><td>{formatNumber(row.tasks_done)}</td>
         <td className={row.tasks_overdue ? 'crmm-overdue' : ''}>{formatNumber(row.tasks_overdue)}</td>
+        <td><button className="button button-light button-small" type="button" onClick={() => void openReassignment(row)}>إعادة الإسناد</button></td>
       </tr>)}
-      {!rows.length && <tr><td colSpan={11}><div className="empty-inline">لا توجد بيانات أداء بعد.</div></td></tr>}
+      {!rows.length && <tr><td colSpan={12}><div className="empty-inline">لا توجد بيانات أداء بعد.</div></td></tr>}
     </tbody></table></div></section>
+    {reassigning && <Modal title="إعادة إسناد العملاء المحتملين" eyebrow={reassigning.full_name} onClose={() => setReassigning(null)} wide>
+      <form className="crmm-team-reassign" onSubmit={submitReassignment}>
+        <label className="field-label">البياع الجديد<select value={targetSeller} onChange={(event) => setTargetSeller(event.target.value)} required>
+          <option value="">اختر البياع</option>{agents.filter((agent) => agent.id !== reassigning.staff_id).map((agent) => <option key={agent.id} value={agent.id}>{agent.full_name}</option>)}
+        </select></label>
+        <fieldset className="crmm-reassign-list"><legend>حدد العملاء المحتملين لإعادة إسنادهم</legend>
+          {leads.map((lead) => <label key={lead.id}>
+            <input type="checkbox" checked={selectedLeadIds.has(lead.id)} onChange={() => setSelectedLeadIds((current) => {
+              const next = new Set(current); if (next.has(lead.id)) next.delete(lead.id); else next.add(lead.id); return next;
+            })} />
+            <span><strong>{lead.company_name ?? lead.full_name}</strong><small>{lead.lead_no} · {lead.phone ?? '—'}</small></span>
+          </label>)}
+          {!leads.length && <p className="empty-inline">لا توجد Leads مسندة إلى هذا البياع.</p>}
+        </fieldset>
+        <div className="crmm-toolbar"><button className="button button-dark" type="submit" disabled={!targetSeller || selectedLeadIds.size === 0}>إعادة إسناد المحدد ({selectedLeadIds.size})</button></div>
+      </form>
+    </Modal>}
   </>;
 }
 

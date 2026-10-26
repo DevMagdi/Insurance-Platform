@@ -27,7 +27,8 @@ const PLAN_LABELS: Record<string, string> = { monthly: 'شهري', quarterly: '�
 type Tab = 'policies' | 'issuing' | 'imports' | 'folder' | 'reports';
 
 export function InsuranceOpsPage({ access }: { access: StaffAccess }) {
-  const [tab, setTab] = useState<Tab>('policies');
+  const [pendingFolderId] = useState(() => window.localStorage.getItem('brokerhub:open-client-folder') ?? '');
+  const [tab, setTab] = useState<Tab>(pendingFolderId ? 'folder' : 'policies');
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [leads, setLeads] = useState<CrmLeadOption[]>([]);
@@ -39,7 +40,7 @@ export function InsuranceOpsPage({ access }: { access: StaffAccess }) {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [clients, setClients] = useState<ClientOption[]>([]);
   const [folder, setFolder] = useState<ClientFolder | null>(null);
-  const [folderClientId, setFolderClientId] = useState('');
+  const [folderClientId, setFolderClientId] = useState(pendingFolderId);
   const [insurerRows, setInsurerRows] = useState<Record<string, string | number | null>[]>([]);
   const [searchQ, setSearchQ] = useState('');
   const [searchResult, setSearchResult] = useState('');
@@ -47,6 +48,7 @@ export function InsuranceOpsPage({ access }: { access: StaffAccess }) {
   const [callerResult, setCallerResult] = useState('');
 
   const canCrm = hasPermission(access, 'crm.view');
+  const canFolderAccess = canCrm || hasPermission(access, 'corporate.view');
   const canPolicies = hasPermission(access, 'policies.view');
   const canManagePolicies = hasPermission(access, 'policies.manage');
   const canIssuing = hasPermission(access, 'issuing.view');
@@ -63,7 +65,7 @@ export function InsuranceOpsPage({ access }: { access: StaffAccess }) {
       safe(api<{ issuing: Issuing[] }>('/api/staff/insurance-ops/issuing'), { issuing: [] }),
       safe(api<{ imports: ImportJob[] }>('/api/staff/insurance-ops/imports'), { imports: [] }),
       safe(api<Company[]>('/api/companies'), []),
-      safe(api<{ items: ClientOption[] }>('/api/staff/corporate'), { items: [] }),
+      safe(api<{ items: ClientOption[] }>('/api/staff/corporate/sales-directory'), { items: [] }),
       safe(api<{ insurers: Record<string, string | number | null>[] }>('/api/staff/insurance-ops/insurer-performance'), { insurers: [] }),
     ]);
     setLeads(ld.items); setPolicies(po.policies);
@@ -72,11 +74,19 @@ export function InsuranceOpsPage({ access }: { access: StaffAccess }) {
   }, []);
 
   useEffect(() => {
-    const initial = async () => { if (canCrm) await load(); };
+    const initial = async () => { if (canFolderAccess) await load(); };
     void initial();
-  }, [canCrm, load]);
+  }, [canFolderAccess, load]);
 
-  if (!canCrm) return <AccessDenied title="الوثائق والإصدار غير متاحة" />;
+  useEffect(() => {
+    if (!pendingFolderId) return;
+    window.localStorage.removeItem('brokerhub:open-client-folder');
+    void api<ClientFolder>(`/api/staff/insurance-ops/client-folder/${pendingFolderId}`)
+      .then((result) => { setFolder(result); setFolderClientId(pendingFolderId); setTab('folder'); setError(''); })
+      .catch((err: unknown) => setError(err instanceof Error ? err.message : 'تعذر فتح ملف العميل.'));
+  }, [pendingFolderId]);
+
+  if (!canFolderAccess) return <AccessDenied title="ملف العميل غير متاح" />;
 
   const run = async (call: () => Promise<unknown>, message: string) => {
     setError(''); setNotice('');

@@ -28,7 +28,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Reques
 from sqlalchemy import select, text
 from sqlalchemy.exc import DBAPIError
 
-from app.api.deps import RequestContext, require_permission
+from app.api.deps import RequestContext, authenticated_context, require_permission
 from app.db import purpose_transaction
 from app.domain.enums import IssuingStatus, PaymentProviderName
 from app.domain.insurance_ops_schemas import (
@@ -50,6 +50,7 @@ from app.models.insurance_ops import (
     PolicyInstallment,
 )
 from app.models.tickets import AuditLog
+from app.repositories.crm_module import CrmModuleRepository
 from app.repositories.insurance_ops import InsuranceOpsRepository
 from app.security.national_id import validate_national_id
 from app.security.tokens import csrf_required
@@ -64,6 +65,19 @@ payments_router = APIRouter(prefix="/api/payments", tags=["payments"])
 # Client Folder / caller lookup / evidence reads keep their historical
 # crm.view gate (the folder is where a converted CRM lead lands).
 CRM_VIEW = Depends(require_permission("crm.view"))
+
+
+async def _client_folder_context(
+    ctx: RequestContext = Depends(authenticated_context),
+) -> RequestContext:
+    if ctx.actor.scope != "staff" or not {"crm.view", "corporate.view"}.intersection(
+        ctx.permissions
+    ):
+        raise HTTPException(status_code=403, detail="Permission denied")
+    return ctx
+
+
+CLIENT_FOLDER_VIEW = Depends(_client_folder_context)
 POLICIES_VIEW = Depends(require_permission("policies.view"))
 POLICIES_MANAGE = Depends(require_permission("policies.manage"))
 ISSUING_VIEW = Depends(require_permission("issuing.view"))
@@ -73,6 +87,7 @@ PAYMENTS_MANAGE = Depends(require_permission("payments.manage"))
 
 _MAX_IMPORT_BYTES = 5_242_880
 repo = InsuranceOpsRepository()
+crm_repo = CrmModuleRepository()
 
 
 async def _audit(
@@ -635,8 +650,40 @@ async def list_imports(ctx: RequestContext = IMPORTS_MANAGE) -> dict[str, Any]:
 
 @router.get("/client-folder/{corporate_client_id}")
 async def client_folder(
-    corporate_client_id: UUID, ctx: RequestContext = CRM_VIEW
+    corporate_client_id: UUID, ctx: RequestContext = CLIENT_FOLDER_VIEW
 ) -> dict[str, Any]:
+    is_salesperson = "crm.manage" in ctx.permissions and "crm.convert" not in ctx.permissions
+    if "corporate.view" not in ctx.permissions or is_salesperson:
+        # CRM-only users may open the minimal folder that belongs to their
+        # own converted lead. Never ask the corporate-client RLS view for an
+        # arbitrary id, and never return contracts, policies, or employees.
+        leads = await crm_repo.converted_leads(ctx.db, assigned_to=ctx.actor.id)
+        lead = next(
+            (row for row in leads if row.converted_corporate_client_id == corporate_client_id),
+            None,
+        )
+        if lead is None:
+            raise HTTPException(status_code=404, detail="Client not found")
+        name = lead.company_name or lead.full_name
+        return {
+            "client": {
+                "id": str(corporate_client_id),
+                "name_ar": name,
+                "name_en": name,
+                "contact_name": lead.full_name,
+                "contact_mobile": lead.phone,
+                "contact_email": lead.email,
+                "lead_id": str(lead.id),
+                "lead_no": lead.lead_no,
+            },
+            "contracts": [],
+            "documents": [],
+            "employees": [],
+            "tickets_by_status": {},
+            "policies": [],
+            "scope": "assigned-converted-lead",
+        }
+
     folder = await repo.client_folder(ctx.db, corporate_client_id)
     if folder is None:
         raise HTTPException(status_code=404, detail="Client not found")

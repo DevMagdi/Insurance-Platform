@@ -102,6 +102,12 @@ test('staff login exposes the TOTP challenge step', async ({ page }) => {
   await expect(page.getByLabel(/6-digit authenticator code/)).toBeVisible();
 });
 
+test('legacy people deep links remain gated by users.view', async ({ page }) => {
+  await mockStaffApi(page);
+  await page.goto('/staff/people');
+  await expect(page.getByText('دليل الأفراد غير متاح')).toBeVisible();
+});
+
 test('staff queue opens a ticket and renders the workspace actions', async ({ page }) => {
   await mockStaffApi(page);
   await page.goto('/staff/complaints');
@@ -130,10 +136,12 @@ for (const theme of ['light', 'dark'] as const) {
     await page.getByText('CMP-2026-000123').click();
     await expect(page.getByRole('heading', { name: 'إدارة الحالة' })).toBeVisible();
     const shell = page.locator('.staff-console');
-    // Amani Reserve canvas (design-system v4): #10151c on dark, #f6f1e8 warm
-    // cream on light; warm paper ink #f7f4ee / green-black ink #1a1f1a.
-    await expect(shell).toHaveCSS('background-color', theme === 'dark' ? 'rgb(20, 17, 15)' : 'rgb(250, 247, 242)');
-    await expect(shell).toHaveCSS('color', theme === 'dark' ? 'rgb(250, 247, 242)' : 'rgb(26, 22, 20)');
+    // The Broker Hub reference contract uses the same light canvas regardless
+    // of the customer's independent theme preference: #F3F4F9 / #101828.
+    // The earlier Amani Reserve assertions described a different design brief.
+    await expect(shell).toHaveCSS('background-color', 'rgb(243, 244, 249)');
+    await expect(shell).toHaveCSS('color', 'rgb(16, 24, 40)');
+    await expect(page.locator('.sidebar')).toHaveCSS('background-color', 'rgb(14, 20, 36)');
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     await page.screenshot({ path: testInfo.outputPath(`staff-${theme}.png`), fullPage: true });
     await page.goto('/staff/analytics');

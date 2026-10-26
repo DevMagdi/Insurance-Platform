@@ -249,40 +249,6 @@
 .staff-console .arrival-summary-mark { width: 27px; height: 27px; display: grid; place-items: center; color: var(--teal); border-radius: 8px; background: var(--teal-soft); }
 .staff-console .arrival-summary strong { color: var(--text); }
 .staff-console .arrival-summary button { display: inline-flex; align-items: center; gap: 5px; margin-inline-start: auto; color: var(--gold); border: 0; background: transparent; cursor: pointer; font-size: 10px; font-weight: 700; }
-.staff-console .charts-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
-.staff-console .charts-grid.charts-top { grid-template-columns: minmax(0, 1.7fr) minmax(280px, 1fr); }
-.staff-console .chart-card { min-width: 0; overflow: hidden; padding: 15px 16px 10px; }
-.staff-console .chart-card-heading { display: flex; align-items: center; justify-content: space-between; min-height: 38px; }
-.staff-console .chart-card-heading h3 { margin: 0; color: var(--text-secondary); font-size: 12px; font-weight: 680; }
-.staff-console .chart-card-heading p { margin: 3px 0 0; color: var(--text-faint); font-size: 9px; }
-.staff-console .chart-container { width: 100%; min-width: 0; height: 250px; margin-top: 6px; }
-.staff-console .chart-container.trend-chart { height: 255px; }
-.staff-console .chart-container.compact-chart { height: 220px; }
-.staff-console .chart-container.type-chart { height: 190px; max-width: 235px; }
-.staff-console .type-chart-layout { display: flex; align-items: center; justify-content: space-around; gap: 5px; min-height: 200px; }
-.staff-console .chart-legend { display: flex; flex-direction: column; gap: 10px; min-width: 110px; }
-.staff-console .chart-legend > div { display: grid; grid-template-columns: 7px 1fr auto; align-items: center; gap: 7px; color: var(--text-muted); font-size: 10px; }
-.staff-console .chart-legend > div > span { width: 7px; height: 7px; border-radius: 50%; }
-.staff-console .chart-legend strong { color: var(--text-secondary); font-size: 10px; }
-.staff-console .charts-insights { display: grid; grid-template-columns: 1.2fr .8fr; gap: 14px; }
-.staff-console .chart-wide { grid-column: span 1; }
-.staff-console .heatmap-wrap { display: flex; flex-direction: column; gap: 5px; padding: 10px 0 8px; overflow: auto; }
-.staff-console .heatmap-hours, .staff-console .heatmap-row { min-width: 500px; display: grid; grid-template-columns: 52px repeat(24, minmax(11px, 1fr)); gap: 4px; }
-.staff-console .heatmap-hours span, .staff-console .heatmap-day { color: var(--text-faint); font-size: 8px; text-align: center; }
-.staff-console .heatmap-cell { min-height: 13px; border: 0; border-radius: 3px; background: color-mix(in srgb, var(--success) 5%, transparent); }
-.staff-console .heatmap-caption { margin-top: 9px; color: var(--text-faint); font-size: 9px; }
-.staff-console .issues-list { display: flex; flex-direction: column; gap: 7px; padding: 12px 0; }
-.staff-console .issue-row { display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; align-items: center; gap: 8px; }
-.staff-console .issue-rank { color: var(--text-faint); font-size: 9px; }
-.staff-console .issue-name { overflow: hidden; color: var(--text-secondary); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
-.staff-console .issue-row strong { color: var(--text); font-size: 10px; }
-.staff-console .score-table { width: 100%; border-collapse: collapse; font-size: 10px; }
-.staff-console .score-table th, .staff-console .score-table td { padding: 9px 7px; border-bottom: 1px solid var(--border); text-align: start; }
-.staff-console .score-table th { color: var(--text-muted); font-weight: 550; }
-.staff-console .score-table td { color: var(--text-secondary); }
-.staff-console .scorecard-card { padding: 16px; }
-.staff-console .ai-insight-card { padding: 14px; }
-
 /* Queue, filters, table, pagination */
 .staff-console .queue-toolbar, .staff-console .operation-tools, .staff-console .user-toolbar { display: flex; align-items: center; gap: 10px; padding: 11px 13px; }
 .staff-console .queue-search-wrap { height: 37px; min-width: 220px; display: flex; align-items: center; gap: 8px; flex: 1; padding: 0 10px; color: var(--text-faint); border: 1px solid var(--border); border-radius: 8px; background: var(--surface-muted); }

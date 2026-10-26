@@ -90,11 +90,10 @@ export function StaffLoginPage() {
   };
 
   return (
-    /* The staff sign-in used to be a lone card pinned to the top of an empty
-       page, headed by an amber eyebrow left over from the gold palette. It is
-       the first screen an operator sees; it gets the same treatment as the
-       corporate sign-in — centred, branded, accent used once. */
-    <section className="staff-auth-card">
+    <main className="brokerhub-login-page" dir="rtl">
+      <section className="brokerhub-login-form">
+        <div className="brokerhub-login-brand"><span>و</span><strong>وسيط · Broker Hub</strong></div>
+        <section className="staff-auth-card">
       <span className="staff-auth-mark" aria-hidden="true">
         <img src={brand.logo_url} alt="" />
       </span>
@@ -151,6 +150,18 @@ export function StaffLoginPage() {
           </button>
         </form>
       )}
-    </section>
+        </section>
+      </section>
+      <aside className="brokerhub-login-story">
+        <div className="brokerhub-login-orb" aria-hidden="true" />
+        <h2>كل طلبات عملائك<br />في مكان واحد</h2>
+        <ul>
+          <li>تابع الطلبات من واتساب والمكالمات والبريد</li>
+          <li>إدارة Leads ومتابعتها حتى التحويل لعميل</li>
+          <li>رؤية واضحة على أداء فريق الوساطة</li>
+        </ul>
+        <div className="brokerhub-sla-card"><strong>طلب #28418</strong><span>أول رد خلال ١٤ دقيقة</span><b>ضمن اتفاقية SLA</b></div>
+      </aside>
+    </main>
   );
 }

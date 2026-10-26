@@ -21,14 +21,16 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.exc import DBAPIError
 
-from app.api.deps import RequestContext, require_permission
+from app.api.deps import RequestContext, authenticated_context, require_permission
 from app.domain.schemas import (
     CorporateClientUpsert,
     CorporateContractUpsert,
     CorporateMemberLink,
     CorporateUserCreate,
 )
+from app.models.crm_module import CrmLead
 from app.models.tickets import AuditLog
+from app.repositories.crm_module import CrmModuleRepository
 from app.security.passwords import StaffPasswords
 from app.security.tokens import csrf_required
 from app.services.corporate import CorporateService
@@ -40,10 +42,24 @@ logger = logging.getLogger(__name__)
 # its dependency rather than listing a parameterless one.
 VIEW = Depends(require_permission("corporate.view"))
 MANAGE = Depends(require_permission("corporate.manage"))
+crm_repo = CrmModuleRepository()
 
 
 def _service() -> CorporateService:
     return CorporateService()
+
+
+async def _sales_directory_context(
+    ctx: RequestContext = Depends(authenticated_context),
+) -> RequestContext:
+    if ctx.actor.scope != "staff" or not {"crm.view", "corporate.view"}.intersection(
+        ctx.permissions
+    ):
+        raise HTTPException(status_code=403, detail="Permission denied")
+    return ctx
+
+
+SALES_DIRECTORY = Depends(_sales_directory_context)
 
 
 async def _audit(
@@ -84,6 +100,50 @@ def _conflict(exc: DBAPIError, detail: str) -> HTTPException:
 async def list_corporate_clients(ctx: RequestContext = VIEW) -> dict[str, Any]:
     """Every corporate client with its contracts and portal users."""
     return await _service().directory(ctx.db)
+
+
+def _is_salesperson(ctx: RequestContext) -> bool:
+    return "crm.manage" in ctx.permissions and "crm.convert" not in ctx.permissions
+
+
+def _sales_client(lead: CrmLead) -> dict[str, Any]:
+    """Safe list projection built only from the seller's converted lead."""
+    client_id = lead.converted_corporate_client_id
+    name = lead.company_name or lead.full_name
+    return {
+        "id": str(client_id),
+        "name_ar": name,
+        "name_en": name,
+        "slug": None,
+        "contact_name": lead.full_name,
+        "contact_mobile": lead.phone,
+        "contact_email": lead.email,
+        "converted_at": lead.converted_at.isoformat() if lead.converted_at else None,
+        "lead_id": str(lead.id),
+        "lead_no": lead.lead_no,
+        "origin": "converted_lead",
+    }
+
+
+@router.get("/sales-directory")
+async def sales_directory(ctx: RequestContext = SALES_DIRECTORY) -> dict[str, Any]:
+    """Corporate-view users see the full directory; sellers see owned conversions.
+
+    Sales-role staff (``crm.manage`` without ``crm.convert``) are always
+    self-scoped; other staff with ``corporate.view`` receive the full
+    directory. CRM viewers otherwise see only conversions whose source lead
+    is currently assigned to them. No second ownership field is inferred.
+    """
+    if "corporate.view" in ctx.permissions and not _is_salesperson(ctx):
+        return await _service().directory(ctx.db)
+
+    leads = await crm_repo.converted_leads(ctx.db, assigned_to=ctx.actor.id)
+    unique: dict[UUID, dict[str, Any]] = {}
+    for lead in leads:
+        if lead.converted_corporate_client_id is not None:
+            unique.setdefault(lead.converted_corporate_client_id, _sales_client(lead))
+    items = list(unique.values())
+    return {"items": items, "total": len(items), "scope": "assigned-converted-leads"}
 
 
 @router.put("/clients")

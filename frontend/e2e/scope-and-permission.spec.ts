@@ -98,7 +98,9 @@ test('one-company scope is reflected in charts, list search, export, and direct 
   if ((page.viewportSize()?.width ?? 1024) < 768) {
     await page.getByRole('button', { name: 'فتح القائمة' }).click();
   }
-  await page.getByRole('navigation', { name: 'مساحة العمل' }).getByRole('button', { name: /قائمة الطلبات/ }).click();
+  // Select the inbox by its accessible action name, independent of whether it is
+  // rendered in the full sidebar or the compact work-navigation rail.
+  await page.getByRole('button', { name: /قائمة الطلبات/ }).first().click();
   await expect(page.getByRole('heading', { name: 'صندوق الطلبات' })).toBeVisible();
   await expect(page.getByText('Scoped claim review')).toBeVisible();
   const search = page.getByRole('textbox', { name: 'البحث في الطلبات' });

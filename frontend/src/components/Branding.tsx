@@ -29,5 +29,6 @@ export function BrandingProvider({ children }: { children: ReactNode }) {
   return <BrandContext.Provider value={brand}>{children}</BrandContext.Provider>;
 }
 
+// Intentional hook export alongside the provider; Vite Fast Refresh preserves hook state.
+// eslint-disable-next-line react-refresh/only-export-components
 export function usePlatformBrand(): PlatformBrand { return useContext(BrandContext); }
-export const DEFAULT_PLATFORM_BRAND = DEFAULT_BRAND;

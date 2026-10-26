@@ -114,9 +114,24 @@ def _activity(
     )
 
 
+def _is_salesperson(ctx: RequestContext) -> bool:
+    """Sales role has CRM write access but no team-conversion permission.
+
+    Treat that role as self-scoped at the API boundary; UI filters are never
+    relied on for ownership isolation.
+    """
+    return "crm.manage" in ctx.permissions and "crm.convert" not in ctx.permissions
+
+
+def _require_crm_manager(ctx: RequestContext) -> None:
+    if _is_salesperson(ctx):
+        raise HTTPException(status_code=403, detail="CRM manager access required")
+
+
 async def _lead_or_404(ctx: RequestContext, lead_id: UUID) -> CrmLead:
     lead = await repo.lead(ctx.db, lead_id)
-    if lead is None:
+    if lead is None or (_is_salesperson(ctx) and lead.assigned_to != ctx.actor.id):
+        # Do not disclose that a teammate's lead exists.
         raise HTTPException(status_code=404, detail="Lead not found")
     return lead
 
@@ -125,7 +140,18 @@ async def _task_or_404(ctx: RequestContext, task_id: UUID) -> CrmTask:
     task = await repo.task(ctx.db, task_id)
     if task is None:
         raise HTTPException(status_code=404, detail="Task not found")
+    if _is_salesperson(ctx):
+        lead = await repo.lead(ctx.db, task.lead_id)
+        if lead is None or lead.assigned_to != ctx.actor.id:
+            raise HTTPException(status_code=404, detail="Task not found")
     return task
+
+
+async def _batch_or_404(ctx: RequestContext, batch_id: UUID) -> CrmImportBatch:
+    batch = await repo.batch(ctx.db, batch_id)
+    if batch is None or (_is_salesperson(ctx) and batch.uploaded_by != ctx.actor.id):
+        raise HTTPException(status_code=404, detail="Import batch not found")
+    return batch
 
 
 async def _stage_or_422(ctx: RequestContext, code: str) -> CrmPipelineStage:
@@ -173,8 +199,14 @@ def _apply_stage(
 async def list_stages(ctx: RequestContext = VIEW, include_inactive: bool = False) -> dict[str, Any]:
     stages = await repo.stages(ctx.db, include_inactive=include_inactive)
     result = []
+    only_me = ctx.actor.id if _is_salesperson(ctx) else None
     for stage in stages:
-        result.append(stage_dict(stage, await repo.stage_lead_count(ctx.db, stage.code)))
+        result.append(
+            stage_dict(
+                stage,
+                await repo.stage_lead_count(ctx.db, stage.code, assigned_to=only_me),
+            )
+        )
     return {"stages": result}
 
 
@@ -182,6 +214,7 @@ async def list_stages(ctx: RequestContext = VIEW, include_inactive: bool = False
 async def create_stage(
     item: CrmStageCreate, ctx: RequestContext = MANAGE, _: None = Depends(csrf_required)
 ) -> dict[str, Any]:
+    _require_crm_manager(ctx)
     stage = CrmPipelineStage(
         id=uuid4(),
         tenant_id=repo.tenant_id,
@@ -207,6 +240,7 @@ async def create_stage(
 async def reorder_stages(
     item: CrmStageReorder, ctx: RequestContext = MANAGE, _: None = Depends(csrf_required)
 ) -> dict[str, Any]:
+    _require_crm_manager(ctx)
     stages = await repo.stages(ctx.db, include_inactive=True)
     by_id = {stage.id: stage for stage in stages}
     if set(item.ids) != set(by_id) or len(item.ids) != len(by_id):
@@ -229,6 +263,7 @@ async def update_stage(
     ctx: RequestContext = MANAGE,
     _: None = Depends(csrf_required),
 ) -> dict[str, Any]:
+    _require_crm_manager(ctx)
     stage = await repo.stage(ctx.db, stage_id)
     if stage is None:
         raise HTTPException(status_code=404, detail="Stage not found")
@@ -253,6 +288,7 @@ async def delete_stage(
     stage_id: UUID, ctx: RequestContext = MANAGE, _: None = Depends(csrf_required)
 ) -> dict[str, Any]:
     """Delete an empty stage; stages holding leads are protected (409)."""
+    _require_crm_manager(ctx)
     stage = await repo.stage(ctx.db, stage_id)
     if stage is None:
         raise HTTPException(status_code=404, detail="Stage not found")
@@ -288,6 +324,7 @@ async def list_leads(
 ) -> dict[str, Any]:
     return await repo.leads_page(
         ctx.db,
+        only_me=ctx.actor.id if _is_salesperson(ctx) else None,
         search=search,
         stage_code=stage_code,
         source=source,
@@ -322,7 +359,7 @@ async def create_lead(
         insurance_type=item.insurance_type.value,
         insurer_company_id=item.insurer_company_id,
         expected_premium=item.expected_premium,
-        assigned_to=item.assigned_to or ctx.actor.id,
+        assigned_to=ctx.actor.id if _is_salesperson(ctx) else (item.assigned_to or ctx.actor.id),
         notes=item.notes,
         created_by=ctx.actor.id,
     )
@@ -375,6 +412,8 @@ async def update_lead(
 ) -> dict[str, Any]:
     lead = await _lead_or_404(ctx, lead_id)
     data = item.model_dump(exclude_unset=True)
+    if _is_salesperson(ctx) and "assigned_to" in data and data["assigned_to"] != ctx.actor.id:
+        raise HTTPException(status_code=403, detail="Salespeople cannot reassign leads")
     old_stage, old_assignee = lead.stage_code, lead.assigned_to
     stage = (
         await _stage_or_422(ctx, item.stage_code)
@@ -437,6 +476,8 @@ async def delete_lead(
 async def bulk_assign(
     item: CrmBulkAssign, ctx: RequestContext = MANAGE, _: None = Depends(csrf_required)
 ) -> dict[str, Any]:
+    if _is_salesperson(ctx):
+        raise HTTPException(status_code=403, detail="Team reassignment requires manager access")
     leads = await repo.leads_by_ids(ctx.db, item.ids)
     for lead in leads:
         lead.assigned_to = item.assigned_to
@@ -455,6 +496,8 @@ async def bulk_stage(
 ) -> dict[str, Any]:
     stage = await _stage_or_422(ctx, item.stage_code)
     leads = await repo.leads_by_ids(ctx.db, item.ids)
+    if _is_salesperson(ctx) and any(lead.assigned_to != ctx.actor.id for lead in leads):
+        raise HTTPException(status_code=404, detail="Lead not found")
     for lead in leads:
         previous = lead.stage_code
         _apply_stage(ctx, lead, stage)
@@ -540,9 +583,17 @@ async def list_tasks(
 ) -> dict[str, Any]:
     return {
         "tasks": await repo.tasks(
-            ctx.db, status=status, type_=type, assigned_to=assigned_to, lead_id=lead_id, due=due
+            ctx.db,
+            status=status,
+            type_=type,
+            assigned_to=assigned_to,
+            lead_assigned_to=ctx.actor.id if _is_salesperson(ctx) else None,
+            lead_id=lead_id,
+            due=due,
         ),
-        "due_counts": await repo.due_task_counts(ctx.db),
+        "due_counts": await repo.due_task_counts(
+            ctx.db, ctx.actor.id if _is_salesperson(ctx) else None
+        ),
     }
 
 
@@ -641,7 +692,11 @@ async def pipeline(
     date_to: datetime | None = None,
 ) -> dict[str, Any]:
     return await repo.pipeline_board(
-        ctx.db, assigned_to=assigned_to, source=source, date_from=date_from, date_to=date_to
+        ctx.db,
+        assigned_to=ctx.actor.id if _is_salesperson(ctx) else assigned_to,
+        source=source,
+        date_from=date_from,
+        date_to=date_to,
     )
 
 
@@ -657,6 +712,7 @@ async def sales_performance(
         "salespeople": await repo.sales_performance(
             ctx.db,
             ctx.scope,
+            only_me=ctx.actor.id if _is_salesperson(ctx) else None,
             date_from=date_from,
             date_to=date_to,
             source=source,
@@ -667,7 +723,9 @@ async def sales_performance(
 
 @router.get("/stats")
 async def stats(ctx: RequestContext = VIEW) -> dict[str, Any]:
-    return await repo.stats(ctx.db, ctx.scope)
+    return await repo.stats(
+        ctx.db, ctx.scope, only_me=ctx.actor.id if _is_salesperson(ctx) else None
+    )
 
 
 # --- Excel import ----------------------------------------------------------
@@ -742,6 +800,7 @@ async def import_leads(
             source=candidate.source,
             stage_code=DEFAULT_STAGE_CODE,
             notes=candidate.notes,
+            assigned_to=ctx.actor.id if _is_salesperson(ctx) else None,
             import_batch_id=batch.id,
             created_by=ctx.actor.id,
         )
@@ -808,22 +867,22 @@ async def import_template(ctx: RequestContext = VIEW) -> Response:
 
 @router.get("/imports")
 async def list_imports(ctx: RequestContext = VIEW) -> dict[str, Any]:
-    return {"imports": await repo.batches(ctx.db)}
+    return {
+        "imports": await repo.batches(
+            ctx.db, uploaded_by=ctx.actor.id if _is_salesperson(ctx) else None
+        )
+    }
 
 
 @router.get("/imports/{batch_id}")
 async def get_import(batch_id: UUID, ctx: RequestContext = VIEW) -> dict[str, Any]:
-    batch = await repo.batch(ctx.db, batch_id)
-    if batch is None:
-        raise HTTPException(status_code=404, detail="Import batch not found")
+    batch = await _batch_or_404(ctx, batch_id)
     return {**batch_dict(batch), "errors": await repo.batch_errors(ctx.db, batch_id)}
 
 
 @router.get("/imports/{batch_id}/errors.csv")
 async def import_errors_csv(batch_id: UUID, ctx: RequestContext = VIEW) -> Response:
-    batch = await repo.batch(ctx.db, batch_id)
-    if batch is None:
-        raise HTTPException(status_code=404, detail="Import batch not found")
+    await _batch_or_404(ctx, batch_id)
     errors = await repo.batch_errors(ctx.db, batch_id)
     buffer = io.StringIO()
     writer = csv.writer(buffer)

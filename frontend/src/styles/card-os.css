@@ -464,12 +464,12 @@
 }
 
 /* --------------------------------------------------------------------------
-   Drawer (≤760px): the old aside as a warm glass panel off-canvas
+   Drawer (≤760px): keep Broker Hub navigation navy when opened off-canvas
    -------------------------------------------------------------------------- */
 
 @media (max-width: 760px) {
   .staff-console .sidebar {
-    background: var(--surface-glass);
+    background: var(--sidebar);
     backdrop-filter: blur(18px);
     -webkit-backdrop-filter: blur(18px);
     border-start-end-radius: 24px;
