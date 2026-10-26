@@ -88,6 +88,10 @@ describe('CrmModulePage (unified CRM)', () => {
   it('lists leads and opens the drawer with tasks, timeline and convert', async () => {
     mockApi();
     render(<CrmModulePage access={access} tab="leads" onTab={() => undefined} />);
+    fireEvent.change(screen.getByLabelText('الهاتف'), { target: { value: lead.phone } });
+    expect(await screen.findByText(/هذا الهاتف مرتبط مسبقاً بـشركة النور/)).toBeTruthy();
+    expect((screen.getByRole('button', { name: 'إضافة' }) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.change(screen.getByLabelText('الهاتف'), { target: { value: '' } });
     fireEvent.click(await screen.findByText('شركة النور'));
     expect(await screen.findByText('سجل الأنشطة')).toBeTruthy();
     const stepper = screen.getByRole('navigation', { name: 'مراحل العميل المحتمل' });

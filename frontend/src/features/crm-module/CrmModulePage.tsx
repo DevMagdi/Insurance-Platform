@@ -288,6 +288,21 @@ function Leads({ stages, stageLabel, agents, canManage, canConvert, onError, onN
   const [detail, setDetail] = useState<Lead | null>(null);
   const [bulkAssignee, setBulkAssignee] = useState('');
   const [bulkStage, setBulkStage] = useState('contacted');
+  const [newLeadPhone, setNewLeadPhone] = useState('');
+  const [duplicatePhoneLead, setDuplicatePhoneLead] = useState<Lead | null>(null);
+
+  useEffect(() => {
+    const phone = newLeadPhone.trim();
+    if (phone.length < 8) return;
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => {
+      const query = new URLSearchParams({ search: phone, page: '1', page_size: '100' });
+      void api<LeadsPage>(`/api/crm/leads?${query}`, { signal: controller.signal })
+        .then((result) => setDuplicatePhoneLead(result.items.find((lead) => lead.phone === phone) ?? null))
+        .catch(() => { if (!controller.signal.aborted) setDuplicatePhoneLead(null); });
+    }, 300);
+    return () => { window.clearTimeout(timer); controller.abort(); };
+  }, [newLeadPhone]);
 
   const load = useCallback(async () => {
     const query = new URLSearchParams({ page: String(page), page_size: '20', sort, order });
@@ -327,7 +342,7 @@ function Leads({ stages, stageLabel, agents, canManage, canConvert, onError, onN
           notes: form.get('notes') || null,
         }),
       });
-      onNotice('تمت إضافة العميل المحتمل.'); event.currentTarget.reset(); await load();
+      onNotice('تمت إضافة العميل المحتمل.'); event.currentTarget.reset(); setNewLeadPhone(''); setDuplicatePhoneLead(null); await load();
     } catch (err) { onError(err instanceof Error ? err.message : 'تعذر الإضافة.'); }
   };
 
@@ -335,14 +350,16 @@ function Leads({ stages, stageLabel, agents, canManage, canConvert, onError, onN
     {canManage && <section className="surface-card"><h3>إضافة Lead</h3><form className="crmm-toolbar" onSubmit={createLead}>
       <label className="field-label">الاسم / جهة الاتصال<input name="full_name" required minLength={2} /></label>
       <label className="field-label">الشركة (اختياري)<input name="company_name" /></label>
-      <label className="field-label">الهاتف<input name="phone" dir="ltr" placeholder="010…" /></label>
+      <label className="field-label">الهاتف<input name="phone" type="tel" dir="ltr" placeholder="010…" value={newLeadPhone} onChange={(event) => { setNewLeadPhone(event.target.value); setDuplicatePhoneLead(null); }} aria-label="الهاتف" aria-describedby={duplicatePhoneLead ? 'crm-lead-phone-duplicate' : undefined} />
+        {duplicatePhoneLead && <small id="crm-lead-phone-duplicate" className="crmm-duplicate-warning" role="status">هذا الهاتف مرتبط مسبقاً بـ{duplicatePhoneLead.company_name ?? duplicatePhoneLead.full_name} ({duplicatePhoneLead.lead_no}).</small>}
+      </label>
       <label className="field-label">البريد<input name="email" type="email" dir="ltr" /></label>
       <label className="field-label">المصدر<select name="source">{Object.entries(SOURCE_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></label>
       <label className="field-label">الأولوية<select name="priority">{Object.entries(PRIORITY_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></label>
       <label className="field-label">نوع التأمين<select name="insurance_type"><option value="health">طبي</option><option value="general">عام</option><option value="both">كلاهما</option></select></label>
       <label className="field-label">القسط المتوقع<input name="expected_premium" type="number" min="0" step="0.01" /></label>
       <label className="field-label">ملاحظات<input name="notes" /></label>
-      <button className="button button-dark" type="submit">إضافة</button>
+      <button className="button button-dark" type="submit" disabled={Boolean(duplicatePhoneLead)}>إضافة</button>
     </form></section>}
     <section className="surface-card"><div className="crmm-toolbar">
       <label className="field-label">بحث<input value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} placeholder="اسم / شركة / هاتف / بريد / رقم" /></label>

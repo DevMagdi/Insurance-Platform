@@ -9,6 +9,7 @@
 .crmm-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
 .crmm-toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; }
 .crmm-scope-pill { align-self: center; padding: 8px 12px; border: 1px solid var(--primary-soft, #e0e7ff); border-radius: var(--r-pill, 999px); background: var(--primary-soft, #e0e7ff); color: var(--primary-ink, #3730a3); font-size: 12px; font-weight: 600; }
+.crmm-duplicate-warning { display: block; margin-top: 4px; color: var(--warning, #93370d); font-weight: 600; }
 .crmm-team-reassign { display: grid; gap: 16px; }
 .crmm-reassign-list { display: grid; gap: 8px; max-height: 45vh; overflow-y: auto; margin: 0; padding: 12px; border: 1px solid var(--line, #eef0f6); border-radius: var(--r-card, 18px); }
 .crmm-reassign-list label { display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: 10px; cursor: pointer; }
