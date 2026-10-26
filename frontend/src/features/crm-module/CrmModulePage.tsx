@@ -437,6 +437,10 @@ function LeadDrawer({ lead, stages, agents, canManage, canConvert, onClose, onCh
     try { await api(`/api/crm/tasks/${task.id}/complete`, { method: 'POST', body: jsonBody({}) }); await onChanged(); }
     catch (err) { onError(err instanceof Error ? err.message : 'تعذر إنجاز المهمة.'); }
   };
+  const pipelineSteps = stages
+    .filter((stage) => stage.is_active && !stage.is_lost)
+    .sort((left, right) => left.sort_order - right.sort_order);
+  const currentStageIndex = pipelineSteps.findIndex((stage) => stage.code === lead.stage_code);
   const convert = async () => {
     if (!window.confirm(`تحويل «${lead.company_name ?? lead.full_name}» إلى عميل فعلي؟`)) return;
     try {
@@ -454,6 +458,13 @@ function LeadDrawer({ lead, stages, agents, canManage, canConvert, onClose, onCh
     {lead.converted_corporate_client_id
       ? <p className="inline-alert" role="status">محوّل إلى عميل فعلي — افتح «ملف العميل» من مساحة الوثائق والإصدار لعرض العقد والوثائق والموظفين.</p>
       : canConvert && <button className="button button-dark" type="button" onClick={() => void convert()}>تحويل إلى عميل فعلي</button>}
+    {pipelineSteps.length > 0 && <nav className="crmm-lead-stepper" aria-label="مراحل العميل المحتمل">
+      <ol>{pipelineSteps.map((stage, index) => <li
+        key={stage.id}
+        className={stage.code === lead.stage_code ? 'is-current' : index < currentStageIndex ? 'is-complete' : ''}
+        aria-current={stage.code === lead.stage_code ? 'step' : undefined}
+      ><span className="crmm-step-number">{index + 1}</span><span>{stage.name_ar}</span></li>)}</ol>
+    </nav>}
     {canManage ? <form className="crmm-toolbar" onSubmit={save}>
       <label className="field-label">الاسم<input name="full_name" defaultValue={lead.full_name} required /></label>
       <label className="field-label">الشركة<input name="company_name" defaultValue={lead.company_name ?? ''} /></label>

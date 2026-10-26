@@ -88,6 +88,8 @@ describe('CrmModulePage (unified CRM)', () => {
     render(<CrmModulePage access={access} tab="leads" onTab={() => undefined} />);
     fireEvent.click(await screen.findByText('شركة النور'));
     expect(await screen.findByText('سجل الأنشطة')).toBeTruthy();
+    const stepper = screen.getByRole('navigation', { name: 'مراحل العميل المحتمل' });
+    expect(stepper.querySelector('[aria-current="step"]')?.textContent).toContain('جديد');
     expect(screen.getByText(/Imported/)).toBeTruthy();
     expect(screen.getByText('مهام ومتابعات هذا العميل')).toBeTruthy();
     expect(screen.getByText(/Chase quote/)).toBeTruthy();
