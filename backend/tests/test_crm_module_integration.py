@@ -18,11 +18,12 @@ import pytest
 from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from app.api import corporate_admin
 from app.api import crm_module as api
 from app.api.deps import RequestContext
 from app.db import Actor, make_engine, scoped_transaction
 from app.domain.access import AccessScope
-from app.domain.crm_module_schemas import CrmBulkAssign
+from app.domain.crm_module_schemas import CrmBulkAssign, CrmLeadConvert
 from app.domain.enums import OwnershipLevel
 
 pytestmark = pytest.mark.integration
@@ -71,6 +72,11 @@ def crm_world() -> Iterator[CrmWorld]:
                         "test-only-no-login",
                     ),
                 )
+            cur.execute(
+                "INSERT INTO public.user_permission_overrides "
+                "(user_id, permission_code, effect) VALUES (%s, 'crm.convert', 'allow')",
+                (manager,),
+            )
             for role, lead_id in leads.items():
                 cur.execute(
                     "INSERT INTO public.crm_leads "
@@ -93,12 +99,22 @@ def crm_world() -> Iterator[CrmWorld]:
             staff_ids = [*sellers.values(), manager]
             lead_ids = list(leads.values())
             cur.execute(
+                "SELECT converted_corporate_client_id FROM public.crm_leads "
+                "WHERE id = ANY(%s) AND converted_corporate_client_id IS NOT NULL",
+                (lead_ids,),
+            )
+            client_ids = [row[0] for row in cur.fetchall()]
+            cur.execute(
                 "DELETE FROM public.audit_logs WHERE actor_staff_id = ANY(%s) "
                 "OR resource_id = ANY(%s)",
                 (staff_ids, lead_ids),
             )
             cur.execute("DELETE FROM public.crm_activities WHERE lead_id = ANY(%s)", (lead_ids,))
             cur.execute("DELETE FROM public.crm_leads WHERE id = ANY(%s)", (lead_ids,))
+            if client_ids:
+                cur.execute(
+                    "DELETE FROM public.corporate_clients WHERE id = ANY(%s)", (client_ids,)
+                )
             cur.execute("DELETE FROM public.staff_users WHERE id = ANY(%s)", (staff_ids,))
 
 
@@ -140,6 +156,28 @@ async def test_seller_scope_manager_reassignment_and_activity_are_persisted(
             result = await api.list_leads(seller_b, search=None, page=1, page_size=20)
             assert [UUID(item["id"]) for item in result["items"]] == [crm_world.lead_b]
 
+        slug = f"crm-integration-{crm_world.lead_b.hex[:16]}"
+        async with scoped_transaction(factory, Actor(crm_world.manager, "staff")) as db:
+            manager = _context(db, crm_world.manager, manager=True)
+            converted = await api.convert_lead(
+                crm_world.lead_b,
+                CrmLeadConvert(
+                    slug=slug, name_ar="Converted test client", name_en="Converted test client"
+                ),
+                manager,
+            )
+        converted_client_id = UUID(converted["corporate_client_id"])
+
+        async with scoped_transaction(factory, Actor(crm_world.seller_b, "staff")) as db:
+            seller_b = _context(db, crm_world.seller_b)
+            directory = await corporate_admin.sales_directory(seller_b)
+            assert directory["total"] == 1
+            assert UUID(directory["items"][0]["id"]) == converted_client_id
+
+        async with scoped_transaction(factory, Actor(crm_world.seller_a, "staff")) as db:
+            seller_a = _context(db, crm_world.seller_a)
+            assert (await corporate_admin.sales_directory(seller_a))["items"] == []
+
         async with scoped_transaction(factory, Actor(crm_world.manager, "staff")) as db:
             manager = _context(db, crm_world.manager, manager=True)
             result = await api.bulk_assign(
@@ -162,5 +200,12 @@ async def test_seller_scope_manager_reassignment_and_activity_are_persisted(
             )
             assert assignment["created_by"] == str(crm_world.manager)
             assert "Bulk assigned to" in assignment["description"]
+            directory = await corporate_admin.sales_directory(seller_a)
+            assert directory["total"] == 1
+            assert UUID(directory["items"][0]["id"]) == converted_client_id
+
+        async with scoped_transaction(factory, Actor(crm_world.seller_b, "staff")) as db:
+            seller_b = _context(db, crm_world.seller_b)
+            assert (await corporate_admin.sales_directory(seller_b))["items"] == []
     finally:
         await engine.dispose()
