@@ -55,7 +55,9 @@ function mockApi() {
     if (path === '/api/crm/leads/lead-1') return lead;
     if (path.startsWith('/api/crm/tasks')) return { tasks: lead.tasks.map((t) => ({ ...t, lead_name: 'شركة النور', lead_no: lead.lead_no })), due_counts: { overdue: 1, today: 0, next_7_days: 2 } };
     if (path.startsWith('/api/crm/reports/sales-performance')) return { salespeople: perf };
-    if (path === '/api/staff/users') return { items: [{ id: 'staff-1', full_name: 'CRM User' }] };
+    if (path === '/api/staff/users') return { items: [
+      { id: 'staff-1', full_name: 'CRM User' }, { id: 'staff-2', full_name: 'Seller Two' },
+    ] };
     if (path === '/api/crm/imports') return { imports: [{ id: 'b1', file_name: 'leads.xlsx', total_rows: 4, success_rows: 2, failed_rows: 2, status: 'completed_with_errors', created_at: '2026-10-24T09:00:00Z' }] };
     return {};
   });
@@ -111,6 +113,16 @@ describe('CrmModulePage (unified CRM)', () => {
     render(<CrmModulePage access={access} tab="performance" onTab={() => undefined} />);
     expect(await screen.findByText(/متوسط زمن الإغلاق/)).toBeTruthy();
     await waitFor(() => expect(screen.getByText('12.5')).toBeTruthy());
+    fireEvent.click(screen.getByRole('button', { name: 'إعادة الإسناد' }));
+    expect(await screen.findByLabelText('البياع الجديد')).toBeTruthy();
+    expect(await screen.findByText('شركة النور')).toBeTruthy();
+    fireEvent.click(screen.getByLabelText(/شركة النور/));
+    fireEvent.change(screen.getByLabelText('البياع الجديد'), { target: { value: 'staff-2' } });
+    fireEvent.click(screen.getByRole('button', { name: /إعادة إسناد المحدد/ }));
+    await waitFor(() => expect(vi.mocked(api)).toHaveBeenCalledWith(
+      '/api/crm/leads/bulk-assign',
+      expect.objectContaining({ method: 'POST', body: JSON.stringify({ ids: ['lead-1'], assigned_to: 'staff-2' }) }),
+    ));
   });
 
   it('denies sales-role access to team performance and stage administration', async () => {
@@ -129,6 +141,8 @@ describe('CrmModulePage (unified CRM)', () => {
 
     rerender(<CrmModulePage access={salesperson} tab="pipeline" onTab={() => undefined} />);
     expect(await screen.findByText('شركة النور')).toBeTruthy();
+    expect(screen.getByRole('status').textContent).toContain('المسندون إليك فقط');
+    expect(screen.queryByLabelText('البياع')).toBeNull();
     expect(screen.queryByText('تخصيص المراحل')).toBeNull();
   });
 

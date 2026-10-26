@@ -109,7 +109,7 @@ export function CrmModulePage({ access, tab, onTab }: { access: StaffAccess; tab
     {tab === 'tasks' && <Tasks {...shared} />}
     {tab === 'import' && <ImportLeads canManage={canManage} onError={setError} onNotice={setNotice} onDone={() => onTab('history')} />}
     {tab === 'performance' && (canConvert
-      ? <Performance onError={setError} />
+      ? <Performance onError={setError} onNotice={setNotice} agents={agents} />
       : <AccessDenied title="تقارير فريق المبيعات غير متاحة" />)}
     {tab === 'history' && <ImportHistory onError={setError} />}
   </div>;
@@ -188,7 +188,8 @@ function Pipeline({ access, stages, stageLabel, agents, canManage, canConvert, o
       <div className="summary-stat"><div><strong>{board?.open_pipeline_value ?? '0'}</strong><small>قيمة البايبلاين المفتوحة (ج.م)</small></div></div>
     </section>
     <section className="surface-card"><div className="crmm-toolbar">
-      {!access.roles.includes('sales') && <label className="field-label">البياع<select value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)}><option value="">الكل</option>{agents.map((a) => <option key={a.id} value={a.id}>{a.full_name}</option>)}</select></label>}
+      {canConvert && <label className="field-label">البياع<select value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)}><option value="">الكل</option>{agents.map((a) => <option key={a.id} value={a.id}>{a.full_name}</option>)}</select></label>}
+      {canManage && !canConvert && <span className="crmm-scope-pill" role="status">عرض معزول: العملاء المحتملون المسندون إليك فقط</span>}
       <label className="field-label">المصدر<select value={source} onChange={(e) => setSource(e.target.value)}><option value="">الكل</option>{Object.entries(SOURCE_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></label>
       <span className="muted">اسحب البطاقة وأفلتها في عمود آخر لنقل المرحلة.</span>
     </div></section>
@@ -580,10 +581,16 @@ function Tasks({ agents, canManage, onError, onNotice }: SharedProps) {
   </>;
 }
 
-function Performance({ onError }: { onError: (v: string) => void }) {
+function Performance({ onError, onNotice, agents }: {
+  onError: (v: string) => void; onNotice: (v: string) => void; agents: Agent[];
+}) {
   const [rows, setRows] = useState<PerfRow[]>([]);
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
+  const [reassigning, setReassigning] = useState<PerfRow | null>(null);
+  const [leads, setLeads] = useState<Lead[]>([]);
+  const [selectedLeadIds, setSelectedLeadIds] = useState<Set<string>>(new Set());
+  const [targetSeller, setTargetSeller] = useState('');
   const load = useCallback(async () => {
     const query = new URLSearchParams();
     if (from) query.set('date_from', new Date(from).toISOString());
@@ -592,6 +599,30 @@ function Performance({ onError }: { onError: (v: string) => void }) {
     catch (err) { onError(err instanceof Error ? err.message : 'تعذر تحميل أداء البياعين.'); }
   }, [from, to, onError]);
   useEffect(() => { const run = async () => { await load(); }; void run(); }, [load]);
+
+  const openReassignment = async (seller: PerfRow) => {
+    try {
+      const query = new URLSearchParams({ assigned_to: seller.staff_id, page: '1', page_size: '100' });
+      const result = await api<LeadsPage>(`/api/crm/leads?${query}`);
+      setReassigning(seller);
+      setLeads(result.items);
+      setSelectedLeadIds(new Set());
+      setTargetSeller('');
+    } catch (err) { onError(err instanceof Error ? err.message : 'تعذر تحميل Leads المسندة للبياع.'); }
+  };
+  const submitReassignment = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!reassigning || !targetSeller || selectedLeadIds.size === 0) return;
+    try {
+      await api('/api/crm/leads/bulk-assign', {
+        method: 'POST', body: jsonBody({ ids: [...selectedLeadIds], assigned_to: targetSeller }),
+      });
+      onNotice(`تمت إعادة إسناد ${selectedLeadIds.size} من العملاء المحتملين.`);
+      setReassigning(null);
+      await load();
+    } catch (err) { onError(err instanceof Error ? err.message : 'تعذرت إعادة الإسناد.'); }
+  };
+
   return <>
     <section className="surface-card"><div className="crmm-toolbar">
       <label className="field-label">من تاريخ<input type="date" value={from} onChange={(e) => setFrom(e.target.value)} /></label>
@@ -601,16 +632,34 @@ function Performance({ onError }: { onError: (v: string) => void }) {
       <ResponsiveContainer width="100%" height={240}><BarChart data={rows}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="full_name" /><YAxis /><Tooltip /><Bar dataKey="conversion_rate" fill="#6b9ac4" name="معدل التحويل ٪" radius={[6, 6, 0, 0]} /></BarChart></ResponsiveContainer>
     </section>
     <section className="surface-card admin-table-card"><div className="table-wrap"><table className="data-table"><thead><tr>
-      <th>البياع</th><th>Leads</th><th>ربح</th><th>خسارة</th><th>تحويل</th><th>معدل التحويل</th><th>قيمة الصفقات الرابحة</th><th>قيمة البايبلاين</th><th>متوسط زمن الإغلاق (يوم)</th><th>مهام منجزة</th><th>مهام متأخرة</th>
+      <th>البياع</th><th>Leads</th><th>ربح</th><th>خسارة</th><th>تحويل</th><th>معدل التحويل</th><th>قيمة الصفقات الرابحة</th><th>قيمة البايبلاين</th><th>متوسط زمن الإغلاق (يوم)</th><th>مهام منجزة</th><th>مهام متأخرة</th><th>إجراء</th>
     </tr></thead><tbody>
       {rows.map((row) => <tr key={row.staff_id}>
         <td><strong>{row.full_name}</strong></td><td>{formatNumber(row.leads)}</td><td>{formatNumber(row.won)}</td><td>{formatNumber(row.lost)}</td>
         <td>{formatNumber(row.converted)}</td><td>{row.conversion_rate}٪</td><td>{row.won_value}</td><td>{row.pipeline_value}</td>
         <td>{row.avg_close_days ?? '—'}</td><td>{formatNumber(row.tasks_done)}</td>
         <td className={row.tasks_overdue ? 'crmm-overdue' : ''}>{formatNumber(row.tasks_overdue)}</td>
+        <td><button className="button button-light button-small" type="button" onClick={() => void openReassignment(row)}>إعادة الإسناد</button></td>
       </tr>)}
-      {!rows.length && <tr><td colSpan={11}><div className="empty-inline">لا توجد بيانات أداء بعد.</div></td></tr>}
+      {!rows.length && <tr><td colSpan={12}><div className="empty-inline">لا توجد بيانات أداء بعد.</div></td></tr>}
     </tbody></table></div></section>
+    {reassigning && <Modal title="إعادة إسناد العملاء المحتملين" eyebrow={reassigning.full_name} onClose={() => setReassigning(null)} wide>
+      <form className="crmm-team-reassign" onSubmit={submitReassignment}>
+        <label className="field-label">البياع الجديد<select value={targetSeller} onChange={(event) => setTargetSeller(event.target.value)} required>
+          <option value="">اختر البياع</option>{agents.filter((agent) => agent.id !== reassigning.staff_id).map((agent) => <option key={agent.id} value={agent.id}>{agent.full_name}</option>)}
+        </select></label>
+        <fieldset className="crmm-reassign-list"><legend>حدد العملاء المحتملين لإعادة إسنادهم</legend>
+          {leads.map((lead) => <label key={lead.id}>
+            <input type="checkbox" checked={selectedLeadIds.has(lead.id)} onChange={() => setSelectedLeadIds((current) => {
+              const next = new Set(current); if (next.has(lead.id)) next.delete(lead.id); else next.add(lead.id); return next;
+            })} />
+            <span><strong>{lead.company_name ?? lead.full_name}</strong><small>{lead.lead_no} · {lead.phone ?? '—'}</small></span>
+          </label>)}
+          {!leads.length && <p className="empty-inline">لا توجد Leads مسندة إلى هذا البياع.</p>}
+        </fieldset>
+        <div className="crmm-toolbar"><button className="button button-dark" type="submit" disabled={!targetSeller || selectedLeadIds.size === 0}>إعادة إسناد المحدد ({selectedLeadIds.size})</button></div>
+      </form>
+    </Modal>}
   </>;
 }
 
