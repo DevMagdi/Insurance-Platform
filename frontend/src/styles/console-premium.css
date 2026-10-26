@@ -14,7 +14,7 @@
    single hairline rather than a slab of contrast. Cards then float above
    both. This is what makes the console read as one material. */
 .staff-console {
-  --staff-sidebar: var(--surface-0);
+  --staff-sidebar: var(--sidebar);
 }
 
 .staff-console .app-shell {
@@ -872,7 +872,7 @@
    surfaces, two of them identical, and the console reads as one flat sheet.
    Light mode puts the chrome on top (white) and drops the canvas behind it. */
 .staff-console.theme-light {
-  --staff-sidebar: var(--surface-chrome);
+  --staff-sidebar: var(--sidebar);
 }
 
 .staff-console.theme-light .sidebar {

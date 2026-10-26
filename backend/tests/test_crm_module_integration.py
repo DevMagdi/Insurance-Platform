@@ -129,7 +129,7 @@ async def test_seller_scope_manager_reassignment_and_activity_are_persisted(
     try:
         async with scoped_transaction(factory, Actor(crm_world.seller_a, "staff")) as db:
             seller_a = _context(db, crm_world.seller_a)
-            result = await api.list_leads(seller_a)
+            result = await api.list_leads(seller_a, search=None, page=1, page_size=20)
             assert [UUID(item["id"]) for item in result["items"]] == [crm_world.lead_a]
             with pytest.raises(HTTPException) as raised:
                 await api.get_lead(crm_world.lead_b, seller_a)
@@ -137,7 +137,7 @@ async def test_seller_scope_manager_reassignment_and_activity_are_persisted(
 
         async with scoped_transaction(factory, Actor(crm_world.seller_b, "staff")) as db:
             seller_b = _context(db, crm_world.seller_b)
-            result = await api.list_leads(seller_b)
+            result = await api.list_leads(seller_b, search=None, page=1, page_size=20)
             assert [UUID(item["id"]) for item in result["items"]] == [crm_world.lead_b]
 
         async with scoped_transaction(factory, Actor(crm_world.manager, "staff")) as db:
@@ -149,7 +149,7 @@ async def test_seller_scope_manager_reassignment_and_activity_are_persisted(
 
         async with scoped_transaction(factory, Actor(crm_world.seller_a, "staff")) as db:
             seller_a = _context(db, crm_world.seller_a)
-            result = await api.list_leads(seller_a)
+            result = await api.list_leads(seller_a, search=None, page=1, page_size=20)
             assert {UUID(item["id"]) for item in result["items"]} == {
                 crm_world.lead_a,
                 crm_world.lead_b,

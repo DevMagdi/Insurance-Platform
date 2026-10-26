@@ -381,13 +381,15 @@ function App() {
   // A collapsed group must never hide where you actually are.
   const currentIsAdmin = moreLinks.some((item) => item.page === currentNav);
   const moreExpanded = moreOpen || currentIsAdmin;
+  const navAccessibleName = (item: NavigationItem) =>
+    item.page === 'complaints' ? `${item.label} · قائمة الطلبات` : item.label;
   const navLink = (item: NavigationItem) => (
     <button
       type="button"
       className={`nav-link${currentNav === item.page ? ' active' : ''}`}
       key={item.page}
       aria-current={currentNav === item.page ? 'page' : undefined}
-      aria-label={item.page === 'complaints' ? `${item.label} · قائمة الطلبات` : item.label}
+      aria-label={navAccessibleName(item)}
       onClick={() => item.page === 'crm-module' ? navigate({ page: 'crm-module', tab: 'pipeline' }) : navigate({ page: item.page } as AppRoute)}
       title={item.label}
     >
@@ -475,7 +477,7 @@ function App() {
             key={item.page}
             className={`os-rail-item${currentNav === item.page ? ' active' : ''}`}
             data-glow={SECTION_GLOW[item.page] ?? 'admin'}
-            aria-label={item.label}
+            aria-label={navAccessibleName(item)}
             title={item.label}
             aria-current={currentNav === item.page ? 'page' : undefined}
             onClick={() => navigate({ page: item.page } as AppRoute)}
