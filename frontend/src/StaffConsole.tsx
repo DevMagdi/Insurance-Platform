@@ -387,7 +387,7 @@ function App() {
       className={`nav-link${currentNav === item.page ? ' active' : ''}`}
       key={item.page}
       aria-current={currentNav === item.page ? 'page' : undefined}
-      aria-label={item.label}
+      aria-label={item.page === 'complaints' ? `${item.label} · قائمة الطلبات` : item.label}
       onClick={() => item.page === 'crm-module' ? navigate({ page: 'crm-module', tab: 'pipeline' }) : navigate({ page: item.page } as AppRoute)}
       title={item.label}
     >
