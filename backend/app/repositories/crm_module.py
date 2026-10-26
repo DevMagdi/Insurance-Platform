@@ -241,6 +241,18 @@ class CrmModuleRepository:
         stmt = select(CrmLead).where(CrmLead.id == lead_id, CrmLead.tenant_id == self.tenant_id)
         return (await db.execute(stmt)).scalar_one_or_none()
 
+    async def converted_leads(
+        self, db: AsyncSession, assigned_to: UUID | None = None
+    ) -> list[CrmLead]:
+        stmt = select(CrmLead).where(
+            CrmLead.tenant_id == self.tenant_id,
+            CrmLead.converted_corporate_client_id.is_not(None),
+        )
+        if assigned_to is not None:
+            stmt = stmt.where(CrmLead.assigned_to == assigned_to)
+        stmt = stmt.order_by(CrmLead.converted_at.desc().nullslast(), CrmLead.created_at.desc())
+        return list((await db.execute(stmt)).scalars())
+
     async def leads_by_ids(self, db: AsyncSession, ids: list[UUID]) -> list[CrmLead]:
         if not ids:
             return []

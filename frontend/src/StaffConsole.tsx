@@ -31,6 +31,7 @@ const OperationsPage = lazy(async () => ({ default: (await import('./features/ad
 const RolesPage = lazy(async () => ({ default: (await import('./features/admin/RolesPage')).RolesPage }));
 const UsersPage = lazy(async () => ({ default: (await import('./features/admin/UsersPage')).UsersPage }));
 const CustomersPage = lazy(async () => ({ default: (await import('./features/admin/CustomersPage')).CustomersPage }));
+const SalesClientsPage = lazy(async () => ({ default: (await import('./features/crm-module/SalesClientsPage')).SalesClientsPage }));
 const AdminDashboard = lazy(async () => ({ default: (await import('./features/admin/AdminDashboard')).AdminDashboard }));
 const StoragePage = lazy(async () => ({ default: (await import('./features/admin/StoragePage')).StoragePage }));
 const InsuranceOpsPage = lazy(async () => ({ default: (await import('./features/insurance-ops/InsuranceOpsPage')).InsuranceOpsPage }));
@@ -84,8 +85,9 @@ interface NavigationItem {
 const NAVIGATION: NavigationItem[] = [
   { page: 'complaints', label: 'صندوق الطلبات', icon: 'inbox', section: 'workspace', permission: 'complaints.view' },
   { page: 'crm-module', label: 'العملاء المحتملون', icon: 'users', section: 'workspace', permission: 'crm.view' },
-  { page: 'customers', label: 'العملاء', icon: 'users', section: 'workspace', permission: 'users.view' },
-  { page: 'insurance-ops', label: 'الوثائق والأقساط', icon: 'building', section: 'workspace', permission: 'crm.view' },
+  { page: 'sales-clients', label: 'العملاء', icon: 'users', section: 'workspace' },
+  { page: 'people', label: 'الأفراد', icon: 'users', section: 'more', permission: 'users.view' },
+  { page: 'insurance-ops', label: 'الوثائق والأقساط', icon: 'building', section: 'workspace' },
   { page: 'reports', label: 'التقارير', icon: 'chart', section: 'workspace', permission: 'analytics.view' },
   { page: 'operations', label: 'الإعدادات', icon: 'settings', section: 'workspace' },
 ];
@@ -108,7 +110,8 @@ function routeFromPath(pathname: string): AppRoute {
   if (path === '/staff/reports') return { page: 'reports' };
   if (path === '/staff/admin') return { page: 'admin' };
   if (path === '/staff/users') return { page: 'users' };
-  if (path === '/staff/customers') return { page: 'customers' };
+  if (path === '/staff/customers' || path === '/staff/sales-clients') return { page: 'sales-clients' };
+  if (path === '/staff/people') return { page: 'people' };
   if (path === '/staff/roles') return { page: 'roles' };
   if (path === '/staff/channels') return { page: 'channels' };
   if (path === '/staff/operations') return { page: 'operations' };
@@ -133,6 +136,9 @@ function hasGlobalAdminScope(access: StaffAccess): boolean {
   return access.all_companies && access.company_ids.length === 0
     && access.insurance_types.length === 0 && access.ownership === 'all';
 }
+function canAccessCorporateDirectory(access: StaffAccess): boolean {
+  return hasPermission(access, 'crm.view') || hasPermission(access, 'corporate.view');
+}
 function operationsAllowed(access: StaffAccess): boolean {
   return OPERATION_REQUIREMENTS.some((requirement) =>
     (!requirement.global || hasGlobalAdminScope(access))
@@ -154,6 +160,7 @@ function CommandPalette({ access, onNavigate, onClose }: { access: StaffAccess; 
     .filter((item) => item.page !== 'admin' || canViewAdminDashboard(access))
     .filter((item) => item.page !== 'operations' || operationsAllowed(access))
     .filter((item) => item.page !== 'storage' || storageAllowed(access))
+    .filter((item) => (item.page !== 'sales-clients' && item.page !== 'insurance-ops') || canAccessCorporateDirectory(access))
     .filter((item) => !item.permission || (hasPermission(access, item.permission) && (!item.extraPermission || hasPermission(access, item.extraPermission))))];
   const options = entries.filter((item) => item.label.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase()));
   const activate = (index: number) => {
@@ -326,6 +333,7 @@ function App() {
     if (item.page === 'operations') return operationsAllowed(access);
     if (item.page === 'admin') return canViewAdminDashboard(access);
     if (item.page === 'storage') return storageAllowed(access);
+    if (item.page === 'sales-clients' || item.page === 'insurance-ops') return canAccessCorporateDirectory(access);
     return Boolean(item.permission && hasPermission(access, item.permission) && (!item.extraPermission || hasPermission(access, item.extraPermission)));
   }), [access]);
 
@@ -351,8 +359,10 @@ function App() {
         ? <TicketWorkspace id={route.id} access={access} options={filterOptions} onBack={() => navigate({ page: 'complaints' })} onOpenTicket={(id) => navigate({ page: 'ticket', id })} onRefreshAccess={refreshAccess} />
         : route.page === 'users'
           ? <UsersPage access={access} onAccessChanged={refreshAccess} />
-          : route.page === 'customers'
+          : route.page === 'people'
             ? <CustomersPage access={access} />
+            : route.page === 'sales-clients'
+              ? <SalesClientsPage access={access} onOpenFolder={(clientId) => { window.localStorage.setItem('brokerhub:open-client-folder', clientId); navigate({ page: 'insurance-ops' }); }} />
             : route.page === 'roles'
             ? <RolesPage access={access} />
             : route.page === 'channels'
@@ -530,7 +540,7 @@ function App() {
         )}
         <div className="os-page" key={route.page === 'ticket' ? route.id : route.page}>
         <Suspense fallback={<div className="loading-surface"><span className="loading-spinner" /> جارٍ تحميل مساحة العمل…</div>}>
-          {route.page === 'admin' && !canViewAdminDashboard(access) ? <AccessDenied title="لوحة الإدارة غير متاحة" /> : route.page === 'overview' && !(hasPermission(access, 'analytics.view') && hasPermission(access, 'complaints.view')) ? <AccessDenied title="لوحة المؤشرات غير متاحة" /> : route.page === 'complaints' || route.page === 'ticket' ? pageContent : route.page === 'users' && !hasPermission(access, 'users.view') ? <AccessDenied title="إدارة المستخدمين غير متاحة" /> : route.page === 'roles' && !hasPermission(access, 'roles.manage') ? <AccessDenied title="إدارة الأدوار غير متاحة" /> : route.page === 'channels' && !hasPermission(access, 'integrations.manage') ? <AccessDenied title="إعدادات القنوات غير متاحة" /> : route.page === 'operations' && !operationsAllowed(access) ? <AccessDenied title="إعدادات الإدارة غير متاحة" /> : route.page === 'storage' && !storageAllowed(access) ? <AccessDenied title="مركز التخزين غير متاح" /> : route.page === 'audit' && !hasPermission(access, 'audit.view') ? <AccessDenied title="سجل التدقيق غير متاح" /> : route.page === 'insurance-ops' && !hasPermission(access, 'crm.view') ? <AccessDenied title="الوثائق والإصدار غير متاحة" /> : route.page === 'crm-module' && !hasPermission(access, 'crm.view') ? <AccessDenied title="CRM غير متاح" /> : pageContent}
+          {route.page === 'admin' && !canViewAdminDashboard(access) ? <AccessDenied title="لوحة الإدارة غير متاحة" /> : route.page === 'overview' && !(hasPermission(access, 'analytics.view') && hasPermission(access, 'complaints.view')) ? <AccessDenied title="لوحة المؤشرات غير متاحة" /> : route.page === 'complaints' || route.page === 'ticket' ? pageContent : route.page === 'users' && !hasPermission(access, 'users.view') ? <AccessDenied title="إدارة المستخدمين غير متاحة" /> : route.page === 'roles' && !hasPermission(access, 'roles.manage') ? <AccessDenied title="إدارة الأدوار غير متاحة" /> : route.page === 'channels' && !hasPermission(access, 'integrations.manage') ? <AccessDenied title="إعدادات القنوات غير متاحة" /> : route.page === 'operations' && !operationsAllowed(access) ? <AccessDenied title="إعدادات الإدارة غير متاحة" /> : route.page === 'storage' && !storageAllowed(access) ? <AccessDenied title="مركز التخزين غير متاح" /> : route.page === 'audit' && !hasPermission(access, 'audit.view') ? <AccessDenied title="سجل التدقيق غير متاح" /> : route.page === 'insurance-ops' && !canAccessCorporateDirectory(access) ? <AccessDenied title="الوثائق والإصدار غير متاحة" /> : route.page === 'crm-module' && !hasPermission(access, 'crm.view') ? <AccessDenied title="CRM غير متاح" /> : pageContent}
         </Suspense>
         </div>
       </div></main>
@@ -539,7 +549,7 @@ function App() {
       {isSalesRole && <nav className="brokerhub-mobile-nav" aria-label="التنقل السفلي">
         <button type="button" className={route.page === 'crm-module' ? 'active' : ''} aria-current={route.page === 'crm-module' ? 'page' : undefined} onClick={() => navigate({ page: 'crm-module', tab: 'pipeline' })}><Icon name="users" size={20} /><span>Leads</span></button>
         <button type="button" className={route.page === 'complaints' || route.page === 'ticket' ? 'active' : ''} onClick={() => navigate({ page: 'complaints' })}><Icon name="inbox" size={20} /><span>الطلبات</span></button>
-        <button type="button" className={route.page === 'customers' ? 'active' : ''} onClick={() => navigate({ page: 'customers' })}><Icon name="building" size={20} /><span>العملاء</span></button>
+        <button type="button" className={route.page === 'sales-clients' ? 'active' : ''} onClick={() => navigate({ page: 'sales-clients' })}><Icon name="building" size={20} /><span>العملاء</span></button>
         <button type="button" onClick={() => setUserMenuOpen(true)}><Icon name="users" size={20} /><span>حسابي</span></button>
       </nav>}
     </div>

@@ -346,6 +346,8 @@ export type AppRoute =
   | { page: 'ticket'; id: string }
   | { page: 'users' }
   | { page: 'customers' }
+  | { page: 'sales-clients' }
+  | { page: 'people' }
   | { page: 'roles' }
   | { page: 'channels' }
   | { page: 'operations' }

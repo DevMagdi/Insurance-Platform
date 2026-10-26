@@ -440,7 +440,12 @@ function LeadDrawer({ lead, stages, agents, canManage, canConvert, onClose, onCh
   const convert = async () => {
     if (!window.confirm(`تحويل «${lead.company_name ?? lead.full_name}» إلى عميل فعلي؟`)) return;
     try {
-      await api(`/api/crm/leads/${lead.id}/convert`, { method: 'POST', body: jsonBody({}) });
+      const converted = await api<{ corporate_client_id: string }>(`/api/crm/leads/${lead.id}/convert`, { method: 'POST', body: jsonBody({}) });
+      window.localStorage.setItem('brokerhub:last-converted-client', JSON.stringify({
+        id: converted.corporate_client_id,
+        name: lead.company_name ?? lead.full_name,
+        at: Date.now(),
+      }));
       onNotice('تم تحويل العميل المحتمل إلى عميل فعلي بكل بياناته (ملف عميل جاهز).');
       await onChanged();
     } catch (err) { onError(err instanceof Error ? err.message : 'تعذر التحويل.'); }

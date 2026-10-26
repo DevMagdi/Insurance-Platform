@@ -87,7 +87,7 @@ def api(monkeypatch: pytest.MonkeyPatch):
         uuid4(),
         1,
         AccessScope(actor, all_companies=True, ownership=OwnershipLevel.ALL),
-        frozenset({"corporate.view", "corporate.manage"}),
+        frozenset({"corporate.view", "corporate.manage", "crm.view", "crm.convert"}),
         {},
         SimpleNamespace(),
     )
@@ -337,7 +337,7 @@ async def test_a_corporate_reader_cannot_reach_the_staff_admin_routes(
         uuid4(),
         1,
         AccessScope(actor, all_companies=False, ownership=OwnershipLevel.OWN),
-        frozenset({"corporate.view", "corporate.manage"}),
+        frozenset({"corporate.view", "corporate.manage", "crm.view", "crm.convert"}),
         {},
         SimpleNamespace(),
         corporate_client_id=CLIENT_ID,
@@ -365,3 +365,140 @@ async def test_a_write_without_a_csrf_token_is_rejected(api: tuple) -> None:
 
     assert response.status_code == 403
     service.save_client.assert_not_awaited()
+
+
+async def test_sales_directory_is_scoped_to_the_calling_salesperson(
+    api: tuple, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    ctx, _, service = api
+    from app.models.crm_module import CrmLead
+
+    ctx.permissions = frozenset({"crm.view", "crm.manage", "corporate.view"})
+    lead_a = CrmLead(
+        id=uuid4(),
+        tenant_id=admin_api.crm_repo.tenant_id,
+        lead_no="LEAD-A",
+        full_name="Seller A contact",
+        company_name="Company A",
+        assigned_to=ctx.actor.id,
+        converted_corporate_client_id=CLIENT_ID,
+    )
+    lead_b = CrmLead(
+        id=uuid4(),
+        tenant_id=admin_api.crm_repo.tenant_id,
+        lead_no="LEAD-B",
+        full_name="Seller B contact",
+        company_name="Company B",
+        assigned_to=uuid4(),
+        converted_corporate_client_id=uuid4(),
+    )
+    observed: dict[str, UUID | None] = {}
+
+    async def converted_leads(_db: object, assigned_to: UUID | None = None) -> list[CrmLead]:
+        observed["assigned_to"] = assigned_to
+        return [
+            row for row in (lead_a, lead_b) if assigned_to is None or row.assigned_to == assigned_to
+        ]
+
+    monkeypatch.setattr(admin_api.crm_repo, "converted_leads", converted_leads)
+    service.directory.reset_mock()
+    async with await _client() as client:
+        response = await client.get("/api/staff/corporate/sales-directory")
+
+    assert response.status_code == 200
+    assert response.json()["scope"] == "assigned-converted-leads"
+    assert [row["name_en"] for row in response.json()["items"]] == ["Company A"]
+    assert observed["assigned_to"] == ctx.actor.id
+    service.directory.assert_not_awaited()
+
+
+async def test_manager_keeps_the_permission_gated_full_corporate_directory(
+    api: tuple, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _, _, service = api
+    monkeypatch.setattr(admin_api.crm_repo, "converted_leads", AsyncMock())
+    async with await _client() as client:
+        response = await client.get("/api/staff/corporate/sales-directory")
+
+    assert response.status_code == 200
+    assert response.json() == {"items": [], "total": 0}
+    service.directory.assert_awaited_once()
+    admin_api.crm_repo.converted_leads.assert_not_awaited()
+
+
+async def test_salesperson_without_corporate_view_can_open_only_their_converted_client_folder(
+    api: tuple, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from app.api import insurance_ops as insurance_ops_api
+    from app.models.crm_module import CrmLead
+
+    ctx, _, _ = api
+    ctx.permissions = frozenset({"crm.view", "crm.manage", "corporate.view"})
+    lead = CrmLead(
+        id=uuid4(),
+        tenant_id=insurance_ops_api.crm_repo.tenant_id,
+        lead_no="LEAD-OWN",
+        full_name="Seller A contact",
+        company_name="Company A",
+        phone="+201011111111",
+        email="seller-a@example.test",
+        assigned_to=ctx.actor.id,
+        converted_corporate_client_id=CLIENT_ID,
+    )
+    calls: list[UUID | None] = []
+
+    async def converted_leads(_db: object, assigned_to: UUID | None = None) -> list[CrmLead]:
+        calls.append(assigned_to)
+        return [lead] if assigned_to == ctx.actor.id else []
+
+    monkeypatch.setattr(insurance_ops_api.crm_repo, "converted_leads", converted_leads)
+    async with await _client() as client:
+        own = await client.get(f"/api/staff/insurance-ops/client-folder/{CLIENT_ID}")
+        foreign = await client.get(f"/api/staff/insurance-ops/client-folder/{uuid4()}")
+
+    assert own.status_code == 200
+    payload = own.json()
+    assert payload["client"]["lead_no"] == "LEAD-OWN"
+    assert payload["contracts"] == [] and payload["policies"] == []
+    assert foreign.status_code == 404
+    assert calls == [ctx.actor.id, ctx.actor.id]
+
+
+async def test_converted_lead_query_binds_the_salesperson_and_requires_a_conversion() -> None:
+    from app.repositories.crm_module import CrmModuleRepository
+
+    actor_id = uuid4()
+    lead = SimpleNamespace(
+        id=uuid4(),
+        assigned_to=actor_id,
+        converted_corporate_client_id=CLIENT_ID,
+    )
+    captured: dict[str, object] = {}
+
+    class Result:
+        def scalars(self) -> list[SimpleNamespace]:
+            return [lead]
+
+    class QuerySession:
+        async def execute(self, statement: object) -> Result:
+            compiled = statement.compile()  # type: ignore[attr-defined]
+            captured["sql"] = compiled.string.lower()
+            captured["params"] = compiled.params
+            return Result()
+
+    rows = await CrmModuleRepository().converted_leads(QuerySession(), assigned_to=actor_id)  # type: ignore[arg-type]
+
+    assert rows == [lead]
+    assert "crm_leads.assigned_to =" in captured["sql"]
+    assert "crm_leads.converted_corporate_client_id is not null" in captured["sql"]
+    assert actor_id in captured["params"].values()
+
+
+async def test_corporate_view_alone_can_open_the_manager_directory(api: tuple) -> None:
+    ctx, _, service = api
+    ctx.permissions = frozenset({"corporate.view"})
+    async with await _client() as client:
+        response = await client.get("/api/staff/corporate/sales-directory")
+
+    assert response.status_code == 200
+    service.directory.assert_awaited_once()

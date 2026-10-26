@@ -1849,6 +1849,33 @@ paths:
                 additionalProperties: true
                 type: object
                 title: Response List Corporate Clients Api Staff Corporate Get
+  /api/staff/corporate/sales-directory:
+    get:
+      tags:
+      - corporate-admin
+      summary: Sales Directory
+      description: 'Corporate-view users see the full directory; sellers see owned
+        conversions.
+
+
+        Sales-role staff (``crm.manage`` without ``crm.convert``) are always
+
+        self-scoped; other staff with ``corporate.view`` receive the full
+
+        directory. CRM viewers otherwise see only conversions whose source lead
+
+        is currently assigned to them. No second ownership field is inferred.'
+      operationId: sales_directory_api_staff_corporate_sales_directory_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response Sales Directory Api Staff Corporate Sales Directory
+                  Get
   /api/staff/corporate/clients:
     put:
       tags:
@@ -9061,7 +9088,6 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
       security:
       - AccessCookie: []
-      x-required-permission: crm.view
   /api/staff/insurance-ops/caller-lookup:
     get:
       tags:
