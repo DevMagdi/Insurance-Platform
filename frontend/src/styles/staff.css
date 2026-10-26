@@ -1838,35 +1838,6 @@ html[lang='ar'] .staff-console .section-title-row h2 {
   background: var(--surface-muted);
 }
 
-.staff-console .charts-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.staff-console .charts-grid.charts-top {
-  grid-template-columns: minmax(0, 1.7fr) minmax(270px, 1fr);
-}
-
-.staff-console .chart-card {
-  padding: 13px 15px 8px;
-  border-radius: 13px;
-}
-
-.staff-console .chart-card-heading h3 {
-  color: var(--text);
-  font-size: 11px;
-  font-weight: 650;
-}
-
-.staff-console .chart-container {
-  height: 230px;
-}
-
-.staff-console .chart-container.compact-chart {
-  height: 205px;
-}
-
 /* --------------------------------------------------------------------------
    Queue / table
    -------------------------------------------------------------------------- */
@@ -4140,12 +4111,6 @@ html[dir='rtl'] .staff-console .admin-shortcuts button > svg {
 @media (max-width: 960px) {
   .staff-console .metric-grid {
     grid-template-columns: repeat(3, 1fr);
-  }
-
-  .staff-console .charts-grid,
-  .staff-console .charts-grid.charts-top,
-  .staff-console .charts-insights {
-    grid-template-columns: 1fr;
   }
 
   .staff-console .role-cards-grid {

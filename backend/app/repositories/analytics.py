@@ -174,6 +174,24 @@ class AnalyticsRepository:
             ],
         }
 
+    async def channel_series(
+        self, db: AsyncSession, scope: AccessScope, filters: ComplaintFilter
+    ) -> list[tuple[Any, str, int]]:
+        """Aggregate only safe daily channel counts from the caller's scoped set."""
+        source = (
+            ComplaintRepository()
+            .base_query(scope, filters)
+            .with_only_columns(Complaint.created_at, Complaint.channel, maintain_column_froms=True)
+            .subquery("visible_channel_tickets")
+        )
+        day = func.date_trunc("day", func.timezone("UTC", source.c.created_at))
+        rows = await db.execute(
+            select(day, source.c.channel, func.count())
+            .group_by(day, source.c.channel)
+            .order_by(day, source.c.channel)
+        )
+        return [(day, str(channel), int(count)) for day, channel, count in rows]
+
     async def rollup_rows(
         self, db: AsyncSession, scope: AccessScope, filters: ComplaintFilter
     ) -> list[dict[str, Any]] | None:

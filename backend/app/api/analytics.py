@@ -52,6 +52,17 @@ async def overview(
     return await analytics(request).overview(db, ctx.scope, filters, ctx.token_version)
 
 
+@router.get("/channels")
+async def channel_series(
+    request: Request,
+    filters: ComplaintFilter = Query(),
+    ctx: RequestContext = Depends(require_permission("analytics.view")),
+    _: RequestContext = Depends(require_permission("complaints.view")),
+    db: AsyncSession = Depends(analytics_db),
+) -> list[dict[str, Any]]:
+    return await analytics(request).channel_series(db, ctx.scope, filters)
+
+
 @router.get("/rollup")
 async def rollup(
     request: Request,

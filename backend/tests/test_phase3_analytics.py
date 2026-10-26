@@ -73,6 +73,35 @@ async def test_report_queries_derive_every_measure_from_the_scoped_source() -> N
     assert db.execute.await_count == 10
 
 
+async def test_channel_series_is_aggregated_from_the_scoped_query() -> None:
+    company, agent = uuid4(), uuid4()
+    first = datetime(2026, 9, 1, tzinfo=UTC)
+    db = SimpleNamespace(
+        execute=AsyncMock(
+            return_value=[(first, "whatsapp", 2), (first, "phone", 1), (first, "ai_voice", 3)]
+        )
+    )
+    scope = AccessScope(
+        Actor(agent, "staff"), company_ids=frozenset({company}), ownership=OwnershipLevel.OWN
+    )
+    repository = AnalyticsRepository()
+    rows = await repository.channel_series(db, scope, window(priority="high"))
+    assert rows == [(first, "whatsapp", 2), (first, "phone", 1), (first, "ai_voice", 3)]
+    sql = str(db.execute.call_args.args[0].compile(dialect=postgresql.dialect()))
+    assert "visible_channel_tickets" in sql
+    assert "complaints.company_id IN" in sql
+    assert "complaints.assigned_agent_id" in sql
+    assert "complaints.priority" in sql
+    assert "complaints.created_at" in sql
+
+    service = AnalyticsService(SimpleNamespace(channel_series=AsyncMock(return_value=rows)), None)
+    assert await service.channel_series(SimpleNamespace(), scope, window()) == [
+        {"date": "2026-09-01", "whatsapp": 2, "calls": 4}
+    ]
+    with pytest.raises(HTTPException):
+        await service.channel_series(SimpleNamespace(), scope, ComplaintFilter())
+
+
 async def test_scope_cache_never_reuses_another_scope_or_version() -> None:
     cache = fakeredis.aioredis.FakeRedis()
     try:
@@ -124,7 +153,8 @@ async def test_analytics_http_requires_both_grants_and_scoped_window(
     repo = SimpleNamespace(
         report=AsyncMock(
             return_value={"kpis": {"total": 0}, "company_scorecards": [], "time_series": []}
-        )
+        ),
+        channel_series=AsyncMock(return_value=[]),
     )
     monkeypatch.setattr(analytics_api, "AnalyticsRepository", lambda: repo)
     cache = fakeredis.aioredis.FakeRedis()
@@ -147,9 +177,11 @@ async def test_analytics_http_requires_both_grants_and_scoped_window(
             assert (await client.get(url)).status_code == 403
             ctx.permissions = frozenset({"analytics.view", "complaints.view"})
             assert (await client.get("/api/staff/analytics/overview")).status_code == 422
+            assert (await client.get(url.replace("overview", "channels"))).status_code == 200
             result = await client.get(url)
             assert result.status_code == 200 and result.json()["kpis"]["total"] == 0
             assert repo.report.call_args.args[1] == scope
+            assert repo.channel_series.call_args.args[1] == scope
             assert (await client.get(url.replace("overview", "scorecards"))).json() == []
             assert repo.report.await_count == 1  # Same scope/window reuses the cache.
             ctx.token_version += 1
