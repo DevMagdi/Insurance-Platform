@@ -10,6 +10,7 @@ password.
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 from uuid import UUID, uuid4
@@ -410,6 +411,69 @@ async def test_sales_directory_is_scoped_to_the_calling_salesperson(
     assert [row["name_en"] for row in response.json()["items"]] == ["Company A"]
     assert observed["assigned_to"] == ctx.actor.id
     service.directory.assert_not_awaited()
+
+
+async def test_converted_client_follows_the_lead_owner_after_manager_reassignment(
+    api: tuple, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from app.api import crm_module as crm_api
+    from app.models.crm_module import CrmActivity, CrmLead
+
+    ctx, db, _ = api
+    manager_id, seller_a_id, seller_b_id = ctx.actor.id, uuid4(), uuid4()
+    lead = CrmLead(
+        id=uuid4(),
+        tenant_id=admin_api.crm_repo.tenant_id,
+        lead_no="LEAD-OWNER-TRANSFER",
+        full_name="Converted client contact",
+        company_name="Converted client",
+        assigned_to=seller_a_id,
+        converted_corporate_client_id=CLIENT_ID,
+        converted_at=datetime.now(UTC),
+    )
+
+    async def converted_leads(_db: object, assigned_to: UUID | None = None) -> list[CrmLead]:
+        if lead.converted_corporate_client_id is None or lead.assigned_to != assigned_to:
+            return []
+        return [lead]
+
+    async def find_lead(_db: object, lead_id: UUID) -> CrmLead | None:
+        return lead if lead.id == lead_id else None
+
+    monkeypatch.setattr(admin_api.crm_repo, "converted_leads", converted_leads)
+    monkeypatch.setattr(crm_api.repo, "lead", find_lead)
+
+    ctx.actor = Actor(seller_a_id, "staff")
+    ctx.permissions = frozenset({"crm.view", "crm.manage"})
+    async with await _client() as client:
+        seller_a_before = await client.get("/api/staff/corporate/sales-directory")
+    assert seller_a_before.status_code == 200
+    assert [item["id"] for item in seller_a_before.json()["items"]] == [str(CLIENT_ID)]
+
+    ctx.actor = Actor(manager_id, "staff")
+    ctx.permissions = frozenset({"crm.view", "crm.manage", "crm.convert"})
+    await crm_api.update_lead(
+        lead.id,
+        crm_api.CrmLeadUpdate(assigned_to=seller_b_id),
+        ctx,
+        None,
+    )
+    assert lead.assigned_to == seller_b_id
+    assert any(
+        isinstance(row, CrmActivity) and row.lead_id == lead.id and row.type == "assignment"
+        for row in db.added
+    )
+
+    ctx.actor = Actor(seller_a_id, "staff")
+    ctx.permissions = frozenset({"crm.view", "crm.manage"})
+    async with await _client() as client:
+        seller_a_after = await client.get("/api/staff/corporate/sales-directory")
+        ctx.actor = Actor(seller_b_id, "staff")
+        seller_b_after = await client.get("/api/staff/corporate/sales-directory")
+
+    assert seller_a_after.status_code == seller_b_after.status_code == 200
+    assert seller_a_after.json()["items"] == []
+    assert [item["id"] for item in seller_b_after.json()["items"]] == [str(CLIENT_ID)]
 
 
 async def test_manager_keeps_the_permission_gated_full_corporate_directory(
