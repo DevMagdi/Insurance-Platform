@@ -2,7 +2,9 @@ import { useCallback, useEffect, useRef, useState, type DragEvent, type FormEven
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { api, apiResponse, jsonBody } from '../../api';
 import { AccessDenied } from '../../components/Access';
-import { Modal } from '../../components/Modal';
+import { Icon } from '../../components/Icon';
+import { Modal, SectionTitle } from '../../components/Modal';
+import { Panel } from '../../components/ui/Premium';
 import { getCsrfToken } from '../../lib/session';
 import { hasPermission } from '../../utils/access';
 import { formatDateTime, formatNumber } from '../../utils/date';
@@ -104,7 +106,7 @@ export function CrmModulePage({ access, tab, onTab }: { access: StaffAccess; tab
     {error && <div className="inline-alert error" role="alert">{error}</div>}
     {notice && <div className="inline-alert" role="status">{notice}</div>}
     {tab === 'dashboard' && <Dashboard onError={setError} stageLabel={stageLabel} />}
-    {tab === 'pipeline' && <Pipeline {...shared} access={access} reloadStages={reloadStages} />}
+    {tab === 'pipeline' && <Pipeline {...shared} access={access} reloadStages={reloadStages} onCreateLead={() => onTab('leads')} />}
     {tab === 'leads' && <Leads {...shared} />}
     {tab === 'tasks' && <Tasks {...shared} />}
     {tab === 'import' && <ImportLeads canManage={canManage} onError={setError} onNotice={setNotice} onDone={() => onTab('history')} />}
@@ -154,10 +156,11 @@ function Dashboard({ onError, stageLabel }: { onError: (v: string) => void; stag
   </>;
 }
 
-function Pipeline({ access, stages, stageLabel, agents, canManage, canConvert, onError, onNotice, reloadStages }: SharedProps & { access: StaffAccess; reloadStages: () => Promise<void> }) {
+function Pipeline({ access, stages, stageLabel, agents, canManage, canConvert, onError, onNotice, reloadStages, onCreateLead }: SharedProps & { access: StaffAccess; reloadStages: () => Promise<void>; onCreateLead: () => void }) {
   const [board, setBoard] = useState<Board | null>(null);
   const [assignedTo, setAssignedTo] = useState('');
   const [source, setSource] = useState('');
+  const [search, setSearch] = useState('');
   const [detail, setDetail] = useState<Lead | null>(null);
   const [dragOver, setDragOver] = useState('');
   const dragged = useRef<string>('');
@@ -179,54 +182,84 @@ function Pipeline({ access, stages, stageLabel, agents, canManage, canConvert, o
     } catch (err) { onError(err instanceof Error ? err.message : 'تعذر نقل المرحلة.'); }
   };
   const openLead = async (id: string) => { try { setDetail(await api<Lead>(`/api/crm/leads/${id}`)); } catch (err) { onError(err instanceof Error ? err.message : 'تعذر الفتح.'); } };
+  const normalizedSearch = search.trim().toLocaleLowerCase();
+  const isSalesperson = access.roles.includes('sales');
+  const metrics = [
+    { label: 'إجمالي الـ Leads', value: board?.total ?? 0, tone: 'indigo', icon: 'users' as const },
+    { label: 'تحويلات إلى عميل', value: board?.converted ?? 0, tone: 'teal', icon: 'check' as const },
+    { label: 'صفقات رابحة', value: `${board?.win_rate ?? 0}٪`, tone: 'green', icon: 'trend-up' as const },
+    { label: 'قيمة البايبلاين المفتوحة', value: board?.open_pipeline_value ?? '0', tone: 'blue', icon: 'chart' as const },
+  ];
 
-  return <>
-    <section className="surface-card user-summary-strip">
-      <div className="summary-stat"><div><strong>{formatNumber(board?.total ?? 0)}</strong><small>إجمالي العملاء المحتملين</small></div></div>
-      <div className="summary-stat"><div><strong>{board?.win_rate ?? 0}٪</strong><small>معدل الربح</small></div></div>
-      <div className="summary-stat"><div><strong>{board?.conversion_rate ?? 0}٪</strong><small>معدل التحويل لعميل</small></div></div>
-      <div className="summary-stat"><div><strong>{board?.open_pipeline_value ?? '0'}</strong><small>قيمة البايبلاين المفتوحة (ج.م)</small></div></div>
-    </section>
-    <section className="surface-card"><div className="crmm-toolbar">
-      {canConvert && <label className="field-label">البياع<select value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)}><option value="">الكل</option>{agents.map((a) => <option key={a.id} value={a.id}>{a.full_name}</option>)}</select></label>}
-      {canManage && !canConvert && <span className="crmm-scope-pill" role="status">عرض معزول: العملاء المحتملون المسندون إليك فقط</span>}
-      <label className="field-label">المصدر<select value={source} onChange={(e) => setSource(e.target.value)}><option value="">الكل</option>{Object.entries(SOURCE_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></label>
-      <span className="muted">اسحب البطاقة وأفلتها في عمود آخر لنقل المرحلة.</span>
-    </div></section>
-    <div className="crmm-kanban" aria-label="لوحة خط المبيعات">
-      {(board?.stages ?? []).map((stage) => (
-        <div
-          key={stage.code}
-          className={`crmm-column${dragOver === stage.code ? ' is-over' : ''}`}
-          data-stage={stage.code}
-          onDragOver={(e) => { e.preventDefault(); setDragOver(stage.code); }}
-          onDragLeave={() => setDragOver('')}
-          onDrop={(e) => { e.preventDefault(); setDragOver(''); const id = e.dataTransfer.getData('text/lead-id') || dragged.current; if (id) void move(id, stage.code); }}
-        >
-          <h4>{stage.name_ar} <span>{stage.count ?? 0}</span></h4>
-          {stage.leads.map((lead) => (
-            <article
-              key={lead.id}
-              className="crmm-card"
-              draggable={canManage}
-              onDragStart={(e) => { dragged.current = lead.id; e.dataTransfer.setData('text/lead-id', lead.id); e.dataTransfer.effectAllowed = 'move'; }}
-              onClick={() => void openLead(lead.id)}
-            >
-              <strong>{lead.company_name ?? lead.full_name}</strong>
-              <small>{lead.lead_no} · {SOURCE_LABELS[lead.source] ?? lead.source} · {PRIORITY_LABELS[lead.priority] ?? lead.priority}</small>
-              <small>{lead.full_name} · <span dir="ltr">{lead.phone ?? ''}</span></small>
-              {lead.expected_premium && <small>قسط متوقع: {lead.expected_premium}</small>}
-              {lead.next_followup_at && <small className={new Date(lead.next_followup_at) <= new Date() ? 'crmm-overdue' : ''}>متابعة: {formatDateTime(lead.next_followup_at)}</small>}
-              {canManage && <select aria-label="نقل المرحلة" value={lead.stage_code} onClick={(e) => e.stopPropagation()} onChange={(e) => void move(lead.id, e.target.value)}>{stages.filter((s) => s.is_active).map((s) => <option key={s.code} value={s.code}>{s.name_ar}</option>)}</select>}
-            </article>
-          ))}
-          {!stage.leads.length && <small className="muted">لا عملاء هنا.</small>}
-        </div>
-      ))}
+  return <div className="broker-pipeline-page">
+    <SectionTitle
+      eyebrow="إدارة العملاء المحتملين"
+      title={isSalesperson ? `Leads · ${access.full_name}` : 'لوحة الـ Leads'}
+      description={`عرض ${formatNumber(board?.total ?? 0)} عميل محتمل ضمن نطاقك.`}
+      action={<div className="broker-pipeline-header-actions">
+        <label className="broker-pipeline-search"><Icon name="search" size={16} /><input aria-label="البحث في بطاقات Leads" placeholder="ابحث عن عميل أو شركة أو رقم…" value={search} onChange={(event) => setSearch(event.target.value)} /></label>
+        {canManage && <button className="broker-pipeline-new button" type="button" onClick={onCreateLead}><Icon name="plus" size={15} /> Lead جديد</button>}
+      </div>}
+    />
+
+    {isSalesperson && <div className="broker-pipeline-scope" role="status"><Icon name="lock" size={15} /><span>أنت تشاهد العملاء المحتملون المسندون إليك فقط؛ بيانات بقية الفريق والعملاء الآخرين غير ظاهرة.</span></div>}
+
+    <div className="broker-pipeline-kpis" aria-label="مؤشرات البايبلاين">
+      {metrics.map((metric) => <Panel className="broker-pipeline-kpi" data-tone={metric.tone} key={metric.label}>
+        <span className="broker-pipeline-kpi-icon"><Icon name={metric.icon} size={17} /></span>
+        <span className="broker-pipeline-kpi-label">{metric.label}</span>
+        <strong>{typeof metric.value === 'number' ? formatNumber(metric.value) : metric.value}</strong>
+      </Panel>)}
     </div>
-    {canConvert && <StageManager stages={stages} onChanged={async () => { await reloadStages(); await load(); }} onError={onError} onNotice={onNotice} />}
+
+    <section className="broker-pipeline-controls" aria-label="فلاتر لوحة الـ Leads">
+      <div className="broker-pipeline-filter-title"><Icon name="filter" size={15} /><strong>تصفية اللوحة</strong></div>
+      {canConvert && <label className="field-label">البائع<select aria-label="فلتر البائع" value={assignedTo} onChange={(event) => setAssignedTo(event.target.value)}><option value="">كل البائعين</option>{agents.map((agent) => <option key={agent.id} value={agent.id}>{agent.full_name}</option>)}</select></label>}
+      <label className="field-label">المصدر<select aria-label="فلتر المصدر" value={source} onChange={(event) => setSource(event.target.value)}><option value="">كل المصادر</option>{Object.entries(SOURCE_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+      {normalizedSearch && <button className="broker-pipeline-clear" type="button" onClick={() => setSearch('')}>مسح البحث</button>}
+      <span className="broker-pipeline-filter-note">اسحب البطاقة إلى عمود آخر لتحديث المرحلة</span>
+    </section>
+
+    <div className="broker-pipeline-board" aria-label="لوحة مراحل الـ Leads">
+      {(board?.stages ?? []).map((stage) => {
+        const visibleLeads = stage.leads.filter((lead) => !normalizedSearch || [lead.company_name, lead.full_name, lead.lead_no, lead.phone].some((value) => value?.toLocaleLowerCase().includes(normalizedSearch)));
+        return <section
+          key={stage.code}
+          className={`broker-pipeline-column${dragOver === stage.code ? ' is-over' : ''}`}
+          data-stage={stage.code}
+          onDragOver={(event) => { event.preventDefault(); setDragOver(stage.code); }}
+          onDragLeave={() => setDragOver('')}
+          onDrop={(event) => { event.preventDefault(); setDragOver(''); const id = event.dataTransfer.getData('text/lead-id') || dragged.current; if (id) void move(id, stage.code); }}
+        >
+          <header className="broker-pipeline-column-head"><h3>{stage.name_ar}</h3><span>{formatNumber(stage.count ?? 0)}</span></header>
+          <div className="broker-pipeline-column-body">
+            {visibleLeads.map((lead) => (
+              <article
+                key={lead.id}
+                className="broker-pipeline-card"
+                draggable={canManage}
+                onDragStart={(event) => { dragged.current = lead.id; event.dataTransfer.setData('text/lead-id', lead.id); event.dataTransfer.effectAllowed = 'move'; }}
+                onClick={() => void openLead(lead.id)}
+              >
+                <div className="broker-pipeline-card-title"><strong>{lead.company_name ?? lead.full_name}</strong><span>{lead.lead_no}</span></div>
+                <small className="broker-pipeline-card-contact">{lead.full_name} · <bdi dir="ltr">{lead.phone ?? '—'}</bdi></small>
+                <div className="broker-pipeline-tags"><span data-tag="type">{lead.insurance_type === 'health' ? 'طبي' : lead.insurance_type === 'general' ? 'عام' : 'طبي وعام'}</span><span data-tag="source">{SOURCE_LABELS[lead.source] ?? lead.source}</span><span data-priority={lead.priority}>{PRIORITY_LABELS[lead.priority] ?? lead.priority}</span></div>
+                {lead.expected_premium && <div className="broker-pipeline-premium"><span>قسط متوقع</span><strong>{formatNumber(Number(lead.expected_premium))} ج.م</strong></div>}
+                <div className="broker-pipeline-card-footer">
+                  <span className={lead.next_followup_at && new Date(lead.next_followup_at) <= new Date() ? 'is-overdue' : ''}><Icon name="calendar" size={13} />{lead.next_followup_at ? formatDateTime(lead.next_followup_at) : 'لا يوجد موعد متابعة'}</span>
+                  {canManage && <select aria-label="نقل المرحلة" value={lead.stage_code} onClick={(event) => event.stopPropagation()} onChange={(event) => void move(lead.id, event.target.value)}>{stages.filter((item) => item.is_active).map((item) => <option key={item.code} value={item.code}>{item.name_ar}</option>)}</select>}
+                </div>
+              </article>
+            ))}
+            {visibleLeads.length === 0 && <div className="broker-pipeline-empty">{normalizedSearch ? 'لا تطابق بطاقات هذه المرحلة البحث.' : 'لا يوجد عملاء في هذه المرحلة.'}</div>}
+          </div>
+        </section>;
+      })}
+    </div>
+
+    {canConvert && <details className="broker-stage-admin"><summary>إدارة مراحل البايبلاين</summary><StageManager stages={stages} onChanged={async () => { await reloadStages(); await load(); }} onError={onError} onNotice={onNotice} /></details>}
     {detail && <LeadDrawer lead={detail} stages={stages} agents={agents} canManage={canManage} canConvert={canConvert} access={access} onClose={() => setDetail(null)} onChanged={async () => { await openLead(detail.id); await load(); }} onError={onError} onNotice={onNotice} />}
-  </>;
+  </div>;
 }
 
 function StageManager({ stages, onChanged, onError, onNotice }: { stages: Stage[]; onChanged: () => Promise<void>; onError: (v: string) => void; onNotice: (v: string) => void }) {

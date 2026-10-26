@@ -73,10 +73,15 @@ describe('CrmModulePage (unified CRM)', () => {
     expect(screen.getByText('أفضل البياعين')).toBeTruthy();
   });
 
-  it('renders the kanban and moves a card by drag-and-drop', async () => {
+  it('renders the reference-led Kanban hierarchy and moves a card by drag-and-drop', async () => {
     mockApi();
     render(<CrmModulePage access={access} tab="pipeline" onTab={() => undefined} />);
     expect(await screen.findByText('شركة النور')).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Leads · CRM User' })).toBeTruthy();
+    expect(screen.getByText('إجمالي الـ Leads')).toBeTruthy();
+    expect(screen.getByText('تحويلات إلى عميل')).toBeTruthy();
+    expect(screen.getByText('قيمة البايبلاين المفتوحة')).toBeTruthy();
+    expect(screen.getByRole('textbox', { name: 'البحث في بطاقات Leads' })).toBeTruthy();
     const wonColumn = document.querySelector('[data-stage="won"]');
     expect(wonColumn).toBeTruthy();
     fireEvent.drop(wonColumn as Element, {
