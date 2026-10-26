@@ -87,7 +87,7 @@ test.beforeEach(async ({ page }) => installScopedApi(page));
 
 test('one-company scope is reflected in charts, list search, export, and direct ticket URLs', async ({ page }) => {
   await page.goto('/staff/overview');
-  await expect(page.getByRole('heading', { name: 'نظرة عامة على الأداء' })).toBeVisible();
+  await expect(page.locator('.broker-dashboard .section-title-row h2')).toBeVisible();
   await expect(page.getByText('One Insurer').first()).toBeVisible();
   const companyFilter = page.getByRole('combobox', { name: 'فلتر شركة التأمين' });
   await expect(companyFilter.locator('option')).toHaveCount(2);
@@ -100,9 +100,10 @@ test('one-company scope is reflected in charts, list search, export, and direct 
   }
   // Select the inbox by its accessible action name, independent of whether it is
   // rendered in the full sidebar or the compact work-navigation rail.
-  await page.getByRole('button', { name: /قائمة الطلبات/ }).first().click();
+  await page.getByRole('button', { name: /صندوق الطلبات/ }).first().click();
   await expect(page.getByRole('heading', { name: 'صندوق الطلبات' })).toBeVisible();
   await expect(page.getByText('Scoped claim review')).toBeVisible();
+  await page.getByRole('button', { name: 'فتح الجدول الكامل' }).click();
   const search = page.getByRole('textbox', { name: 'البحث في الطلبات' });
   await search.fill('OUTSIDE-CLAIM');
   await expect(page.getByText('لا توجد طلبات هنا الآن')).toBeVisible();
@@ -130,6 +131,7 @@ test('one-company scope is reflected in charts, list search, export, and direct 
 
 test('a live export-permission revocation hides the action and the server rejects the attempted export', async ({ page }) => {
   await page.goto('/staff/complaints');
+  await page.getByRole('button', { name: 'فتح الجدول الكامل' }).click();
   const exportButton = page.getByRole('button', { name: /CSV · Excel-ready/ });
   await expect(exportButton).toBeVisible();
   revoked = true;

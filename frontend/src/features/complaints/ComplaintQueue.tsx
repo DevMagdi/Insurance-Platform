@@ -76,6 +76,10 @@ interface ComplaintQueueProps {
   options: ComplaintFilterOptions;
   companyNames: Map<string, string>;
   onOpenTicket: (id: string) => void;
+  compact?: boolean;
+  selectedTicket?: string;
+  onSelectTicket?: (id: string) => void;
+  onExpand?: () => void;
 }
 
 function statusClass(status: ComplaintStatus): string {
@@ -97,7 +101,7 @@ function fileDownload(blob: Blob, filename: string) {
   URL.revokeObjectURL(href);
 }
 
-export function ComplaintQueue({ access, range, options, companyNames, onOpenTicket }: ComplaintQueueProps) {
+export function ComplaintQueue({ access, range, options, companyNames, onOpenTicket, compact = false, selectedTicket = '', onSelectTicket, onExpand }: ComplaintQueueProps) {
   const [moreFilters, setMoreFilters] = useState(false);
   const [filters, setFilters] = useState<QueueFilters>(EMPTY_FILTERS);
   const [search, setSearch] = useState('');
@@ -307,6 +311,34 @@ export function ComplaintQueue({ access, range, options, companyNames, onOpenTic
 
   const maxPage = Math.max(1, Math.ceil((result?.total ?? 0) / pageSize));
   const selectedAll = Boolean(result?.items.length && result.items.every((item) => selected.includes(item.id)));
+
+  if (compact) {
+    return (
+      <section className="inbox-list-panel" aria-label="قائمة الطلبات">
+        <header className="inbox-list-header">
+          <div><span className="inbox-list-eyebrow">صندوق الطلبات</span><h2>الوارد</h2><small>{loading && !result ? 'جارٍ التحديث…' : `${formatNumber(result?.total ?? 0)} طلب`}</small></div>
+          <button type="button" className="inbox-expand-button" onClick={onExpand} aria-label="فتح الجدول الكامل" title="فتح الجدول الكامل"><Icon name="columns" size={15} /></button>
+        </header>
+        <div className="inbox-list-controls">
+          <label className="inbox-list-search"><Icon name="search" size={15} /><input aria-label="البحث في الوارد" placeholder="ابحث عن طلب…" value={search} onChange={(event) => setSearch(event.target.value)} /></label>
+          <label className="inbox-status-filter"><span>الحالة</span><select aria-label="تصفية حالة الوارد" value={filters.status} onChange={(event) => setFilter('status', event.target.value as ComplaintStatus | '')}><option value="">كل الحالات</option>{options.statuses.map((status) => <option key={status} value={status}>{STATUS_LABEL[status]}</option>)}</select></label>
+        </div>
+        {error && <div className="inbox-list-error" role="alert">{error}<button type="button" onClick={() => { void load(); }}>إعادة المحاولة</button></div>}
+        <div className="inbox-request-list" aria-busy={loading}>
+          {loading && !result && Array.from({ length: 5 }, (_, index) => <div className="inbox-list-skeleton" key={index} />)}
+          {!loading && (result?.items ?? []).map((item) => (
+            <button className="inbox-request-row" type="button" key={item.id} aria-pressed={selectedTicket === item.id} onClick={() => (onSelectTicket ? onSelectTicket(item.id) : onOpenTicket(item.id))}>
+              <span className="inbox-request-row-top"><strong>{item.ticket_no}</strong><time>{formatDateTime(item.updated_at || item.created_at)}</time></span>
+              <span className="inbox-request-subject">{item.subject}</span>
+              <span className="inbox-request-row-bottom"><span>{item.customer_name || CHANNEL_LABEL[item.channel] || 'طلب جديد'}</span><span className={statusClass(item.status)}><i />{STATUS_LABEL[item.status]}</span></span>
+            </button>
+          ))}
+          {!loading && result?.items.length === 0 && <div className="inbox-list-empty"><Icon name="inbox" size={20} /><strong>لا توجد طلبات</strong><span>جرّب توسيع الفترة أو تغيير الحالة.</span></div>}
+        </div>
+        <footer className="inbox-list-pagination"><span>{formatNumber(result?.items.length ?? 0)} من {formatNumber(result?.total ?? 0)}</span><div><button type="button" aria-label="الصفحة السابقة" disabled={page <= 1 || loading} onClick={() => setPage((current) => Math.max(1, current - 1))}><Icon name="chevron" size={14} /></button><strong>{formatNumber(page)} / {formatNumber(maxPage)}</strong><button type="button" aria-label="الصفحة التالية" disabled={page >= maxPage || loading} onClick={() => setPage((current) => Math.min(maxPage, current + 1))}><Icon name="chevron" size={14} /></button></div></footer>
+      </section>
+    );
+  }
 
   return (
     <div className="page-stack">

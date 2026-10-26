@@ -54,6 +54,34 @@ const ticket = (id: string, ticketNo: string) => ({
 });
 
 describe('ComplaintQueue live updates', () => {
+  it('renders a selectable compact inbox list backed by the complaint API', async () => {
+    const onSelectTicket = vi.fn();
+    vi.mocked(api).mockImplementation(async (path: string) => {
+      if (path.startsWith('/api/staff/complaints?')) {
+        return { items: [ticket('ticket-1', 'CMP-2026-000001')], total: 1, page: 1, page_size: 20 } as never;
+      }
+      if (path === '/api/staff/views') return [] as never;
+      return {} as never;
+    });
+    render(
+      <ComplaintQueue
+        access={access}
+        range={{ from: '2026-09-19', to: '2026-10-19', preset: '30d' }}
+        options={options}
+        companyNames={new Map([['company-1', 'النيل']])}
+        compact
+        selectedTicket=""
+        onSelectTicket={onSelectTicket}
+        onExpand={() => undefined}
+        onOpenTicket={() => undefined}
+      />,
+    );
+    const row = await screen.findByRole('button', { name: /CMP-2026-000001/ });
+    expect(screen.getByRole('region', { name: 'قائمة الطلبات' })).toBeTruthy();
+    await act(async () => { (row as HTMLButtonElement).click(); });
+    expect(onSelectTicket).toHaveBeenCalledWith('ticket-1');
+  });
+
   it('renders a new complaint from the staff stream and signals the console', async () => {
     vi.stubGlobal('WebSocket', FakeWebSocket);
     const events: string[] = [];

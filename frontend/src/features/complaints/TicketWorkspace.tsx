@@ -31,6 +31,7 @@ interface TicketWorkspaceProps {
   onBack: () => void;
   onOpenTicket: (id: string) => void;
   onRefreshAccess: () => Promise<void>;
+  compactInbox?: boolean;
 }
 
 interface CannedReply {
@@ -90,7 +91,7 @@ function eventLabel(eventType: string): string {
   return EVENT_LABEL[eventType] ?? eventType.replaceAll('_', ' ');
 }
 
-export function TicketWorkspace({ id, access, options, onBack, onOpenTicket, onRefreshAccess }: TicketWorkspaceProps) {
+export function TicketWorkspace({ id, access, options, onBack, onOpenTicket, onRefreshAccess, compactInbox = false }: TicketWorkspaceProps) {
   const [ticket, setTicket] = useState<Complaint | null>(null);
   const [timeline, setTimeline] = useState<TicketTimeline | null>(null);
   const [audit, setAudit] = useState<AuditEvent[]>([]);
@@ -474,7 +475,7 @@ export function TicketWorkspace({ id, access, options, onBack, onOpenTicket, onR
   if (!hasPermission(access, 'complaints.view')) return <AccessDenied title="الطلب غير متاح" />;
 
   return (
-    <div className="page-stack">
+    <div className={`page-stack${compactInbox ? ' inbox-ticket-workspace' : ''}`}>
       <div className="workspace-back-row"><button className="back-link" type="button" onClick={onBack}><Icon name="arrow" size={16} /> العودة إلى الطلبات</button><span className="workspace-scope"><Icon name="shield" size={14} /> عرض ضمن النطاق المصرّح</span></div>
       {loading && !ticket ? <div className="loading-surface"><span className="loading-spinner" /><span>جارٍ تحميل الطلب…</span></div> : !ticket ? (
         <section className="surface-card unavailable-ticket"><span className="empty-icon"><Icon name="lock" size={22} /></span><h2>الطلب غير متاح</h2><p>قد تكون الطلب غير موجودة أو خارج نطاق صلاحيتك. لم يتم عرض أي تفاصيل.</p><button className="button button-dark" type="button" onClick={onBack}>العودة إلى القائمة</button></section>

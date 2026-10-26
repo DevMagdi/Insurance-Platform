@@ -4803,18 +4803,7 @@ paths:
                 type: array
                 items:
                   type: object
-                  properties:
-                    date:
-                      type: string
-                      format: date
-                    whatsapp:
-                      type: integer
-                    calls:
-                      type: integer
-                  required:
-                  - date
-                  - whatsapp
-                  - calls
+                  additionalProperties: true
                 title: Response Channel Series Api Staff Analytics Channels Get
         '422':
           description: Validation Error

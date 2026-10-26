@@ -112,6 +112,8 @@ test('staff queue opens a ticket and renders the workspace actions', async ({ pa
   await mockStaffApi(page);
   await page.goto('/staff/complaints');
   await expect(page.getByText('CMP-2026-000123')).toBeVisible();
+  await page.getByRole('button', { name: 'فتح الجدول الكامل' }).click();
+  await expect(page.getByRole('table')).toBeVisible();
   await page.getByText('CMP-2026-000123').click();
   await expect(page).toHaveURL(new RegExp(`/staff/complaints/${TICKET_ID}`));
   await expect(page.getByText('Delayed claim payment')).toBeVisible();
@@ -134,7 +136,8 @@ for (const theme of ['light', 'dark'] as const) {
     await page.goto('/staff/complaints');
     await expect(page.getByText('CMP-2026-000123')).toBeVisible();
     await page.getByText('CMP-2026-000123').click();
-    await expect(page.getByRole('heading', { name: 'إدارة الحالة' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'ملخص الحالة' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'الرسائل والتحديثات' })).toBeVisible();
     const shell = page.locator('.staff-console');
     // The Broker Hub reference contract uses the same light canvas regardless
     // of the customer's independent theme preference: #F3F4F9 / #101828.

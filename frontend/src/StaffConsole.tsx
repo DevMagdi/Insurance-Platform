@@ -24,7 +24,7 @@ import { SECTION_GLOW } from './features/home/sections';
 const AuthPage = lazy(async () => ({ default: (await import('./features/auth/AuthPage')).AuthPage }));
 const OverviewPage = lazy(async () => ({ default: (await import('./features/dashboard/OverviewPage')).OverviewPage }));
 const ReportsPage = lazy(async () => ({ default: (await import('./pages/StaffAnalyticsPage')).StaffAnalyticsPage }));
-const ComplaintQueue = lazy(async () => ({ default: (await import('./features/complaints/ComplaintQueue')).ComplaintQueue }));
+const InboxWorkspace = lazy(async () => ({ default: (await import('./features/complaints/InboxWorkspace')).InboxWorkspace }));
 const TicketWorkspace = lazy(async () => ({ default: (await import('./features/complaints/TicketWorkspace')).TicketWorkspace }));
 const AuditPage = lazy(async () => ({ default: (await import('./features/admin/AuditPage')).AuditPage }));
 const OperationsPage = lazy(async () => ({ default: (await import('./features/admin/OperationsPage')).OperationsPage }));
@@ -344,7 +344,7 @@ function App() {
   const effectiveCompanyId = filterOptions.companies.some((company) => company.id === companyId) ? companyId : '';
   const effectiveInsuranceType = access.insurance_types.length > 0 && insuranceType && !access.insurance_types.includes(insuranceType) ? '' : insuranceType;
   const currentNav = activePage(route);
-  const showDatePicker = route.page === 'admin' || route.page === 'overview' || route.page === 'complaints' || route.page === 'audit';
+  const showDatePicker = route.page === 'admin' || route.page === 'overview' || route.page === 'audit';
   const pageContent = route.page === 'home'
     ? <Launchpad access={access} range={range} items={visibleNavigation} companies={filterOptions.companies} onNavigate={navigate} />
     : route.page === 'admin'
@@ -354,7 +354,7 @@ function App() {
     : route.page === 'reports'
       ? <ReportsPage embedded />
     : route.page === 'complaints'
-      ? <ComplaintQueue access={access} range={range} options={filterOptions} companyNames={companyNames} onOpenTicket={(id) => navigate({ page: 'ticket', id })} />
+      ? <InboxWorkspace access={access} range={range} options={filterOptions} companyNames={companyNames} onOpenTicket={(id) => navigate({ page: 'ticket', id })} onRefreshAccess={refreshAccess} />
       : route.page === 'ticket'
         ? <TicketWorkspace id={route.id} access={access} options={filterOptions} onBack={() => navigate({ page: 'complaints' })} onOpenTicket={(id) => navigate({ page: 'ticket', id })} onRefreshAccess={refreshAccess} />
         : route.page === 'users'
@@ -402,7 +402,7 @@ function App() {
   const isSalesRole = access.roles.includes('sales');
   return <div className={`staff-console theme-${theme}${isSalesRole ? ' is-sales' : ''}`}><div className="app-shell" dir="rtl">
     {mobileNav && <button className="mobile-scrim" type="button" aria-label="إغلاق القائمة" onClick={() => setMobileNav(false)} />}
-    <aside className={`sidebar${mobileNav ? ' sidebar-open' : ''}${collapsed ? ' is-collapsed' : ''}${route.page === 'complaints' || route.page === 'ticket' ? ' is-queue' : ''}`}>
+    <aside className={`sidebar${mobileNav ? ' sidebar-open' : ''}${collapsed ? ' is-collapsed' : ''}${route.page === 'complaints' ? ' is-queue' : ''}`}>
       <div className="sidebar-brand"><span className="brand-mark" aria-hidden="true">و</span><span><strong>وسيط · Broker Hub</strong><small>منصة الوساطة التأمينية</small></span></div>
       <button
         className="sidebar-collapse"
