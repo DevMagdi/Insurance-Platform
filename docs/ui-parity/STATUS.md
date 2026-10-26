@@ -32,7 +32,6 @@
 - Primary `#4F46E5`; sidebar `#0E1424` (232px expanded, 76px collapsed in the request workspace); background `#F3F4F9`; cards radius `18px`; font **IBM Plex Sans Arabic**.
 - No schema/database changes. CRM changes preserve conversion/business rules and add a server-side client-list projection over `converted_corporate_client_id` + `assigned_to`; the seller list query filters to the current actor. Full corporate records continue to require `corporate.view`.
 - Data-model limit: the FK from `CrmLead.converted_corporate_client_id` and mutable `assigned_to` connect the converted client to its currently assigned lead. The CRM activity log records assignment events, but there is no dedicated immutable owner-at-conversion field; if fixed ownership after later reassignment is required, propose and approve that relationship separately. No ownership column is added in this pass.
-- Data-model limit: the FK from `CrmLead.converted_corporate_client_id` and mutable `assigned_to` connect the converted client to its currently assigned lead. The CRM activity log records assignment events, but there is no dedicated immutable owner-at-conversion field; if fixed ownership after later reassignment is required, propose and approve that relationship separately. No ownership column is added in this pass.
 - No production screen should be populated from invented demo records. Any future QA capture with mocked network fixtures must be labeled as fixture-rendered, not production evidence.
 
 ## Security work in this pass
