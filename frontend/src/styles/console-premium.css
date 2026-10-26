@@ -10,9 +10,8 @@
 
 /* --------------------------------------------------------------- the shell */
 
-/* The sidebar is the same deep navy as the page behind it, separated by a
-   single hairline rather than a slab of contrast. Cards then float above
-   both. This is what makes the console read as one material. */
+/* The Broker Hub sidebar uses its fixed navy token in every class theme;
+   theme preference changes page surfaces, not the navigation identity. */
 .staff-console {
   --staff-sidebar: var(--sidebar);
 }
@@ -866,17 +865,14 @@
 
 /* ----------------------------------------------------------- chrome, light */
 
-/* On dark, the sidebar is the same near-black as the canvas and the cards
-   float off both — one material, lit from above. Inverted literally, that
-   becomes #FAFAFA chrome on a #FAFAFA canvas holding #FFFFFF cards: three
-   surfaces, two of them identical, and the console reads as one flat sheet.
-   Light mode puts the chrome on top (white) and drops the canvas behind it. */
+/* Keep the Broker Hub's fixed navy navigation even when the page is in light
+   mode; only the main surfaces switch palettes. */
 .staff-console.theme-light {
   --staff-sidebar: var(--sidebar);
 }
 
 .staff-console.theme-light .sidebar {
-  background: var(--surface-chrome);
+  background: var(--sidebar);
 }
 
 .staff-console.theme-light .app-shell {
